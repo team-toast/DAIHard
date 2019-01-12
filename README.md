@@ -1,1 +1,3 @@
-# toastytrade-lite
+# Toastytrade
+
+Decentralized fiat/crypto trading
