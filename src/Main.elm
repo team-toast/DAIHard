@@ -9,9 +9,11 @@ import Eth.Sentry.Tx as TxSentry exposing (..)
 import Eth.Sentry.Wallet as WalletSentry exposing (WalletSentry)
 import Eth.Units exposing (gwei)
 import Eth.Utils as EthUtils
+import Array
 import BigInt exposing (BigInt)
 import Html exposing (..)
 import Html.Events exposing (onClick)
+import Html.Attributes
 import Http
 import Json.Decode as Decode exposing (Value)
 import Process
@@ -31,15 +33,97 @@ main =
     , subscriptions = subscriptions
     }
 
-
 type alias Model =
   { time : Time
   , node : EthNode
   , txSentry : TxSentry Msg
   , userAddress : Maybe Address
-  , ttAddress : Address
-  , ttModel : Maybe ToastytradeSellModel
+  , page : Page
   }
+
+type Page
+  = CreateTT
+  | ViewTT
+    { ttAddress : Address
+    , ttModel : Maybe ToastytradeSellModel
+    }
+
+type alias TokenAmount =
+  { evmValue : BigInt
+  , numDecimals : Int
+  }
+
+tokenAmountToString : TokenAmount -> Int -> String
+tokenAmountToString tokenAmount displayPrecision =
+  let
+    firstTruncateAmount = tokenAmount.numDecimals - displayPrecision
+    divisor = BigInt.pow (BigInt.fromInt 10) (BigInt.fromInt firstTruncateAmount)
+    (truncatedAmount, remainder) = Maybe.withDefault (tokenAmount.evmValue, BigInt.fromInt 0 ) ( BigInt.divmod tokenAmount.evmValue divisor )
+    firstDigitOfRemainder =
+      BigInt.toString remainder
+      |> String.slice 0 1
+      |> String.toInt
+      |> Result.withDefault 0
+    truncatedAmountRounded =
+      if firstDigitOfRemainder > 5 then
+        truncatedAmount
+      else
+        truncatedAmount
+    amountStringNoDecimal = BigInt.toString truncatedAmount
+  in
+    if displayPrecision == 0 then
+      amountStringNoDecimal
+    else
+      (  String.dropRight displayPrecision amountStringNoDecimal
+      ++ "."
+      ++ String.right displayPrecision amountStringNoDecimal
+      )
+      |> removeExtraZeros
+
+removeExtraZeros : String -> String
+removeExtraZeros numString =
+  if (numString |> String.endsWith "0") || (numString |> String.endsWith ".") then
+    removeExtraZeros (String.slice 0 -1 numString)
+  else
+    numString
+
+stringToTokenAmount : String -> Int -> Result String TokenAmount
+stringToTokenAmount amountString numDecimals =
+  let
+    ( newString, numDigitsMoved ) = pullAnyFirstDecimalOffToRight amountString
+    numDigitsLeftToMove = numDecimals - numDigitsMoved
+    maybeBigIntAmount = BigInt.fromString newString
+  in
+    if numDigitsLeftToMove < 0 then
+      Err "Number is too precise!"
+    else
+      case maybeBigIntAmount of
+        Nothing ->
+          Err "Can't interpret that number!"
+        Just bigIntAmount ->
+          let
+            evmValue = (BigInt.mul bigIntAmount ( BigInt.pow (BigInt.fromInt 10) (BigInt.fromInt numDigitsLeftToMove) ) )
+          in
+            Ok (TokenAmount evmValue numDecimals)
+
+
+pullAnyFirstDecimalOffToRight : String -> (String, Int)
+pullAnyFirstDecimalOffToRight numString =
+  let
+    maybeDecimalPosition = List.head (String.indexes "." numString)
+  in
+    case maybeDecimalPosition of
+      Nothing ->
+        ( numString, 0 )
+      Just decimalPos ->
+        let
+          numDigitsMoved = ( ( String.length numString) - 1 ) - decimalPos
+          newString =
+            (  String.left decimalPos numString
+            ++ String.dropLeft (decimalPos + 1) numString
+            )
+        in
+          ( newString, numDigitsMoved )
 
 init : (Int, String) -> (Model, Cmd Msg)
 init (networkId, ttAddressString) =
@@ -62,8 +146,10 @@ init (networkId, ttAddressString) =
       , node = node
       , txSentry = TxSentry.init ( txOut, txIn ) TxSentryMsg node.http
       , userAddress = Nothing
-      , ttAddress = ttAddress
-      , ttModel = Nothing
+      , page = ViewTT
+        { ttAddress = ttAddress
+        , ttModel = Nothing
+        }
       }
     , Cmd.batch [ Eth.call node.http ( ToastytradeSell.getFullState ttAddress )
                     |> Task.attempt FullStateFetched
@@ -173,7 +259,8 @@ ethNode networkId =
 
 
 type Msg
-  = Tick Time
+  = GotoCreate
+  | Tick Time
   | WalletStatus WalletSentry
   | TxSentryMsg TxSentry.Msg
   | FullStateFetched (Result Http.Error GetFullState)
@@ -183,6 +270,9 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case msg of
+    GotoCreate ->
+      ( { model | page = CreateTT }, Cmd.none )
+
     Tick newTime ->
       ( { model | time = newTime }, Cmd.none )
 
@@ -198,17 +288,25 @@ update msg model =
       in ( model, Cmd.none )
 
     FullStateFetched (Ok getFullState) ->
-      let
-        ttModelResult = toastytradeModelFromGetFullState getFullState
-      in
-        case ttModelResult of
-          Err e ->
-            let _ = Debug.log e
-            in (model, Cmd.none)
-          Ok ttModel ->
-            ({ model
-              | ttModel = Just ttModel
-            }, Cmd.none)
+      case model.page of
+        ViewTT viewPage ->
+          let
+            ttModelResult = toastytradeModelFromGetFullState getFullState
+          in
+            case ttModelResult of
+              Err e ->
+                let _ = Debug.log e
+                in (model, Cmd.none)
+              Ok ttModel ->
+                let
+                  newPage = ViewTT { viewPage | ttModel = Just ttModel }
+                in
+                  ({ model
+                    | page = newPage
+                  } , Cmd.none)
+        CreateTT ->
+          -- ignore the update
+          ( model, Cmd.none )
 
     TxSentryMsg subMsg ->
       let
@@ -224,30 +322,52 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-  case model.ttModel of
-    Nothing ->
-      div [] [ text "Model loading... " ]
-    Just ttModel ->
+  div []
+      [ headerView model
+      , pageView model.page model.time
+      ]
+
+headerView : Model -> Html Msg
+headerView model =
+  div [Html.Attributes.style [("height", "30px")] ]
+      [ button [ onClick GotoCreate ] [ text "Create" ]
+      ]
+
+pageView : Page -> Time.Time -> Html Msg
+pageView page currentTime =
+  case page of
+    CreateTT ->
       div []
-          [ div []
-                [ text "Toastytrade Sell at address "
-                , text (EthUtils.addressToString model.ttAddress)
-                ]
-          , text (toString ttModel.phase)
-          , case ttModel.phase of
-              Open ->
-                div []
-                    [ text (EthUtils.addressToString ttModel.seller)
-                    , text " selling."
-                    ]
-              _ ->
-                div []
-                    [ text (EthUtils.addressToString ttModel.seller)
-                    , text " selling to "
-                    , text (Maybe.withDefault "???" (Maybe.map EthUtils.addressToString ttModel.buyer))
-                    ]
-          , countdownView ttModel model.time
+          [ text "Sell "
+          --, input [ ]
           ]
+
+
+    ViewTT viewPage ->
+      case viewPage.ttModel of
+        Nothing ->
+          div [] [ text "Model loading... " ]
+        Just ttModel ->
+          div []
+              [ div []
+                    [ text "Toastytrade Sell at address "
+                    , text (EthUtils.addressToString viewPage.ttAddress)
+                    ]
+              , text (toString ttModel.phase)
+              , case ttModel.phase of
+                  Open ->
+                    div []
+                        [ text (EthUtils.addressToString ttModel.seller)
+                        , text " selling."
+                        ]
+                  _ ->
+                    div []
+                        [ text (EthUtils.addressToString ttModel.seller)
+                        , text " selling to "
+                        , text (Maybe.withDefault "???" (Maybe.map EthUtils.addressToString ttModel.buyer))
+                        ]
+              , countdownView ttModel currentTime
+              ]
 
 countdownView : ToastytradeSellModel -> Time.Time -> Html Msg
 countdownView ttModel currentTime =
