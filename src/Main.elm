@@ -33,7 +33,8 @@ main =
 
 
 type alias Model =
-  { node : EthNode
+  { time : Time
+  , node : EthNode
   , txSentry : TxSentry Msg
   , userAddress : Maybe Address
   , ttAddress : Address
@@ -57,7 +58,8 @@ init (networkId, ttAddressString) =
           Ok tta -> tta
   in
     (
-      { node = node
+      { time = 0
+      , node = node
       , txSentry = TxSentry.init ( txOut, txIn ) TxSentryMsg node.http
       , userAddress = Nothing
       , ttAddress = ttAddress
@@ -171,7 +173,8 @@ ethNode networkId =
 
 
 type Msg
-  = WalletStatus WalletSentry
+  = Tick Time
+  | WalletStatus WalletSentry
   | TxSentryMsg TxSentry.Msg
   | FullStateFetched (Result Http.Error GetFullState)
   | Fail String
@@ -180,6 +183,9 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case msg of
+    Tick newTime ->
+      ( { model | time = newTime }, Cmd.none )
+
     WalletStatus walletSentry ->
       ({ model
        | userAddress = walletSentry.account
@@ -240,6 +246,7 @@ view model =
                     , text " selling to "
                     , text (Maybe.withDefault "???" (Maybe.map EthUtils.addressToString ttModel.buyer))
                     ]
+          , countdownView ttModel model.time
           ]
 
 countdownView : ToastytradeSellModel -> Time.Time -> Html Msg
@@ -247,19 +254,47 @@ countdownView ttModel currentTime =
   let
     phaseInterval =
       case ttModel.phase of
-        Open -> autorecallInterval
-        Committed -> depositDeadlineInterval
-        Claimed -> autoreleaseInterval
+        Open -> ttModel.autorecallInterval
+        Committed -> ttModel.depositDeadlineInterval
+        Claimed -> ttModel.autoreleaseInterval
         Closed -> 0
 
-    countdownPassed = ttModel.phaseStartTime + phaseInterval > currentTime
-    descriptionDiv =
-      case ttModel.
+    timeLeft = (ttModel.phaseStartTime + phaseInterval) - currentTime
+    countdownHasPassed = timeLeft < 0
+    textElement =
+      text
+        (
+        case (ttModel.phase, countdownHasPassed) of
+          (Open, False) ->
+            "This offer autorecalls in "
+          (Open, True) ->
+            "Autorecall available. Poke to autorecall."
+          (Committed, False) ->
+            "Time left until deposit deadline: "
+          (Committed, True) ->
+            "Deposit deadline passed. Poke to return Seller's ether and burn Buyer's deposit."
+          (Claimed, False) ->
+            "Autorelease to Buyer in "
+          (Claimed, True) ->
+            "Autorelease available. Poke to autorelease."
+          (Closed, _) ->
+            "This offer is now closed."
+        )
+    dynamicElement =
+      if ttModel.phase == Closed then
+        div [] []
+      else if countdownHasPassed then
+        div [] [ text "POKEBUTTON" ]
+      else
+        div [] [ text (toString timeLeft) ]
+  in
+    div [] [ textElement, dynamicElement ]
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ walletSentry (WalletSentry.decodeToMsg Fail WalletStatus)
+        [ Time.every Time.second Tick
+        , walletSentry (WalletSentry.decodeToMsg Fail WalletStatus)
         , TxSentry.listen model.txSentry
         ]
 
