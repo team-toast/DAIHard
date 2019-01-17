@@ -6,24 +6,21 @@ module Create exposing
     , view
     )
 
-import Components exposing (..)
+import BigInt
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
+import HtmlElements
 import Time exposing (Time)
+import TokenValue exposing (TokenValue)
 
 
 type alias Model =
-    { orderType : OrderType
-    , tradeTokenAmount : Maybe TokenAmount
-    , summonFee : TokenAmount
-    , devFee : TokenAmount
-    , totalTokensIn : TokenAmount
-    , tradeFiatAmount : Int
-    , autorecallInterval : Time
-    , depositDeadlineInterval : Time
-    , autoreleaseInterval : Time
-    , logisticsInfo : String
+    { uncoiningAmount : TokenValue
+    , summonFee : TokenValue
+    , devFee : TokenValue
+    , initialDeposit : TokenValue
+    , uncoinerDeposit : TokenValue
     }
 
 
@@ -33,28 +30,17 @@ type OrderType
 
 
 type Msg
-    = OrderTypeChanged OrderType
-    | TradeTokenAmountChanged String
+    = UncoiningAmountChanged String
     | SummonFeeChanged String
-    | TotalTokensInChanged String
-    | AutorecallIntervalChanged String
-    | DepositDeadlineIntervalChanged String
-    | AutoreleaseIntervalChanged String
-    | LogisticsInfoChanged String
 
 
 init : Int -> ( Model, Cmd Msg )
 init tokenDecimals =
-    ( { orderType = Sell
-      , tradeTokenAmount = Nothing
-      , summonFee = zeroTokens tokenDecimals
-      , devFee = zeroTokens tokenDecimals
-      , totalTokensIn = zeroTokens tokenDecimals
-      , tradeFiatAmount = 0
-      , autorecallInterval = 3 * 24 * Time.hour
-      , depositDeadlineInterval = 3 * 24 * Time.hour
-      , autoreleaseInterval = 3 * 24 * Time.hour
-      , logisticsInfo = ""
+    ( { uncoiningAmount = TokenValue.empty tokenDecimals
+      , summonFee = TokenValue.empty tokenDecimals
+      , devFee = TokenValue.empty tokenDecimals
+      , initialDeposit = TokenValue.empty tokenDecimals
+      , uncoinerDeposit = TokenValue.empty tokenDecimals
       }
     , Cmd.none
     )
@@ -62,81 +48,63 @@ init tokenDecimals =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    -- case msg of
-    --     OrderTypeChanged newType ->
-    --         ( { model | orderType = newType }
-    --         , Cmd.none
-    --         )
-    ( model, Cmd.none )
+    case msg of
+        UncoiningAmountChanged newAmtStr ->
+            let
+                newUncoiningAmount =
+                    TokenValue.updateViaString model.uncoiningAmount newAmtStr
+
+                newSummonFee =
+                    case TokenValue.toBigInt newUncoiningAmount of
+                        Nothing ->
+                            model.summonFee
+
+                        Just bigIntVal ->
+                            TokenValue.updateViaBigInt model.summonFee (Just (BigInt.div bigIntVal (BigInt.fromInt 10)))
+            in
+            ( { model | uncoiningAmount = newUncoiningAmount, summonFee = newSummonFee }, Cmd.none )
+
+        SummonFeeChanged newAmtStr ->
+            ( { model | summonFee = TokenValue.updateViaString model.summonFee newAmtStr }, Cmd.none )
 
 
 view : Model -> Html Msg
 view model =
     let
-        headerDiv =
-            div [ style [ ( "height", "50px" ) ] ]
-                [ text "Create order" ]
+        header =
+            h1 [] [ text "Uncoining Contract - draft" ]
 
-        orderTypeInputDiv =
+        openerSection =
             div []
-                (case model.orderType of
-                    Sell ->
-                        [ text "Order type: Sell"
-                        , button [ onClick (OrderTypeChanged Buy) ] [ text "Toggle" ]
-                        ]
-
-                    Buy ->
-                        [ text "Order type: Buy"
-                        , button [ onClick (OrderTypeChanged Sell) ] [ text "Toggle" ]
-                        ]
-                )
-
-        amountInputsDiv =
-            div []
-                [ div []
-                    [ text
-                        (case model.orderType of
-                            Sell ->
-                                "Uncoining "
-
-                            Buy ->
-                                "Coining "
-                        )
-                    , let
-                        tradeTokenAmountInputValue =
-                            case model.tradeTokenAmount of
-                                Nothing ->
-                                    ""
-
-                                Just tradeTokenAmount ->
-                                    tradeTokenAmount
-                                        |> tokenAmountToString tradeTokenAmount.numDecimals
-                      in
-                      input [ type_ "text", size 5, placeholder "Amount", value tradeTokenAmountInputValue, onInput TradeTokenAmountChanged ] []
-                    , text " Dai"
+                [ i []
+                    [ text "(Throughout this contract, you will be referred to as the "
+                    , initiatorText
+                    , text ".)"
                     ]
-                , div []
-                    [ text "offering "
-                    , input [ type_ "text", size 5, value (tokenAmountToString model.summonFee.numDecimals model.summonFee), onInput SummonFeeChanged ] []
-                    , text " Dai as a summon fee"
+                , p []
+                    [ text "Uncoining "
+                    , HtmlElements.smallInput (TokenValue.getString model.uncoiningAmount) UncoiningAmountChanged
+                    , text " Dai, with a summon fee of "
+                    , HtmlElements.smallInput (TokenValue.getString model.summonFee) SummonFeeChanged
                     ]
-                , div []
-                    [ text "+ "
-                    , text (tokenAmountToString model.devFee.numDecimals model.devFee)
-                    , text " Dai (1% dev fee)"
+                , p []
+                    [ text "Upon contract creation, the "
+                    , initiatorText
+                    , text " deposits "
+                    , HtmlElements.tokenValue model.initialDeposit
+                    , text "."
                     ]
                 ]
     in
     div []
-        [ headerDiv
-        , orderTypeInputDiv
-        , amountInputsDiv
-        , div []
-            [ text "You will buy "
-
-            --, text model.
-            ]
+        [ header
+        , openerSection
         ]
+
+
+initiatorText : Html Msg
+initiatorText =
+    span [ style [ ( "color", "green" ) ] ] [ text "Initiator" ]
 
 
 orderTypeToString : OrderType -> String
