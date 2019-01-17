@@ -45,8 +45,8 @@ zeroTokens numDecimals =
     TokenAmount numDecimals (BigInt.fromInt 0)
 
 
-tokenAmountToString : TokenAmount -> Int -> String
-tokenAmountToString tokenAmount displayPrecision =
+tokenAmountToString : Int -> TokenAmount -> String
+tokenAmountToString displayPrecision tokenAmount =
     let
         firstTruncateAmount =
             tokenAmount.numDecimals - displayPrecision
@@ -87,7 +87,10 @@ tokenAmountToString tokenAmount displayPrecision =
 
 removeTrailingZeros : String -> String
 removeTrailingZeros numString =
-    if (numString |> String.endsWith "0") || (numString |> String.endsWith ".") then
+    if String.length numString == 0 then
+        "0"
+
+    else if (numString |> String.endsWith "0") || (numString |> String.endsWith ".") then
         removeTrailingZeros (String.slice 0 -1 numString)
 
     else
