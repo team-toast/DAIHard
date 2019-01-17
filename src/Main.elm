@@ -1,14 +1,15 @@
 port module Main exposing (Model, Msg(..), SubModel(..), headerView, init, main, subModelView, subscriptions, txIn, txOut, update, view, walletSentry)
 
-import Components exposing (..)
 import Create
 import Eth.Net as Net
 import Eth.Sentry.Tx as TxSentry exposing (..)
 import Eth.Sentry.Wallet as WalletSentry exposing (WalletSentry)
 import Eth.Types exposing (..)
+import EthHelpers
 import Html exposing (..)
 import Html.Attributes
 import Html.Events exposing (onClick)
+import HtmlElements exposing (..)
 import Interact
 import Json.Decode as Decode exposing (Value)
 import Time exposing (Time)
@@ -26,7 +27,7 @@ main =
 
 type alias Model =
     { time : Time
-    , node : EthNode
+    , node : EthHelpers.EthNode
     , txSentry : TxSentry Msg
     , userAddress : Maybe Address
     , tokenContractDecimals : Int
@@ -54,7 +55,7 @@ init ( networkId, tokenContractDecimals ) =
     let
         node =
             Net.toNetworkId networkId
-                |> ethNode
+                |> EthHelpers.ethNode
 
         createModel =
             Tuple.first (Create.init tokenContractDecimals)

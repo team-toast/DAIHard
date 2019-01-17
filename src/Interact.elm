@@ -4,13 +4,14 @@ module Interact exposing (Model, Msg(..), ToastytradeSellModel, countdownView, i
 -- Internal
 
 import BigInt exposing (BigInt)
-import Components exposing (..)
 import Contracts.ToastytradeSell as ToastytradeSell exposing (..)
 import Contracts.ToastytradeSellExtras exposing (..)
 import Eth
 import Eth.Types exposing (..)
 import Eth.Utils as EthUtils
+import EthHelpers
 import Html exposing (..)
+import HtmlElements exposing (..)
 import Http
 import Task
 import Time exposing (Time)
@@ -35,7 +36,7 @@ type alias ToastytradeSellModel =
     }
 
 
-init : ( EthNode, Address ) -> ( Model, Cmd Msg )
+init : ( EthHelpers.EthNode, Address ) -> ( Model, Cmd Msg )
 init ( node, ttAddress ) =
     ( { ttAddress = ttAddress
       , ttModel = Nothing
@@ -178,16 +179,16 @@ toastytradeModelFromGetFullState fullState =
             bigIntToPhase fullState.phase
 
         phaseStartTimeResult =
-            bigIntToTime fullState.phaseStartTimestamp
+            EthHelpers.bigIntToTime fullState.phaseStartTimestamp
 
         autorecallIntervalResult =
-            bigIntToTime fullState.autorecallInterval
+            EthHelpers.bigIntToTime fullState.autorecallInterval
 
         depositDeadlineIntervalResult =
-            bigIntToTime fullState.depositDeadlineInterval
+            EthHelpers.bigIntToTime fullState.depositDeadlineInterval
 
         autoreleaseIntervalResult =
-            bigIntToTime fullState.autoreleaseInterval
+            EthHelpers.bigIntToTime fullState.autoreleaseInterval
     in
     case ( phaseResult, phaseStartTimeResult, autorecallIntervalResult, depositDeadlineIntervalResult, autoreleaseIntervalResult ) of
         ( Err e, _, _, _, _ ) ->
@@ -211,7 +212,7 @@ toastytradeModelFromGetFullState fullState =
                 , phase = phase
                 , phaseStartTime = phaseStartTime
                 , seller = fullState.seller
-                , buyer = addressIfNot0x0 fullState.buyer
+                , buyer = EthHelpers.addressIfNot0x0 fullState.buyer
                 , buyerDeposit = fullState.buyerDeposit
                 , autorecallInterval = autorecallInterval
                 , depositDeadlineInterval = depositDeadlineInterval
