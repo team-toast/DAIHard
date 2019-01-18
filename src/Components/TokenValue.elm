@@ -145,11 +145,15 @@ evmValueToTruncatedString numDecimals maxDigitsAfterDecimal evmValue =
                 -- will return Nothing if divisor is zero. This should never happen.
                 |> Maybe.withDefault ( evmValue, BigInt.fromInt 0 )
 
+        zeroPaddedRemainder =
+            BigInt.toString remainder
+                |> String.padLeft numDecimals '0'
+
         preDecimalString =
             BigInt.toString truncatedAmount
 
         postDecimalString =
-            BigInt.toString remainder
+            zeroPaddedRemainder
                 |> String.left maxDigitsAfterDecimal
     in
     preDecimalString
