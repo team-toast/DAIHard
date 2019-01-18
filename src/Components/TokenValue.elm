@@ -1,4 +1,4 @@
-module TokenValue exposing (TokenValue, empty, getString, numDecimals, renderToString, toBigInt, updateViaBigInt, updateViaString)
+module TokenValue exposing (TokenValue, empty, getString, numDecimals, renderToString, toBigInt, tokenValue, updateViaBigInt, updateViaString)
 
 import BigInt exposing (BigInt)
 
@@ -11,6 +11,14 @@ type TokenValue
     = TokenValue
         { numDecimals : Int
         , string : String
+        }
+
+
+tokenValue : Int -> String -> TokenValue
+tokenValue numDecimals string =
+    TokenValue
+        { numDecimals = numDecimals
+        , string = string
         }
 
 
@@ -81,30 +89,34 @@ updateViaBigInt (TokenValue tokens) newBigIntValue =
 
 stringToEvmValue : Int -> String -> Maybe BigInt
 stringToEvmValue numDecimals amountString =
-    let
-        ( newString, numDigitsMoved ) =
-            pullAnyFirstDecimalOffToRight amountString
-
-        numDigitsLeftToMove =
-            numDecimals - numDigitsMoved
-
-        maybeBigIntAmount =
-            BigInt.fromString newString
-    in
-    if numDigitsLeftToMove < 0 then
+    if amountString == "" then
         Nothing
 
     else
-        case maybeBigIntAmount of
-            Nothing ->
-                Nothing
+        let
+            ( newString, numDigitsMoved ) =
+                pullAnyFirstDecimalOffToRight amountString
 
-            Just bigIntAmount ->
-                let
-                    evmValue =
-                        BigInt.mul bigIntAmount (BigInt.pow (BigInt.fromInt 10) (BigInt.fromInt numDigitsLeftToMove))
-                in
-                Just evmValue
+            numDigitsLeftToMove =
+                numDecimals - numDigitsMoved
+
+            maybeBigIntAmount =
+                BigInt.fromString newString
+        in
+        if numDigitsLeftToMove < 0 then
+            Nothing
+
+        else
+            case maybeBigIntAmount of
+                Nothing ->
+                    Nothing
+
+                Just bigIntAmount ->
+                    let
+                        evmValue =
+                            BigInt.mul bigIntAmount (BigInt.pow (BigInt.fromInt 10) (BigInt.fromInt numDigitsLeftToMove))
+                    in
+                    Just evmValue
 
 
 pullAnyFirstDecimalOffToRight : String -> ( String, Int )
@@ -173,6 +185,9 @@ removeUnnecessaryZerosAndDots numString =
 
     else if String.endsWith "0" numString then
         removeUnnecessaryZerosAndDots (String.slice 0 -1 numString)
+
+    else if numString == "" then
+        "0"
 
     else
         numString
