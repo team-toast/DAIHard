@@ -66,16 +66,11 @@ updateViaString (TokenValue originalTokens) newString =
         }
 
 
-updateViaBigInt : TokenValue -> Maybe BigInt -> TokenValue
+updateViaBigInt : TokenValue -> BigInt -> TokenValue
 updateViaBigInt (TokenValue tokens) newBigIntValue =
     let
         newString =
-            case newBigIntValue of
-                Nothing ->
-                    ""
-
-                Just bigIntValue ->
-                    evmValueToString tokens.numDecimals bigIntValue
+            evmValueToString tokens.numDecimals newBigIntValue
     in
     TokenValue { tokens | string = newString }
 
@@ -137,43 +132,47 @@ pullAnyFirstDecimalOffToRight numString =
 evmValueToTruncatedString : Int -> Int -> BigInt -> String
 evmValueToTruncatedString numDecimals maxDigitsAfterDecimal evmValue =
     let
-        divisor =
-            BigInt.pow (BigInt.fromInt 10) (BigInt.fromInt numDecimals)
+        untruncatedString =
+            evmValueToString numDecimals evmValue
 
-        ( truncatedAmount, remainder ) =
-            BigInt.divmod evmValue divisor
-                -- will return Nothing if divisor is zero. This should never happen.
-                |> Maybe.withDefault ( evmValue, BigInt.fromInt 0 )
-
-        zeroPaddedRemainder =
-            BigInt.toString remainder
-                |> String.padLeft numDecimals '0'
-
-        preDecimalString =
-            BigInt.toString truncatedAmount
-
-        postDecimalString =
-            zeroPaddedRemainder
-                |> String.left maxDigitsAfterDecimal
+        maybeDecimalPos =
+            List.head (String.indexes "." untruncatedString)
     in
-    preDecimalString
-        ++ "."
-        ++ postDecimalString
-        |> removeTrailingZerosAndDots
+    case maybeDecimalPos of
+        Nothing ->
+            untruncatedString
+
+        Just decimalPos ->
+            if maxDigitsAfterDecimal == 0 then
+                String.left decimalPos untruncatedString
+
+            else
+                String.left (decimalPos + 1 + maxDigitsAfterDecimal) untruncatedString
 
 
 evmValueToString : Int -> BigInt -> String
 evmValueToString numDecimals evmValue =
-    evmValueToTruncatedString numDecimals numDecimals evmValue
+    let
+        zeroPaddedString =
+            evmValue
+                |> BigInt.toString
+                |> String.padLeft numDecimals '0'
+
+        withDecimalString =
+            String.dropRight numDecimals zeroPaddedString
+                ++ "."
+                ++ String.right numDecimals zeroPaddedString
+    in
+    removeUnnecessaryZerosAndDots withDecimalString
 
 
-removeTrailingZerosAndDots : String -> String
-removeTrailingZerosAndDots numString =
-    if String.length numString == 0 then
-        "0"
+removeUnnecessaryZerosAndDots : String -> String
+removeUnnecessaryZerosAndDots numString =
+    if String.endsWith "." numString then
+        String.slice 0 -1 numString
 
-    else if (numString |> String.endsWith "0") || (numString |> String.endsWith ".") then
-        removeTrailingZerosAndDots (String.slice 0 -1 numString)
+    else if String.endsWith "0" numString then
+        removeUnnecessaryZerosAndDots (String.slice 0 -1 numString)
 
     else
         numString
