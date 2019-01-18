@@ -9,9 +9,7 @@ module Create exposing
 import BigInt
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick, onInput)
 import HtmlElements
-import Time exposing (Time)
 import TokenValue exposing (TokenValue)
 
 
@@ -21,6 +19,8 @@ type alias Model =
     , devFee : TokenValue
     , initialDeposit : TokenValue
     , uncoinerDeposit : TokenValue
+    , preCommitBalance : TokenValue
+    , postCommitBalance : TokenValue
     }
 
 
@@ -41,6 +41,8 @@ init tokenDecimals =
       , devFee = TokenValue.empty tokenDecimals
       , initialDeposit = TokenValue.empty tokenDecimals
       , uncoinerDeposit = TokenValue.empty tokenDecimals
+      , preCommitBalance = TokenValue.empty tokenDecimals
+      , postCommitBalance = TokenValue.empty tokenDecimals
       }
     , Cmd.none
     )
@@ -51,21 +53,55 @@ update msg model =
     case msg of
         UncoiningAmountChanged newAmtStr ->
             let
-                newUncoiningAmount =
-                    TokenValue.updateViaString model.uncoiningAmount newAmtStr
-
-                newSummonFee =
-                    case TokenValue.toBigInt newUncoiningAmount of
-                        Nothing ->
-                            model.summonFee
-
-                        Just bigIntVal ->
-                            TokenValue.updateViaBigInt model.summonFee (Just (BigInt.div bigIntVal (BigInt.fromInt 10)))
+                newModel =
+                    { model | uncoiningAmount = TokenValue.updateViaString model.uncoiningAmount newAmtStr }
             in
-            ( { model | uncoiningAmount = newUncoiningAmount, summonFee = newSummonFee }, Cmd.none )
+            ( propogateUncoiningAmountChange newModel, Cmd.none )
 
         SummonFeeChanged newAmtStr ->
             ( { model | summonFee = TokenValue.updateViaString model.summonFee newAmtStr }, Cmd.none )
+
+
+propogateUncoiningAmountChange : Model -> Model
+propogateUncoiningAmountChange model =
+    case TokenValue.toBigInt model.uncoiningAmount of
+        Nothing ->
+            model
+
+        Just uncoiningAmountBigInt ->
+            let
+                summonFeeBigInt =
+                    BigInt.div
+                        uncoiningAmountBigInt
+                        (BigInt.fromInt 10)
+
+                summonFee =
+                    TokenValue.updateViaBigInt model.summonFee summonFeeBigInt
+
+                devFeeBigInt =
+                    BigInt.div uncoiningAmountBigInt
+                        (BigInt.fromInt 100)
+
+                devFee =
+                    TokenValue.updateViaBigInt model.devFee devFeeBigInt
+
+                preCommitBalanceBigInt =
+                    BigInt.add uncoiningAmountBigInt summonFeeBigInt
+
+                preCommitBalance =
+                    TokenValue.updateViaBigInt model.preCommitBalance preCommitBalanceBigInt
+
+                initialDepositBigInt =
+                    BigInt.add preCommitBalanceBigInt devFeeBigInt
+
+                initialDeposit =
+                    TokenValue.updateViaBigInt model.initialDeposit initialDepositBigInt
+            in
+            { model
+                | summonFee = summonFee
+                , devFee = devFee
+                , initialDeposit = initialDeposit
+            }
 
 
 view : Model -> Html Msg
@@ -92,7 +128,9 @@ view model =
                     , initiatorText
                     , text " deposits "
                     , HtmlElements.tokenValue model.initialDeposit
-                    , text "."
+                    , text " and forwards an additional "
+                    , HtmlElements.tokenValue model.devFee
+                    , text " to developers of this tool, "
                     ]
                 ]
     in
