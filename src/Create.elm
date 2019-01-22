@@ -89,53 +89,32 @@ propogateUncoiningAmountChange model =
                         uncoiningAmountBigInt
                         (BigInt.fromInt 10)
 
-                summonFee =
-                    TokenValue.updateViaBigInt model.summonFee summonFeeBigInt
-
                 devFeeBigInt =
                     BigInt.div uncoiningAmountBigInt (BigInt.fromInt 100)
-
-                devFee =
-                    TokenValue.updateViaBigInt model.devFee devFeeBigInt
 
                 preCommitBalanceBigInt =
                     BigInt.add uncoiningAmountBigInt summonFeeBigInt
 
-                preCommitBalance =
-                    TokenValue.updateViaBigInt model.preCommitBalance preCommitBalanceBigInt
-
                 initialDepositBigInt =
                     BigInt.add preCommitBalanceBigInt devFeeBigInt
-
-                initialDeposit =
-                    TokenValue.updateViaBigInt model.initialDeposit initialDepositBigInt
 
                 responderDepositBigInt =
                     BigInt.div uncoiningAmountBigInt (BigInt.fromInt 2)
 
-                responderDeposit =
-                    TokenValue.updateViaBigInt model.responderDeposit responderDepositBigInt
-
                 postCommitBalanceBigInt =
                     BigInt.add initialDepositBigInt responderDepositBigInt
 
-                postCommitBalance =
-                    TokenValue.updateViaBigInt model.postCommitBalance postCommitBalanceBigInt
-
                 claimFailBurnAmountBigInt =
                     BigInt.div responderDepositBigInt (BigInt.fromInt 2)
-
-                claimFailBurnAmount =
-                    TokenValue.updateViaBigInt model.claimFailBurnAmount claimFailBurnAmountBigInt
             in
             { model
-                | summonFee = summonFee
-                , devFee = devFee
-                , initialDeposit = initialDeposit
-                , preCommitBalance = preCommitBalance
-                , postCommitBalance = postCommitBalance
-                , responderDeposit = responderDeposit
-                , claimFailBurnAmount = claimFailBurnAmount
+                | summonFee = TokenValue.updateViaBigInt model.summonFee summonFeeBigInt
+                , devFee = TokenValue.updateViaBigInt model.devFee devFeeBigInt
+                , initialDeposit = TokenValue.updateViaBigInt model.preCommitBalance preCommitBalanceBigInt
+                , preCommitBalance = TokenValue.updateViaBigInt model.initialDeposit initialDepositBigInt
+                , postCommitBalance = TokenValue.updateViaBigInt model.responderDeposit responderDepositBigInt
+                , responderDeposit = TokenValue.updateViaBigInt model.postCommitBalance postCommitBalanceBigInt
+                , claimFailBurnAmount = TokenValue.updateViaBigInt model.claimFailBurnAmount claimFailBurnAmountBigInt
             }
 
 
