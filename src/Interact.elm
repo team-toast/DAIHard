@@ -10,11 +10,14 @@ import Eth
 import Eth.Types exposing (..)
 import Eth.Utils as EthUtils
 import EthHelpers
+import Flip exposing (flip)
 import Html exposing (..)
 import HtmlElements exposing (..)
 import Http
+import Maybe.Extra
 import Task
-import Time exposing (Time)
+import Time
+import TimeHelpers
 
 
 type alias Model =
@@ -26,13 +29,13 @@ type alias Model =
 type alias ToastytradeSellModel =
     { balance : BigInt
     , phase : Phase
-    , phaseStartTime : Time
+    , phaseStartTime : Time.Posix
     , seller : Address
     , buyer : Maybe Address
     , buyerDeposit : BigInt
-    , autorecallInterval : Time
-    , depositDeadlineInterval : Time
-    , autoreleaseInterval : Time
+    , autorecallInterval : Time.Posix
+    , depositDeadlineInterval : Time.Posix
+    , autoreleaseInterval : Time.Posix
     }
 
 
@@ -61,19 +64,15 @@ update msg model =
             ( model, Cmd.none )
 
         FullStateFetched (Ok getFullState) ->
-            let
-                ttModelResult =
-                    toastytradeModelFromGetFullState getFullState
-            in
-            case ttModelResult of
-                Err e ->
+            case toastytradeModelFromGetFullState getFullState of
+                Nothing ->
                     let
                         _ =
-                            Debug.log e
+                            Debug.log "Something went wrong while fetching Toastytrade state"
                     in
                     ( model, Cmd.none )
 
-                Ok ttModel ->
+                Just ttModel ->
                     ( { model
                         | ttModel = Just ttModel
                       }
@@ -81,7 +80,7 @@ update msg model =
                     )
 
 
-view : Model -> Time -> Html Msg
+view : Model -> Time.Posix -> Html Msg
 view model currentTime =
     case model.ttModel of
         Nothing ->
@@ -93,7 +92,7 @@ view model currentTime =
                     [ text "Toastytrade Sell at address "
                     , text (EthUtils.addressToString model.ttAddress)
                     ]
-                , text (toString ttModel.phase)
+                , text (phaseToString ttModel.phase)
                 , case ttModel.phase of
                     Open ->
                         div []
@@ -111,7 +110,7 @@ view model currentTime =
                 ]
 
 
-countdownView : ToastytradeSellModel -> Time.Time -> Html Msg
+countdownView : ToastytradeSellModel -> Time.Posix -> Html Msg
 countdownView ttModel currentTime =
     let
         phaseInterval =
@@ -126,13 +125,14 @@ countdownView ttModel currentTime =
                     ttModel.autoreleaseInterval
 
                 Closed ->
-                    0
+                    Time.millisToPosix 0
 
         timeLeft =
-            (ttModel.phaseStartTime + phaseInterval) - currentTime
+            TimeHelpers.add ttModel.phaseStartTime phaseInterval
+                |> flip TimeHelpers.sub currentTime
 
         countdownHasPassed =
-            timeLeft < 0
+            TimeHelpers.isNegative timeLeft
 
         textElement =
             text
@@ -167,12 +167,12 @@ countdownView ttModel currentTime =
                 div [] [ text "POKEBUTTON" ]
 
             else
-                div [] [ text (toString timeLeft) ]
+                div [] [ text (String.fromInt (Time.posixToMillis timeLeft // 1000)) ]
     in
     div [] [ textElement, dynamicElement ]
 
 
-toastytradeModelFromGetFullState : ToastytradeSell.GetFullState -> Result String ToastytradeSellModel
+toastytradeModelFromGetFullState : ToastytradeSell.GetFullState -> Maybe ToastytradeSellModel
 toastytradeModelFromGetFullState fullState =
     let
         phaseResult =
@@ -190,31 +190,18 @@ toastytradeModelFromGetFullState fullState =
         autoreleaseIntervalResult =
             EthHelpers.bigIntToTime fullState.autoreleaseInterval
     in
-    case ( phaseResult, phaseStartTimeResult, autorecallIntervalResult, depositDeadlineIntervalResult, autoreleaseIntervalResult ) of
-        ( Err e, _, _, _, _ ) ->
-            Err ("Error interpreting phase: " ++ e)
+    Maybe.map5 (toastytradeModelFromGetFullStateVars fullState) phaseResult phaseStartTimeResult autorecallIntervalResult depositDeadlineIntervalResult autoreleaseIntervalResult
 
-        ( _, Err e, _, _, _ ) ->
-            Err ("Error interpreting phaseStartTimestamp: " ++ e)
 
-        ( _, _, Err e, _, _ ) ->
-            Err ("Error interpreting autorecallInterval: " ++ e)
-
-        ( _, _, _, Err e, _ ) ->
-            Err ("Error interpreting depositDeadlineInterval: " ++ e)
-
-        ( _, _, _, _, Err e ) ->
-            Err ("Error interpreting autoreleaseInterval: " ++ e)
-
-        ( Ok phase, Ok phaseStartTime, Ok autorecallInterval, Ok depositDeadlineInterval, Ok autoreleaseInterval ) ->
-            Ok
-                { balance = fullState.balance
-                , phase = phase
-                , phaseStartTime = phaseStartTime
-                , seller = fullState.seller
-                , buyer = EthHelpers.addressIfNot0x0 fullState.buyer
-                , buyerDeposit = fullState.buyerDeposit
-                , autorecallInterval = autorecallInterval
-                , depositDeadlineInterval = depositDeadlineInterval
-                , autoreleaseInterval = autoreleaseInterval
-                }
+toastytradeModelFromGetFullStateVars : ToastytradeSell.GetFullState -> Phase -> Time.Posix -> Time.Posix -> Time.Posix -> Time.Posix -> ToastytradeSellModel
+toastytradeModelFromGetFullStateVars fullState phase phaseStartTime autorecallInterval depositDeadlineInterval autoreleaseInterval =
+    { balance = fullState.balance
+    , phase = phase
+    , phaseStartTime = phaseStartTime
+    , seller = fullState.seller
+    , buyer = EthHelpers.addressIfNot0x0 fullState.buyer
+    , buyerDeposit = fullState.buyerDeposit
+    , autorecallInterval = autorecallInterval
+    , depositDeadlineInterval = depositDeadlineInterval
+    , autoreleaseInterval = autoreleaseInterval
+    }

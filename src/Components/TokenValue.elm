@@ -15,23 +15,23 @@ type TokenValue
 
 
 tokenValue : Int -> String -> TokenValue
-tokenValue numDecimals string =
+tokenValue numDecimals_ string =
     TokenValue
-        { numDecimals = numDecimals
+        { numDecimals = numDecimals_
         , string = string
         }
 
 
 numDecimals : TokenValue -> Int
-numDecimals tokens =
-    case tokens of
+numDecimals tokens_ =
+    case tokens_ of
         TokenValue tokens ->
             tokens.numDecimals
 
 
 getString : TokenValue -> String
-getString tokens =
-    case tokens of
+getString tokens_ =
+    case tokens_ of
         TokenValue tokens ->
             tokens.string
 
@@ -42,9 +42,9 @@ toBigInt tokens =
 
 
 empty : Int -> TokenValue
-empty numDecimals =
+empty numDecimals_ =
     TokenValue
-        { numDecimals = numDecimals
+        { numDecimals = numDecimals_
         , string = ""
         }
 
@@ -88,7 +88,7 @@ updateViaBigInt (TokenValue tokens) newBigIntValue =
 
 
 stringToEvmValue : Int -> String -> Maybe BigInt
-stringToEvmValue numDecimals amountString =
+stringToEvmValue numDecimals_ amountString =
     if amountString == "" then
         Nothing
 
@@ -98,7 +98,7 @@ stringToEvmValue numDecimals amountString =
                 pullAnyFirstDecimalOffToRight amountString
 
             numDigitsLeftToMove =
-                numDecimals - numDigitsMoved
+                numDecimals_ - numDigitsMoved
 
             maybeBigIntAmount =
                 BigInt.fromString newString
@@ -142,10 +142,10 @@ pullAnyFirstDecimalOffToRight numString =
 
 
 evmValueToTruncatedString : Int -> Int -> BigInt -> String
-evmValueToTruncatedString numDecimals maxDigitsAfterDecimal evmValue =
+evmValueToTruncatedString numDecimals_ maxDigitsAfterDecimal evmValue =
     let
         untruncatedString =
-            evmValueToString numDecimals evmValue
+            evmValueToString numDecimals_ evmValue
 
         maybeDecimalPos =
             List.head (String.indexes "." untruncatedString)
@@ -163,17 +163,17 @@ evmValueToTruncatedString numDecimals maxDigitsAfterDecimal evmValue =
 
 
 evmValueToString : Int -> BigInt -> String
-evmValueToString numDecimals evmValue =
+evmValueToString numDecimals_ evmValue =
     let
         zeroPaddedString =
             evmValue
                 |> BigInt.toString
-                |> String.padLeft numDecimals '0'
+                |> String.padLeft numDecimals_ '0'
 
         withDecimalString =
-            String.dropRight numDecimals zeroPaddedString
+            String.dropRight numDecimals_ zeroPaddedString
                 ++ "."
-                ++ String.right numDecimals zeroPaddedString
+                ++ String.right numDecimals_ zeroPaddedString
     in
     removeUnnecessaryZerosAndDots withDecimalString
 

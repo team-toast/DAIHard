@@ -1,16 +1,22 @@
 var elm_ethereum_ports = require('elm-ethereum-ports');
 
-var Elm = require('../../src/Main');
+import { Elm } from '../../src/Main'
 
 window.addEventListener('load', function () {
     if (typeof web3 !== 'undefined') {
         web3.version.getNetwork(function (e, networkId) {
-            app = Elm.Main.fullscreen([parseInt(networkId), 18]);
-            elm_ethereum_ports.txSentry(app.ports.txOut, app.ports.txIn, web3);
-            elm_ethereum_ports.walletSentry(app.ports.walletSentry, web3);
+            window.app = Elm.Main.init({
+                node: document.getElementById('elm'),
+                flags: [parseInt(networkId), 18]
+            });
+            elm_ethereum_ports.txSentry(window.app.ports.txOut, app.ports.txIn, web3);
+            elm_ethereum_ports.walletSentry(window.app.ports.walletSentryPort, web3);
         });
     } else {
-        app = Elm.Main.fullscreen([0, 18]);
+        window.app = Elm.Main.init({
+            node: document.getElementById('elm'),
+            flags: [0, 18]
+        });
         console.log("Metamask not detected.");
     }
 });

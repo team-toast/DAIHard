@@ -6,7 +6,7 @@ import BigInt exposing (BigInt)
 import Eth.Net as Net exposing (NetworkId(..))
 import Eth.Types exposing (..)
 import Eth.Utils as EthUtils
-import Time exposing (Time)
+import Time
 
 
 
@@ -38,11 +38,11 @@ ethNode networkId =
             EthNode "UnknownEthNetwork" "UnknownEthNetwork"
 
 
-bigIntToTime : BigInt -> Result String Time
-bigIntToTime time =
-    BigInt.toString time
+bigIntToTime : BigInt -> Maybe Time.Posix
+bigIntToTime bigint =
+    BigInt.toString bigint
         |> String.toInt
-        |> Result.map (\t -> toFloat t * Time.second)
+        |> Maybe.map (\t -> Time.millisToPosix (t * 1000))
 
 
 addressIfNot0x0 : Address -> Maybe Address

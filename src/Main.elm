@@ -1,5 +1,6 @@
-port module Main exposing (Model, Msg(..), SubModel(..), headerView, init, main, subModelView, subscriptions, txIn, txOut, update, view, walletSentry)
+port module Main exposing (Model, Msg(..), SubModel(..), headerView, init, main, subModelView, subscriptions, txIn, txOut, update, view, walletSentryPort)
 
+import Browser
 import Create
 import Eth.Net as Net
 import Eth.Sentry.Tx as TxSentry exposing (..)
@@ -12,12 +13,12 @@ import Html.Events exposing (onClick)
 import HtmlElements exposing (..)
 import Interact
 import Json.Decode as Decode exposing (Value)
-import Time exposing (Time)
+import Time
 
 
 main : Program ( Int, Int ) Model Msg
 main =
-    Html.programWithFlags
+    Browser.element
         { init = init
         , view = view
         , update = update
@@ -26,7 +27,7 @@ main =
 
 
 type alias Model =
-    { time : Time
+    { time : Time.Posix
     , node : EthHelpers.EthNode
     , txSentry : TxSentry Msg
     , userAddress : Maybe Address
@@ -42,7 +43,7 @@ type SubModel
 
 type Msg
     = GotoCreate
-    | Tick Time
+    | Tick Time.Posix
     | WalletStatus WalletSentry
     | TxSentryMsg TxSentry.Msg
     | CreateMsg Create.Msg
@@ -60,7 +61,7 @@ init ( networkId, tokenContractDecimals ) =
         createModel =
             Tuple.first (Create.init tokenContractDecimals)
     in
-    ( { time = 0
+    ( { time = Time.millisToPosix 0
       , node = node
       , txSentry = TxSentry.init ( txOut, txIn ) TxSentryMsg node.http
       , userAddress = Nothing
@@ -146,7 +147,7 @@ view model =
 
 headerView : Model -> Html Msg
 headerView model =
-    div [ Html.Attributes.style [ ( "height", "30px" ) ] ]
+    div [ Html.Attributes.style "height" "30px" ]
         [ button [ onClick GotoCreate ] [ text "Create" ]
         ]
 
@@ -164,13 +165,13 @@ subModelView model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Time.every Time.second Tick
-        , walletSentry (WalletSentry.decodeToMsg Fail WalletStatus)
+        [ Time.every 1000 Tick
+        , walletSentryPort (WalletSentry.decodeToMsg Fail WalletStatus)
         , TxSentry.listen model.txSentry
         ]
 
 
-port walletSentry : (Value -> msg) -> Sub msg
+port walletSentryPort : (Value -> msg) -> Sub msg
 
 
 port txOut : Value -> Cmd msg

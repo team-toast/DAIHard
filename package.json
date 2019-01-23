@@ -1,6 +1,6 @@
 {
   "name": "toastytrade",
-  "description": "decentralized fiat/crypto transfers, using by threat of burn",
+  "description": "decentralized fiat/crypto transfers, using threat of burn",
   "version": "0.0.1",
   "license": "UNLICENSED",
   "author": "Logan Brutsche",
@@ -18,8 +18,7 @@
     "bootstrap-sass": "^3.3.7",
     "copy-webpack-plugin": "^4.0.1",
     "css-loader": "^0.27.3",
-    "elm": "^0.18.0",
-    "elm-webpack-loader": "^4.3.0",
+    "elm": "^0.19.0-bugfix6",
     "extract-text-webpack-plugin": "^2.1.0",
     "file-loader": "^0.10.1",
     "html-webpack-plugin": "^2.28.0",
@@ -35,6 +34,8 @@
     "webpack-merge": "^4.1.0"
   },
   "dependencies": {
-    "elm-ethereum-ports": "^1.0.0"
+    "elm-ethereum-ports": "^1.0.0",
+    "elm-format": "^0.8.1",
+    "elm-webpack-loader": "^5.0.0"
   }
 }
