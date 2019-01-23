@@ -1,16 +1,18 @@
-port module Main exposing (Model, Msg(..), SubModel(..), headerView, init, main, subModelView, subscriptions, txIn, txOut, update, view, walletSentryPort)
+port module Main exposing (Model, Msg(..), SubModel(..), init, main, subscriptions, txIn, txOut, update, view, walletSentryPort)
 
 import Browser
 import Create
+import Element
+import Element.Input as Input
+import ElementHelpers exposing (..)
 import Eth.Net as Net
 import Eth.Sentry.Tx as TxSentry exposing (..)
 import Eth.Sentry.Wallet as WalletSentry exposing (WalletSentry)
 import Eth.Types exposing (..)
 import EthHelpers
-import Html exposing (..)
+import Html
 import Html.Attributes
 import Html.Events exposing (onClick)
-import HtmlElements exposing (..)
 import Interact
 import Json.Decode as Decode exposing (Value)
 import Time
@@ -137,29 +139,39 @@ update msg model =
             ( model, Cmd.none )
 
 
-view : Model -> Html Msg
+view : Model -> Html.Html Msg
 view model =
-    div []
-        [ headerView model
-        , subModelView model
+    Element.layout []
+        (Element.column
+            []
+            [ headerElement model
+            , subModelElement model
+            ]
+        )
+
+
+headerElement : Model -> Element.Element Msg
+headerElement model =
+    Element.row []
+        [ Input.button []
+            { onPress = Just GotoCreate
+            , label = Element.text "Create!"
+            }
         ]
 
 
-headerView : Model -> Html Msg
-headerView model =
-    div [ Html.Attributes.style "height" "30px" ]
-        [ button [ onClick GotoCreate ] [ text "Create" ]
-        ]
-
-
-subModelView : Model -> Html Msg
-subModelView model =
+subModelElement : Model -> Element.Element Msg
+subModelElement model =
     case model.subModel of
         CreateModel createModel ->
-            Html.map CreateMsg (Create.view createModel)
+            Element.map CreateMsg (Create.viewElement createModel)
 
         InteractModel interactModel ->
-            Html.map InteractMsg (Interact.view interactModel model.time)
+            Element.none
+
+
+
+-- Html.map InteractMsg (Interact.viewElement interactModel model.time)
 
 
 subscriptions : Model -> Sub Msg

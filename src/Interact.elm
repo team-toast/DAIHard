@@ -6,13 +6,13 @@ module Interact exposing (Model, Msg(..), ToastytradeSellModel, countdownView, i
 import BigInt exposing (BigInt)
 import Contracts.ToastytradeSell as ToastytradeSell exposing (..)
 import Contracts.ToastytradeSellExtras exposing (..)
+import ElementHelpers exposing (..)
 import Eth
 import Eth.Types exposing (..)
 import Eth.Utils as EthUtils
 import EthHelpers
 import Flip exposing (flip)
 import Html exposing (..)
-import HtmlElements exposing (..)
 import Http
 import Maybe.Extra
 import Task
