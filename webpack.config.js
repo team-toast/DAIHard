@@ -73,12 +73,10 @@ if (isDev === true) {
                 use: [{
                     loader: 'elm-webpack-loader',
                     options: {
-                        verbose: true,
-                        warn: true,
-                        debug: true
+                        verbose: true
                     }
                 }]
-            },{
+            }, {
                 test: /\.sc?ss$/,
                 use: ['style-loader', 'css-loader', 'postcss-loader', 'sass-loader']
             }]

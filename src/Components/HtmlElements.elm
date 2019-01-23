@@ -8,17 +8,17 @@ import TokenValue exposing (TokenValue)
 
 initiator : Html.Html a
 initiator =
-    Html.span [ Html.Attributes.style [ ( "color", "green" ) ] ] [ Html.text "Initiator" ]
+    Html.span [ Html.Attributes.style "color" "green" ] [ Html.text "Initiator" ]
 
 
 responder : Html.Html a
 responder =
-    Html.span [ Html.Attributes.style [ ( "color", "rgb(255, 153, 0)" ) ] ] [ Html.text "Responder" ]
+    Html.span [ Html.Attributes.style "color" "rgb(255, 153, 0)" ] [ Html.text "Responder" ]
 
 
 methodName : String -> Html.Html a
 methodName name =
-    Html.code [ Html.Attributes.style [ ( "background-color", "rgb(230,230,230)" ) ] ] [ Html.text name ]
+    Html.code [ Html.Attributes.style "background-color" "rgb(230,230,230)" ] [ Html.text name ]
 
 
 sectionReference : String -> Html.Html a
@@ -27,18 +27,18 @@ sectionReference name =
 
 
 tokenValue : TokenValue -> Html.Html a
-tokenValue tokenValue =
-    Html.span [ Html.Attributes.style [ ( "color", "blue" ) ] ]
-        [ Html.text (Maybe.withDefault "?" (TokenValue.renderToString Nothing tokenValue))
+tokenValue tv =
+    Html.span [ Html.Attributes.style "color" "blue" ]
+        [ Html.text (Maybe.withDefault "?" (TokenValue.renderToString Nothing tv))
         , Html.text " Dai"
         ]
 
 
 usdValue : TokenValue -> Html.Html a
-usdValue tokenValue =
-    Html.span [ Html.Attributes.style [ ( "color", "blue" ) ] ]
+usdValue tv =
+    Html.span [ Html.Attributes.style "color" "blue" ]
         [ Html.text "US$"
-        , Html.text (Maybe.withDefault "?" (TokenValue.renderToString (Just 2) tokenValue))
+        , Html.text (Maybe.withDefault "?" (TokenValue.renderToString (Just 2) tv))
         ]
 
 

@@ -1,48 +1,48 @@
-module Contracts.ToastytradeSell
-    exposing
-        ( autorecallAvailable
-        , autorecallInterval
-        , autoreleaseAvailable
-        , autoreleaseInterval
-        , buyer
-        , buyerDeposit
-        , depositDeadlineInterval
-        , depositDeadlinePassed
-        , getBalance
-        , GetFullState
-        , getFullState
-        , getFullStateDecoder
-        , logisticsString
-        , phase
-        , phaseStartTimestamps
-        , poke
-        , release
-        , seller
-        , abortedFromDepositDeadlinePassedEvent
-        , burnedEvent
-        , BuyerStatementLog
-        , buyerStatementLogEvent
-        , buyerStatementLogDecoder
-        , Committed
-        , committedEvent
-        , committedDecoder
-        , PhaseChange
-        , phaseChangeEvent
-        , phaseChangeDecoder
-        , recalledEvent
-        , releasedEvent
-        , SellerStatementLog
-        , sellerStatementLogEvent
-        , sellerStatementLogDecoder
-        )
+module Contracts.ToastytradeSell exposing
+    ( BuyerStatementLog
+    , CommittedEvent
+    , GetFullState
+    , PhaseChange
+    , SellerStatementLog
+    , abortedFromDepositDeadlinePassedEvent
+    , autorecallAvailable
+    , autorecallInterval
+    , autoreleaseAvailable
+    , autoreleaseInterval
+    , burnedEvent
+    , buyer
+    , buyerDeposit
+    , buyerStatementLogDecoder
+    , buyerStatementLogEvent
+    , committedDecoder
+    , committedEvent
+    , depositDeadlineInterval
+    , depositDeadlinePassed
+    , getBalance
+    , getFullState
+    , getFullStateDecoder
+    , logisticsString
+    , phase
+    , phaseChangeDecoder
+    , phaseChangeEvent
+    , phaseStartTimestamps
+    , poke
+    , recalledEvent
+    , release
+    , releasedEvent
+    , seller
+    , sellerStatementLogDecoder
+    , sellerStatementLogEvent
+    )
 
+import Abi.Decode as AbiDecode exposing (abiDecode, andMap, data, toElmDecoder, topic)
+import Abi.Encode as AbiEncode exposing (Encoding(..), abiEncode)
 import BigInt exposing (BigInt)
-import Json.Decode as Decode exposing (Decoder)
-import Json.Decode.Pipeline exposing (custom, decode)
 import Eth.Types exposing (..)
 import Eth.Utils as U
-import Abi.Decode as AbiDecode exposing (abiDecode, andMap, toElmDecoder, topic, data)
-import Abi.Encode as AbiEncode exposing (Encoding(..), abiEncode)
+import Json.Decode as Decode exposing (Decoder, succeed)
+import Json.Decode.Pipeline exposing (custom)
+
 
 
 {-
@@ -140,7 +140,6 @@ buyerDeposit contractAddress =
     , nonce = Nothing
     , decoder = toElmDecoder AbiDecode.uint
     }
-
 
 
 {-| "depositDeadlineInterval()" function
@@ -375,13 +374,13 @@ buyerStatementLogEvent contractAddress =
 
 buyerStatementLogDecoder : Decoder BuyerStatementLog
 buyerStatementLogDecoder =
-    decode BuyerStatementLog
+    succeed BuyerStatementLog
         |> custom (data 0 AbiDecode.string)
 
 
 {-| "Committed(address)" event
 -}
-type alias Committed =
+type alias CommittedEvent =
     { buyer : Address }
 
 
@@ -394,9 +393,9 @@ committedEvent contractAddress =
     }
 
 
-committedDecoder : Decoder Committed
+committedDecoder : Decoder CommittedEvent
 committedDecoder =
-    decode Committed
+    succeed CommittedEvent
         |> custom (data 0 AbiDecode.address)
 
 
@@ -417,7 +416,7 @@ phaseChangeEvent contractAddress =
 
 phaseChangeDecoder : Decoder PhaseChange
 phaseChangeDecoder =
-    decode PhaseChange
+    succeed PhaseChange
         |> custom (data 0 AbiDecode.uint)
 
 
@@ -460,5 +459,5 @@ sellerStatementLogEvent contractAddress =
 
 sellerStatementLogDecoder : Decoder SellerStatementLog
 sellerStatementLogDecoder =
-    decode SellerStatementLog
+    succeed SellerStatementLog
         |> custom (data 0 AbiDecode.string)
