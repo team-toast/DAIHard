@@ -117,8 +117,8 @@ propogateUncoiningAmountChange model =
                 , devFee = TokenValue.updateViaBigInt model.devFee devFeeBigInt
                 , initialDeposit = TokenValue.updateViaBigInt model.preCommitBalance preCommitBalanceBigInt
                 , preCommitBalance = TokenValue.updateViaBigInt model.initialDeposit initialDepositBigInt
-                , postCommitBalance = TokenValue.updateViaBigInt model.responderDeposit responderDepositBigInt
-                , responderDeposit = TokenValue.updateViaBigInt model.postCommitBalance postCommitBalanceBigInt
+                , postCommitBalance = TokenValue.updateViaBigInt model.responderDeposit postCommitBalanceBigInt
+                , responderDeposit = TokenValue.updateViaBigInt model.postCommitBalance responderDepositBigInt
                 , claimFailBurnAmount = TokenValue.updateViaBigInt model.claimFailBurnAmount claimFailBurnAmountBigInt
             }
 
