@@ -17,6 +17,7 @@
             "elm/json": "1.1.2",
             "elm/time": "1.0.0",
             "elm-community/maybe-extra": "5.0.0",
+            "mdgriffith/elm-ui": "1.1.0",
             "pilatch/flip": "1.0.0"
         },
         "indirect": {
