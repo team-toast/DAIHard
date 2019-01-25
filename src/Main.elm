@@ -1,6 +1,7 @@
-port module Main exposing (Model, Msg(..), SubModel(..), init, main, subscriptions, txIn, txOut, update, view, walletSentryPort)
+port module Main exposing (Model, Msg(..), Submodel(..), init, main, subscriptions, txIn, txOut, update, view, walletSentryPort)
 
 import Browser
+import ChainCmd exposing (ChainCmdOrder)
 import Create
 import Element
 import Element.Input as Input
@@ -9,6 +10,7 @@ import Eth.Net as Net
 import Eth.Sentry.Tx as TxSentry exposing (..)
 import Eth.Sentry.Wallet as WalletSentry exposing (WalletSentry)
 import Eth.Types exposing (..)
+import Eth.Utils as EthUtils
 import EthHelpers
 import Html
 import Html.Attributes
@@ -18,7 +20,7 @@ import Json.Decode as Decode exposing (Value)
 import Time
 
 
-main : Program ( Int, Int ) Model Msg
+main : Program ( Int, Int, String ) Model Msg
 main =
     Browser.element
         { init = init
@@ -28,19 +30,26 @@ main =
         }
 
 
-type alias Model =
-    { time : Time.Posix
+type Model
+    = Running ValidModel
+    | Failed String
+
+
+type alias ValidModel =
+    { factoryAddress : Address
+    , time : Time.Posix
     , node : EthHelpers.EthNode
     , txSentry : TxSentry Msg
     , userAddress : Maybe Address
     , tokenContractDecimals : Int
-    , subModel : SubModel
+    , submodel : Submodel
     }
 
 
-type SubModel
+type Submodel
     = CreateModel Create.Model
     | InteractModel Interact.Model
+    | None
 
 
 type Msg
@@ -53,104 +62,170 @@ type Msg
     | Fail String
 
 
-init : ( Int, Int ) -> ( Model, Cmd Msg )
-init ( networkId, tokenContractDecimals ) =
-    let
-        node =
-            Net.toNetworkId networkId
-                |> EthHelpers.ethNode
+init : ( Int, Int, String ) -> ( Model, Cmd Msg )
+init ( networkId, tokenContractDecimals, factoryAddressString ) =
+    case EthUtils.toAddress factoryAddressString of
+        Ok factoryAddress ->
+            let
+                node =
+                    Net.toNetworkId networkId
+                        |> EthHelpers.ethNode
 
-        createModel =
-            Tuple.first (Create.init tokenContractDecimals)
-    in
-    ( { time = Time.millisToPosix 0
-      , node = node
-      , txSentry = TxSentry.init ( txOut, txIn ) TxSentryMsg node.http
-      , userAddress = Nothing
-      , tokenContractDecimals = tokenContractDecimals
-      , subModel = CreateModel createModel
-      }
-    , Cmd.none
-    )
+                txSentry =
+                    TxSentry.init ( txOut, txIn ) TxSentryMsg node.http
+
+                ( createModel, createCmd, chainCmdOrder ) =
+                    Create.init factoryAddress Nothing tokenContractDecimals
+
+                ( newTxSentry, chainCmd ) =
+                    ChainCmd.execute txSentry (ChainCmd.map CreateMsg chainCmdOrder)
+
+                cmdBatch =
+                    Cmd.batch
+                        [ Cmd.map CreateMsg createCmd
+                        , chainCmd
+                        ]
+            in
+            ( Running
+                { factoryAddress = factoryAddress
+                , time = Time.millisToPosix 0
+                , node = node
+                , txSentry = newTxSentry
+                , userAddress = Nothing
+                , tokenContractDecimals = tokenContractDecimals
+                , submodel = CreateModel createModel
+                }
+            , cmdBatch
+            )
+
+        Err errstr ->
+            ( Failed ("error interpreting factory contract address: " ++ errstr), Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update msg maybeValidModel =
+    case maybeValidModel of
+        Running model ->
+            updateValidModel msg model
+
+        Failed str ->
+            ( maybeValidModel, Cmd.none )
+
+
+updateValidModel : Msg -> ValidModel -> ( Model, Cmd Msg )
+updateValidModel msg model =
     case msg of
         GotoCreate ->
             let
-                ( createModel, createCmd ) =
-                    Create.init model.tokenContractDecimals
+                ( createModel, createCmd, chainCmdOrder ) =
+                    Create.init model.factoryAddress model.userAddress model.tokenContractDecimals
+
+                ( newTxSentry, chainCmd ) =
+                    ChainCmd.execute model.txSentry (ChainCmd.map CreateMsg chainCmdOrder)
             in
-            ( { model | subModel = CreateModel createModel }
-            , Cmd.map CreateMsg createCmd
+            ( Running
+                { model
+                    | submodel = CreateModel createModel
+                    , txSentry = newTxSentry
+                }
+            , Cmd.batch
+                [ Cmd.map CreateMsg createCmd
+                , chainCmd
+                ]
             )
 
         Tick newTime ->
-            ( { model | time = newTime }, Cmd.none )
+            ( Running { model | time = newTime }, Cmd.none )
 
         WalletStatus walletSentry ->
-            ( { model
-                | userAddress = walletSentry.account
-              }
+            ( Running
+                { model
+                    | userAddress = walletSentry.account
+                    , submodel = updateSubmodelWithUserAddress model.submodel walletSentry.account
+                }
             , Cmd.none
             )
 
         CreateMsg createMsg ->
-            case model.subModel of
+            case model.submodel of
                 CreateModel createModel ->
                     let
-                        ( newCreateModel, createCmd ) =
+                        ( newCreateModel, createCmd, chainCmdOrder ) =
                             Create.update createMsg createModel
+
+                        ( newTxSentry, chainCmd ) =
+                            ChainCmd.execute model.txSentry (ChainCmd.map CreateMsg chainCmdOrder)
                     in
-                    ( { model | subModel = CreateModel newCreateModel }
-                    , Cmd.map CreateMsg createCmd
+                    ( Running
+                        { model
+                            | submodel = CreateModel newCreateModel
+                            , txSentry = newTxSentry
+                        }
+                    , Cmd.batch
+                        [ Cmd.map CreateMsg createCmd
+                        , chainCmd
+                        ]
                     )
 
                 _ ->
-                    ( model, Cmd.none )
+                    ( Running model, Cmd.none )
 
         InteractMsg interactMsg ->
-            case model.subModel of
+            case model.submodel of
                 InteractModel interactModel ->
                     let
                         ( newInteractModel, interactCmd ) =
                             Interact.update interactMsg interactModel
                     in
-                    ( { model | subModel = InteractModel newInteractModel }
+                    ( Running { model | submodel = InteractModel newInteractModel }
                     , Cmd.map InteractMsg interactCmd
                     )
 
                 _ ->
-                    ( model, Cmd.none )
+                    ( Running model, Cmd.none )
 
         TxSentryMsg subMsg ->
             let
-                ( subModel, subCmd ) =
+                ( submodel, subCmd ) =
                     TxSentry.update subMsg model.txSentry
             in
-            ( { model | txSentry = subModel }, subCmd )
+            ( Running { model | txSentry = submodel }, subCmd )
 
         Fail str ->
-            let
-                _ =
-                    Debug.log str
-            in
-            ( model, Cmd.none )
+            ( Failed str, Cmd.none )
+
+
+updateSubmodelWithUserAddress : Submodel -> Maybe Address -> Submodel
+updateSubmodelWithUserAddress submodel userAddress =
+    case submodel of
+        CreateModel createModel ->
+            CreateModel (Create.updateWithUserAddress createModel userAddress)
+
+        InteractModel interactModel ->
+            InteractModel (Interact.updateWithUserAddress interactModel userAddress)
+
+        None ->
+            None
 
 
 view : Model -> Html.Html Msg
-view model =
-    Element.layout []
-        (Element.column
-            []
-            [ headerElement model
-            , subModelElement model
-            ]
-        )
+view maybeValidModel =
+    case maybeValidModel of
+        Running model ->
+            Element.layout []
+                (Element.column
+                    []
+                    [ headerElement model
+                    , subModelElement model
+                    ]
+                )
+
+        Failed str ->
+            Element.layout []
+                (Element.text ("ERROR: " ++ str))
 
 
-headerElement : Model -> Element.Element Msg
+headerElement : ValidModel -> Element.Element Msg
 headerElement model =
     Element.row []
         [ Input.button []
@@ -160,13 +235,16 @@ headerElement model =
         ]
 
 
-subModelElement : Model -> Element.Element Msg
+subModelElement : ValidModel -> Element.Element Msg
 subModelElement model =
-    case model.subModel of
+    case model.submodel of
         CreateModel createModel ->
             Element.map CreateMsg (Create.viewElement createModel)
 
         InteractModel interactModel ->
+            Element.none
+
+        None ->
             Element.none
 
 
@@ -175,12 +253,17 @@ subModelElement model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
-    Sub.batch
-        [ Time.every 1000 Tick
-        , walletSentryPort (WalletSentry.decodeToMsg Fail WalletStatus)
-        , TxSentry.listen model.txSentry
-        ]
+subscriptions maybeValidModel =
+    case maybeValidModel of
+        Running model ->
+            Sub.batch
+                [ Time.every 1000 Tick
+                , walletSentryPort (WalletSentry.decodeToMsg Fail WalletStatus)
+                , TxSentry.listen model.txSentry
+                ]
+
+        Failed _ ->
+            Sub.none
 
 
 port walletSentryPort : (Value -> msg) -> Sub msg
@@ -190,18 +273,3 @@ port txOut : Value -> Cmd msg
 
 
 port txIn : (Value -> msg) -> Sub msg
-
-
-
--- ttAddress =
---   let
---     ttAddressResult = EthUtils.toAddress ttAddressString
---   in
---     case ttAddressResult of
---       Err _ ->
---         let _ = Debug.crash "Address '" ++ ttAddressString ++ "' passed to Elm could not be converted!"
---         in EthUtils.unsafeToAddress "0x0"
---       Ok tta -> tta
--- and then
--- Eth.call node.http ( ToastytradeSell.getFullState ttAddress )
---              |> Task.attempt FullStateFetched

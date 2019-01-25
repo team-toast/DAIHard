@@ -3,19 +3,29 @@ module Create exposing
     , Msg
     , init
     , update
+    , updateWithUserAddress
     , viewElement
     )
 
 import BigInt
+import ChainCmd exposing (ChainCmdOrder)
+import Contracts.ToastytradeExtras
+import Contracts.ToastytradeFactory
 import Element
 import Element.Font as Font
 import Element.Input as Input
 import ElementHelpers
+import Eth
+import Eth.Types exposing (Address, TxReceipt)
+import Eth.Utils as EthUtils
+import Time
 import TokenValue exposing (TokenValue)
 
 
 type alias Model =
-    { uncoiningAmount : TokenValue
+    { factoryAddress : Address
+    , userAddress : Maybe Address
+    , uncoiningAmount : TokenValue
     , summonFee : TokenValue
     , devFee : TokenValue
     , initialDeposit : TokenValue
@@ -35,14 +45,17 @@ type Msg
     = UncoiningAmountChanged String
     | SummonFeeChanged String
     | CreateContract
+    | CreateMined (Result String TxReceipt)
     | NoOp
 
 
-init : Int -> ( Model, Cmd Msg )
-init tokenDecimals =
+init : Address -> Maybe Address -> Int -> ( Model, Cmd Msg, ChainCmdOrder Msg )
+init factoryAddress userAddress tokenDecimals =
     let
         model =
-            { uncoiningAmount = TokenValue.tokenValue tokenDecimals "100"
+            { factoryAddress = factoryAddress
+            , userAddress = userAddress
+            , uncoiningAmount = TokenValue.tokenValue tokenDecimals "100"
             , summonFee = TokenValue.empty tokenDecimals
             , devFee = TokenValue.empty tokenDecimals
             , initialDeposit = TokenValue.empty tokenDecimals
@@ -54,10 +67,16 @@ init tokenDecimals =
     in
     ( propogateUncoiningAmountChange model
     , Cmd.none
+    , ChainCmd.none
     )
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+updateWithUserAddress : Model -> Maybe Address -> Model
+updateWithUserAddress model userAddress =
+    { model | userAddress = userAddress }
+
+
+update : Msg -> Model -> ( Model, Cmd Msg, ChainCmdOrder Msg )
 update msg model =
     case msg of
         UncoiningAmountChanged newAmtStr ->
@@ -65,20 +84,72 @@ update msg model =
                 newModel =
                     { model | uncoiningAmount = TokenValue.updateViaString model.uncoiningAmount newAmtStr }
             in
-            ( propogateUncoiningAmountChange newModel, Cmd.none )
+            ( propogateUncoiningAmountChange newModel, Cmd.none, ChainCmd.none )
 
         SummonFeeChanged newAmtStr ->
-            ( { model | summonFee = TokenValue.updateViaString model.summonFee newAmtStr }, Cmd.none )
+            ( { model | summonFee = TokenValue.updateViaString model.summonFee newAmtStr }, Cmd.none, ChainCmd.none )
 
         CreateContract ->
+            case model.userAddress of
+                Just userAddress ->
+                    let
+                        maybeTxParams =
+                            Maybe.map2
+                                (\uncoiningAmount responderDeposit ->
+                                    Contracts.ToastytradeExtras.createSell
+                                        model.factoryAddress
+                                        userAddress
+                                        uncoiningAmount
+                                        responderDeposit
+                                        (Time.millisToPosix 10000)
+                                        (Time.millisToPosix 10000)
+                                        (Time.millisToPosix 10000)
+                                        "test stringggg"
+                                )
+                                (TokenValue.toBigInt model.uncoiningAmount)
+                                (TokenValue.toBigInt model.responderDeposit)
+                                |> Maybe.map Eth.toSend
+
+                        customSend =
+                            { onMined = Just ( CreateMined, Nothing )
+                            , onSign = Nothing
+                            , onBroadcast = Nothing
+                            }
+                    in
+                    case maybeTxParams of
+                        Just txParams ->
+                            ( model, Cmd.none, ChainCmd.custom customSend txParams )
+
+                        Nothing ->
+                            let
+                                _ =
+                                    Debug.log "Error: uncoiningAmount or responderDeposit is not set"
+                            in
+                            ( model, Cmd.none, ChainCmd.none )
+
+                Nothing ->
+                    let
+                        _ =
+                            Debug.log "No user account found!"
+                    in
+                    ( model, Cmd.none, ChainCmd.none )
+
+        CreateMined (Err errstr) ->
             let
                 _ =
-                    Debug.log "" "totes gonna create a contract"
+                    Debug.log "error mining create contract tx" errstr
             in
-            ( model, Cmd.none )
+            ( model, Cmd.none, ChainCmd.none )
+
+        CreateMined (Ok txReceipt) ->
+            let
+                _ =
+                    Debug.log "transaction successful!" (String.fromInt txReceipt.index)
+            in
+            ( model, Cmd.none, ChainCmd.none )
 
         NoOp ->
-            ( model, Cmd.none )
+            ( model, Cmd.none, ChainCmd.none )
 
 
 propogateUncoiningAmountChange : Model -> Model
@@ -145,7 +216,9 @@ viewElement model =
                     ]
                 , ElementHelpers.clauseList
                     [ Element.paragraph []
-                        [ Element.text "The contract shown below will be created with YOU (addr) as the "
+                        [ Element.text "The contract shown below will be created with YOU ("
+                        , outputMaybeUserAddress model.userAddress
+                        , Element.text ") as the "
                         , ElementHelpers.initiator []
                         , Element.text ";"
                         ]
@@ -424,3 +497,13 @@ viewElement model =
         , claimedPhaseSection
         , createButton
         ]
+
+
+outputMaybeUserAddress : Maybe Address -> Element.Element msg
+outputMaybeUserAddress maybeUserAddress =
+    case maybeUserAddress of
+        Just userAddress ->
+            Element.text (EthUtils.addressToString userAddress)
+
+        Nothing ->
+            Element.el [ Font.color (Element.rgb255 255 0 0) ] (Element.text "error: no account found. Unlock Metamask?")

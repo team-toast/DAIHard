@@ -1,11 +1,11 @@
-module Interact exposing (Model, Msg(..), ToastytradeSellModel, countdownView, init, toastytradeModelFromGetFullState, update, view)
+module Interact exposing (Model, Msg(..), ToastytradeSellModel, countdownView, init, toastytradeModelFromGetFullState, update, updateWithUserAddress, view)
 
 -- Library
 -- Internal
 
 import BigInt exposing (BigInt)
+import Contracts.ToastytradeExtras exposing (..)
 import Contracts.ToastytradeSell as ToastytradeSell exposing (..)
-import Contracts.ToastytradeSellExtras exposing (..)
 import ElementHelpers exposing (..)
 import Eth
 import Eth.Types exposing (..)
@@ -51,6 +51,12 @@ init ( node, ttAddress ) =
 
 type Msg
     = FullStateFetched (Result Http.Error GetFullState)
+
+
+updateWithUserAddress : Model -> Maybe Address -> Model
+updateWithUserAddress model userAddress =
+    --{ model | userAddress = userAddress }
+    model
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )

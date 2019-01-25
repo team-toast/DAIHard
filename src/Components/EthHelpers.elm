@@ -1,10 +1,11 @@
-module EthHelpers exposing (EthNode, addressIfNot0x0, bigIntToTime, ethNode)
+module EthHelpers exposing (EthNode, addressIfNot0x0, bigIntToTime, ethNode, timeToBigInt)
 
 -- Library
 
 import BigInt exposing (BigInt)
 import Eth.Net as Net exposing (NetworkId(..))
-import Eth.Types exposing (..)
+import Eth.Sentry.Tx as TxSentry
+import Eth.Types exposing (Address, HttpProvider, WebsocketProvider)
 import Eth.Utils as EthUtils
 import Time
 
@@ -43,6 +44,12 @@ bigIntToTime bigint =
     BigInt.toString bigint
         |> String.toInt
         |> Maybe.map (\t -> Time.millisToPosix (t * 1000))
+
+
+timeToBigInt : Time.Posix -> BigInt
+timeToBigInt t =
+    Time.posixToMillis t
+        |> BigInt.fromInt
 
 
 addressIfNot0x0 : Address -> Maybe Address
