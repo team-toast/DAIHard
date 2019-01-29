@@ -1,9 +1,11 @@
-module Contracts.ToastytradeExtras exposing (Phase(..), bigIntToPhase, createSell, phaseToString)
+module Contracts.ToastytradeExtras exposing (Phase(..), bigIntToPhase, createSell, phaseToString, txReceiptToCreatedToastytradeSellAddress)
 
+import Abi.Decode
 import BigInt exposing (BigInt)
 import Contracts.ToastytradeFactory
 import Eth.Types exposing (Address, Call)
 import EthHelpers
+import Json.Decode
 import Time
 import TokenValue exposing (TokenValue)
 
@@ -13,6 +15,23 @@ type Phase
     | Committed
     | Claimed
     | Closed
+
+
+txReceiptToCreatedToastytradeSellAddress : Address -> Eth.Types.TxReceipt -> Result String Address
+txReceiptToCreatedToastytradeSellAddress factoryAddress txReceipt =
+    let
+        maybeCreateEventData =
+            txReceipt.logs
+                |> List.filter (\log -> log.address == factoryAddress)
+                |> List.head
+                |> Maybe.map (\log -> log.data)
+    in
+    case maybeCreateEventData of
+        Just createEventData ->
+            Abi.Decode.fromString Abi.Decode.address (String.dropLeft 2 createEventData)
+
+        Nothing ->
+            Err "Can't find a log generated from the given factoryAddress. Are you looking at the wrong transaction?"
 
 
 bigIntToPhase : BigInt -> Maybe Phase
