@@ -7,6 +7,8 @@ import Element.Input
 import Html
 import Html.Attributes
 import Html.Events
+import Time
+import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
@@ -71,15 +73,16 @@ clauseList clauseElements =
     Element.column [ Element.spacing 30 ] clauseElements
 
 
-timeInput : String -> (String -> a) -> Element.Element a
-timeInput labelStr msgConstructor =
+timeInput : String -> String -> (String -> a) -> Element.Element a
+timeInput labelStr value msgConstructor =
     Element.row []
         [ Element.Input.text []
             { onChange = msgConstructor
-            , text = ""
+            , text = value
             , placeholder = Nothing
             , label = Element.Input.labelHidden labelStr
             }
+        , Element.text " days"
         ]
 
 

@@ -1,4 +1,4 @@
-module EthHelpers exposing (EthNode, addressIfNot0x0, bigIntToTime, ethNode, getLogAt, timeToBigInt)
+module EthHelpers exposing (EthNode, addressIfNot0x0, bigIntToTime, ethNode, getLogAt)
 
 -- Library
 
@@ -45,12 +45,6 @@ bigIntToTime bigint =
     BigInt.toString bigint
         |> String.toInt
         |> Maybe.map (\t -> Time.millisToPosix (t * 1000))
-
-
-timeToBigInt : Time.Posix -> BigInt
-timeToBigInt t =
-    Time.posixToMillis t
-        |> BigInt.fromInt
 
 
 addressIfNot0x0 : Address -> Maybe Address

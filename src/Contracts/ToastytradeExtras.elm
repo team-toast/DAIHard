@@ -5,8 +5,10 @@ import BigInt exposing (BigInt)
 import Contracts.ToastytradeFactory
 import Eth.Types exposing (Address, Call)
 import EthHelpers
+import Flip exposing (flip)
 import Json.Decode
 import Time
+import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
@@ -75,14 +77,12 @@ phaseToString phase =
 
 createSell : Address -> Address -> BigInt -> BigInt -> Time.Posix -> Time.Posix -> Time.Posix -> String -> Call Address
 createSell contractAddress seller valueBigInt buyerDepositBigInt autorecallInterval depositDeadlineInterval autoreleaseInterval logisticsString =
-    let
-        autorecallIntervalBigInt =
-            EthHelpers.timeToBigInt autorecallInterval
-
-        depositDeadlineIntervalBigInt =
-            EthHelpers.timeToBigInt depositDeadlineInterval
-
-        autoreleaseIntervalBigInt =
-            EthHelpers.timeToBigInt autoreleaseInterval
-    in
-    Contracts.ToastytradeFactory.createToastytradeSell contractAddress seller valueBigInt buyerDepositBigInt autorecallIntervalBigInt depositDeadlineIntervalBigInt autoreleaseIntervalBigInt logisticsString
+    Contracts.ToastytradeFactory.createToastytradeSell
+        contractAddress
+        seller
+        valueBigInt
+        buyerDepositBigInt
+        (TimeHelpers.posixToSecondsBigInt autorecallInterval)
+        (TimeHelpers.posixToSecondsBigInt depositDeadlineInterval)
+        (TimeHelpers.posixToSecondsBigInt autoreleaseInterval)
+        logisticsString

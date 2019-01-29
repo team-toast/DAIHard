@@ -24,6 +24,7 @@ import Eth.Utils as EthUtils
 import EthHelpers
 import Json.Decode
 import Time
+import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
@@ -39,6 +40,12 @@ type alias Model =
     , preCommitBalance : TokenValue
     , postCommitBalance : TokenValue
     , claimFailBurnAmount : TokenValue
+    , auotrecallIntervalInput : String
+    , depositDeadlineIntervalInput : String
+    , autoreleaseIntervalInput : String
+    , autorecallInterval : Maybe Time.Posix
+    , depositDeadlineInterval : Maybe Time.Posix
+    , autoreleaseInterval : Maybe Time.Posix
     }
 
 
@@ -50,9 +57,11 @@ type OrderType
 type Msg
     = UncoiningAmountChanged String
     | SummonFeeChanged String
+    | AutorecallIntervalChanged String
+    | DepositDeadlineIntervalChanged String
+    | AutoreleaseIntervalChanged String
     | BeginCreateProcess
     | ApproveMined (Result String TxReceipt)
-      --| CreateContract
     | CreateMined (Result String TxReceipt)
     | NoOp
 
@@ -72,6 +81,12 @@ init tokenAddress factoryAddress userAddress tokenDecimals =
             , preCommitBalance = TokenValue.empty tokenDecimals
             , postCommitBalance = TokenValue.empty tokenDecimals
             , claimFailBurnAmount = TokenValue.empty tokenDecimals
+            , auotrecallIntervalInput = "3"
+            , depositDeadlineIntervalInput = "3"
+            , autoreleaseIntervalInput = "3"
+            , autorecallInterval = TimeHelpers.daysStrToMaybePosix "3"
+            , depositDeadlineInterval = TimeHelpers.daysStrToMaybePosix "3"
+            , autoreleaseInterval = TimeHelpers.daysStrToMaybePosix "3"
             }
     in
     ( propogateUncoiningAmountChange model
@@ -98,11 +113,37 @@ update msg model =
         SummonFeeChanged newAmtStr ->
             ( { model | summonFee = TokenValue.updateViaString model.summonFee newAmtStr }, Cmd.none, ChainCmd.none )
 
+        AutorecallIntervalChanged input ->
+            ( { model
+                | auotrecallIntervalInput = input
+                , autorecallInterval = Debug.log "posix" (TimeHelpers.daysStrToMaybePosix input)
+              }
+            , Cmd.none
+            , ChainCmd.none
+            )
+
+        DepositDeadlineIntervalChanged input ->
+            ( { model
+                | depositDeadlineIntervalInput = input
+                , depositDeadlineInterval = TimeHelpers.daysStrToMaybePosix input
+              }
+            , Cmd.none
+            , ChainCmd.none
+            )
+
+        AutoreleaseIntervalChanged input ->
+            ( { model
+                | autoreleaseIntervalInput = input
+                , autoreleaseInterval = TimeHelpers.daysStrToMaybePosix input
+              }
+            , Cmd.none
+            , ChainCmd.none
+            )
+
         BeginCreateProcess ->
             case ( model.userAddress, TokenValue.toBigInt model.uncoiningAmount ) of
                 ( Just userAddress, Just uncoiningAmount ) ->
                     let
-                        _ = Debug.log "bigint amount"
                         txParams =
                             TokenContract.approve
                                 model.tokenAddress
@@ -140,20 +181,23 @@ update msg model =
                 Just userAddress ->
                     let
                         maybeTxParams =
-                            Maybe.map2
-                                (\uncoiningAmount responderDeposit ->
+                            Maybe.map5
+                                (\uncoiningAmount responderDeposit autorecallInterval depositDeadlineInterval autoreleaseInterval ->
                                     TTExtras.createSell
                                         model.factoryAddress
                                         userAddress
                                         uncoiningAmount
                                         responderDeposit
-                                        (Time.millisToPosix 10000)
-                                        (Time.millisToPosix 10000)
-                                        (Time.millisToPosix 10000)
+                                        autorecallInterval
+                                        depositDeadlineInterval
+                                        autoreleaseInterval
                                         "test stringggg"
                                 )
                                 (TokenValue.toBigInt model.uncoiningAmount)
                                 (TokenValue.toBigInt model.responderDeposit)
+                                model.autorecallInterval
+                                model.depositDeadlineInterval
+                                model.autoreleaseInterval
                                 |> Maybe.map Eth.toSend
 
                         customSend =
@@ -360,7 +404,7 @@ viewElement model =
                         [ Element.text "If no Ethereum user "
                         , ElementHelpers.methodName "commit"
                         , Element.text "s within "
-                        , ElementHelpers.timeInput "autorecall interval" (\t -> NoOp)
+                        , ElementHelpers.timeInput "autorecall interval" model.auotrecallIntervalInput AutorecallIntervalChanged
                         , Element.text ", "
                         , ElementHelpers.methodName "recall"
                         , Element.text " will be automatically triggered."
@@ -425,7 +469,7 @@ viewElement model =
                         [ Element.text "If the "
                         , ElementHelpers.responder []
                         , Element.text " does not claim within "
-                        , ElementHelpers.timeInput "deposit deadline interval" (\t -> NoOp)
+                        , ElementHelpers.timeInput "deposit deadline interval" model.depositDeadlineIntervalInput DepositDeadlineIntervalChanged
                         , Element.text ", "
                         , ElementHelpers.sectionReference "the contract is closed"
                         , Element.text ", and the balance of "
@@ -539,7 +583,7 @@ viewElement model =
                         , Element.text " or "
                         , ElementHelpers.methodName "release"
                         , Element.text " within "
-                        , ElementHelpers.timeInput "autorelease interval" (\t -> NoOp)
+                        , ElementHelpers.timeInput "autorelease interval" model.autoreleaseIntervalInput AutoreleaseIntervalChanged
                         , Element.text ", "
                         , ElementHelpers.methodName "release"
                         , Element.text " is triggered automatically."

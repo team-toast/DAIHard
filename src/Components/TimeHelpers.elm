@@ -1,5 +1,6 @@
-module TimeHelpers exposing (add, isNegative, sub)
+module TimeHelpers exposing (add, daysStrToMaybePosix, isNegative, posixToMillisBigInt, posixToSeconds, posixToSecondsBigInt, sub)
 
+import BigInt exposing (BigInt)
 import Time
 
 
@@ -22,3 +23,32 @@ sub t1 t2 =
 isNegative : Time.Posix -> Bool
 isNegative t =
     Time.posixToMillis t < 0
+
+
+daysStrToMaybePosix : String -> Maybe Time.Posix
+daysStrToMaybePosix timeStr =
+    let
+        daysToMillis days =
+            days * 24 * 60 * 60 * 1000
+    in
+    timeStr
+        |> String.toFloat
+        |> Maybe.map daysToMillis
+        |> Maybe.map floor
+        |> Maybe.map Time.millisToPosix
+
+
+posixToSeconds : Time.Posix -> Int
+posixToSeconds t =
+    Time.posixToMillis t // 1000
+
+
+posixToMillisBigInt : Time.Posix -> BigInt
+posixToMillisBigInt t =
+    Time.posixToMillis t
+        |> BigInt.fromInt
+
+
+posixToSecondsBigInt : Time.Posix -> BigInt
+posixToSecondsBigInt t =
+    BigInt.div (posixToMillisBigInt t) (BigInt.fromInt 1000)
