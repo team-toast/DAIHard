@@ -20,7 +20,15 @@ import Json.Decode as Decode exposing (Value)
 import Time
 
 
-main : Program ( Int, Int, String ) Model Msg
+type alias Flags =
+    { networkId : Int
+    , tokenContractDecimals : Int
+    , tokenContractAddressString : String
+    , factoryAddressString : String
+    }
+
+
+main : Program Flags Model Msg
 main =
     Browser.element
         { init = init
@@ -36,7 +44,8 @@ type Model
 
 
 type alias ValidModel =
-    { factoryAddress : Address
+    { tokenContractAddress : Address
+    , factoryAddress : Address
     , time : Time.Posix
     , node : EthHelpers.EthNode
     , txSentry : TxSentry Msg
@@ -62,20 +71,20 @@ type Msg
     | Fail String
 
 
-init : ( Int, Int, String ) -> ( Model, Cmd Msg )
-init ( networkId, tokenContractDecimals, factoryAddressString ) =
-    case EthUtils.toAddress factoryAddressString of
-        Ok factoryAddress ->
+init : Flags -> ( Model, Cmd Msg )
+init flags =
+    case ( EthUtils.toAddress flags.tokenContractAddressString, EthUtils.toAddress flags.factoryAddressString ) of
+        ( Ok tokenContractAddress, Ok factoryAddress ) ->
             let
                 node =
-                    Net.toNetworkId networkId
+                    Net.toNetworkId flags.networkId
                         |> EthHelpers.ethNode
 
                 txSentry =
                     TxSentry.init ( txOut, txIn ) TxSentryMsg node.http
 
                 ( createModel, createCmd, chainCmdOrder ) =
-                    Create.init factoryAddress Nothing tokenContractDecimals
+                    Create.init tokenContractAddress factoryAddress Nothing flags.tokenContractDecimals
 
                 ( newTxSentry, chainCmd ) =
                     ChainCmd.execute txSentry (ChainCmd.map CreateMsg chainCmdOrder)
@@ -87,18 +96,22 @@ init ( networkId, tokenContractDecimals, factoryAddressString ) =
                         ]
             in
             ( Running
-                { factoryAddress = factoryAddress
+                { tokenContractAddress = tokenContractAddress
+                , factoryAddress = factoryAddress
                 , time = Time.millisToPosix 0
                 , node = node
                 , txSentry = newTxSentry
                 , userAddress = Nothing
-                , tokenContractDecimals = tokenContractDecimals
+                , tokenContractDecimals = flags.tokenContractDecimals
                 , submodel = CreateModel createModel
                 }
             , cmdBatch
             )
 
-        Err errstr ->
+        ( Err errstr, _ ) ->
+            ( Failed ("error interpreting token contract address: " ++ errstr), Cmd.none )
+
+        ( _, Err errstr ) ->
             ( Failed ("error interpreting factory contract address: " ++ errstr), Cmd.none )
 
 
@@ -118,7 +131,7 @@ updateValidModel msg model =
         GotoCreate ->
             let
                 ( createModel, createCmd, chainCmdOrder ) =
-                    Create.init model.factoryAddress model.userAddress model.tokenContractDecimals
+                    Create.init model.tokenContractAddress model.factoryAddress model.userAddress model.tokenContractDecimals
 
                 ( newTxSentry, chainCmd ) =
                     ChainCmd.execute model.txSentry (ChainCmd.map CreateMsg chainCmdOrder)

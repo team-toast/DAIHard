@@ -7,16 +7,14 @@ module Eth.Utils exposing
     , ipfsHashToString, ipfsToBytes32, toIPFSHash, isIPFSHash
     , unsafeToHex, unsafeToAddress, unsafeToTxHash, unsafeToBlockHash, unsafeToIPFSHash
     , Retry, retry, valueToMsg
-    ,  httpErrorToString
-       -- TX-HASH
-       --SHA3
-       -- HEX
-       -- UNSAFE
-       -- BLOCK-HASH
-       -- IPFS-HASH
-       -- ADDRESS
-       -- APPLICATION UTILS
-
+    -- TX-HASH
+    --SHA3
+    -- HEX
+    -- UNSAFE
+    -- BLOCK-HASH
+    -- IPFS-HASH
+    -- ADDRESS
+    -- APPLICATION UTILS
     )
 
 {-| String/Type Conversion and Application Helpers
@@ -74,7 +72,6 @@ import Bool.Extra exposing (all)
 import Char
 import Eth.Types exposing (..)
 import Hex
-import Http
 import Internal.Types as Internal
 import Internal.Utils as Internal exposing (..)
 import Json.Decode as Decode exposing (Decoder)
@@ -602,27 +599,3 @@ valueToMsg successMsg failureMsg decoder =
                     failureMsg error
     in
     resultToMessage << Decode.decodeValue decoder
-
-
-httpErrorToString : Http.Error -> String
-httpErrorToString err =
-    case err of
-        Http.BadUrl s ->
-            "bad url: " ++ s
-
-        Http.Timeout ->
-            "timeout"
-
-        Http.NetworkError ->
-            "network error"
-
-        Http.BadStatus r ->
-            "bad status: " ++ r.status.message
-
-        Http.BadPayload s r ->
-            "bad payload: " ++ s
-
-
-
--- Http.BadBody s ->
---     "bad body: " ++ s

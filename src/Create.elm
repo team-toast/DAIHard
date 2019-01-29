@@ -7,23 +7,29 @@ module Create exposing
     , viewElement
     )
 
+import Abi.Decode
 import BigInt
 import ChainCmd exposing (ChainCmdOrder)
-import Contracts.ToastytradeExtras
-import Contracts.ToastytradeFactory
+import Contracts.ERC20Token as TokenContract
+import Contracts.ToastytradeExtras as TTExtras
+import Contracts.ToastytradeFactory as TTFactoryContract
 import Element
 import Element.Font as Font
 import Element.Input as Input
 import ElementHelpers
 import Eth
+import Eth.Decode
 import Eth.Types exposing (Address, TxReceipt)
 import Eth.Utils as EthUtils
+import EthHelpers
+import Json.Decode
 import Time
 import TokenValue exposing (TokenValue)
 
 
 type alias Model =
-    { factoryAddress : Address
+    { tokenAddress : Address
+    , factoryAddress : Address
     , userAddress : Maybe Address
     , uncoiningAmount : TokenValue
     , summonFee : TokenValue
@@ -44,16 +50,19 @@ type OrderType
 type Msg
     = UncoiningAmountChanged String
     | SummonFeeChanged String
-    | CreateContract
+    | BeginCreateProcess
+    | ApproveMined (Result String TxReceipt)
+      --| CreateContract
     | CreateMined (Result String TxReceipt)
     | NoOp
 
 
-init : Address -> Maybe Address -> Int -> ( Model, Cmd Msg, ChainCmdOrder Msg )
-init factoryAddress userAddress tokenDecimals =
+init : Address -> Address -> Maybe Address -> Int -> ( Model, Cmd Msg, ChainCmdOrder Msg )
+init tokenAddress factoryAddress userAddress tokenDecimals =
     let
         model =
-            { factoryAddress = factoryAddress
+            { tokenAddress = tokenAddress
+            , factoryAddress = factoryAddress
             , userAddress = userAddress
             , uncoiningAmount = TokenValue.tokenValue tokenDecimals "100"
             , summonFee = TokenValue.empty tokenDecimals
@@ -89,14 +98,51 @@ update msg model =
         SummonFeeChanged newAmtStr ->
             ( { model | summonFee = TokenValue.updateViaString model.summonFee newAmtStr }, Cmd.none, ChainCmd.none )
 
-        CreateContract ->
+        BeginCreateProcess ->
+            case ( model.userAddress, TokenValue.toBigInt model.uncoiningAmount ) of
+                ( Just userAddress, Just uncoiningAmount ) ->
+                    let
+                        _ = Debug.log "bigint amount"
+                        txParams =
+                            TokenContract.approve
+                                model.tokenAddress
+                                model.factoryAddress
+                                uncoiningAmount
+                                |> Eth.toSend
+
+                        customSend =
+                            { onMined = Just ( ApproveMined, Nothing )
+                            , onSign = Nothing
+                            , onBroadcast = Nothing
+                            }
+                    in
+                    ( model, Cmd.none, ChainCmd.custom customSend txParams )
+
+                ( Nothing, _ ) ->
+                    let
+                        _ =
+                            Debug.log "Metamask seems to be locked! I can't find the user address."
+                    in
+                    ( model, Cmd.none, ChainCmd.none )
+
+                ( _, Nothing ) ->
+                    let
+                        _ =
+                            Debug.log "Invalid Uncoining amount" (TokenValue.getString model.uncoiningAmount)
+                    in
+                    ( model, Cmd.none, ChainCmd.none )
+
+        ApproveMined (Err errstr) ->
+            ( model, Cmd.none, ChainCmd.none )
+
+        ApproveMined (Ok txReceipt) ->
             case model.userAddress of
                 Just userAddress ->
                     let
                         maybeTxParams =
                             Maybe.map2
                                 (\uncoiningAmount responderDeposit ->
-                                    Contracts.ToastytradeExtras.createSell
+                                    TTExtras.createSell
                                         model.factoryAddress
                                         userAddress
                                         uncoiningAmount
@@ -144,12 +190,30 @@ update msg model =
         CreateMined (Ok txReceipt) ->
             let
                 _ =
-                    Debug.log "transaction successful!" (String.fromInt txReceipt.index)
+                    Debug.log "addresssss" (TTExtras.txReceiptToCreatedToastytradeSellAddress model.factoryAddress txReceipt)
+
+                _ =
+                    Debug.log "status" txReceipt.status
             in
             ( model, Cmd.none, ChainCmd.none )
 
         NoOp ->
             ( model, Cmd.none, ChainCmd.none )
+
+
+logToEvent : a -> Eth.Types.Log -> Eth.Types.Event a
+logToEvent eventType log =
+    { address = log.address
+    , data = log.data
+    , topics = log.topics
+    , removed = log.removed
+    , logIndex = log.logIndex
+    , transactionIndex = log.transactionIndex
+    , transactionHash = log.transactionHash
+    , blockHash = log.blockHash
+    , blockNumber = log.blockNumber
+    , returnData = eventType
+    }
 
 
 propogateUncoiningAmountChange : Model -> Model
@@ -485,7 +549,7 @@ viewElement model =
 
         createButton =
             Input.button []
-                { onPress = Just CreateContract
+                { onPress = Just BeginCreateProcess
                 , label = Element.text "Create!"
                 }
     in

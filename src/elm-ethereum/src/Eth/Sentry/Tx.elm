@@ -370,11 +370,13 @@ update msg (TxSentry sentry) =
                                 failOtherCallbacks =
                                     case ( txState.onBroadcastTagger, txState.onMinedTagger ) of
                                         ( Just txToMsg, _ ) ->
-                                            Task.perform txToMsg (Task.succeed <| Err <| Eth.Utils.httpErrorToString error)
+                                            Task.perform txToMsg (Task.succeed <| Err "Error with TxSent stuff")
 
+                                        -- Task.perform txToMsg (Task.succeed <| Err <| toString error)
                                         ( _, Just ( txReceiptToMsg, _ ) ) ->
-                                            Task.perform txReceiptToMsg (Task.succeed <| Err <| Eth.Utils.httpErrorToString error)
+                                            Task.perform txReceiptToMsg (Task.succeed <| Err "Error with TxSent stuff")
 
+                                        -- Task.perform txReceiptToMsg (Task.succeed <| Err <| toString error)
                                         ( Nothing, Nothing ) ->
                                             Cmd.none
                             in

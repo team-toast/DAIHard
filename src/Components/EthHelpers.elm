@@ -1,7 +1,8 @@
-module EthHelpers exposing (EthNode, addressIfNot0x0, bigIntToTime, ethNode, timeToBigInt)
+module EthHelpers exposing (EthNode, addressIfNot0x0, bigIntToTime, ethNode, getLogAt, timeToBigInt)
 
 -- Library
 
+import Array
 import BigInt exposing (BigInt)
 import Eth.Net as Net exposing (NetworkId(..))
 import Eth.Sentry.Tx as TxSentry
@@ -59,3 +60,9 @@ addressIfNot0x0 addr =
 
     else
         Just addr
+
+
+getLogAt : Int -> List Eth.Types.Log -> Maybe Eth.Types.Log
+getLogAt index logList =
+    Array.fromList logList
+        |> Array.get index
