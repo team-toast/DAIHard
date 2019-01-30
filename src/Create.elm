@@ -14,6 +14,8 @@ import Contracts.ERC20Token as TokenContract
 import Contracts.ToastytradeExtras as TTExtras
 import Contracts.ToastytradeFactory as TTFactoryContract
 import Element
+import Element.Background
+import Element.Border
 import Element.Font
 import Element.Input
 import ElementHelpers as EH
@@ -311,8 +313,26 @@ viewElement model =
         header =
             Element.el [ Element.Font.size 36 ] (Element.text "Uncoining Contract - draft ")
 
+        bodyStyles =
+            [ Element.width Element.fill
+            , Element.Border.rounded 15
+            , Element.Border.color (Element.rgb255 0 255 255)
+            , Element.Background.color (Element.rgb255 200 200 255)
+            , Element.padding 20
+            ]
+
+        body =
+            Element.column bodyStyles
+                [ openerSection
+                , transferMethodsSection
+                , openPhaseSection
+                , commitedPhaseSection
+                , claimedPhaseSection
+                , createButton
+                ]
+
         openerSection =
-            Element.textColumn []
+            Element.textColumn [ Element.width Element.fill ]
                 [ Element.paragraph []
                     [ Element.text "Uncoining "
                     , EH.smallInput "uncoiningAmount" (TokenValue.getString model.uncoiningAmount) UncoiningAmountChanged
@@ -357,7 +377,7 @@ viewElement model =
                 ]
 
         transferMethodsSection =
-            Element.textColumn []
+            Element.textColumn [ Element.width Element.fill ]
                 [ EH.sectionHeading "Fiat Transfer Methods"
                 , Element.paragraph []
                     [ Element.text "During the "
@@ -380,7 +400,7 @@ viewElement model =
                 ]
 
         openPhaseSection =
-            Element.textColumn []
+            Element.textColumn [ Element.width Element.fill ]
                 [ EH.sectionHeading "Open Phase"
                 , Element.paragraph []
                     [ Element.text "During the "
@@ -439,7 +459,7 @@ viewElement model =
                 ]
 
         commitedPhaseSection =
-            Element.textColumn []
+            Element.textColumn [ Element.width Element.fill ]
                 [ EH.sectionHeading "Commited Phase"
                 , Element.paragraph []
                     [ Element.text "During the "
@@ -526,7 +546,7 @@ viewElement model =
                 ]
 
         claimedPhaseSection =
-            Element.textColumn []
+            Element.textColumn [ Element.width Element.fill ]
                 [ EH.sectionHeading "Claimed Phase"
                 , Element.paragraph []
                     [ Element.text "During the "
@@ -623,14 +643,9 @@ viewElement model =
                 , label = Element.text "Create!"
                 }
     in
-    Element.column [ Element.spacing 50 ]
+    Element.column []
         [ header
-        , openerSection
-        , transferMethodsSection
-        , openPhaseSection
-        , commitedPhaseSection
-        , claimedPhaseSection
-        , createButton
+        , body
         ]
 
 

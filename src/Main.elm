@@ -4,6 +4,7 @@ import Browser
 import ChainCmd exposing (ChainCmdOrder)
 import Create
 import Element
+import Element.Border
 import Element.Input
 import ElementHelpers as EH
 import Eth.Net
@@ -223,9 +224,19 @@ view : Model -> Html.Html Msg
 view maybeValidModel =
     case maybeValidModel of
         Running model ->
-            Element.layout []
-                (Element.column
-                    []
+            let
+                mainElementAttributes =
+                    [ Element.width Element.fill
+                    , Element.paddingXY 35 5
+                    ]
+
+                mainColumnAttributes =
+                    [ Element.width Element.fill
+                    , Element.paddingXY 100 5
+                    ]
+            in
+            Element.layout mainElementAttributes
+                (Element.column mainColumnAttributes
                     [ headerElement model
                     , subModelElement model
                     ]
@@ -238,12 +249,18 @@ view maybeValidModel =
 
 headerElement : ValidModel -> Element.Element Msg
 headerElement model =
-    Element.row []
-        [ Element.Input.button []
-            { onPress = Just GotoCreate
-            , label = Element.text "Create!"
-            }
-        ]
+    Element.none
+
+
+
+-- headerElement : ValidModel -> Element.Element Msg
+-- headerElement model =
+--     Element.row []
+--         [ Element.Input.button []
+--             { onPress = Just GotoCreate
+--             , label = Element.text "Create!"
+--             }
+--         ]
 
 
 subModelElement : ValidModel -> Element.Element Msg

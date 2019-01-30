@@ -1,4 +1,4 @@
-module ElementHelpers exposing (clauseList, fakeLink, initiator, methodName, responder, sectionHeading, sectionReference, smallInput, timeInput, tokenValue, usdValue)
+module ElementHelpers exposing (black, clauseList, fakeLink, initiator, methodName, responder, sectionHeading, sectionReference, smallInput, timeInput, tokenValue, usdValue)
 
 import Element
 import Element.Background
@@ -8,9 +8,17 @@ import Time
 import TokenValue exposing (TokenValue)
 
 
+black : Element.Color
+black =
+    Element.rgb255 0 0 0
+
+
 sectionHeading : String -> Element.Element a
 sectionHeading s =
-    Element.el [ Element.Font.size 30, Element.Font.bold ] (Element.text s)
+    Element.column [ Element.spacing 30 ]
+        [ Element.el [ Element.Font.size 30, Element.Font.bold ] (Element.text s)
+        , Element.el [] Element.none
+        ]
 
 
 initiator : List (Element.Attribute a) -> Element.Element a
