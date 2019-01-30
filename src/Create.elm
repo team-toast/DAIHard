@@ -40,6 +40,7 @@ type alias Model =
     , preCommitBalance : TokenValue
     , postCommitBalance : TokenValue
     , claimFailBurnAmount : TokenValue
+    , transferMethods : String
     , auotrecallIntervalInput : String
     , depositDeadlineIntervalInput : String
     , autoreleaseIntervalInput : String
@@ -60,6 +61,7 @@ type Msg
     | AutorecallIntervalChanged String
     | DepositDeadlineIntervalChanged String
     | AutoreleaseIntervalChanged String
+    | TransferMethodsChanged String
     | BeginCreateProcess
     | ApproveMined (Result String TxReceipt)
     | CreateMined (Result String TxReceipt)
@@ -81,6 +83,7 @@ init tokenAddress factoryAddress userAddress tokenDecimals =
             , preCommitBalance = TokenValue.empty tokenDecimals
             , postCommitBalance = TokenValue.empty tokenDecimals
             , claimFailBurnAmount = TokenValue.empty tokenDecimals
+            , transferMethods = ""
             , auotrecallIntervalInput = "3"
             , depositDeadlineIntervalInput = "3"
             , autoreleaseIntervalInput = "3"
@@ -112,6 +115,9 @@ update msg model =
 
         SummonFeeChanged newAmtStr ->
             ( { model | summonFee = TokenValue.updateViaString model.summonFee newAmtStr }, Cmd.none, ChainCmd.none )
+
+        TransferMethodsChanged newStr ->
+            ( { model | transferMethods = newStr }, Cmd.none, ChainCmd.none )
 
         AutorecallIntervalChanged input ->
             ( { model
@@ -191,7 +197,7 @@ update msg model =
                                         autorecallInterval
                                         depositDeadlineInterval
                                         autoreleaseInterval
-                                        "test stringggg"
+                                        model.transferMethods
                                 )
                                 (TokenValue.toBigInt model.uncoiningAmount)
                                 (TokenValue.toBigInt model.responderDeposit)
@@ -351,6 +357,29 @@ viewElement model =
                     , ElementHelpers.fakeLink "CoinerTool Browse"
                     , Element.text " (and potentially third-party tools)."
                     ]
+                ]
+
+        transferMethodsSection =
+            Element.textColumn []
+                [ ElementHelpers.sectionHeading "Fiat Transfer Methods"
+                , Element.paragraph []
+                    [ Element.text "During the "
+                    , ElementHelpers.sectionReference "Committed phase"
+                    , Element.text ", the "
+                    , ElementHelpers.responder []
+                    , Element.text " is expected to transfer "
+                    , ElementHelpers.usdValue model.uncoiningAmount
+                    , Element.text " to the "
+                    , ElementHelpers.initiator []
+                    , Element.text " via one of the following methods:"
+                    ]
+                , Input.multiline []
+                    { onChange = TransferMethodsChanged
+                    , text = model.transferMethods
+                    , placeholder = Just (Input.placeholder [] (Element.text "Be SPECIFIC. One method per line.\nFor example:\n\nCash drop within 50 km of NY Times Square\nBank deposit at Western Union\nHand off cash at 4th and Main (I'm available most weekdays after 6)"))
+                    , label = Input.labelHidden "transfer methods"
+                    , spellcheck = False
+                    }
                 ]
 
         openPhaseSection =
@@ -600,6 +629,7 @@ viewElement model =
     Element.column [ Element.spacing 50 ]
         [ header
         , openerSection
+        , transferMethodsSection
         , openPhaseSection
         , commitedPhaseSection
         , claimedPhaseSection
