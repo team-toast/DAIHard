@@ -4,19 +4,17 @@ import Browser
 import ChainCmd exposing (ChainCmdOrder)
 import Create
 import Element
-import Element.Input as Input
-import ElementHelpers exposing (..)
-import Eth.Net as Net
-import Eth.Sentry.Tx as TxSentry exposing (..)
+import Element.Input
+import ElementHelpers as EH
+import Eth.Net
+import Eth.Sentry.Tx as TxSentry exposing (TxSentry)
 import Eth.Sentry.Wallet as WalletSentry exposing (WalletSentry)
-import Eth.Types exposing (..)
-import Eth.Utils as EthUtils
+import Eth.Types exposing (Address)
+import Eth.Utils
 import EthHelpers
 import Html
-import Html.Attributes
-import Html.Events exposing (onClick)
 import Interact
-import Json.Decode as Decode exposing (Value)
+import Json.Decode
 import Time
 
 
@@ -73,11 +71,11 @@ type Msg
 
 init : Flags -> ( Model, Cmd Msg )
 init flags =
-    case ( EthUtils.toAddress flags.tokenContractAddressString, EthUtils.toAddress flags.factoryAddressString ) of
+    case ( Eth.Utils.toAddress flags.tokenContractAddressString, Eth.Utils.toAddress flags.factoryAddressString ) of
         ( Ok tokenContractAddress, Ok factoryAddress ) ->
             let
                 node =
-                    Net.toNetworkId flags.networkId
+                    Eth.Net.toNetworkId flags.networkId
                         |> EthHelpers.ethNode
 
                 txSentry =
@@ -241,7 +239,7 @@ view maybeValidModel =
 headerElement : ValidModel -> Element.Element Msg
 headerElement model =
     Element.row []
-        [ Input.button []
+        [ Element.Input.button []
             { onPress = Just GotoCreate
             , label = Element.text "Create!"
             }
@@ -261,10 +259,6 @@ subModelElement model =
             Element.none
 
 
-
--- Html.map InteractMsg (Interact.viewElement interactModel model.time)
-
-
 subscriptions : Model -> Sub Msg
 subscriptions maybeValidModel =
     case maybeValidModel of
@@ -279,10 +273,10 @@ subscriptions maybeValidModel =
             Sub.none
 
 
-port walletSentryPort : (Value -> msg) -> Sub msg
+port walletSentryPort : (Json.Decode.Value -> msg) -> Sub msg
 
 
-port txOut : Value -> Cmd msg
+port txOut : Json.Decode.Value -> Cmd msg
 
 
-port txIn : (Value -> msg) -> Sub msg
+port txIn : (Json.Decode.Value -> msg) -> Sub msg

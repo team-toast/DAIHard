@@ -14,15 +14,12 @@ import Contracts.ERC20Token as TokenContract
 import Contracts.ToastytradeExtras as TTExtras
 import Contracts.ToastytradeFactory as TTFactoryContract
 import Element
-import Element.Font as Font
-import Element.Input as Input
-import ElementHelpers
+import Element.Font
+import Element.Input
+import ElementHelpers as EH
 import Eth
-import Eth.Decode
 import Eth.Types exposing (Address, TxReceipt)
-import Eth.Utils as EthUtils
-import EthHelpers
-import Json.Decode
+import Eth.Utils
 import Time
 import TimeHelpers
 import TokenValue exposing (TokenValue)
@@ -312,130 +309,130 @@ viewElement : Model -> Element.Element Msg
 viewElement model =
     let
         header =
-            Element.el [ Font.size 36 ] (Element.text "Uncoining Contract - draft ")
+            Element.el [ Element.Font.size 36 ] (Element.text "Uncoining Contract - draft ")
 
         openerSection =
             Element.textColumn []
                 [ Element.paragraph []
                     [ Element.text "Uncoining "
-                    , ElementHelpers.smallInput "uncoiningAmount" (TokenValue.getString model.uncoiningAmount) UncoiningAmountChanged
+                    , EH.smallInput "uncoiningAmount" (TokenValue.getString model.uncoiningAmount) UncoiningAmountChanged
                     , Element.text " Dai, with a summon fee of "
-                    , ElementHelpers.smallInput "summonfee" (TokenValue.getString model.summonFee) SummonFeeChanged
+                    , EH.smallInput "summonfee" (TokenValue.getString model.summonFee) SummonFeeChanged
                     , Element.text " Dai."
                     ]
                 , Element.paragraph []
                     [ Element.text "Clicking 'Inititalize Contract' at the bottom of this page will cause CoinerTool to request "
-                    , ElementHelpers.tokenValue model.initialDeposit
+                    , EH.tokenValue model.initialDeposit
                     , Element.text " from your web3 provider. Once you accept the transaction:"
                     ]
-                , ElementHelpers.clauseList
+                , EH.clauseList
                     [ Element.paragraph []
                         [ Element.text "The contract shown below will be created with YOU ("
                         , outputMaybeUserAddress model.userAddress
                         , Element.text ") as the "
-                        , ElementHelpers.initiator []
+                        , EH.initiator []
                         , Element.text ";"
                         ]
                     , Element.paragraph []
-                        [ ElementHelpers.tokenValue model.preCommitBalance
+                        [ EH.tokenValue model.preCommitBalance
                         , Element.text " will be deposited into the contract;"
                         ]
                     , Element.paragraph []
-                        [ ElementHelpers.tokenValue model.devFee
+                        [ EH.tokenValue model.devFee
                         , Element.text " will be forwarded to the developers of CoinerTool;"
                         ]
                     , Element.paragraph []
                         [ Element.text "The "
-                        , ElementHelpers.sectionReference "Fiat Transfer Methods"
+                        , EH.sectionReference "Fiat Transfer Methods"
                         , Element.text " section you fill out below will be publicly posted onto the Ethereum blockchain."
                         ]
                     ]
                 , Element.paragraph []
                     [ Element.text "The contract begins in the "
-                    , ElementHelpers.sectionReference "Open Phase"
+                    , EH.sectionReference "Open Phase"
                     , Element.text ", and will be discoverable by other users via "
-                    , ElementHelpers.fakeLink "CoinerTool Browse"
+                    , EH.fakeLink "CoinerTool Browse"
                     , Element.text " (and potentially third-party tools)."
                     ]
                 ]
 
         transferMethodsSection =
             Element.textColumn []
-                [ ElementHelpers.sectionHeading "Fiat Transfer Methods"
+                [ EH.sectionHeading "Fiat Transfer Methods"
                 , Element.paragraph []
                     [ Element.text "During the "
-                    , ElementHelpers.sectionReference "Committed phase"
+                    , EH.sectionReference "Committed phase"
                     , Element.text ", the "
-                    , ElementHelpers.responder []
+                    , EH.responder []
                     , Element.text " is expected to transfer "
-                    , ElementHelpers.usdValue model.uncoiningAmount
+                    , EH.usdValue model.uncoiningAmount
                     , Element.text " to the "
-                    , ElementHelpers.initiator []
+                    , EH.initiator []
                     , Element.text " via one of the following methods:"
                     ]
-                , Input.multiline []
+                , Element.Input.multiline []
                     { onChange = TransferMethodsChanged
                     , text = model.transferMethods
-                    , placeholder = Just (Input.placeholder [] (Element.text "Be SPECIFIC. One method per line.\nFor example:\n\nCash drop within 50 km of NY Times Square\nBank deposit at Western Union\nHand off cash at 4th and Main (I'm available most weekdays after 6)"))
-                    , label = Input.labelHidden "transfer methods"
+                    , placeholder = Just (Element.Input.placeholder [] (Element.text "Be SPECIFIC. One method per line.\nFor example:\n\nCash drop within 50 km of NY Times Square\nBank deposit at Western Union\nHand off cash at 4th and Main (I'm available most weekdays after 6)"))
+                    , label = Element.Input.labelHidden "transfer methods"
                     , spellcheck = False
                     }
                 ]
 
         openPhaseSection =
             Element.textColumn []
-                [ ElementHelpers.sectionHeading "Open Phase"
+                [ EH.sectionHeading "Open Phase"
                 , Element.paragraph []
                     [ Element.text "During the "
-                    , ElementHelpers.sectionReference "Open Phase"
+                    , EH.sectionReference "Open Phase"
                     , Element.text ", the "
-                    , ElementHelpers.initiator []
+                    , EH.initiator []
                     , Element.text " waits for a "
-                    , ElementHelpers.responder []
+                    , EH.responder []
                     , Element.text " to appear (which would move the contract to the "
-                    , ElementHelpers.sectionReference "Committed Phase"
+                    , EH.sectionReference "Committed Phase"
                     , Element.text "). The "
-                    , ElementHelpers.initiator []
+                    , EH.initiator []
                     , Element.text " can cancel anytime with a refund anytime before this happens. "
-                    , Element.el [ Font.bold ] (Element.text "This is the ONLY phase in which a refund is a guaranteed option to the ")
-                    , ElementHelpers.initiator [ Font.bold ]
-                    , Element.el [ Font.bold ] (Element.text ".")
+                    , Element.el [ Element.Font.bold ] (Element.text "This is the ONLY phase in which a refund is a guaranteed option to the ")
+                    , EH.initiator [ Element.Font.bold ]
+                    , Element.el [ Element.Font.bold ] (Element.text ".")
                     ]
                 , Element.paragraph [] [ Element.text "Specifically: " ]
-                , ElementHelpers.clauseList
+                , EH.clauseList
                     [ Element.paragraph []
                         [ Element.text "Another Ethereum user may become the "
-                        , ElementHelpers.responder []
+                        , EH.responder []
                         , Element.text " by executing the  "
-                        , ElementHelpers.methodName "commit"
+                        , EH.methodName "commit"
                         , Element.text " method, which requires a deposit of "
-                        , ElementHelpers.tokenValue model.responderDeposit
+                        , EH.tokenValue model.responderDeposit
                         , Element.text ". This immediately moves the contract to the "
-                        , ElementHelpers.sectionReference "Committed Phase"
+                        , EH.sectionReference "Committed Phase"
                         , Element.text ". Thenceforth, the identity of the "
-                        , ElementHelpers.responder []
+                        , EH.responder []
                         , Element.text " will never change."
                         ]
                     , Element.paragraph []
                         [ Element.text "The "
-                        , ElementHelpers.initiator []
+                        , EH.initiator []
                         , Element.text " may execute the "
-                        , ElementHelpers.methodName "recall"
+                        , EH.methodName "recall"
                         , Element.text " method. This immediately "
-                        , ElementHelpers.sectionReference "closes the contract"
+                        , EH.sectionReference "closes the contract"
                         , Element.text " and refunds the "
-                        , ElementHelpers.initiator []
+                        , EH.initiator []
                         , Element.text "'s "
-                        , ElementHelpers.tokenValue model.preCommitBalance
+                        , EH.tokenValue model.preCommitBalance
                         , Element.text ". "
                         ]
                     , Element.paragraph []
                         [ Element.text "If no Ethereum user "
-                        , ElementHelpers.methodName "commit"
+                        , EH.methodName "commit"
                         , Element.text "s within "
-                        , ElementHelpers.timeInput "autorecall interval" model.auotrecallIntervalInput AutorecallIntervalChanged
+                        , EH.timeInput "autorecall interval" model.auotrecallIntervalInput AutorecallIntervalChanged
                         , Element.text ", "
-                        , ElementHelpers.methodName "recall"
+                        , EH.methodName "recall"
                         , Element.text " will be automatically triggered."
                         ]
                     ]
@@ -443,84 +440,84 @@ viewElement model =
 
         commitedPhaseSection =
             Element.textColumn []
-                [ ElementHelpers.sectionHeading "Commited Phase"
+                [ EH.sectionHeading "Commited Phase"
                 , Element.paragraph []
                     [ Element.text "During the "
-                    , ElementHelpers.sectionReference "Committed Phase"
+                    , EH.sectionReference "Committed Phase"
                     , Element.text ", the "
-                    , ElementHelpers.responder []
+                    , EH.responder []
                     , Element.text " is expected to transfer "
-                    , ElementHelpers.usdValue model.uncoiningAmount
+                    , EH.usdValue model.uncoiningAmount
                     , Element.text " to the "
-                    , ElementHelpers.initiator []
+                    , EH.initiator []
                     , Element.text " via one of the "
-                    , ElementHelpers.sectionReference "Fiat Transfer Methods"
+                    , EH.sectionReference "Fiat Transfer Methods"
                     , Element.text " and mark the deposit as complete, moving the contract to the "
-                    , ElementHelpers.sectionReference "Claimed Phase"
+                    , EH.sectionReference "Claimed Phase"
                     , Element.text "."
                     ]
                 , Element.paragraph [] [ Element.text " Specifically:" ]
-                , ElementHelpers.clauseList
+                , EH.clauseList
                     [ Element.paragraph []
                         [ Element.text "The contract has two parties (the "
-                        , ElementHelpers.initiator []
+                        , EH.initiator []
                         , Element.text " and the "
-                        , ElementHelpers.responder []
+                        , EH.responder []
                         , Element.text "), and has a total balance of "
-                        , ElementHelpers.tokenValue model.postCommitBalance
+                        , EH.tokenValue model.postCommitBalance
                         , Element.text "."
                         ]
                     , Element.paragraph []
                         [ Element.text "The "
-                        , ElementHelpers.responder []
+                        , EH.responder []
                         , Element.text " is expected to transfer "
-                        , ElementHelpers.usdValue model.uncoiningAmount
+                        , EH.usdValue model.uncoiningAmount
                         , Element.text " to the "
-                        , ElementHelpers.initiator []
+                        , EH.initiator []
                         , Element.text " as described in "
-                        , ElementHelpers.sectionReference "Fiat Transfer Methods"
+                        , EH.sectionReference "Fiat Transfer Methods"
                         , Element.text " (see below). Once the "
-                        , ElementHelpers.responder []
+                        , EH.responder []
                         , Element.text " has done so, he is expected to execute the "
-                        , ElementHelpers.methodName "claim"
+                        , EH.methodName "claim"
                         , Element.text " method. This will move the contract to the "
-                        , ElementHelpers.sectionReference "Claimed Phase"
+                        , EH.sectionReference "Claimed Phase"
                         , Element.text "."
                         ]
                     , Element.paragraph []
                         [ Element.text "The "
-                        , ElementHelpers.initiator []
+                        , EH.initiator []
                         , Element.text " is expected to communicate any additional information the "
-                        , ElementHelpers.responder []
+                        , EH.responder []
                         , Element.text " needs to complete the transfer (such as bank account numbers, contact info, etc.), either via CoinerTool's secure messaging or some other medium."
                         ]
                     , Element.paragraph []
                         [ Element.text "If the "
-                        , ElementHelpers.responder []
+                        , EH.responder []
                         , Element.text " does not claim within "
-                        , ElementHelpers.timeInput "deposit deadline interval" model.depositDeadlineIntervalInput DepositDeadlineIntervalChanged
+                        , EH.timeInput "deposit deadline interval" model.depositDeadlineIntervalInput DepositDeadlineIntervalChanged
                         , Element.text ", "
-                        , ElementHelpers.sectionReference "the contract is closed"
+                        , EH.sectionReference "the contract is closed"
                         , Element.text ", and the balance of "
-                        , ElementHelpers.tokenValue model.postCommitBalance
+                        , EH.tokenValue model.postCommitBalance
                         , Element.text " is handled as follows:"
-                        , ElementHelpers.clauseList
+                        , EH.clauseList
                             [ Element.paragraph []
                                 [ Element.text "Half of the "
-                                , ElementHelpers.responder []
+                                , EH.responder []
                                 , Element.text "’s deposit ("
-                                , ElementHelpers.tokenValue model.claimFailBurnAmount
+                                , EH.tokenValue model.claimFailBurnAmount
                                 , Element.text ") is burned and half ("
-                                , ElementHelpers.tokenValue model.claimFailBurnAmount
+                                , EH.tokenValue model.claimFailBurnAmount
                                 , Element.text ") is returned to the "
-                                , ElementHelpers.responder []
+                                , EH.responder []
                                 , Element.text "."
                                 ]
                             , Element.paragraph []
                                 [ Element.text "The "
-                                , ElementHelpers.initiator []
+                                , EH.initiator []
                                 , Element.text "’s original investment of "
-                                , ElementHelpers.tokenValue model.preCommitBalance
+                                , EH.tokenValue model.preCommitBalance
                                 , Element.text " is refunded."
                                 ]
                             ]
@@ -530,98 +527,98 @@ viewElement model =
 
         claimedPhaseSection =
             Element.textColumn []
-                [ ElementHelpers.sectionHeading "Claimed Phase"
+                [ EH.sectionHeading "Claimed Phase"
                 , Element.paragraph []
                     [ Element.text "During the "
-                    , ElementHelpers.sectionReference "Claimed Phase"
+                    , EH.sectionReference "Claimed Phase"
                     , Element.text ", the "
-                    , ElementHelpers.initiator []
+                    , EH.initiator []
                     , Element.text " is expected to "
-                    , ElementHelpers.methodName "release"
+                    , EH.methodName "release"
                     , Element.text " the contract's balance ("
-                    , ElementHelpers.tokenValue model.postCommitBalance
+                    , EH.tokenValue model.postCommitBalance
                     , Element.text ") to the "
-                    , ElementHelpers.responder []
+                    , EH.responder []
                     , Element.text ", or if not, burn it. "
-                    , Element.el [ Font.bold ] (Element.text "At this point, in no case does the ")
-                    , ElementHelpers.initiator [ Font.bold ]
-                    , Element.el [ Font.bold ] (Element.text " get a refund of his original investment. ")
-                    , ElementHelpers.fakeLink "why?"
+                    , Element.el [ Element.Font.bold ] (Element.text "At this point, in no case does the ")
+                    , EH.initiator [ Element.Font.bold ]
+                    , Element.el [ Element.Font.bold ] (Element.text " get a refund of his original investment. ")
+                    , EH.fakeLink "why?"
                     ]
                 , Element.paragraph [] [ Element.text "Specifically:" ]
-                , ElementHelpers.clauseList
+                , EH.clauseList
                     [ Element.paragraph []
                         [ Element.text "The "
-                        , ElementHelpers.initiator []
+                        , EH.initiator []
                         , Element.text " is expected to verify with certainty whether the "
-                        , ElementHelpers.responder []
+                        , EH.responder []
                         , Element.text " has irreversibly transferred at least "
-                        , ElementHelpers.usdValue model.uncoiningAmount
+                        , EH.usdValue model.uncoiningAmount
                         , Element.text " to the "
-                        , ElementHelpers.initiator []
+                        , EH.initiator []
                         , Element.text "."
                         ]
                     , Element.paragraph []
                         [ Element.text "If the transfer has taken place for at least "
-                        , ElementHelpers.usdValue model.uncoiningAmount
+                        , EH.usdValue model.uncoiningAmount
                         , Element.text ", the "
-                        , ElementHelpers.initiator []
+                        , EH.initiator []
                         , Element.text " is expected to execute the "
-                        , ElementHelpers.methodName "release"
+                        , EH.methodName "release"
                         , Element.text " method. This releases the entire balance of the contract ("
-                        , ElementHelpers.tokenValue model.postCommitBalance
+                        , EH.tokenValue model.postCommitBalance
                         , Element.text ") to the "
-                        , ElementHelpers.responder []
+                        , EH.responder []
                         , Element.text " and closes the contract. Thus, the "
-                        , ElementHelpers.responder []
+                        , EH.responder []
                         , Element.text " will have made a profit of "
-                        , ElementHelpers.tokenValue model.summonFee
+                        , EH.tokenValue model.summonFee
                         , Element.text " by servicing this Uncoining contract."
                         ]
                     , Element.paragraph []
                         [ Element.text "If the transfer has not taken place, or if the transfer amount was less than "
-                        , ElementHelpers.usdValue model.uncoiningAmount
+                        , EH.usdValue model.uncoiningAmount
                         , Element.text ", the "
-                        , ElementHelpers.initiator []
+                        , EH.initiator []
                         , Element.text " is expected to execute the "
-                        , ElementHelpers.methodName "burn"
+                        , EH.methodName "burn"
                         , Element.text " method. This burns the entire balance of the contract ("
-                        , ElementHelpers.tokenValue model.postCommitBalance
+                        , EH.tokenValue model.postCommitBalance
                         , Element.text ") and "
-                        , ElementHelpers.sectionReference "closes the contract"
+                        , EH.sectionReference "closes the contract"
                         , Element.text ". Thus, the "
-                        , ElementHelpers.responder []
+                        , EH.responder []
                         , Element.text " will have suffered a loss of "
-                        , ElementHelpers.tokenValue model.responderDeposit
+                        , EH.tokenValue model.responderDeposit
                         , Element.text " for failing to make the deposit."
                         ]
                     , Element.paragraph []
                         [ Element.text "If the "
-                        , ElementHelpers.initiator []
+                        , EH.initiator []
                         , Element.text " is not sure whether the transfer has taken place, the "
-                        , ElementHelpers.initiator []
+                        , EH.initiator []
                         , Element.text " and the "
-                        , ElementHelpers.responder []
+                        , EH.responder []
                         , Element.text " are expected to communicate to resolve any ambiguity."
                         ]
                     , Element.paragraph []
                         [ Element.text "If the "
-                        , ElementHelpers.initiator []
+                        , EH.initiator []
                         , Element.text " has not executed a "
-                        , ElementHelpers.methodName "burn"
+                        , EH.methodName "burn"
                         , Element.text " or "
-                        , ElementHelpers.methodName "release"
+                        , EH.methodName "release"
                         , Element.text " within "
-                        , ElementHelpers.timeInput "autorelease interval" model.autoreleaseIntervalInput AutoreleaseIntervalChanged
+                        , EH.timeInput "autorelease interval" model.autoreleaseIntervalInput AutoreleaseIntervalChanged
                         , Element.text ", "
-                        , ElementHelpers.methodName "release"
+                        , EH.methodName "release"
                         , Element.text " is triggered automatically."
                         ]
                     ]
                 ]
 
         createButton =
-            Input.button []
+            Element.Input.button []
                 { onPress = Just BeginCreateProcess
                 , label = Element.text "Create!"
                 }
@@ -641,7 +638,7 @@ outputMaybeUserAddress : Maybe Address -> Element.Element msg
 outputMaybeUserAddress maybeUserAddress =
     case maybeUserAddress of
         Just userAddress ->
-            Element.text (EthUtils.addressToString userAddress)
+            Element.text (Eth.Utils.addressToString userAddress)
 
         Nothing ->
-            Element.el [ Font.color (Element.rgb255 255 0 0) ] (Element.text "error: no account found. Unlock Metamask?")
+            Element.el [ Element.Font.color (Element.rgb255 255 0 0) ] (Element.text "error: no account found. Unlock Metamask?")

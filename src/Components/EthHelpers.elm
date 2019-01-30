@@ -1,18 +1,12 @@
 module EthHelpers exposing (EthNode, addressIfNot0x0, bigIntToTime, ethNode, getLogAt)
 
--- Library
-
 import Array
 import BigInt exposing (BigInt)
 import Eth.Net as Net exposing (NetworkId(..))
 import Eth.Sentry.Tx as TxSentry
 import Eth.Types exposing (Address, HttpProvider, WebsocketProvider)
-import Eth.Utils as EthUtils
+import Eth.Utils
 import Time
-
-
-
--- Exposed
 
 
 type alias EthNode =
@@ -49,7 +43,7 @@ bigIntToTime bigint =
 
 addressIfNot0x0 : Address -> Maybe Address
 addressIfNot0x0 addr =
-    if addr == EthUtils.unsafeToAddress "0x0000000000000000000000000000000000000000" then
+    if addr == Eth.Utils.unsafeToAddress "0x0000000000000000000000000000000000000000" then
         Nothing
 
     else

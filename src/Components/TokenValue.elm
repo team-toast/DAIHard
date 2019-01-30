@@ -3,10 +3,6 @@ module TokenValue exposing (TokenValue, empty, getString, numDecimals, renderToS
 import BigInt exposing (BigInt)
 
 
-
--- Exposed
-
-
 type TokenValue
     = TokenValue
         { numDecimals : Int

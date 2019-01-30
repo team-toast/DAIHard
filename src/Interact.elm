@@ -1,20 +1,16 @@
-module Interact exposing (Model, Msg(..), ToastytradeSellModel, countdownView, init, toastytradeModelFromGetFullState, update, updateWithUserAddress, view)
-
--- Library
--- Internal
+module Interact exposing (Model, Msg(..), TTSellModel, countdownView, init, toastytradeModelFromGetFullState, update, updateWithUserAddress, view)
 
 import BigInt exposing (BigInt)
-import Contracts.ToastytradeExtras exposing (..)
-import Contracts.ToastytradeSell as ToastytradeSell exposing (..)
-import ElementHelpers exposing (..)
+import Contracts.ToastytradeExtras as TTExtras exposing (Phase(..))
+import Contracts.ToastytradeSell as TTSell
+import ElementHelpers as EH
 import Eth
-import Eth.Types exposing (..)
-import Eth.Utils as EthUtils
+import Eth.Types exposing (Address)
+import Eth.Utils
 import EthHelpers
 import Flip exposing (flip)
-import Html exposing (..)
+import Html
 import Http
-import Maybe.Extra
 import Task
 import Time
 import TimeHelpers
@@ -22,11 +18,11 @@ import TimeHelpers
 
 type alias Model =
     { ttAddress : Address
-    , ttModel : Maybe ToastytradeSellModel
+    , ttModel : Maybe TTSellModel
     }
 
 
-type alias ToastytradeSellModel =
+type alias TTSellModel =
     { balance : BigInt
     , phase : Phase
     , phaseStartTime : Time.Posix
@@ -44,13 +40,13 @@ init ( node, ttAddress ) =
     ( { ttAddress = ttAddress
       , ttModel = Nothing
       }
-    , Eth.call node.http (ToastytradeSell.getFullState ttAddress)
+    , Eth.call node.http (TTSell.getFullState ttAddress)
         |> Task.attempt FullStateFetched
     )
 
 
 type Msg
-    = FullStateFetched (Result Http.Error GetFullState)
+    = FullStateFetched (Result Http.Error TTSell.GetFullState)
 
 
 updateWithUserAddress : Model -> Maybe Address -> Model
@@ -86,37 +82,37 @@ update msg model =
                     )
 
 
-view : Model -> Time.Posix -> Html Msg
+view : Model -> Time.Posix -> Html.Html Msg
 view model currentTime =
     case model.ttModel of
         Nothing ->
-            div [] [ text "Model loading... " ]
+            Html.div [] [ Html.text "Model loading... " ]
 
         Just ttModel ->
-            div []
-                [ div []
-                    [ text "Toastytrade Sell at address "
-                    , text (EthUtils.addressToString model.ttAddress)
+            Html.div []
+                [ Html.div []
+                    [ Html.text "Toastytrade Sell at address "
+                    , Html.text (Eth.Utils.addressToString model.ttAddress)
                     ]
-                , text (phaseToString ttModel.phase)
+                , Html.text (TTExtras.phaseToString ttModel.phase)
                 , case ttModel.phase of
                     Open ->
-                        div []
-                            [ text (EthUtils.addressToString ttModel.seller)
-                            , text " selling."
+                        Html.div []
+                            [ Html.text (Eth.Utils.addressToString ttModel.seller)
+                            , Html.text " selling."
                             ]
 
                     _ ->
-                        div []
-                            [ text (EthUtils.addressToString ttModel.seller)
-                            , text " selling to "
-                            , text (Maybe.withDefault "???" (Maybe.map EthUtils.addressToString ttModel.buyer))
+                        Html.div []
+                            [ Html.text (Eth.Utils.addressToString ttModel.seller)
+                            , Html.text " selling to "
+                            , Html.text (Maybe.withDefault "???" (Maybe.map Eth.Utils.addressToString ttModel.buyer))
                             ]
                 , countdownView ttModel currentTime
                 ]
 
 
-countdownView : ToastytradeSellModel -> Time.Posix -> Html Msg
+countdownView : TTSellModel -> Time.Posix -> Html.Html Msg
 countdownView ttModel currentTime =
     let
         phaseInterval =
@@ -141,7 +137,7 @@ countdownView ttModel currentTime =
             TimeHelpers.isNegative timeLeft
 
         textElement =
-            text
+            Html.text
                 (case ( ttModel.phase, countdownHasPassed ) of
                     ( Open, False ) ->
                         "This offer autorecalls in "
@@ -167,22 +163,22 @@ countdownView ttModel currentTime =
 
         dynamicElement =
             if ttModel.phase == Closed then
-                div [] []
+                Html.div [] []
 
             else if countdownHasPassed then
-                div [] [ text "POKEBUTTON" ]
+                Html.div [] [ Html.text "POKEBUTTON" ]
 
             else
-                div [] [ text (String.fromInt (Time.posixToMillis timeLeft // 1000)) ]
+                Html.div [] [ Html.text (String.fromInt (Time.posixToMillis timeLeft // 1000)) ]
     in
-    div [] [ textElement, dynamicElement ]
+    Html.div [] [ textElement, dynamicElement ]
 
 
-toastytradeModelFromGetFullState : ToastytradeSell.GetFullState -> Maybe ToastytradeSellModel
+toastytradeModelFromGetFullState : TTSell.GetFullState -> Maybe TTSellModel
 toastytradeModelFromGetFullState fullState =
     let
         phaseResult =
-            bigIntToPhase fullState.phase
+            TTExtras.bigIntToPhase fullState.phase
 
         phaseStartTimeResult =
             EthHelpers.bigIntToTime fullState.phaseStartTimestamp
@@ -199,7 +195,7 @@ toastytradeModelFromGetFullState fullState =
     Maybe.map5 (toastytradeModelFromGetFullStateVars fullState) phaseResult phaseStartTimeResult autorecallIntervalResult depositDeadlineIntervalResult autoreleaseIntervalResult
 
 
-toastytradeModelFromGetFullStateVars : ToastytradeSell.GetFullState -> Phase -> Time.Posix -> Time.Posix -> Time.Posix -> Time.Posix -> ToastytradeSellModel
+toastytradeModelFromGetFullStateVars : TTSell.GetFullState -> Phase -> Time.Posix -> Time.Posix -> Time.Posix -> Time.Posix -> TTSellModel
 toastytradeModelFromGetFullStateVars fullState phase phaseStartTime autorecallInterval depositDeadlineInterval autoreleaseInterval =
     { balance = fullState.balance
     , phase = phase
