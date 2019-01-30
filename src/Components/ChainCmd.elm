@@ -9,14 +9,14 @@ type ChainCmdOrder msg
     | None
 
 
-custom : TxSentry.CustomSend msg -> Eth.Types.Send -> ChainCmdOrder msg
-custom customSend txParams =
-    CustomSend customSend txParams
-
-
 none : ChainCmdOrder msg
 none =
     None
+
+
+custom : TxSentry.CustomSend msg -> Eth.Types.Send -> ChainCmdOrder msg
+custom customSend txParams =
+    CustomSend customSend txParams
 
 
 execute : TxSentry.TxSentry msg -> ChainCmdOrder msg -> ( TxSentry.TxSentry msg, Cmd msg )

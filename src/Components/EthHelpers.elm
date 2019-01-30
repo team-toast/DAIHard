@@ -1,4 +1,4 @@
-module EthHelpers exposing (EthNode, addressIfNot0x0, bigIntToTime, ethNode, getLogAt)
+module EthHelpers exposing (EthNode, addressIfNot0x0, ethNode, getLogAt)
 
 import Array
 import BigInt exposing (BigInt)
@@ -6,7 +6,6 @@ import Eth.Net as Net exposing (NetworkId(..))
 import Eth.Sentry.Tx as TxSentry
 import Eth.Types exposing (Address, HttpProvider, WebsocketProvider)
 import Eth.Utils
-import Time
 
 
 type alias EthNode =
@@ -32,13 +31,6 @@ ethNode networkId =
 
         _ ->
             EthNode "UnknownEthNetwork" "UnknownEthNetwork"
-
-
-bigIntToTime : BigInt -> Maybe Time.Posix
-bigIntToTime bigint =
-    BigInt.toString bigint
-        |> String.toInt
-        |> Maybe.map (\t -> Time.millisToPosix (t * 1000))
 
 
 addressIfNot0x0 : Address -> Maybe Address

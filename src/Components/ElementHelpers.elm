@@ -8,6 +8,11 @@ import Time
 import TokenValue exposing (TokenValue)
 
 
+sectionHeading : String -> Element.Element a
+sectionHeading s =
+    Element.el [ Element.Font.size 30, Element.Font.bold ] (Element.text s)
+
+
 initiator : List (Element.Attribute a) -> Element.Element a
 initiator attributes =
     Element.el (attributes ++ [ Element.Font.color (Element.rgb255 0 255 0) ]) (Element.text "Initiator")
@@ -28,6 +33,14 @@ sectionReference name =
     Element.el [ Element.Font.bold ] (Element.text name)
 
 
+fakeLink : String -> Element.Element a
+fakeLink name =
+    Element.link []
+        { url = "#"
+        , label = Element.text name
+        }
+
+
 tokenValue : TokenValue -> Element.Element a
 tokenValue tv =
     let
@@ -46,12 +59,9 @@ usdValue tv =
     Element.el [ Element.Font.color (Element.rgb255 0 0 255) ] (Element.text s)
 
 
-fakeLink : String -> Element.Element a
-fakeLink name =
-    Element.link []
-        { url = "#"
-        , label = Element.text name
-        }
+clauseList : List (Element.Element a) -> Element.Element a
+clauseList clauseElements =
+    Element.column [ Element.spacing 30 ] clauseElements
 
 
 smallInput : String -> String -> (String -> a) -> Element.Element a
@@ -62,11 +72,6 @@ smallInput labelStr valueStr msgConstructor =
         , placeholder = Nothing
         , label = Element.Input.labelHidden labelStr
         }
-
-
-clauseList : List (Element.Element a) -> Element.Element a
-clauseList clauseElements =
-    Element.column [ Element.spacing 30 ] clauseElements
 
 
 timeInput : String -> String -> (String -> a) -> Element.Element a
@@ -80,8 +85,3 @@ timeInput labelStr value msgConstructor =
             }
         , Element.text " days"
         ]
-
-
-sectionHeading : String -> Element.Element a
-sectionHeading s =
-    Element.el [ Element.Font.size 30, Element.Font.bold ] (Element.text s)

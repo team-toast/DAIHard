@@ -1,4 +1,4 @@
-module TimeHelpers exposing (add, daysStrToMaybePosix, isNegative, posixToMillisBigInt, posixToSeconds, posixToSecondsBigInt, sub)
+module TimeHelpers exposing (add, daysStrToMaybePosix, isNegative, posixToMillisBigInt, posixToSeconds, posixToSecondsBigInt, secondsBigIntToMaybePosix, sub)
 
 import BigInt exposing (BigInt)
 import Time
@@ -23,6 +23,13 @@ sub t1 t2 =
 isNegative : Time.Posix -> Bool
 isNegative t =
     Time.posixToMillis t < 0
+
+
+secondsBigIntToMaybePosix : BigInt -> Maybe Time.Posix
+secondsBigIntToMaybePosix bigint =
+    BigInt.toString bigint
+        |> String.toInt
+        |> Maybe.map (\t -> Time.millisToPosix (t * 1000))
 
 
 daysStrToMaybePosix : String -> Maybe Time.Posix

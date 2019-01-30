@@ -181,16 +181,16 @@ toastytradeModelFromGetFullState fullState =
             TTExtras.bigIntToPhase fullState.phase
 
         phaseStartTimeResult =
-            EthHelpers.bigIntToTime fullState.phaseStartTimestamp
+            TimeHelpers.secondsBigIntToMaybePosix fullState.phaseStartTimestamp
 
         autorecallIntervalResult =
-            EthHelpers.bigIntToTime fullState.autorecallInterval
+            TimeHelpers.secondsBigIntToMaybePosix fullState.autorecallInterval
 
         depositDeadlineIntervalResult =
-            EthHelpers.bigIntToTime fullState.depositDeadlineInterval
+            TimeHelpers.secondsBigIntToMaybePosix fullState.depositDeadlineInterval
 
         autoreleaseIntervalResult =
-            EthHelpers.bigIntToTime fullState.autoreleaseInterval
+            TimeHelpers.secondsBigIntToMaybePosix fullState.autoreleaseInterval
     in
     Maybe.map5 (toastytradeModelFromGetFullStateVars fullState) phaseResult phaseStartTimeResult autorecallIntervalResult depositDeadlineIntervalResult autoreleaseIntervalResult
 

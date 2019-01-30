@@ -18,6 +18,31 @@ tokenValue numDecimals_ string =
         }
 
 
+empty : Int -> TokenValue
+empty numDecimals_ =
+    TokenValue
+        { numDecimals = numDecimals_
+        , string = ""
+        }
+
+
+updateViaBigInt : TokenValue -> BigInt -> TokenValue
+updateViaBigInt (TokenValue tokens) newBigIntValue =
+    let
+        newString =
+            evmValueToString tokens.numDecimals newBigIntValue
+    in
+    TokenValue { tokens | string = newString }
+
+
+updateViaString : TokenValue -> String -> TokenValue
+updateViaString (TokenValue originalTokens) newString =
+    TokenValue
+        { numDecimals = originalTokens.numDecimals
+        , string = newString
+        }
+
+
 numDecimals : TokenValue -> Int
 numDecimals tokens_ =
     case tokens_ of
@@ -37,14 +62,6 @@ toBigInt tokens =
     stringToEvmValue (numDecimals tokens) (getString tokens)
 
 
-empty : Int -> TokenValue
-empty numDecimals_ =
-    TokenValue
-        { numDecimals = numDecimals_
-        , string = ""
-        }
-
-
 renderToString : Maybe Int -> TokenValue -> Maybe String
 renderToString maxDigitsAfterDecimal tokens =
     case toBigInt tokens of
@@ -60,23 +77,6 @@ renderToString maxDigitsAfterDecimal tokens =
                     Just maxDigits ->
                         evmValueToTruncatedString (numDecimals tokens) maxDigits evmValue
                 )
-
-
-updateViaString : TokenValue -> String -> TokenValue
-updateViaString (TokenValue originalTokens) newString =
-    TokenValue
-        { numDecimals = originalTokens.numDecimals
-        , string = newString
-        }
-
-
-updateViaBigInt : TokenValue -> BigInt -> TokenValue
-updateViaBigInt (TokenValue tokens) newBigIntValue =
-    let
-        newString =
-            evmValueToString tokens.numDecimals newBigIntValue
-    in
-    TokenValue { tokens | string = newString }
 
 
 
