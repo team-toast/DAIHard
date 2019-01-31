@@ -4,6 +4,7 @@ import Browser
 import ChainCmd exposing (ChainCmdOrder)
 import Create
 import Element
+import Element.Background
 import Element.Border
 import Element.Input
 import ElementHelpers as EH
@@ -228,6 +229,7 @@ view maybeValidModel =
                 mainElementAttributes =
                     [ Element.width Element.fill
                     , Element.paddingXY 35 5
+                    , Element.Background.color (Element.rgb255 10 50 90)
                     ]
 
                 mainColumnAttributes =
@@ -249,7 +251,7 @@ view maybeValidModel =
 
 headerElement : ValidModel -> Element.Element Msg
 headerElement model =
-    Element.none
+    Element.el [ Element.height (Element.px 100) ] Element.none
 
 
 

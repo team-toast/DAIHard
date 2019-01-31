@@ -311,13 +311,13 @@ viewElement : Model -> Element.Element Msg
 viewElement model =
     let
         header =
-            Element.el [ Element.Font.size 36 ] (Element.text "Uncoining Contract - draft ")
+            EH.pageTitle "Create Uncoining Contract"
 
         bodyStyles =
             [ Element.width Element.fill
             , Element.Border.rounded 15
-            , Element.Border.color (Element.rgb255 0 255 255)
-            , Element.Background.color (Element.rgb255 200 200 255)
+            , Element.Border.color (Element.rgb 0 1 1)
+            , Element.Background.color (Element.rgb 0.8 0.8 0.8)
             , Element.padding 20
             ]
 
@@ -333,7 +333,8 @@ viewElement model =
 
         openerSection =
             Element.textColumn [ Element.width Element.fill ]
-                [ Element.paragraph []
+                [ -- contractParametersForm model
+                  Element.paragraph []
                     [ Element.text "Uncoining "
                     , EH.smallInput "uncoiningAmount" (TokenValue.getString model.uncoiningAmount) UncoiningAmountChanged
                     , Element.text " Dai, with a summon fee of "
@@ -643,10 +644,25 @@ viewElement model =
                 , label = Element.text "Create!"
                 }
     in
-    Element.column []
+    Element.column [ Element.spacing 20 ]
         [ header
         , body
         ]
+
+
+contractParametersForm : Model -> Element.Element Msg
+contractParametersForm model =
+    [ ( "Uncoining Amount", EH.smallInput "uncoiningAmount" (TokenValue.getString model.uncoiningAmount) UncoiningAmountChanged )
+    , ( "Summon Fee", EH.smallInput "summonfee" (TokenValue.getString model.summonFee) SummonFeeChanged )
+    ]
+        |> List.map
+            (\inputPair ->
+                Element.row []
+                    [ Element.paragraph [ Element.width (Element.px 300), Element.Background.color (Element.rgb 1 0 1) ] [ Element.text (Tuple.first inputPair) ]
+                    , Tuple.second inputPair
+                    ]
+            )
+        |> Element.column []
 
 
 outputMaybeUserAddress : Maybe Address -> Element.Element msg
@@ -656,4 +672,4 @@ outputMaybeUserAddress maybeUserAddress =
             Element.text (Eth.Utils.addressToString userAddress)
 
         Nothing ->
-            Element.el [ Element.Font.color (Element.rgb255 255 0 0) ] (Element.text "error: no account found. Unlock Metamask?")
+            Element.el [ Element.Font.color (Element.rgb 1 0 0) ] (Element.text "error: no account found. Unlock Metamask?")
