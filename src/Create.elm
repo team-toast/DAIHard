@@ -317,22 +317,27 @@ viewElement model =
             [ Element.Border.rounded 15
             , Element.Background.color EH.subpageBackgroundColor
             , Element.padding 20
+            , Element.width Element.fill
             ]
 
         body =
             Element.column bodyStyles
-                [ openerSection
-                , transferMethodsSection
-                , openPhaseSection
-                , commitedPhaseSection
-                , claimedPhaseSection
-                , createButton
+                [ parametersSection
+
+                --, openerSection
+                --, transferMethodsSection
+                --, openPhaseSection
+                --, commitedPhaseSection
+                --, claimedPhaseSection
+                --, createButton
                 ]
+
+        parametersSection =
+            contractParametersFormElement model
 
         openerSection =
             Element.column []
-                [ contractParametersFormElement model
-                , Element.paragraph []
+                [ Element.paragraph []
                     [ Element.text "Uncoining "
                     , EH.smallInput "uncoiningAmount" (TokenValue.getString model.uncoiningAmount) UncoiningAmountChanged
                     , Element.text " Dai, with a summon fee of "
@@ -642,7 +647,7 @@ viewElement model =
                 , label = Element.text "Create!"
                 }
     in
-    Element.column [ Element.spacing 20 ]
+    Element.column [ Element.spacing 20, Element.width Element.fill ]
         [ header
         , body
         ]
@@ -657,6 +662,8 @@ contractParametersForm : Model -> Element.Element Msg
 contractParametersForm model =
     [ ( "Uncoining Amount", EH.smallInput "uncoiningAmount" (TokenValue.getString model.uncoiningAmount) UncoiningAmountChanged )
     , ( "Summon Fee", EH.smallInput "summonfee" (TokenValue.getString model.summonFee) SummonFeeChanged )
+    , ( "Fiat Transfer Methods", fiatTransferMethodsInputElement model )
+    , ( "Phase Time Limits", phaseTimeLimitInputsElement model )
     ]
         |> List.map
             (\inputPair ->
@@ -667,6 +674,16 @@ contractParametersForm model =
                     ]
             )
         |> Element.column []
+
+
+fiatTransferMethodsInputElement : Model -> Element.Element Msg
+fiatTransferMethodsInputElement model =
+    Element.text "hi"
+
+
+phaseTimeLimitInputsElement : Model -> Element.Element Msg
+phaseTimeLimitInputsElement model =
+    Element.text "hi"
 
 
 outputMaybeUserAddress : Maybe Address -> Element.Element msg
