@@ -229,7 +229,7 @@ view maybeValidModel =
                 mainElementAttributes =
                     [ Element.width Element.fill
                     , Element.paddingXY 35 5
-                    , Element.Background.color (Element.rgb255 10 50 90)
+                    , Element.Background.color EH.pageBackgroundColor
                     ]
 
                 mainColumnAttributes =

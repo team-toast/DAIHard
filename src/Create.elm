@@ -314,10 +314,8 @@ viewElement model =
             EH.pageTitle "Create Uncoining Contract"
 
         bodyStyles =
-            [ Element.width Element.fill
-            , Element.Border.rounded 15
-            , Element.Border.color (Element.rgb 0 1 1)
-            , Element.Background.color (Element.rgb 0.8 0.8 0.8)
+            [ Element.Border.rounded 15
+            , Element.Background.color EH.subpageBackgroundColor
             , Element.padding 20
             ]
 
@@ -332,9 +330,9 @@ viewElement model =
                 ]
 
         openerSection =
-            Element.textColumn [ Element.width Element.fill ]
-                [ -- contractParametersForm model
-                  Element.paragraph []
+            Element.column []
+                [ contractParametersFormElement model
+                , Element.paragraph []
                     [ Element.text "Uncoining "
                     , EH.smallInput "uncoiningAmount" (TokenValue.getString model.uncoiningAmount) UncoiningAmountChanged
                     , Element.text " Dai, with a summon fee of "
@@ -650,6 +648,11 @@ viewElement model =
         ]
 
 
+contractParametersFormElement : Model -> Element.Element Msg
+contractParametersFormElement model =
+    EH.block "Contract parameters" (contractParametersForm model)
+
+
 contractParametersForm : Model -> Element.Element Msg
 contractParametersForm model =
     [ ( "Uncoining Amount", EH.smallInput "uncoiningAmount" (TokenValue.getString model.uncoiningAmount) UncoiningAmountChanged )
@@ -657,8 +660,9 @@ contractParametersForm model =
     ]
         |> List.map
             (\inputPair ->
-                Element.row []
-                    [ Element.paragraph [ Element.width (Element.px 300), Element.Background.color (Element.rgb 1 0 1) ] [ Element.text (Tuple.first inputPair) ]
+                Element.row [ Element.spacing 8 ]
+                    [ Element.el [ Element.width (Element.px 200) ]
+                        (Element.paragraph [ Element.width Element.shrink, Element.alignRight ] [ Element.text (Tuple.first inputPair) ])
                     , Tuple.second inputPair
                     ]
             )
