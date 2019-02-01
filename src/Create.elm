@@ -7,12 +7,10 @@ module Create exposing
     , viewElement
     )
 
-import Abi.Decode
 import BigInt
 import ChainCmd exposing (ChainCmdOrder)
 import Contracts.ERC20Token as TokenContract
 import Contracts.ToastytradeExtras as TTExtras
-import Contracts.ToastytradeFactory as TTFactoryContract
 import Element
 import Element.Background
 import Element.Border
@@ -47,11 +45,6 @@ type alias Model =
     , depositDeadlineInterval : Maybe Time.Posix
     , autoreleaseInterval : Maybe Time.Posix
     }
-
-
-type OrderType
-    = Sell
-    | Buy
 
 
 type Msg
@@ -655,41 +648,70 @@ viewElement model =
 
 contractParametersFormElement : Model -> Element.Element Msg
 contractParametersFormElement model =
-    EH.block "Contract parameters" (contractParametersForm model)
+    EH.fillWidthBlock "Contract parameters" (contractParametersForm model)
 
 
 contractParametersForm : Model -> Element.Element Msg
 contractParametersForm model =
-    [ ( "Uncoining Amount", EH.smallInput "uncoiningAmount" (TokenValue.getString model.uncoiningAmount) UncoiningAmountChanged )
-    , ( "Summon Fee", EH.smallInput "summonfee" (TokenValue.getString model.summonFee) SummonFeeChanged )
-    , ( "Fiat Transfer Methods", transferMethodsInputElement model )
-    , ( "Phase Time Limits", phaseTimeLimitInputsElement model )
-    ]
-        |> List.map
-            (\inputPair ->
-                Element.row [ Element.spacing 8 ]
-                    [ Element.el [ Element.width (Element.px 200) ]
-                        (Element.paragraph [ Element.width Element.shrink, Element.alignRight ] [ Element.text (Tuple.first inputPair) ])
-                    , Tuple.second inputPair
-                    ]
-            )
-        |> Element.column [ Element.spacing 10 ]
+    let
+        columnHeader title =
+            Element.el [ Element.Font.size 24, Element.Font.bold, Element.centerX ] (Element.text title)
 
+        daiAmountInputs =
+            let
+                nameAndElementToRow tuple =
+                    Element.row [ Element.spacing 8 ]
+                        [ Element.el [ Element.width (Element.px 200) ]
+                            (Element.paragraph [ Element.width Element.shrink, Element.alignLeft ] [ Element.text (Tuple.first tuple) ])
+                        , Tuple.second tuple
+                        ]
+            in
+            Element.column [ Element.width (Element.fillPortion 1), Element.spacing 8, Element.alignTop ]
+                (columnHeader "Dai Amounts"
+                    :: ([ ( "Uncoining Amount", EH.smallInput "uncoiningAmount" (TokenValue.getString model.uncoiningAmount) UncoiningAmountChanged )
+                        , ( "Summon Fee", EH.smallInput "summonfee" (TokenValue.getString model.summonFee) SummonFeeChanged )
+                        ]
+                            |> List.map nameAndElementToRow
+                       )
+                )
 
-transferMethodsInputElement : Model -> Element.Element Msg
-transferMethodsInputElement model =
-    Element.Input.multiline [ Element.width (Element.px 700) ]
-        { onChange = TransferMethodsChanged
-        , text = model.transferMethods
-        , placeholder = Just (Element.Input.placeholder [] (Element.paragraph [] [ Element.text "Be specific, and list multiple options if possible. Keep in mind that many Responders find offers via keyword searches." ]))
-        , label = Element.Input.labelHidden "transferMethods"
-        , spellcheck = False
-        }
+        transferMethodsInput =
+            Element.column [ Element.width (Element.fillPortion 3), Element.spacing 8, Element.alignTop ]
+                [ columnHeader "Fiat Transfer Methods"
+                , Element.Input.multiline [ Element.width Element.fill, Element.height (Element.px 150) ]
+                    { onChange = TransferMethodsChanged
+                    , text = model.transferMethods
+                    , placeholder = Just (Element.Input.placeholder [] (Element.paragraph [] [ Element.text "Be specific, and consider listing multiple options. Keep in mind that many Responders find offers via keyword searches." ]))
+                    , label = Element.Input.labelHidden "transferMethods"
+                    , spellcheck = False
+                    }
+                ]
 
-
-phaseTimeLimitInputsElement : Model -> Element.Element Msg
-phaseTimeLimitInputsElement model =
-    Element.text "hi"
+        intervalInputs =
+            let
+                nameAndElementToReversedRow tuple =
+                    Element.row [ Element.spacing 8 ]
+                        [ Tuple.second tuple
+                        , Element.el [ Element.width (Element.px 170) ]
+                            (Element.paragraph [ Element.width Element.shrink, Element.alignLeft ] [ Element.text (Tuple.first tuple) ])
+                        ]
+            in
+            Element.column [ Element.width (Element.fillPortion 1), Element.spacing 8, Element.alignTop ]
+                [ columnHeader "Phase Time Limits"
+                , Element.column [ Element.spacing 8 ]
+                    ([ ( "Autorecall", EH.timeInput "autorecall interval" model.auotrecallIntervalInput AutorecallIntervalChanged )
+                     , ( "Deposit Deadline", EH.timeInput "deposit deadline interval" model.depositDeadlineIntervalInput DepositDeadlineIntervalChanged )
+                     , ( "Autorelease", EH.timeInput "autorelease interval" model.autoreleaseIntervalInput AutoreleaseIntervalChanged )
+                     ]
+                        |> List.map nameAndElementToReversedRow
+                    )
+                ]
+    in
+    Element.row [ Element.width Element.fill, Element.spacing 20 ]
+        [ daiAmountInputs
+        , transferMethodsInput
+        , intervalInputs
+        ]
 
 
 outputMaybeUserAddress : Maybe Address -> Element.Element msg

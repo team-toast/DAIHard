@@ -1,4 +1,4 @@
-module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, clauseList, fakeLink, initiator, methodName, pageBackgroundColor, pageTitle, responder, roundBottomCorners, roundTopCorners, sectionHeading, sectionReference, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, tokenValue, usdValue)
+module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, clauseList, fakeLink, fillWidthBlock, initiator, methodName, pageBackgroundColor, pageTitle, responder, roundBottomCorners, roundTopCorners, sectionHeading, sectionReference, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, tokenValue, usdValue)
 
 import Element
 import Element.Background
@@ -64,12 +64,17 @@ sectionHeading s =
 
 block : String -> Element.Element msg -> Element.Element msg
 block title bodyElement =
+    blockPlusAttributes title bodyElement []
+
+
+blockPlusAttributes : String -> Element.Element msg -> List (Element.Attribute msg) -> Element.Element msg
+blockPlusAttributes title bodyElement attributes =
     let
         elementStyles =
-            []
+            attributes
 
         headerStyles =
-            [ Element.padding 5
+            [ Element.padding 10
             , Element.width Element.fill
             , Element.Background.color blockBorderColor
             , roundTopCorners 10
@@ -78,19 +83,25 @@ block title bodyElement =
         bodyStyles =
             [ Element.Background.color blockBackgroundColor
             , Element.padding 20
+            , Element.width Element.fill
             , roundBottomCorners 10
             , Element.Border.color blockBorderColor
-            , Element.Border.width 1
+            , Element.Border.width 3
             ]
     in
     Element.column elementStyles
         [ Element.el headerStyles
             (Element.el
-                [ Element.Font.color white, Element.centerX ]
+                [ Element.Font.size 28, Element.Font.color white, Element.centerX ]
                 (Element.text title)
             )
         , Element.el bodyStyles bodyElement
         ]
+
+
+fillWidthBlock : String -> Element.Element msg -> Element.Element msg
+fillWidthBlock title bodyElement =
+    blockPlusAttributes title bodyElement [ Element.width Element.fill ]
 
 
 
@@ -177,7 +188,7 @@ smallInput labelStr valueStr msgConstructor =
 timeInput : String -> String -> (String -> a) -> Element.Element a
 timeInput labelStr value msgConstructor =
     Element.row []
-        [ Element.Input.text []
+        [ Element.Input.text [ Element.width (Element.px 50) ]
             { onChange = msgConstructor
             , text = value
             , placeholder = Nothing
