@@ -662,7 +662,7 @@ contractParametersForm : Model -> Element.Element Msg
 contractParametersForm model =
     [ ( "Uncoining Amount", EH.smallInput "uncoiningAmount" (TokenValue.getString model.uncoiningAmount) UncoiningAmountChanged )
     , ( "Summon Fee", EH.smallInput "summonfee" (TokenValue.getString model.summonFee) SummonFeeChanged )
-    , ( "Fiat Transfer Methods", fiatTransferMethodsInputElement model )
+    , ( "Fiat Transfer Methods", transferMethodsInputElement model )
     , ( "Phase Time Limits", phaseTimeLimitInputsElement model )
     ]
         |> List.map
@@ -673,12 +673,18 @@ contractParametersForm model =
                     , Tuple.second inputPair
                     ]
             )
-        |> Element.column []
+        |> Element.column [ Element.spacing 10 ]
 
 
-fiatTransferMethodsInputElement : Model -> Element.Element Msg
-fiatTransferMethodsInputElement model =
-    Element.text "hi"
+transferMethodsInputElement : Model -> Element.Element Msg
+transferMethodsInputElement model =
+    Element.Input.multiline [ Element.width (Element.px 700) ]
+        { onChange = TransferMethodsChanged
+        , text = model.transferMethods
+        , placeholder = Just (Element.Input.placeholder [] (Element.paragraph [] [ Element.text "Be specific, and list multiple options if possible. Keep in mind that many Responders find offers via keyword searches." ]))
+        , label = Element.Input.labelHidden "transferMethods"
+        , spellcheck = False
+        }
 
 
 phaseTimeLimitInputsElement : Model -> Element.Element Msg

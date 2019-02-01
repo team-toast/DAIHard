@@ -86,7 +86,7 @@ block title bodyElement =
     Element.column elementStyles
         [ Element.el headerStyles
             (Element.el
-                [ Element.Font.color white ]
+                [ Element.Font.color white, Element.centerX ]
                 (Element.text title)
             )
         , Element.el bodyStyles bodyElement
