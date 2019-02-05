@@ -1,4 +1,4 @@
-module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, clauseList, fakeLink, fillWidthBlock, initiator, methodName, pageBackgroundColor, pageTitle, responder, roundBottomCorners, roundTopCorners, sectionHeading, sectionReference, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, tokenValue, usdValue)
+module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, clauseList, contractShadowAttribute, fakeLink, fillWidthBlock, initiator, methodName, pageBackgroundColor, pageTitle, responder, roundBottomCorners, roundTopCorners, sectionHeading, sectionReference, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, tokenValue, usdValue)
 
 import Element
 import Element.Background
@@ -148,7 +148,7 @@ tokenValue : TokenValue -> Element.Element a
 tokenValue tv =
     let
         s =
-            Maybe.withDefault "?" (TokenValue.renderToString Nothing tv) ++ " Dai"
+            TokenValue.renderToString Nothing tv ++ " Dai"
     in
     Element.el [ Element.Font.color (Element.rgb 0 0 1) ] (Element.text s)
 
@@ -157,7 +157,7 @@ usdValue : TokenValue -> Element.Element a
 usdValue tv =
     let
         s =
-            "US$" ++ Maybe.withDefault "?" (TokenValue.renderToString (Just 2) tv)
+            "US$" ++ TokenValue.renderToString (Just 2) tv
     in
     Element.el [ Element.Font.color (Element.rgb 0 0 1) ] (Element.text s)
 
@@ -199,7 +199,7 @@ timeInput labelStr value msgConstructor =
 
 
 
--- STYLE HELPESR
+-- STYLE HELPERS
 
 
 roundBottomCorners : Int -> Element.Attribute msg
@@ -219,6 +219,16 @@ roundTopCorners r =
         , topRight = r
         , bottomLeft = 0
         , bottomRight = 0
+        }
+
+
+contractShadowAttribute : Element.Attribute msg
+contractShadowAttribute =
+    Element.Border.shadow
+        { offset = ( -3, 10 )
+        , size = 0
+        , blur = 5
+        , color = Element.rgb 0.5 0.5 0.5
         }
 
 

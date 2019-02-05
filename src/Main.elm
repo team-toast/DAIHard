@@ -251,7 +251,7 @@ view maybeValidModel =
 
 headerElement : ValidModel -> Element.Element Msg
 headerElement model =
-    Element.el [ Element.height (Element.px 100) ] Element.none
+    Element.el [ Element.height (Element.px 20) ] Element.none
 
 
 
