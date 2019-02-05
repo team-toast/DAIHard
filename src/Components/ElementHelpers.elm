@@ -1,4 +1,4 @@
-module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, clauseList, contractShadowAttribute, fakeLink, fillWidthBlock, initiator, methodName, pageBackgroundColor, pageTitle, responder, roundBottomCorners, roundTopCorners, sectionHeading, sectionReference, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, tokenValue, usdValue)
+module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, clauseList, contractShadowAttribute, fakeLink, fillWidthBlock, initiator, methodName, pageBackgroundColor, pageTitle, responder, roundBottomCorners, roundTopCorners, sectionHeading, sectionReference, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, timeValue, tokenValue, usdValue)
 
 import Element
 import Element.Background
@@ -7,6 +7,7 @@ import Element.Font
 import Element.Input
 import List
 import Time
+import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
@@ -158,6 +159,19 @@ usdValue tv =
     let
         s =
             "US$" ++ TokenValue.renderToString (Just 2) tv
+    in
+    Element.el [ Element.Font.color (Element.rgb 0 0 1) ] (Element.text s)
+
+
+timeValue : Time.Posix -> Element.Element a
+timeValue tv =
+    let
+        s =
+            (TimeHelpers.posixToSeconds tv
+                // (60 * 60 * 24)
+                |> String.fromInt
+            )
+                ++ " days"
     in
     Element.el [ Element.Font.color (Element.rgb 0 0 1) ] (Element.text s)
 

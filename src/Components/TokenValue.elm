@@ -1,4 +1,4 @@
-module TokenValue exposing (TokenValue, add, div, divByInt, fromString, getValueBigInt, mul, numDecimals, renderToString, sub, tokenValue, updateValue, updateViaString, zero)
+module TokenValue exposing (TokenValue, add, div, divByInt, fromString, getBigInt, mul, numDecimals, renderToString, sub, tokenValue, updateValue, updateViaString, zero)
 
 import BigInt exposing (BigInt)
 
@@ -53,8 +53,8 @@ numDecimals tokens_ =
             tokens.numDecimals
 
 
-getValueBigInt : TokenValue -> BigInt
-getValueBigInt (TokenValue tokens) =
+getBigInt : TokenValue -> BigInt
+getBigInt (TokenValue tokens) =
     tokens.value
 
 
@@ -62,48 +62,48 @@ renderToString : Maybe Int -> TokenValue -> String
 renderToString maxDigitsAfterDecimal tokens =
     case maxDigitsAfterDecimal of
         Nothing ->
-            evmValueToString (numDecimals tokens) (getValueBigInt tokens)
+            evmValueToString (numDecimals tokens) (getBigInt tokens)
 
         Just maxDigits ->
-            evmValueToTruncatedString (numDecimals tokens) maxDigits (getValueBigInt tokens)
+            evmValueToTruncatedString (numDecimals tokens) maxDigits (getBigInt tokens)
 
 
 add : TokenValue -> TokenValue -> TokenValue
 add t1 t2 =
     BigInt.add
-        (getValueBigInt t1)
-        (getValueBigInt t2)
+        (getBigInt t1)
+        (getBigInt t2)
         |> updateValue t1
 
 
 sub : TokenValue -> TokenValue -> TokenValue
 sub t1 t2 =
     BigInt.sub
-        (getValueBigInt t1)
-        (getValueBigInt t2)
+        (getBigInt t1)
+        (getBigInt t2)
         |> updateValue t1
 
 
 mul : TokenValue -> TokenValue -> TokenValue
 mul t1 t2 =
     BigInt.mul
-        (getValueBigInt t1)
-        (getValueBigInt t2)
+        (getBigInt t1)
+        (getBigInt t2)
         |> updateValue t1
 
 
 div : TokenValue -> TokenValue -> TokenValue
 div t1 t2 =
     BigInt.div
-        (getValueBigInt t1)
-        (getValueBigInt t2)
+        (getBigInt t1)
+        (getBigInt t2)
         |> updateValue t1
 
 
 divByInt : TokenValue -> Int -> TokenValue
 divByInt t i =
     BigInt.div
-        (getValueBigInt t)
+        (getBigInt t)
         (BigInt.fromInt i)
         |> updateValue t
 
