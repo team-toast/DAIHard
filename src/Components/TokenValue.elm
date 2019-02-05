@@ -1,4 +1,4 @@
-module TokenValue exposing (TokenValue, empty, getString, numDecimals, renderToString, toBigInt, tokenValue, updateViaBigInt, updateViaString)
+module TokenValue exposing (TokenValue, add, div, divByInt, fromString, getBigInt, mul, numDecimals, renderToString, sub, tokenValue, updateValue, updateViaString, zero)
 
 import BigInt exposing (BigInt)
 
@@ -6,41 +6,44 @@ import BigInt exposing (BigInt)
 type TokenValue
     = TokenValue
         { numDecimals : Int
-        , string : String
+        , value : BigInt
         }
 
 
-tokenValue : Int -> String -> TokenValue
-tokenValue numDecimals_ string =
+tokenValue : Int -> BigInt -> TokenValue
+tokenValue numDecimals_ value_ =
     TokenValue
         { numDecimals = numDecimals_
-        , string = string
+        , value = value_
         }
 
 
-empty : Int -> TokenValue
-empty numDecimals_ =
+fromString : Int -> String -> Maybe TokenValue
+fromString numDecimals_ s =
+    updateViaString (zero numDecimals_) s
+
+
+zero : Int -> TokenValue
+zero numDecimals_ =
     TokenValue
         { numDecimals = numDecimals_
-        , string = ""
+        , value = BigInt.fromInt 0
         }
 
 
-updateViaBigInt : TokenValue -> BigInt -> TokenValue
-updateViaBigInt (TokenValue tokens) newBigIntValue =
-    let
-        newString =
-            evmValueToString tokens.numDecimals newBigIntValue
-    in
-    TokenValue { tokens | string = newString }
+updateValue : TokenValue -> BigInt -> TokenValue
+updateValue (TokenValue tokens) newValue =
+    TokenValue { tokens | value = newValue }
 
 
-updateViaString : TokenValue -> String -> TokenValue
-updateViaString (TokenValue originalTokens) newString =
-    TokenValue
-        { numDecimals = originalTokens.numDecimals
-        , string = newString
-        }
+updateViaString : TokenValue -> String -> Maybe TokenValue
+updateViaString (TokenValue originalTokens) s =
+    case stringToEvmValue originalTokens.numDecimals s of
+        Just newValue ->
+            Just (updateValue (TokenValue originalTokens) newValue)
+
+        Nothing ->
+            Nothing
 
 
 numDecimals : TokenValue -> Int
@@ -50,33 +53,59 @@ numDecimals tokens_ =
             tokens.numDecimals
 
 
-getString : TokenValue -> String
-getString tokens_ =
-    case tokens_ of
-        TokenValue tokens ->
-            tokens.string
+getBigInt : TokenValue -> BigInt
+getBigInt (TokenValue tokens) =
+    tokens.value
 
 
-toBigInt : TokenValue -> Maybe BigInt
-toBigInt tokens =
-    stringToEvmValue (numDecimals tokens) (getString tokens)
-
-
-renderToString : Maybe Int -> TokenValue -> Maybe String
+renderToString : Maybe Int -> TokenValue -> String
 renderToString maxDigitsAfterDecimal tokens =
-    case toBigInt tokens of
+    case maxDigitsAfterDecimal of
         Nothing ->
-            Nothing
+            evmValueToString (numDecimals tokens) (getBigInt tokens)
 
-        Just evmValue ->
-            Just
-                (case maxDigitsAfterDecimal of
-                    Nothing ->
-                        evmValueToString (numDecimals tokens) evmValue
+        Just maxDigits ->
+            evmValueToTruncatedString (numDecimals tokens) maxDigits (getBigInt tokens)
 
-                    Just maxDigits ->
-                        evmValueToTruncatedString (numDecimals tokens) maxDigits evmValue
-                )
+
+add : TokenValue -> TokenValue -> TokenValue
+add t1 t2 =
+    BigInt.add
+        (getBigInt t1)
+        (getBigInt t2)
+        |> updateValue t1
+
+
+sub : TokenValue -> TokenValue -> TokenValue
+sub t1 t2 =
+    BigInt.sub
+        (getBigInt t1)
+        (getBigInt t2)
+        |> updateValue t1
+
+
+mul : TokenValue -> TokenValue -> TokenValue
+mul t1 t2 =
+    BigInt.mul
+        (getBigInt t1)
+        (getBigInt t2)
+        |> updateValue t1
+
+
+div : TokenValue -> TokenValue -> TokenValue
+div t1 t2 =
+    BigInt.div
+        (getBigInt t1)
+        (getBigInt t2)
+        |> updateValue t1
+
+
+divByInt : TokenValue -> Int -> TokenValue
+divByInt t i =
+    BigInt.div
+        (getBigInt t)
+        (BigInt.fromInt i)
+        |> updateValue t
 
 
 

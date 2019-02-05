@@ -1,4 +1,4 @@
-module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, clauseList, fakeLink, initiator, methodName, pageBackgroundColor, pageTitle, responder, roundBottomCorners, roundTopCorners, sectionHeading, sectionReference, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, tokenValue, usdValue)
+module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, clauseList, contractShadowAttribute, fakeLink, fillWidthBlock, initiator, methodName, pageBackgroundColor, pageTitle, responder, roundBottomCorners, roundTopCorners, sectionHeading, sectionReference, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, timeValue, tokenValue, usdValue)
 
 import Element
 import Element.Background
@@ -7,6 +7,7 @@ import Element.Font
 import Element.Input
 import List
 import Time
+import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
@@ -64,12 +65,17 @@ sectionHeading s =
 
 block : String -> Element.Element msg -> Element.Element msg
 block title bodyElement =
+    blockPlusAttributes title bodyElement []
+
+
+blockPlusAttributes : String -> Element.Element msg -> List (Element.Attribute msg) -> Element.Element msg
+blockPlusAttributes title bodyElement attributes =
     let
         elementStyles =
-            []
+            attributes
 
         headerStyles =
-            [ Element.padding 5
+            [ Element.padding 10
             , Element.width Element.fill
             , Element.Background.color blockBorderColor
             , roundTopCorners 10
@@ -78,19 +84,25 @@ block title bodyElement =
         bodyStyles =
             [ Element.Background.color blockBackgroundColor
             , Element.padding 20
+            , Element.width Element.fill
             , roundBottomCorners 10
             , Element.Border.color blockBorderColor
-            , Element.Border.width 1
+            , Element.Border.width 3
             ]
     in
     Element.column elementStyles
         [ Element.el headerStyles
             (Element.el
-                [ Element.Font.color white ]
+                [ Element.Font.size 28, Element.Font.color white, Element.centerX ]
                 (Element.text title)
             )
         , Element.el bodyStyles bodyElement
         ]
+
+
+fillWidthBlock : String -> Element.Element msg -> Element.Element msg
+fillWidthBlock title bodyElement =
+    blockPlusAttributes title bodyElement [ Element.width Element.fill ]
 
 
 
@@ -137,7 +149,7 @@ tokenValue : TokenValue -> Element.Element a
 tokenValue tv =
     let
         s =
-            Maybe.withDefault "?" (TokenValue.renderToString Nothing tv) ++ " Dai"
+            TokenValue.renderToString Nothing tv ++ " Dai"
     in
     Element.el [ Element.Font.color (Element.rgb 0 0 1) ] (Element.text s)
 
@@ -146,7 +158,20 @@ usdValue : TokenValue -> Element.Element a
 usdValue tv =
     let
         s =
-            "US$" ++ Maybe.withDefault "?" (TokenValue.renderToString (Just 2) tv)
+            "US$" ++ TokenValue.renderToString (Just 2) tv
+    in
+    Element.el [ Element.Font.color (Element.rgb 0 0 1) ] (Element.text s)
+
+
+timeValue : Time.Posix -> Element.Element a
+timeValue tv =
+    let
+        s =
+            (TimeHelpers.posixToSeconds tv
+                // (60 * 60 * 24)
+                |> String.fromInt
+            )
+                ++ " days"
     in
     Element.el [ Element.Font.color (Element.rgb 0 0 1) ] (Element.text s)
 
@@ -177,7 +202,7 @@ smallInput labelStr valueStr msgConstructor =
 timeInput : String -> String -> (String -> a) -> Element.Element a
 timeInput labelStr value msgConstructor =
     Element.row []
-        [ Element.Input.text []
+        [ Element.Input.text [ Element.width (Element.px 50) ]
             { onChange = msgConstructor
             , text = value
             , placeholder = Nothing
@@ -188,7 +213,7 @@ timeInput labelStr value msgConstructor =
 
 
 
--- STYLE HELPESR
+-- STYLE HELPERS
 
 
 roundBottomCorners : Int -> Element.Attribute msg
@@ -208,6 +233,16 @@ roundTopCorners r =
         , topRight = r
         , bottomLeft = 0
         , bottomRight = 0
+        }
+
+
+contractShadowAttribute : Element.Attribute msg
+contractShadowAttribute =
+    Element.Border.shadow
+        { offset = ( -3, 10 )
+        , size = 0
+        , blur = 5
+        , color = Element.rgb 0.5 0.5 0.5
         }
 
 

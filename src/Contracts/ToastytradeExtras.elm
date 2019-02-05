@@ -1,4 +1,4 @@
-module Contracts.ToastytradeExtras exposing (Phase(..), bigIntToPhase, createSell, phaseToString, txReceiptToCreatedToastytradeSellAddress)
+module Contracts.ToastytradeExtras exposing (FullParameters, Phase(..), UserParameters, bigIntToPhase, buildFullParameters, createSell, phaseToString, txReceiptToCreatedToastytradeSellAddress)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
@@ -75,14 +75,53 @@ phaseToString phase =
             "Closed"
 
 
-createSell : Address -> Address -> BigInt -> BigInt -> Time.Posix -> Time.Posix -> Time.Posix -> String -> Call Address
-createSell contractAddress seller valueBigInt buyerDepositBigInt autorecallInterval depositDeadlineInterval autoreleaseInterval logisticsString =
+type alias UserParameters =
+    { uncoiningAmount : TokenValue
+    , summonFee : TokenValue
+    , transferMethods : String
+    , autorecallInterval : Time.Posix
+    , depositDeadlineInterval : Time.Posix
+    , autoreleaseInterval : Time.Posix
+    }
+
+
+type alias FullParameters =
+    { initiatorAddress : Address
+    , uncoiningAmount : TokenValue
+    , summonFee : TokenValue
+    , responderDeposit : TokenValue
+    , transferMethods : String
+    , autorecallInterval : Time.Posix
+    , depositDeadlineInterval : Time.Posix
+    , autoreleaseInterval : Time.Posix
+    }
+
+
+buildFullParameters : Address -> UserParameters -> FullParameters
+buildFullParameters initiatorAddress userParameters =
+    let
+        responderDeposit =
+            TokenValue.divByInt userParameters.uncoiningAmount 3
+    in
+    { uncoiningAmount = userParameters.uncoiningAmount
+    , summonFee = userParameters.summonFee
+    , autorecallInterval = userParameters.autorecallInterval
+    , depositDeadlineInterval = userParameters.depositDeadlineInterval
+    , autoreleaseInterval = userParameters.autoreleaseInterval
+    , transferMethods = userParameters.transferMethods
+    , initiatorAddress = initiatorAddress
+    , responderDeposit = responderDeposit
+    }
+
+
+createSell : Address -> FullParameters -> Call Address
+createSell contractAddress parameters =
     Contracts.ToastytradeFactory.createToastytradeSell
         contractAddress
-        seller
-        valueBigInt
-        buyerDepositBigInt
-        (TimeHelpers.posixToSecondsBigInt autorecallInterval)
-        (TimeHelpers.posixToSecondsBigInt depositDeadlineInterval)
-        (TimeHelpers.posixToSecondsBigInt autoreleaseInterval)
-        logisticsString
+        parameters.initiatorAddress
+        (TokenValue.getBigInt parameters.uncoiningAmount)
+        (TokenValue.getBigInt parameters.responderDeposit)
+        (TimeHelpers.posixToSecondsBigInt parameters.autorecallInterval)
+        (TimeHelpers.posixToSecondsBigInt parameters.depositDeadlineInterval)
+        (TimeHelpers.posixToSecondsBigInt parameters.autoreleaseInterval)
+        parameters.transferMethods
