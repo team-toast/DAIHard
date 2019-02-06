@@ -11,7 +11,7 @@ window.addEventListener('load', function () {
                     tokenContractDecimals: 18,
                     networkId: parseInt(networkId),
                     tokenContractAddressString: "0xC4375B7De8af5a38a93548eb8453a498222C4fF2",
-                    factoryAddressString: "0xe3608bafbb88782e3e4e119f03f3b6fc8c3cf975"
+                    factoryAddressString: "0x710808c18cF3ae568317b3be8694b57CB76b20B9"
                 }
             });
             elm_ethereum_ports.txSentry(window.app.ports.txOut, app.ports.txIn, web3);
@@ -24,7 +24,7 @@ window.addEventListener('load', function () {
                 tokenContractDecimals: 18,
                 networkId: parseInt(networkId),
                 tokenContractAddressString: "0xC4375B7De8af5a38a93548eb8453a498222C4fF2",
-                factoryAddressString: "0xe3608bafbb88782e3e4e119f03f3b6fc8c3cf975"
+                factoryAddressString: "0x710808c18cF3ae568317b3be8694b57CB76b20B9"
             }
         });
         console.log("Metamask not detected.");

@@ -1,31 +1,21 @@
 [
     {
-        "constant": true,
-        "inputs": [],
-        "name": "tokenContract",
-        "outputs": [
-            {
-                "name": "",
-                "type": "address"
-            }
-        ],
-        "payable": false,
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
         "constant": false,
         "inputs": [
             {
-                "name": "_seller",
+                "name": "_initiator",
                 "type": "address"
             },
             {
-                "name": "value",
+                "name": "sellAmount",
                 "type": "uint256"
             },
             {
-                "name": "_buyerDeposit",
+                "name": "price",
+                "type": "uint256"
+            },
+            {
+                "name": "_responderDeposit",
                 "type": "uint256"
             },
             {
@@ -78,5 +68,19 @@
         ],
         "name": "NewToastytradeSell",
         "type": "event"
+    },
+    {
+        "constant": true,
+        "inputs": [],
+        "name": "tokenContract",
+        "outputs": [
+            {
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
     }
 ]

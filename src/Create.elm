@@ -4,7 +4,7 @@ module Create exposing
     , init
     , update
     , updateWithUserAddress
-    , viewElement
+    , view
     )
 
 import BigInt
@@ -41,7 +41,7 @@ type alias Model =
 
 type alias ContractParameterInputs =
     { uncoiningAmount : String
-    , summonFee : String
+    , price : String
     , transferMethods : String
     , autorecallInterval : String
     , depositDeadlineInterval : String
@@ -51,7 +51,7 @@ type alias ContractParameterInputs =
 
 type Msg
     = UncoiningAmountChanged String
-    | SummonFeeChanged String
+    | PriceChanged String
     | AutorecallIntervalChanged String
     | DepositDeadlineIntervalChanged String
     | AutoreleaseIntervalChanged String
@@ -62,12 +62,12 @@ type Msg
     | NoOp
 
 
-init : Address -> Address -> Maybe Address -> Int -> ( Model, Cmd Msg, ChainCmdOrder Msg )
-init tokenAddress factoryAddress userAddress tokenDecimals =
+init : Address -> Int -> Address -> Maybe Address -> ( Model, Cmd Msg, ChainCmdOrder Msg )
+init tokenAddress tokenDecimals factoryAddress userAddress =
     let
         initialInputs =
             { uncoiningAmount = "100"
-            , summonFee = "10"
+            , price = "100"
             , transferMethods = ""
             , autorecallInterval = "3"
             , depositDeadlineInterval = "3"
@@ -110,12 +110,12 @@ update msg model =
             , ChainCmd.none
             )
 
-        SummonFeeChanged newAmountStr ->
+        PriceChanged newAmountStr ->
             let
                 oldInputs =
                     model.parameterInputs
             in
-            ( updateParameters model { oldInputs | summonFee = newAmountStr }
+            ( updateParameters model { oldInputs | price = newAmountStr }
             , Cmd.none
             , ChainCmd.none
             )
@@ -165,13 +165,13 @@ update msg model =
                 ( Just _, Just parameters ) ->
                     let
                         fullSendAmount =
-                            Debug.todo "uncoiningAmount + devFee"
+                            TokenValue.add parameters.uncoiningAmount model.devFee
 
                         txParams =
                             TokenContract.approve
                                 model.tokenAddress
                                 model.factoryAddress
-                                fullSendAmount
+                                (TokenValue.getBigInt fullSendAmount)
                                 |> Eth.toSend
 
                         customSend =
@@ -183,7 +183,7 @@ update msg model =
                         newModel =
                             { model | busyWithTxChain = True }
                     in
-                    ( model, Cmd.none, ChainCmd.custom customSend txParams )
+                    ( newModel, Cmd.none, ChainCmd.custom customSend txParams )
 
                 ( Nothing, _ ) ->
                     let
@@ -211,7 +211,7 @@ update msg model =
             if not model.busyWithTxChain then
                 let
                     _ =
-                        Debug.log "Not ready to catch this mined tx. Did you somehow cancel the tx chain?"
+                        Debug.log "Not ready to catch this mined tx. Did you somehow cancel the tx chain?" ""
                 in
                 ( model, Cmd.none, ChainCmd.none )
 
@@ -220,7 +220,7 @@ update msg model =
                     Nothing ->
                         let
                             _ =
-                                Debug.log "Can't find valid contract parameters. What the heck?????"
+                                Debug.log "Can't find valid contract parameters. What the heck?????" ""
                         in
                         ( model, Cmd.none, ChainCmd.none )
 
@@ -276,9 +276,9 @@ updateParameters model newParameters =
 validateInputs : Int -> ContractParameterInputs -> Maybe TTExtras.UserParameters
 validateInputs numDecimals inputs =
     Maybe.map5
-        (\uncoiningAmount summonFee autorecallInterval depositDeadlineInterval autoreleaseInterval ->
+        (\uncoiningAmount price autorecallInterval depositDeadlineInterval autoreleaseInterval ->
             { uncoiningAmount = uncoiningAmount
-            , summonFee = summonFee
+            , price = price
             , autorecallInterval = autorecallInterval
             , depositDeadlineInterval = depositDeadlineInterval
             , autoreleaseInterval = autoreleaseInterval
@@ -286,49 +286,33 @@ validateInputs numDecimals inputs =
             }
         )
         (TokenValue.fromString numDecimals inputs.uncoiningAmount)
-        (TokenValue.fromString numDecimals inputs.summonFee)
+        (TokenValue.fromString numDecimals inputs.price)
         (TimeHelpers.daysStrToMaybePosix inputs.autorecallInterval)
         (TimeHelpers.daysStrToMaybePosix inputs.depositDeadlineInterval)
         (TimeHelpers.daysStrToMaybePosix inputs.autoreleaseInterval)
 
 
-viewElement : Model -> Element.Element Msg
-viewElement model =
+view : Model -> Element.Element Msg
+view model =
     let
-        header =
-            EH.pageTitle "Create Uncoining Contract"
-
-        bodyStyles =
-            [ Element.Border.rounded 15
-            , Element.Background.color EH.subpageBackgroundColor
-            , Element.padding 20
-            , Element.spacing 50
-            , Element.width Element.fill
-            ]
-
         contractRendered =
             case model.contractParameters of
                 Nothing ->
                     Element.text "no contract?????"
 
                 Just parameters ->
-                    ContractRender.renderDraft parameters
-
-        body =
-            Element.column bodyStyles
-                [ contractParametersFormElement model
-                , contractRendered
-                ]
+                    ContractRender.render ContractRender.Draft parameters
 
         createButton =
-            Element.Input.button []
+            Element.Input.button [ Element.centerX ]
                 { onPress = Just BeginCreateProcess
                 , label = Element.text "Create!"
                 }
     in
     Element.column [ Element.spacing 20, Element.width Element.fill ]
-        [ header
-        , body
+        [ contractParametersFormElement model
+        , createButton
+        , contractRendered
         ]
 
 
@@ -355,7 +339,7 @@ contractParametersForm model =
             Element.column [ Element.width (Element.fillPortion 1), Element.spacing 8, Element.alignTop ]
                 (columnHeader "Dai Amounts"
                     :: ([ ( "Uncoining Amount", EH.smallInput "uncoiningAmount" model.parameterInputs.uncoiningAmount UncoiningAmountChanged )
-                        , ( "Summon Fee", EH.smallInput "summonfee" model.parameterInputs.summonFee SummonFeeChanged )
+                        , ( "Total Fiat Price", EH.smallInput "summonfee" model.parameterInputs.price PriceChanged )
                         ]
                             |> List.map nameAndElementToRow
                        )

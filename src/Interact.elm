@@ -1,209 +1,164 @@
-module Interact exposing (Model, Msg(..), TTSellModel, countdownView, init, toastytradeModelFromGetFullState, update, updateWithUserAddress, view)
+module Interact exposing (Model, Msg(..), init, update, updateWithUserAddress, view)
 
-import BigInt exposing (BigInt)
-import Contracts.ToastytradeExtras as TTExtras exposing (Phase(..))
-import Contracts.ToastytradeSell as TTSell
+import ChainCmd exposing (ChainCmdOrder)
+import ContractRender
+import Contracts.ToastytradeExtras as TTExtras
+import Contracts.ToastytradeSell as TTS
+import Element
+import Element.Background
+import Element.Font
+import Element.Input
 import ElementHelpers as EH
-import Eth
 import Eth.Types exposing (Address)
 import Eth.Utils
 import EthHelpers
-import Flip exposing (flip)
-import Html
 import Http
-import Task
-import Time
-import TimeHelpers
 
 
 type alias Model =
-    { ttAddress : Address
-    , ttModel : Maybe TTSellModel
+    { ethNode : EthHelpers.EthNode
+    , userAddress : Maybe Address
+    , tokenAddress : Address
+    , tokenDecimals : Int
+    , addressInput : String
+    , ttsInfo : Maybe TTSInfo
     }
 
 
-type alias TTSellModel =
-    { balance : BigInt
-    , phase : Phase
-    , phaseStartTime : Time.Posix
-    , seller : Address
-    , buyer : Maybe Address
-    , buyerDeposit : BigInt
-    , autorecallInterval : Time.Posix
-    , depositDeadlineInterval : Time.Posix
-    , autoreleaseInterval : Time.Posix
+type alias TTSInfo =
+    { address : Address
+    , parameters : TTExtras.FullParameters
+    , state : TTExtras.State
     }
 
 
-init : ( EthHelpers.EthNode, Address ) -> ( Model, Cmd Msg )
-init ( node, ttAddress ) =
-    ( { ttAddress = ttAddress
-      , ttModel = Nothing
+init : EthHelpers.EthNode -> Address -> Int -> Maybe Address -> Maybe Address -> ( Model, Cmd Msg, ChainCmdOrder Msg )
+init ethNode tokenAddress tokenDecimals userAddress maybeTTAddress =
+    let
+        cmd =
+            case maybeTTAddress of
+                Just address ->
+                    getContractInfoCmd ethNode tokenDecimals address
+
+                Nothing ->
+                    Cmd.none
+    in
+    ( { ethNode = ethNode
+      , userAddress = userAddress
+      , tokenAddress = tokenAddress
+      , tokenDecimals = tokenDecimals
+      , addressInput =
+            Maybe.map Eth.Utils.addressToString maybeTTAddress
+                |> Maybe.withDefault ""
+      , ttsInfo = Nothing
       }
-    , Eth.call node.http (TTSell.getFullState ttAddress)
-        |> Task.attempt FullStateFetched
+    , cmd
+    , ChainCmd.none
     )
 
 
+getContractInfoCmd : EthHelpers.EthNode -> Int -> Address -> Cmd Msg
+getContractInfoCmd ethNode tokenDecimals address =
+    Cmd.batch
+        [ TTExtras.getStateCmd ethNode tokenDecimals address StateFetched
+        , TTExtras.getParametersCmd ethNode tokenDecimals address ParametersFetched
+        ]
+
+
 type Msg
-    = FullStateFetched (Result Http.Error TTSell.GetFullState)
+    = AddressInputChanged String
+    | StateFetched (Result Http.Error (Maybe TTExtras.State))
+    | ParametersFetched (Result Http.Error (Maybe TTExtras.FullParameters))
 
 
 updateWithUserAddress : Model -> Maybe Address -> Model
 updateWithUserAddress model userAddress =
-    --{ model | userAddress = userAddress }
-    model
+    { model | userAddress = userAddress }
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> Model -> ( Model, Cmd Msg, ChainCmdOrder Msg )
 update msg model =
     case msg of
-        FullStateFetched (Err e) ->
+        AddressInputChanged newInput ->
             let
-                _ =
-                    Debug.log "can't fetch full state: " e
-            in
-            ( model, Cmd.none )
+                cmd =
+                    case Eth.Utils.toAddress newInput of
+                        Ok address ->
+                            getContractInfoCmd model.ethNode model.tokenDecimals address
 
-        FullStateFetched (Ok getFullState) ->
-            case toastytradeModelFromGetFullState getFullState of
-                Nothing ->
+                        Err _ ->
+                            Cmd.none
+            in
+            ( { model | addressInput = newInput }
+            , cmd
+            , ChainCmd.none
+            )
+
+        StateFetched fetchResult ->
+            case fetchResult of
+                Ok (Just state) ->
                     let
                         _ =
-                            Debug.log "Something went wrong while fetching Toastytrade state"
+                            Debug.log "full state" state
                     in
-                    ( model, Cmd.none )
+                    ( model, Cmd.none, ChainCmd.none )
 
-                Just ttModel ->
-                    ( { model
-                        | ttModel = Just ttModel
-                      }
-                    , Cmd.none
-                    )
+                _ ->
+                    handleBadFetchResult model fetchResult
 
+        ParametersFetched fetchResult ->
+            case fetchResult of
+                Ok (Just parameters) ->
+                    let
+                        _ =
+                            Debug.log "parameters" parameters
+                    in
+                    ( model, Cmd.none, ChainCmd.none )
 
-view : Model -> Time.Posix -> Html.Html Msg
-view model currentTime =
-    case model.ttModel of
-        Nothing ->
-            Html.div [] [ Html.text "Model loading... " ]
-
-        Just ttModel ->
-            Html.div []
-                [ Html.div []
-                    [ Html.text "Toastytrade Sell at address "
-                    , Html.text (Eth.Utils.addressToString model.ttAddress)
-                    ]
-                , Html.text (TTExtras.phaseToString ttModel.phase)
-                , case ttModel.phase of
-                    Open ->
-                        Html.div []
-                            [ Html.text (Eth.Utils.addressToString ttModel.seller)
-                            , Html.text " selling."
-                            ]
-
-                    _ ->
-                        Html.div []
-                            [ Html.text (Eth.Utils.addressToString ttModel.seller)
-                            , Html.text " selling to "
-                            , Html.text (Maybe.withDefault "???" (Maybe.map Eth.Utils.addressToString ttModel.buyer))
-                            ]
-                , countdownView ttModel currentTime
-                ]
+                _ ->
+                    handleBadFetchResult model fetchResult
 
 
-countdownView : TTSellModel -> Time.Posix -> Html.Html Msg
-countdownView ttModel currentTime =
-    let
-        phaseInterval =
-            case ttModel.phase of
-                Open ->
-                    ttModel.autorecallInterval
+handleBadFetchResult : Model -> Result Http.Error (Maybe a) -> ( Model, Cmd Msg, ChainCmdOrder Msg )
+handleBadFetchResult model fetchResult =
+    case fetchResult of
+        Ok (Just a) ->
+            let
+                _ =
+                    Debug.log "I'm confused about whether this is a bad fetch result or not!."
+            in
+            ( model, Cmd.none, ChainCmd.none )
 
-                Committed ->
-                    ttModel.depositDeadlineInterval
+        Ok Nothing ->
+            let
+                _ =
+                    Debug.log "The data was fetched, but could not be decoded."
+            in
+            ( model, Cmd.none, ChainCmd.none )
 
-                Claimed ->
-                    ttModel.autoreleaseInterval
-
-                Closed ->
-                    Time.millisToPosix 0
-
-        timeLeft =
-            TimeHelpers.add ttModel.phaseStartTime phaseInterval
-                |> flip TimeHelpers.sub currentTime
-
-        countdownHasPassed =
-            TimeHelpers.isNegative timeLeft
-
-        textElement =
-            Html.text
-                (case ( ttModel.phase, countdownHasPassed ) of
-                    ( Open, False ) ->
-                        "This offer autorecalls in "
-
-                    ( Open, True ) ->
-                        "Autorecall available. Poke to autorecall."
-
-                    ( Committed, False ) ->
-                        "Time left until deposit deadline: "
-
-                    ( Committed, True ) ->
-                        "Deposit deadline passed. Poke to return Seller's ether and burn Buyer's deposit."
-
-                    ( Claimed, False ) ->
-                        "Autorelease to Buyer in "
-
-                    ( Claimed, True ) ->
-                        "Autorelease available. Poke to autorelease."
-
-                    ( Closed, _ ) ->
-                        "This offer is now closed."
-                )
-
-        dynamicElement =
-            if ttModel.phase == Closed then
-                Html.div [] []
-
-            else if countdownHasPassed then
-                Html.div [] [ Html.text "POKEBUTTON" ]
-
-            else
-                Html.div [] [ Html.text (String.fromInt (Time.posixToMillis timeLeft // 1000)) ]
-    in
-    Html.div [] [ textElement, dynamicElement ]
+        Err errstr ->
+            let
+                _ =
+                    Debug.log "can't fetch full state: " errstr
+            in
+            ( model, Cmd.none, ChainCmd.none )
 
 
-toastytradeModelFromGetFullState : TTSell.GetFullState -> Maybe TTSellModel
-toastytradeModelFromGetFullState fullState =
-    let
-        phaseResult =
-            TTExtras.bigIntToPhase fullState.phase
-
-        phaseStartTimeResult =
-            TimeHelpers.secondsBigIntToMaybePosix fullState.phaseStartTimestamp
-
-        autorecallIntervalResult =
-            TimeHelpers.secondsBigIntToMaybePosix fullState.autorecallInterval
-
-        depositDeadlineIntervalResult =
-            TimeHelpers.secondsBigIntToMaybePosix fullState.depositDeadlineInterval
-
-        autoreleaseIntervalResult =
-            TimeHelpers.secondsBigIntToMaybePosix fullState.autoreleaseInterval
-    in
-    Maybe.map5 (toastytradeModelFromGetFullStateVars fullState) phaseResult phaseStartTimeResult autorecallIntervalResult depositDeadlineIntervalResult autoreleaseIntervalResult
+view : Model -> Element.Element Msg
+view model =
+    Element.column [ Element.spacing 40, Element.width Element.fill ]
+        [ addressInputFormElement model
+        ]
 
 
-toastytradeModelFromGetFullStateVars : TTSell.GetFullState -> Phase -> Time.Posix -> Time.Posix -> Time.Posix -> Time.Posix -> TTSellModel
-toastytradeModelFromGetFullStateVars fullState phase phaseStartTime autorecallInterval depositDeadlineInterval autoreleaseInterval =
-    { balance = fullState.balance
-    , phase = phase
-    , phaseStartTime = phaseStartTime
-    , seller = fullState.seller
-    , buyer = EthHelpers.addressIfNot0x0 fullState.buyer
-    , buyerDeposit = fullState.buyerDeposit
-    , autorecallInterval = autorecallInterval
-    , depositDeadlineInterval = depositDeadlineInterval
-    , autoreleaseInterval = autoreleaseInterval
-    }
+addressInputFormElement : Model -> Element.Element Msg
+addressInputFormElement model =
+    Element.column [ Element.width Element.fill, Element.spacing 10 ]
+        [ Element.el [ Element.centerX, Element.Font.size 16 ] (Element.text "Uncoining Contract at:")
+        , Element.Input.text [ Element.centerX, Element.width (Element.px 400) ]
+            { onChange = AddressInputChanged
+            , text = model.addressInput
+            , placeholder = Just (Element.Input.placeholder [] (Element.text "contract address"))
+            , label = Element.Input.labelHidden "address"
+            }
+        ]

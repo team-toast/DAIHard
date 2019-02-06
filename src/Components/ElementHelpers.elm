@@ -1,4 +1,4 @@
-module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, clauseList, contractShadowAttribute, fakeLink, fillWidthBlock, initiator, methodName, pageBackgroundColor, pageTitle, responder, roundBottomCorners, roundTopCorners, sectionHeading, sectionReference, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, timeValue, tokenValue, usdValue)
+module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, clauseList, contractShadowAttribute, fakeLink, fillWidthBlock, headerBackgroundColor, initiator, methodName, pageBackgroundColor, pageTitle, responder, roundBottomCorners, roundTopCorners, sectionHeading, sectionReference, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, timeValue, tokenValue, usdValue)
 
 import Element
 import Element.Background
@@ -23,8 +23,12 @@ white =
     Element.rgb 1 1 1
 
 
+headerBackgroundColor =
+    Element.rgb 0 0.3 0.6
+
+
 pageBackgroundColor =
-    Element.rgb255 10 50 90
+    Element.rgb 0 0.2 0.4
 
 
 subpageBackgroundColor =
@@ -135,7 +139,10 @@ sectionReference name =
 
 fakeLink : String -> Element.Element a
 fakeLink name =
-    Element.link []
+    Element.link
+        [ Element.Font.color (Element.rgb 0 0 1)
+        , Element.Font.underline
+        ]
         { url = "#"
         , label = Element.text name
         }
@@ -182,7 +189,15 @@ timeValue tv =
 
 clauseList : List (Element.Element a) -> Element.Element a
 clauseList clauseElements =
-    Element.column [ Element.spacing 30 ] clauseElements
+    let
+        constructClauseElement body =
+            Element.row []
+                [ Element.el [ Element.width (Element.px 50) ] (Element.el [ Element.centerX, Element.Font.size 24 ] (Element.text bulletPointString))
+                , body
+                ]
+    in
+    Element.column [ Element.spacing 20 ]
+        (List.map constructClauseElement clauseElements)
 
 
 
@@ -244,6 +259,16 @@ contractShadowAttribute =
         , blur = 5
         , color = Element.rgb 0.5 0.5 0.5
         }
+
+
+
+-- SPECIAL CHARS
+
+
+bulletPointString : String
+bulletPointString =
+    Char.fromCode 8226
+        |> String.fromChar
 
 
 

@@ -6,6 +6,7 @@ import Create
 import Element
 import Element.Background
 import Element.Border
+import Element.Font
 import Element.Input
 import ElementHelpers as EH
 import Eth.Net
@@ -56,13 +57,15 @@ type alias ValidModel =
 
 
 type Submodel
-    = CreateModel Create.Model
+    = Home
+    | CreateModel Create.Model
     | InteractModel Interact.Model
     | None
 
 
 type Msg
     = GotoCreate
+    | GotoInteract
     | Tick Time.Posix
     | WalletStatus WalletSentry
     | TxSentryMsg TxSentry.Msg
@@ -82,30 +85,18 @@ init flags =
 
                 txSentry =
                     TxSentry.init ( txOut, txIn ) TxSentryMsg node.http
-
-                ( createModel, createCmd, chainCmdOrder ) =
-                    Create.init tokenContractAddress factoryAddress Nothing flags.tokenContractDecimals
-
-                ( newTxSentry, chainCmd ) =
-                    ChainCmd.execute txSentry (ChainCmd.map CreateMsg chainCmdOrder)
-
-                cmdBatch =
-                    Cmd.batch
-                        [ Cmd.map CreateMsg createCmd
-                        , chainCmd
-                        ]
             in
             ( Running
                 { tokenContractAddress = tokenContractAddress
                 , factoryAddress = factoryAddress
                 , time = Time.millisToPosix 0
                 , node = node
-                , txSentry = newTxSentry
+                , txSentry = txSentry
                 , userAddress = Nothing
                 , tokenContractDecimals = flags.tokenContractDecimals
-                , submodel = CreateModel createModel
+                , submodel = Home
                 }
-            , cmdBatch
+            , Cmd.none
             )
 
         ( Err errstr, _ ) ->
@@ -131,7 +122,7 @@ updateValidModel msg model =
         GotoCreate ->
             let
                 ( createModel, createCmd, chainCmdOrder ) =
-                    Create.init model.tokenContractAddress model.factoryAddress model.userAddress model.tokenContractDecimals
+                    Create.init model.tokenContractAddress model.tokenContractDecimals model.factoryAddress model.userAddress
 
                 ( newTxSentry, chainCmd ) =
                     ChainCmd.execute model.txSentry (ChainCmd.map CreateMsg chainCmdOrder)
@@ -143,6 +134,25 @@ updateValidModel msg model =
                 }
             , Cmd.batch
                 [ Cmd.map CreateMsg createCmd
+                , chainCmd
+                ]
+            )
+
+        GotoInteract ->
+            let
+                ( interactModel, interactCmd, chainCmdOrder ) =
+                    Interact.init model.node model.tokenContractAddress model.tokenContractDecimals model.userAddress Nothing
+
+                ( newTxSentry, chainCmd ) =
+                    ChainCmd.execute model.txSentry (ChainCmd.map InteractMsg chainCmdOrder)
+            in
+            ( Running
+                { model
+                    | submodel = InteractModel interactModel
+                    , txSentry = newTxSentry
+                }
+            , Cmd.batch
+                [ Cmd.map InteractMsg interactCmd
                 , chainCmd
                 ]
             )
@@ -187,11 +197,21 @@ updateValidModel msg model =
             case model.submodel of
                 InteractModel interactModel ->
                     let
-                        ( newInteractModel, interactCmd ) =
+                        ( newInteractModel, interactCmd, chainCmdOrder ) =
                             Interact.update interactMsg interactModel
+
+                        ( newTxSentry, chainCmd ) =
+                            ChainCmd.execute model.txSentry (ChainCmd.map InteractMsg chainCmdOrder)
                     in
-                    ( Running { model | submodel = InteractModel newInteractModel }
-                    , Cmd.map InteractMsg interactCmd
+                    ( Running
+                        { model
+                            | submodel = InteractModel newInteractModel
+                            , txSentry = newTxSentry
+                        }
+                    , Cmd.batch
+                        [ Cmd.map InteractMsg interactCmd
+                        , chainCmd
+                        ]
                     )
 
                 _ ->
@@ -211,6 +231,9 @@ updateValidModel msg model =
 updateSubmodelWithUserAddress : Submodel -> Maybe Address -> Submodel
 updateSubmodelWithUserAddress submodel userAddress =
     case submodel of
+        Home ->
+            submodel
+
         CreateModel createModel ->
             CreateModel (Create.updateWithUserAddress createModel userAddress)
 
@@ -228,19 +251,17 @@ view maybeValidModel =
             let
                 mainElementAttributes =
                     [ Element.width Element.fill
-                    , Element.paddingXY 35 5
                     , Element.Background.color EH.pageBackgroundColor
                     ]
 
                 mainColumnAttributes =
                     [ Element.width Element.fill
-                    , Element.paddingXY 100 5
                     ]
             in
             Element.layout mainElementAttributes
                 (Element.column mainColumnAttributes
                     [ headerElement model
-                    , subModelElement model
+                    , bodyElement model
                     ]
                 )
 
@@ -251,31 +272,65 @@ view maybeValidModel =
 
 headerElement : ValidModel -> Element.Element Msg
 headerElement model =
-    Element.el [ Element.height (Element.px 20) ] Element.none
+    Element.row
+        [ Element.Background.color EH.headerBackgroundColor
+        , Element.width Element.fill
+        , Element.padding 15
+        , Element.spacing 30
+        , Element.Font.size 24
+        ]
+        [ Element.Input.button [ Element.centerX ]
+            { onPress = Just GotoCreate
+            , label = Element.text "Create"
+            }
+        , Element.Input.button [ Element.centerX ]
+            { onPress = Just GotoInteract
+            , label = Element.text "Interact"
+            }
+        ]
 
 
-
--- headerElement : ValidModel -> Element.Element Msg
--- headerElement model =
---     Element.row []
---         [ Element.Input.button []
---             { onPress = Just GotoCreate
---             , label = Element.text "Create!"
---             }
---         ]
+bodyElement : ValidModel -> Element.Element Msg
+bodyElement model =
+    Element.el [ Element.paddingXY 100 25, Element.width Element.fill ]
+        (subModelElement model)
 
 
 subModelElement : ValidModel -> Element.Element Msg
 subModelElement model =
-    case model.submodel of
-        CreateModel createModel ->
-            Element.map CreateMsg (Create.viewElement createModel)
+    let
+        subModelStyles =
+            [ Element.width Element.fill
+            , Element.spacing 20
+            ]
 
-        InteractModel interactModel ->
-            Element.none
+        bodyStyles =
+            [ Element.Border.rounded 15
+            , Element.Background.color EH.subpageBackgroundColor
+            , Element.padding 20
+            , Element.spacing 50
+            , Element.width Element.fill
+            ]
+    in
+    (\( title, element ) ->
+        Element.column subModelStyles
+            [ EH.pageTitle title
+            , Element.el bodyStyles element
+            ]
+    )
+        (case model.submodel of
+            Home ->
+                ( "Home", Element.none )
 
-        None ->
-            Element.none
+            CreateModel createModel ->
+                ( "Create", Element.map CreateMsg (Create.view createModel) )
+
+            InteractModel interactModel ->
+                ( "Interact", Element.map InteractMsg (Interact.view interactModel) )
+
+            None ->
+                ( "none", Element.none )
+        )
 
 
 subscriptions : Model -> Sub Msg
