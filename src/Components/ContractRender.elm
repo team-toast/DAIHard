@@ -157,11 +157,55 @@ openPhaseElement viewMode parameters =
                 Element.none
 
             Active context ->
-                Element.row [ Element.spacing 50, Element.padding 20, Element.centerX ]
-                    [ EH.contractActionButton "Recall" EH.buttonBlue context.userIsInitiator Recall
-                    , EH.contractActionButton "Commit" EH.buttonBlue (not context.userIsInitiator) Commit
-                    ]
+                if context.state.phase == TTExtras.Open then
+                    Element.row [ Element.spacing 50, Element.padding 20, Element.centerX ]
+                        [ EH.contractActionButton "Recall" EH.buttonBlue context.userIsInitiator Recall
+                        , EH.contractActionButton "Commit" EH.buttonBlue (not context.userIsInitiator) Commit
+                        ]
+
+                else
+                    Element.none
         ]
+
+
+committedPhaseElement2 : ViewMode -> TTExtras.FullParameters -> TokenValue -> TokenValue -> Element.Element Msg
+committedPhaseElement2 viewMode parameters postCommitBalance claimFailBurnAmount =
+    Element.column (phaseStyleWithViewMode TTExtras.Committed viewMode)
+        [ phaseHeading viewMode "Committed Phase"
+        , EH.clauseList
+            [ Element.paragraph []
+                [ Element.text "The contract has two parties ("
+                , EH.initiator []
+                , Element.text " and "
+                , EH.responder []
+                , Element.text "), and a total balance of "
+                , EH.tokenValue postCommitBalance
+                , Element.text "."
+                ]
+            , Element.paragraph []
+                [ Element.text "The "
+                , EH.responder []
+                , Element.text " is expected to transfer "
+                , EH.usdValue parameters.uncoiningAmount
+                , Element.text " to the "
+                , EH.initiator []
+                , Element.text " according to the following "
+                , EH.sectionReference "Fiat Transfer Methods"
+                , Element.text ", then mark the deposit as complete by calling "
+                , EH.methodName "claim"
+                , Element.text ". This immediately moves the contract to the "
+                , EH.sectionReference "Claimed Phase"
+                , Element.text "."
+                ]
+            , fiatTransferMethodsElement parameters.transferMethods
+            ]
+        ]
+
+
+fiatTransferMethodsElement : String -> Element.Element Msg
+fiatTransferMethodsElement transferMethodsString =
+    Element.column [ Element.width Element.fill ]
+        []
 
 
 committedPhaseElement : ViewMode -> TTExtras.FullParameters -> TokenValue -> TokenValue -> Element.Element Msg
@@ -259,9 +303,13 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
                 Element.none
 
             Active context ->
-                Element.row [ Element.spacing 50, Element.padding 20, Element.centerX ]
-                    [ EH.contractActionButton "Claim" EH.buttonGreen context.userIsResponder Claim
-                    ]
+                if context.state.phase == TTExtras.Committed then
+                    Element.row [ Element.spacing 50, Element.padding 20, Element.centerX ]
+                        [ EH.contractActionButton "Claim" EH.buttonGreen context.userIsResponder Claim
+                        ]
+
+                else
+                    Element.none
         ]
 
 
@@ -363,10 +411,14 @@ claimedPhaseElement viewMode parameters postCommitBalance =
                 Element.none
 
             Active context ->
-                Element.row [ Element.spacing 50, Element.padding 20, Element.centerX ]
-                    [ EH.contractActionButton "Release" EH.buttonGreen context.userIsInitiator Release
-                    , EH.contractActionButton "Burn" EH.buttonRed context.userIsInitiator Burn
-                    ]
+                if context.state.phase == TTExtras.Claimed then
+                    Element.row [ Element.spacing 50, Element.padding 20, Element.centerX ]
+                        [ EH.contractActionButton "Release" EH.buttonGreen context.userIsInitiator Release
+                        , EH.contractActionButton "Burn" EH.buttonRed context.userIsInitiator Burn
+                        ]
+
+                else
+                    Element.none
         ]
 
 
@@ -375,7 +427,6 @@ phaseStyleWithViewMode phase viewMode =
     case viewMode of
         Draft ->
             [ Element.width Element.fill
-            , Element.Font.color (Element.rgb 0.5 0.5 0.5)
             ]
 
         Active context ->
@@ -387,7 +438,9 @@ phaseStyleWithViewMode phase viewMode =
                 ]
 
             else
-                [ Element.width Element.fill ]
+                [ Element.width Element.fill
+                , Element.Font.color (Element.rgb 0.5 0.5 0.5)
+                ]
 
 
 phaseHeading : ViewMode -> String -> Element.Element msg

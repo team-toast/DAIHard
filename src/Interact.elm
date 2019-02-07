@@ -2,6 +2,7 @@ module Interact exposing (Model, Msg(..), init, update, updateWithUserAddress, v
 
 import ChainCmd exposing (ChainCmdOrder)
 import ContractRender
+import Contracts.ERC20Token as TokenContract
 import Contracts.ToastytradeExtras as TTExtras
 import Contracts.ToastytradeSell as TTS
 import Element
@@ -9,11 +10,13 @@ import Element.Background
 import Element.Font
 import Element.Input
 import ElementHelpers as EH
+import Eth
 import Eth.Types exposing (Address)
 import Eth.Utils
 import EthHelpers
 import Http
 import Time
+import TokenValue
 
 
 type alias Model =
@@ -85,6 +88,8 @@ type Msg
     | StateFetched (Result Http.Error (Maybe TTExtras.State))
     | ParametersFetched (Result Http.Error (Maybe TTExtras.FullParameters))
     | ContractAction ContractRender.Msg
+    | PreCommitApproveMined (Result String Eth.Types.TxReceipt)
+    | ContractActionMined (Result String Eth.Types.TxReceipt)
 
 
 updateWithUserAddress : Model -> Maybe Address -> Model
@@ -134,10 +139,130 @@ update msg model =
 
         ContractAction actionMsg ->
             let
+                chainCmd =
+                    case ( model.ttsInfo.address, model.ttsInfo.parameters ) of
+                        ( Nothing, _ ) ->
+                            let
+                                _ =
+                                    Debug.log "Trying to handle ContractAction msg, but can't find the contract address :/" actionMsg
+                            in
+                            ChainCmd.none
+
+                        ( _, Nothing ) ->
+                            let
+                                _ =
+                                    Debug.log "Trying to handle ContractAction msg, but can't find the contract parameters :/" actionMsg
+                            in
+                            ChainCmd.none
+
+                        ( Just ttsAddress, Just parameters ) ->
+                            case actionMsg of
+                                ContractRender.Recall ->
+                                    let
+                                        txParams =
+                                            TTS.recall ttsAddress
+                                                |> Eth.toSend
+                                    in
+                                    ChainCmd.custom genericCustomSend txParams
+
+                                ContractRender.Commit ->
+                                    let
+                                        txParams =
+                                            TokenContract.approve
+                                                model.tokenAddress
+                                                ttsAddress
+                                                (TokenValue.getBigInt parameters.responderDeposit)
+                                                |> Eth.toSend
+
+                                        customSend =
+                                            { onMined = Just ( PreCommitApproveMined, Nothing )
+                                            , onSign = Nothing
+                                            , onBroadcast = Nothing
+                                            }
+                                    in
+                                    ChainCmd.custom customSend
+                                        txParams
+
+                                ContractRender.Claim ->
+                                    let
+                                        txParams =
+                                            TTS.claim ttsAddress ""
+                                                |> Eth.toSend
+                                    in
+                                    ChainCmd.custom genericCustomSend txParams
+
+                                ContractRender.Release ->
+                                    let
+                                        txParams =
+                                            TTS.release ttsAddress
+                                                |> Eth.toSend
+                                    in
+                                    ChainCmd.custom genericCustomSend txParams
+
+                                ContractRender.Burn ->
+                                    let
+                                        txParams =
+                                            TTS.burn ttsAddress ""
+                                                |> Eth.toSend
+                                    in
+                                    ChainCmd.custom genericCustomSend txParams
+
+                                ContractRender.Poke ->
+                                    let
+                                        txParams =
+                                            TTS.poke ttsAddress
+                                                |> Eth.toSend
+                                    in
+                                    ChainCmd.custom genericCustomSend txParams
+            in
+            ( model, Cmd.none, chainCmd )
+
+        ContractActionMined txReceiptResult ->
+            let
                 _ =
-                    Debug.log "button clicked" actionMsg
+                    Debug.log "mined!" ""
             in
             ( model, Cmd.none, ChainCmd.none )
+
+        PreCommitApproveMined txReceiptResult ->
+            case txReceiptResult of
+                Err s ->
+                    let
+                        _ =
+                            Debug.log "error mining transaction" s
+                    in
+                    ( model, Cmd.none, ChainCmd.none )
+
+                Ok txReceipt ->
+                    case ( model.ttsInfo.address, model.ttsInfo.parameters ) of
+                        ( Nothing, _ ) ->
+                            let
+                                _ =
+                                    Debug.log "Trying to handle PreCommitApproveMined, but can't find the contract address :/" ""
+                            in
+                            ( model, Cmd.none, ChainCmd.none )
+
+                        ( _, Nothing ) ->
+                            let
+                                _ =
+                                    Debug.log "Trying to handle PreCommitApproveMined, but can't find the contract parameters :/" ""
+                            in
+                            ( model, Cmd.none, ChainCmd.none )
+
+                        ( Just ttsAddress, Just parameters ) ->
+                            let
+                                txParams =
+                                    TTS.commit ttsAddress ""
+                                        |> Eth.toSend
+                            in
+                            ( model, Cmd.none, ChainCmd.custom genericCustomSend txParams )
+
+
+genericCustomSend =
+    { onMined = Just ( ContractActionMined, Nothing )
+    , onSign = Nothing
+    , onBroadcast = Nothing
+    }
 
 
 handleBadFetchResult : Model -> Result Http.Error (Maybe a) -> ( Model, Cmd Msg, ChainCmdOrder Msg )

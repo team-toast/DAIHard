@@ -305,7 +305,7 @@ view model =
                         |> Element.map (\msg -> NoOp)
 
         createButton =
-            Element.Input.button [ Element.centerX ]
+            Element.Input.button [ Element.centerX, Element.Font.size 24 ]
                 { onPress = Just BeginCreateProcess
                 , label = Element.text "Create!"
                 }
@@ -314,6 +314,7 @@ view model =
         [ contractParametersFormElement model
         , createButton
         , contractRendered
+        , createButton
         ]
 
 

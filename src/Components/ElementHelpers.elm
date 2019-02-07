@@ -127,7 +127,7 @@ fillWidthBlock title bodyElement =
 
 initiator : List (Element.Attribute a) -> Element.Element a
 initiator attributes =
-    Element.el (attributes ++ [ Element.Font.color (Element.rgb 0 1 0) ]) (Element.text "Initiator")
+    Element.el (attributes ++ [ Element.Font.color (Element.rgb 0 0.7 0) ]) (Element.text "Initiator")
 
 
 responder : List (Element.Attribute a) -> Element.Element a

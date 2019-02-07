@@ -136,7 +136,12 @@ createSell contractAddress parameters =
         (TimeHelpers.posixToSecondsBigInt parameters.autorecallInterval)
         (TimeHelpers.posixToSecondsBigInt parameters.depositDeadlineInterval)
         (TimeHelpers.posixToSecondsBigInt parameters.autoreleaseInterval)
-        parameters.transferMethods
+        (if parameters.transferMethods == "" then
+            "NODATA"
+
+         else
+            parameters.transferMethods
+        )
 
 
 type alias State =
