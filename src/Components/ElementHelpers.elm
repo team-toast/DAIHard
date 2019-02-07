@@ -1,4 +1,4 @@
-module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonGreen, buttonRed, clauseList, contractActionButton, contractShadowAttribute, fakeLink, fillWidthBlock, headerBackgroundColor, initiator, methodName, pageBackgroundColor, pageTitle, responder, roundBottomCorners, roundTopCorners, sectionHeading, sectionReference, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, timeValue, tokenValue, usdValue)
+module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonGreen, buttonRed, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, fakeLink, fillWidthBlock, headerBackgroundColor, initiator, methodName, pageBackgroundColor, pageTitle, responder, roundBottomCorners, roundTopCorners, sectionHeading, sectionReference, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, timeValue, tokenValue, usdValue)
 
 import Element
 import Element.Background
@@ -53,6 +53,18 @@ blockBackgroundColor =
 
 blockBorderColor =
     Element.rgb 0.1 0.4 0.7
+
+
+contractBackgroundColor =
+    Element.rgb 1 1 0.7
+
+
+contractInsetBackgroundColor =
+    Element.rgb 1 1 0.85
+
+
+contractBorderColor =
+    Element.rgb 0.5 0.5 0.1
 
 
 

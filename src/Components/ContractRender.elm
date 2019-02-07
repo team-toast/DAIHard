@@ -87,10 +87,10 @@ render viewMode parameters =
             [ Element.padding 60
             , Element.spacing 40
             , Element.Border.rounded 3
-            , Element.Border.color (Element.rgb 0.5 0.5 0.1)
+            , Element.Border.color EH.contractBorderColor
             , Element.Border.width 1
             , Element.width Element.fill
-            , Element.Background.color (Element.rgb 1 1 0.7)
+            , Element.Background.color EH.contractBackgroundColor
             , EH.contractShadowAttribute
             ]
             [ titleElement
@@ -168,8 +168,8 @@ openPhaseElement viewMode parameters =
         ]
 
 
-committedPhaseElement2 : ViewMode -> TTExtras.FullParameters -> TokenValue -> TokenValue -> Element.Element Msg
-committedPhaseElement2 viewMode parameters postCommitBalance claimFailBurnAmount =
+committedPhaseElement : ViewMode -> TTExtras.FullParameters -> TokenValue -> TokenValue -> Element.Element Msg
+committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount =
     Element.column (phaseStyleWithViewMode TTExtras.Committed viewMode)
         [ phaseHeading viewMode "Committed Phase"
         , EH.clauseList
@@ -204,12 +204,22 @@ committedPhaseElement2 viewMode parameters postCommitBalance claimFailBurnAmount
 
 fiatTransferMethodsElement : String -> Element.Element Msg
 fiatTransferMethodsElement transferMethodsString =
-    Element.column [ Element.width Element.fill ]
-        []
+    Element.column [ Element.width Element.fill, Element.spacing 5 ]
+        [ Element.el [ Element.Font.size 24, Element.Font.italic, Element.Font.bold ]
+            (Element.text "Transfer Methods")
+        , Element.el
+            [ Element.Border.width 1
+            , Element.Border.color EH.contractBorderColor
+            , Element.Border.rounded 6
+            , Element.Background.color EH.contractInsetBackgroundColor
+            , Element.padding 10
+            ]
+            (Element.text transferMethodsString)
+        ]
 
 
-committedPhaseElement : ViewMode -> TTExtras.FullParameters -> TokenValue -> TokenValue -> Element.Element Msg
-committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount =
+oldCommittedPhaseElement : ViewMode -> TTExtras.FullParameters -> TokenValue -> TokenValue -> Element.Element Msg
+oldCommittedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount =
     Element.column (phaseStyleWithViewMode TTExtras.Committed viewMode)
         [ phaseHeading viewMode "Commited Phase"
         , indentedElement
