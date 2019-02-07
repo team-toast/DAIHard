@@ -302,6 +302,7 @@ view model =
 
                 Just parameters ->
                     ContractRender.render ContractRender.Draft parameters
+                        |> Element.map (\msg -> NoOp)
 
         createButton =
             Element.Input.button [ Element.centerX ]

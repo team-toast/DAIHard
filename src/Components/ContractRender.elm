@@ -1,4 +1,4 @@
-module ContractRender exposing (ViewMode(..), render)
+module ContractRender exposing (Msg(..), ViewMode(..), render)
 
 import Contracts.ToastytradeExtras as TTExtras
 import Element
@@ -8,19 +8,10 @@ import Element.Font
 import ElementHelpers as EH
 import Eth.Types exposing (Address)
 import Eth.Utils
+import List
 import Time
 import TimeHelpers
 import TokenValue exposing (TokenValue)
-
-
-
--- type PhaseStatus
---     = Draft
---     | Inactive
---     | Active
---         { userIsInitiator : Bool
---         , userIsResponder : Bool
---         }
 
 
 type ViewMode
@@ -31,11 +22,12 @@ type ViewMode
 type alias ViewContext =
     { state : TTExtras.State
     , currentTime : Time.Posix
-    , userAddress : Address
+    , userIsInitiator : Bool
+    , userIsResponder : Bool
     }
 
 
-render : ViewMode -> TTExtras.FullParameters -> Element.Element msg
+render : ViewMode -> TTExtras.FullParameters -> Element.Element Msg
 render viewMode parameters =
     let
         postCommitBalance =
@@ -49,11 +41,21 @@ render viewMode parameters =
                 |> TimeHelpers.add parameters.autoreleaseInterval
 
         titleElement =
-            Element.el
-                [ Element.Font.size 42
-                , Element.centerX
+            Element.column [ Element.centerX ]
+                [ Element.el
+                    [ Element.Font.size 42
+                    , Element.centerX
+                    ]
+                    (Element.text "Uncoining Contract")
+                , case viewMode of
+                    Draft ->
+                        Element.el [ Element.Font.size 36, Element.Font.light, Element.Font.italic, Element.centerX ]
+                            (Element.text "Draft")
+
+                    Active context ->
+                        Element.el [ Element.Font.size 36, Element.Font.italic, Element.centerX ]
+                            (Element.text (TTExtras.phaseToString context.state.phase))
                 ]
-                (Element.text "Uncoining Contract")
 
         mainParametersElement =
             Element.column
@@ -100,9 +102,9 @@ render viewMode parameters =
         )
 
 
-openPhaseElement : ViewMode -> TTExtras.FullParameters -> Element.Element a
+openPhaseElement : ViewMode -> TTExtras.FullParameters -> Element.Element Msg
 openPhaseElement viewMode parameters =
-    Element.column [ Element.width Element.fill ]
+    Element.column (phaseStyleWithViewMode TTExtras.Open viewMode)
         [ phaseHeading viewMode "Open Phase"
         , EH.clauseList
             [ Element.paragraph []
@@ -150,12 +152,21 @@ openPhaseElement viewMode parameters =
                 , Element.text " will be automatically triggered."
                 ]
             ]
+        , case viewMode of
+            Draft ->
+                Element.none
+
+            Active context ->
+                Element.row [ Element.spacing 50, Element.padding 20, Element.centerX ]
+                    [ EH.contractActionButton "Recall" EH.buttonBlue context.userIsInitiator Recall
+                    , EH.contractActionButton "Commit" EH.buttonBlue (not context.userIsInitiator) Commit
+                    ]
         ]
 
 
-committedPhaseElement : ViewMode -> TTExtras.FullParameters -> TokenValue -> TokenValue -> Element.Element msg
+committedPhaseElement : ViewMode -> TTExtras.FullParameters -> TokenValue -> TokenValue -> Element.Element Msg
 committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount =
-    Element.textColumn [ Element.width Element.fill ]
+    Element.column (phaseStyleWithViewMode TTExtras.Committed viewMode)
         [ phaseHeading viewMode "Commited Phase"
         , indentedElement
             (Element.column []
@@ -243,12 +254,20 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
                     ]
                 ]
             )
+        , case viewMode of
+            Draft ->
+                Element.none
+
+            Active context ->
+                Element.row [ Element.spacing 50, Element.padding 20, Element.centerX ]
+                    [ EH.contractActionButton "Claim" EH.buttonGreen context.userIsResponder Claim
+                    ]
         ]
 
 
-claimedPhaseElement : ViewMode -> TTExtras.FullParameters -> TokenValue -> Element.Element msg
+claimedPhaseElement : ViewMode -> TTExtras.FullParameters -> TokenValue -> Element.Element Msg
 claimedPhaseElement viewMode parameters postCommitBalance =
-    Element.textColumn [ Element.width Element.fill ]
+    Element.column (phaseStyleWithViewMode TTExtras.Claimed viewMode)
         [ phaseHeading viewMode "Claimed Phase"
         , indentedElement
             (Element.column []
@@ -339,7 +358,36 @@ claimedPhaseElement viewMode parameters postCommitBalance =
                     ]
                 ]
             )
+        , case viewMode of
+            Draft ->
+                Element.none
+
+            Active context ->
+                Element.row [ Element.spacing 50, Element.padding 20, Element.centerX ]
+                    [ EH.contractActionButton "Release" EH.buttonGreen context.userIsInitiator Release
+                    , EH.contractActionButton "Burn" EH.buttonRed context.userIsInitiator Burn
+                    ]
         ]
+
+
+phaseStyleWithViewMode : TTExtras.Phase -> ViewMode -> List (Element.Attribute a)
+phaseStyleWithViewMode phase viewMode =
+    case viewMode of
+        Draft ->
+            [ Element.width Element.fill
+            , Element.Font.color (Element.rgb 0.5 0.5 0.5)
+            ]
+
+        Active context ->
+            if context.state.phase == phase then
+                [ Element.width Element.fill
+                , Element.Border.width 1
+                , Element.Border.color (Element.rgb 0 0 1)
+                , Element.Background.color (Element.rgb 0.8 0.8 1)
+                ]
+
+            else
+                [ Element.width Element.fill ]
 
 
 phaseHeading : ViewMode -> String -> Element.Element msg
@@ -370,3 +418,12 @@ indentedElement element =
         [ Element.el [ Element.width (Element.px 50) ] Element.none
         , Element.el [ Element.width Element.fill ] element
         ]
+
+
+type Msg
+    = Poke
+    | Commit
+    | Recall
+    | Claim
+    | Release
+    | Burn

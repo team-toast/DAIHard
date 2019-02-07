@@ -1,4 +1,4 @@
-module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, clauseList, contractShadowAttribute, fakeLink, fillWidthBlock, headerBackgroundColor, initiator, methodName, pageBackgroundColor, pageTitle, responder, roundBottomCorners, roundTopCorners, sectionHeading, sectionReference, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, timeValue, tokenValue, usdValue)
+module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonGreen, buttonRed, clauseList, contractActionButton, contractShadowAttribute, fakeLink, fillWidthBlock, headerBackgroundColor, initiator, methodName, pageBackgroundColor, pageTitle, responder, roundBottomCorners, roundTopCorners, sectionHeading, sectionReference, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, timeValue, tokenValue, usdValue)
 
 import Element
 import Element.Background
@@ -21,6 +21,18 @@ black =
 
 white =
     Element.rgb 1 1 1
+
+
+buttonBlue =
+    Element.rgb 0 0 1
+
+
+buttonGreen =
+    Element.rgb 0 1 0
+
+
+buttonRed =
+    Element.rgb 1 0 0
 
 
 headerBackgroundColor =
@@ -225,6 +237,27 @@ timeInput labelStr value msgConstructor =
             }
         , Element.text " days"
         ]
+
+
+
+-- BUTTONS
+
+
+contractActionButton : String -> Element.Color -> Bool -> msg -> Element.Element msg
+contractActionButton name color active msgConstructor =
+    Element.Input.button
+        [ Element.padding 15
+        , Element.Background.color color
+        , Element.Border.rounded 5
+        ]
+        { onPress =
+            if active then
+                Just msgConstructor
+
+            else
+                Nothing
+        , label = Element.text name
+        }
 
 
 
