@@ -326,7 +326,7 @@ subModelElement model =
                 ( "Create", Element.map CreateMsg (Create.view createModel) )
 
             InteractModel interactModel ->
-                ( "Interact", Element.map InteractMsg (Interact.view interactModel) )
+                ( "Interact", Element.map InteractMsg (Interact.view interactModel model.time) )
 
             None ->
                 ( "none", Element.none )

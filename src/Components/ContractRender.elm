@@ -8,6 +8,7 @@ import Element.Font
 import ElementHelpers as EH
 import Eth.Types exposing (Address)
 import Eth.Utils
+import Flip exposing (flip)
 import List
 import Time
 import TimeHelpers
@@ -105,7 +106,7 @@ render viewMode parameters =
 openPhaseElement : ViewMode -> TTExtras.FullParameters -> Element.Element Msg
 openPhaseElement viewMode parameters =
     Element.column (phaseStyleWithViewMode TTExtras.Open viewMode)
-        [ phaseHeading viewMode "Open Phase"
+        [ phaseHeading TTExtras.Open parameters viewMode
         , EH.clauseList
             [ Element.paragraph []
                 [ Element.text "This contract is listed on "
@@ -171,7 +172,7 @@ openPhaseElement viewMode parameters =
 committedPhaseElement : ViewMode -> TTExtras.FullParameters -> TokenValue -> TokenValue -> Element.Element Msg
 committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount =
     Element.column (phaseStyleWithViewMode TTExtras.Committed viewMode)
-        [ phaseHeading viewMode "Committed Phase"
+        [ phaseHeading TTExtras.Committed parameters viewMode
         , EH.clauseList
             [ Element.paragraph []
                 [ Element.text "The contract has two parties ("
@@ -186,7 +187,7 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
                 [ Element.text "The "
                 , EH.responder []
                 , Element.text " is expected to transfer "
-                , EH.usdValue parameters.uncoiningAmount
+                , EH.usdValue parameters.price
                 , Element.text " to the "
                 , EH.initiator []
                 , Element.text " according to the following "
@@ -198,7 +199,57 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
                 , Element.text "."
                 ]
             , fiatTransferMethodsElement parameters.transferMethods
+            , Element.paragraph []
+                [ Element.text "The "
+                , EH.initiator []
+                , Element.text " is expected to communicate any additional information the "
+                , EH.responder []
+                , Element.text " needs to complete the transfer (such as bank account numbers, contact info, etc.), either via CoinerTool's secure messaging or some other medium."
+                ]
+            , Element.paragraph []
+                [ Element.text "If the "
+                , EH.responder []
+                , Element.text " does not claim within "
+                , EH.timeValue parameters.depositDeadlineInterval
+                , Element.text ", "
+                , EH.sectionReference "the contract is closed"
+                , Element.text ", and the balance of "
+                , EH.tokenValue postCommitBalance
+                , Element.text " is handled as follows:"
+                , EH.clauseList
+                    [ Element.paragraph []
+                        [ Element.text "Half of the "
+                        , EH.responder []
+                        , Element.text "’s deposit ("
+                        , EH.tokenValue claimFailBurnAmount
+                        , Element.text ") is burned and half ("
+                        , EH.tokenValue claimFailBurnAmount
+                        , Element.text ") is returned to the "
+                        , EH.responder []
+                        , Element.text "."
+                        ]
+                    , Element.paragraph []
+                        [ Element.text "The "
+                        , EH.initiator []
+                        , Element.text "’s original investment of "
+                        , EH.tokenValue parameters.uncoiningAmount
+                        , Element.text " is refunded."
+                        ]
+                    ]
+                ]
             ]
+        , case viewMode of
+            Draft ->
+                Element.none
+
+            Active context ->
+                if context.state.phase == TTExtras.Committed then
+                    Element.row [ Element.spacing 50, Element.padding 20, Element.centerX ]
+                        [ EH.contractActionButton "Claim" EH.buttonGreen context.userIsResponder Claim
+                        ]
+
+                else
+                    Element.none
         ]
 
 
@@ -221,7 +272,7 @@ fiatTransferMethodsElement transferMethodsString =
 oldCommittedPhaseElement : ViewMode -> TTExtras.FullParameters -> TokenValue -> TokenValue -> Element.Element Msg
 oldCommittedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount =
     Element.column (phaseStyleWithViewMode TTExtras.Committed viewMode)
-        [ phaseHeading viewMode "Commited Phase"
+        [ phaseHeading TTExtras.Committed parameters viewMode
         , indentedElement
             (Element.column []
                 [ Element.paragraph []
@@ -326,7 +377,7 @@ oldCommittedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmou
 claimedPhaseElement : ViewMode -> TTExtras.FullParameters -> TokenValue -> Element.Element Msg
 claimedPhaseElement viewMode parameters postCommitBalance =
     Element.column (phaseStyleWithViewMode TTExtras.Claimed viewMode)
-        [ phaseHeading viewMode "Claimed Phase"
+        [ phaseHeading TTExtras.Claimed parameters viewMode
         , indentedElement
             (Element.column []
                 [ Element.paragraph []
@@ -453,19 +504,20 @@ phaseStyleWithViewMode phase viewMode =
                 ]
 
 
-phaseHeading : ViewMode -> String -> Element.Element msg
-phaseHeading viewMode phaseName =
+phaseHeading : TTExtras.Phase -> TTExtras.FullParameters -> ViewMode -> Element.Element msg
+phaseHeading phase parameters viewMode =
     let
         textElement =
             Element.paragraph [ Element.Font.size 30, Element.Font.bold ]
                 (case viewMode of
                     Draft ->
                         [ Element.text "During the "
-                        , Element.el [ Element.Font.italic ] (Element.text (phaseName ++ ":"))
+                        , Element.el [ Element.Font.italic ] (Element.text (TTExtras.phaseToString phase ++ " phase:"))
                         ]
 
-                    Active _ ->
-                        [ Element.el [ Element.Font.italic ] (Element.text phaseName)
+                    Active context ->
+                        [ Element.el [ Element.Font.italic ] (Element.text (TTExtras.phaseToString phase ++ " phase "))
+                        , Element.el [ Element.Font.size 20 ] (Element.text (phaseCountdownString phase parameters context))
                         ]
                 )
     in
@@ -473,6 +525,43 @@ phaseHeading viewMode phaseName =
         [ textElement
         , Element.el [] Element.none
         ]
+
+
+phaseCountdownString : TTExtras.Phase -> TTExtras.FullParameters -> ViewContext -> String
+phaseCountdownString phase parameters context =
+    if phase == context.state.phase then
+        let
+            timeLeft =
+                TimeHelpers.add
+                    context.state.phaseStartTime
+                    (phaseInterval phase parameters)
+                    |> flip TimeHelpers.sub context.currentTime
+        in
+        "("
+            ++ String.fromInt (Time.posixToMillis timeLeft // 1000)
+            ++ " seconds left)"
+
+    else
+        ""
+
+
+phaseInterval : TTExtras.Phase -> TTExtras.FullParameters -> Time.Posix
+phaseInterval phase parameters =
+    case phase of
+        TTExtras.Created ->
+            Time.millisToPosix 0
+
+        TTExtras.Open ->
+            parameters.autorecallInterval
+
+        TTExtras.Committed ->
+            parameters.depositDeadlineInterval
+
+        TTExtras.Claimed ->
+            parameters.autoreleaseInterval
+
+        TTExtras.Closed ->
+            Time.millisToPosix 0
 
 
 indentedElement : Element.Element msg -> Element.Element msg

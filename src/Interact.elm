@@ -290,11 +290,11 @@ handleBadFetchResult model fetchResult =
             ( model, Cmd.none, ChainCmd.none )
 
 
-view : Model -> Element.Element Msg
-view model =
+view : Model -> Time.Posix -> Element.Element Msg
+view model time =
     Element.column [ Element.spacing 40, Element.width Element.fill ]
         [ addressInputFormElement model
-        , maybeContractElement model
+        , maybeContractElement model time
         ]
 
 
@@ -311,14 +311,14 @@ addressInputFormElement model =
         ]
 
 
-maybeContractElement : Model -> Element.Element Msg
-maybeContractElement model =
+maybeContractElement : Model -> Time.Posix -> Element.Element Msg
+maybeContractElement model time =
     case ( model.userAddress, model.ttsInfo.parameters, model.ttsInfo.state ) of
         ( Just userAddress, Just parameters, Just state ) ->
             let
                 context =
                     { state = state
-                    , currentTime = Time.millisToPosix 0
+                    , currentTime = time
                     , userIsInitiator = userAddress == parameters.initiatorAddress
                     , userIsResponder =
                         case state.responder of

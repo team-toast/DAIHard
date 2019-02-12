@@ -216,11 +216,11 @@ clauseList clauseElements =
     let
         constructClauseElement body =
             Element.row []
-                [ Element.el [ Element.width (Element.px 50) ] (Element.el [ Element.centerX, Element.Font.size 24 ] (Element.text bulletPointString))
+                [ Element.el [ Element.alignTop, Element.Font.size 24, Element.width (Element.px 50) ] (Element.el [ Element.centerX ] (Element.text bulletPointString))
                 , body
                 ]
     in
-    Element.column [ Element.spacing 20 ]
+    Element.column [ Element.spacing 20, Element.padding 10 ]
         (List.map constructClauseElement clauseElements)
 
 
