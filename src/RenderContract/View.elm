@@ -1,34 +1,20 @@
-module ContractRender exposing (Msg(..), ViewMode(..), render)
+module RenderContract.View exposing (claimedPhaseElement, committedPhaseElement, fiatTransferMethodsElement, indentedElement, oldCommittedPhaseElement, openPhaseElement, phaseCountdownString, phaseHeading, phaseInterval, phaseStyleWithViewMode, render)
 
-import Contracts.ToastytradeExtras as TTExtras
+import Contracts.Types
 import Element
 import Element.Background
 import Element.Border
 import Element.Font
 import ElementHelpers as EH
-import Eth.Types exposing (Address)
 import Eth.Utils
 import Flip exposing (flip)
-import List
+import RenderContract.Types exposing (..)
 import Time
 import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
-type ViewMode
-    = Draft
-    | Active ViewContext
-
-
-type alias ViewContext =
-    { state : TTExtras.State
-    , currentTime : Time.Posix
-    , userIsInitiator : Bool
-    , userIsResponder : Bool
-    }
-
-
-render : ViewMode -> TTExtras.FullParameters -> Element.Element Msg
+render : ViewMode -> Contracts.Types.FullParameters -> Element.Element Msg
 render viewMode parameters =
     let
         postCommitBalance =
@@ -55,7 +41,7 @@ render viewMode parameters =
 
                     Active context ->
                         Element.el [ Element.Font.size 36, Element.Font.italic, Element.centerX ]
-                            (Element.text (TTExtras.phaseToString context.state.phase))
+                            (Element.text (Contracts.Types.phaseToString context.state.phase))
                 ]
 
         mainParametersElement =
@@ -103,10 +89,10 @@ render viewMode parameters =
         )
 
 
-openPhaseElement : ViewMode -> TTExtras.FullParameters -> Element.Element Msg
+openPhaseElement : ViewMode -> Contracts.Types.FullParameters -> Element.Element Msg
 openPhaseElement viewMode parameters =
-    Element.column (phaseStyleWithViewMode TTExtras.Open viewMode)
-        [ phaseHeading TTExtras.Open parameters viewMode
+    Element.column (phaseStyleWithViewMode Contracts.Types.Open viewMode)
+        [ phaseHeading Contracts.Types.Open parameters viewMode
         , EH.clauseList
             [ Element.paragraph []
                 [ Element.text "This contract is listed on "
@@ -158,7 +144,7 @@ openPhaseElement viewMode parameters =
                 Element.none
 
             Active context ->
-                if context.state.phase == TTExtras.Open then
+                if context.state.phase == Contracts.Types.Open then
                     Element.row [ Element.spacing 50, Element.padding 20, Element.centerX ]
                         [ EH.contractActionButton "Recall" EH.buttonBlue context.userIsInitiator Recall
                         , EH.contractActionButton "Commit" EH.buttonBlue (not context.userIsInitiator) Commit
@@ -169,10 +155,10 @@ openPhaseElement viewMode parameters =
         ]
 
 
-committedPhaseElement : ViewMode -> TTExtras.FullParameters -> TokenValue -> TokenValue -> Element.Element Msg
+committedPhaseElement : ViewMode -> Contracts.Types.FullParameters -> TokenValue -> TokenValue -> Element.Element Msg
 committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount =
-    Element.column (phaseStyleWithViewMode TTExtras.Committed viewMode)
-        [ phaseHeading TTExtras.Committed parameters viewMode
+    Element.column (phaseStyleWithViewMode Contracts.Types.Committed viewMode)
+        [ phaseHeading Contracts.Types.Committed parameters viewMode
         , EH.clauseList
             [ Element.paragraph []
                 [ Element.text "The contract has two parties ("
@@ -243,7 +229,7 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
                 Element.none
 
             Active context ->
-                if context.state.phase == TTExtras.Committed then
+                if context.state.phase == Contracts.Types.Committed then
                     Element.row [ Element.spacing 50, Element.padding 20, Element.centerX ]
                         [ EH.contractActionButton "Claim" EH.buttonGreen context.userIsResponder Claim
                         ]
@@ -269,10 +255,10 @@ fiatTransferMethodsElement transferMethodsString =
         ]
 
 
-oldCommittedPhaseElement : ViewMode -> TTExtras.FullParameters -> TokenValue -> TokenValue -> Element.Element Msg
+oldCommittedPhaseElement : ViewMode -> Contracts.Types.FullParameters -> TokenValue -> TokenValue -> Element.Element Msg
 oldCommittedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount =
-    Element.column (phaseStyleWithViewMode TTExtras.Committed viewMode)
-        [ phaseHeading TTExtras.Committed parameters viewMode
+    Element.column (phaseStyleWithViewMode Contracts.Types.Committed viewMode)
+        [ phaseHeading Contracts.Types.Committed parameters viewMode
         , indentedElement
             (Element.column []
                 [ Element.paragraph []
@@ -364,7 +350,7 @@ oldCommittedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmou
                 Element.none
 
             Active context ->
-                if context.state.phase == TTExtras.Committed then
+                if context.state.phase == Contracts.Types.Committed then
                     Element.row [ Element.spacing 50, Element.padding 20, Element.centerX ]
                         [ EH.contractActionButton "Claim" EH.buttonGreen context.userIsResponder Claim
                         ]
@@ -374,10 +360,10 @@ oldCommittedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmou
         ]
 
 
-claimedPhaseElement : ViewMode -> TTExtras.FullParameters -> TokenValue -> Element.Element Msg
+claimedPhaseElement : ViewMode -> Contracts.Types.FullParameters -> TokenValue -> Element.Element Msg
 claimedPhaseElement viewMode parameters postCommitBalance =
-    Element.column (phaseStyleWithViewMode TTExtras.Claimed viewMode)
-        [ phaseHeading TTExtras.Claimed parameters viewMode
+    Element.column (phaseStyleWithViewMode Contracts.Types.Claimed viewMode)
+        [ phaseHeading Contracts.Types.Claimed parameters viewMode
         , indentedElement
             (Element.column []
                 [ Element.paragraph []
@@ -472,7 +458,7 @@ claimedPhaseElement viewMode parameters postCommitBalance =
                 Element.none
 
             Active context ->
-                if context.state.phase == TTExtras.Claimed then
+                if context.state.phase == Contracts.Types.Claimed then
                     Element.row [ Element.spacing 50, Element.padding 20, Element.centerX ]
                         [ EH.contractActionButton "Release" EH.buttonGreen context.userIsInitiator Release
                         , EH.contractActionButton "Burn" EH.buttonRed context.userIsInitiator Burn
@@ -483,7 +469,7 @@ claimedPhaseElement viewMode parameters postCommitBalance =
         ]
 
 
-phaseStyleWithViewMode : TTExtras.Phase -> ViewMode -> List (Element.Attribute a)
+phaseStyleWithViewMode : Contracts.Types.Phase -> ViewMode -> List (Element.Attribute a)
 phaseStyleWithViewMode phase viewMode =
     case viewMode of
         Draft ->
@@ -504,7 +490,7 @@ phaseStyleWithViewMode phase viewMode =
                 ]
 
 
-phaseHeading : TTExtras.Phase -> TTExtras.FullParameters -> ViewMode -> Element.Element msg
+phaseHeading : Contracts.Types.Phase -> Contracts.Types.FullParameters -> ViewMode -> Element.Element msg
 phaseHeading phase parameters viewMode =
     let
         textElement =
@@ -512,11 +498,11 @@ phaseHeading phase parameters viewMode =
                 (case viewMode of
                     Draft ->
                         [ Element.text "During the "
-                        , Element.el [ Element.Font.italic ] (Element.text (TTExtras.phaseToString phase ++ " phase:"))
+                        , Element.el [ Element.Font.italic ] (Element.text (Contracts.Types.phaseToString phase ++ " phase:"))
                         ]
 
                     Active context ->
-                        [ Element.el [ Element.Font.italic ] (Element.text (TTExtras.phaseToString phase ++ " phase "))
+                        [ Element.el [ Element.Font.italic ] (Element.text (Contracts.Types.phaseToString phase ++ " phase "))
                         , Element.el [ Element.Font.size 20 ] (Element.text (phaseCountdownString phase parameters context))
                         ]
                 )
@@ -527,7 +513,7 @@ phaseHeading phase parameters viewMode =
         ]
 
 
-phaseCountdownString : TTExtras.Phase -> TTExtras.FullParameters -> ViewContext -> String
+phaseCountdownString : Contracts.Types.Phase -> Contracts.Types.FullParameters -> ViewContext -> String
 phaseCountdownString phase parameters context =
     if phase == context.state.phase then
         let
@@ -545,22 +531,22 @@ phaseCountdownString phase parameters context =
         ""
 
 
-phaseInterval : TTExtras.Phase -> TTExtras.FullParameters -> Time.Posix
+phaseInterval : Contracts.Types.Phase -> Contracts.Types.FullParameters -> Time.Posix
 phaseInterval phase parameters =
     case phase of
-        TTExtras.Created ->
+        Contracts.Types.Created ->
             Time.millisToPosix 0
 
-        TTExtras.Open ->
+        Contracts.Types.Open ->
             parameters.autorecallInterval
 
-        TTExtras.Committed ->
+        Contracts.Types.Committed ->
             parameters.depositDeadlineInterval
 
-        TTExtras.Claimed ->
+        Contracts.Types.Claimed ->
             parameters.autoreleaseInterval
 
-        TTExtras.Closed ->
+        Contracts.Types.Closed ->
             Time.millisToPosix 0
 
 
@@ -570,12 +556,3 @@ indentedElement element =
         [ Element.el [ Element.width (Element.px 50) ] Element.none
         , Element.el [ Element.width Element.fill ] element
         ]
-
-
-type Msg
-    = Poke
-    | Commit
-    | Recall
-    | Claim
-    | Release
-    | Burn

@@ -1,81 +1,23 @@
-port module Main exposing (Model, Msg(..), Submodel(..), init, main, subscriptions, txIn, txOut, update, view, walletSentryPort)
+port module State exposing (initialState, subscriptions, update)
 
-import Browser
-import ChainCmd exposing (ChainCmdOrder)
-import Create
-import Element
-import Element.Background
-import Element.Border
-import Element.Font
-import Element.Input
-import ElementHelpers as EH
+import Browser.Navigation
+import ChainCmd exposing (ChainCmd)
+import Create.State
 import Eth.Net
-import Eth.Sentry.Tx as TxSentry exposing (TxSentry)
+import Eth.Sentry.Tx as TxSentry
 import Eth.Sentry.Wallet as WalletSentry exposing (WalletSentry)
 import Eth.Types exposing (Address)
 import Eth.Utils
 import EthHelpers
-import Html
-import Interact
+import Interact.State
 import Json.Decode
 import Time
+import Types exposing (..)
+import Url exposing (Url)
 
 
-type alias Flags =
-    { networkId : Int
-    , tokenContractDecimals : Int
-    , tokenContractAddressString : String
-    , factoryAddressString : String
-    }
-
-
-main : Program Flags Model Msg
-main =
-    Browser.element
-        { init = init
-        , view = view
-        , update = update
-        , subscriptions = subscriptions
-        }
-
-
-type Model
-    = Running ValidModel
-    | Failed String
-
-
-type alias ValidModel =
-    { tokenContractAddress : Address
-    , factoryAddress : Address
-    , time : Time.Posix
-    , node : EthHelpers.EthNode
-    , txSentry : TxSentry Msg
-    , userAddress : Maybe Address
-    , tokenContractDecimals : Int
-    , submodel : Submodel
-    }
-
-
-type Submodel
-    = Home
-    | CreateModel Create.Model
-    | InteractModel Interact.Model
-    | None
-
-
-type Msg
-    = GotoCreate
-    | GotoInteract
-    | Tick Time.Posix
-    | WalletStatus WalletSentry
-    | TxSentryMsg TxSentry.Msg
-    | CreateMsg Create.Msg
-    | InteractMsg Interact.Msg
-    | Fail String
-
-
-init : Flags -> ( Model, Cmd Msg )
-init flags =
+initialState : Flags -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
+initialState flags key url =
     case ( Eth.Utils.toAddress flags.tokenContractAddressString, Eth.Utils.toAddress flags.factoryAddressString ) of
         ( Ok tokenContractAddress, Ok factoryAddress ) ->
             let
@@ -119,10 +61,24 @@ update msg maybeValidModel =
 updateValidModel : Msg -> ValidModel -> ( Model, Cmd Msg )
 updateValidModel msg model =
     case msg of
+        LinkClicked urlRequest ->
+            let
+                _ =
+                    Debug.log "urlRequest" urlRequest
+            in
+            ( Running model, Cmd.none )
+
+        UrlChanged url ->
+            let
+                _ =
+                    Debug.log "urlChanged" url
+            in
+            ( Running model, Cmd.none )
+
         GotoCreate ->
             let
                 ( createModel, createCmd, chainCmdOrder ) =
-                    Create.init model.tokenContractAddress model.tokenContractDecimals model.factoryAddress model.userAddress
+                    Create.State.initialState model.tokenContractAddress model.tokenContractDecimals model.factoryAddress model.userAddress
 
                 ( newTxSentry, chainCmd ) =
                     ChainCmd.execute model.txSentry (ChainCmd.map CreateMsg chainCmdOrder)
@@ -141,7 +97,7 @@ updateValidModel msg model =
         GotoInteract ->
             let
                 ( interactModel, interactCmd, chainCmdOrder ) =
-                    Interact.init model.node model.tokenContractAddress model.tokenContractDecimals model.userAddress Nothing
+                    Interact.State.initialState model.node model.tokenContractAddress model.tokenContractDecimals model.userAddress Nothing
 
                 ( newTxSentry, chainCmd ) =
                     ChainCmd.execute model.txSentry (ChainCmd.map InteractMsg chainCmdOrder)
@@ -174,7 +130,7 @@ updateValidModel msg model =
                 CreateModel createModel ->
                     let
                         ( newCreateModel, createCmd, chainCmdOrder ) =
-                            Create.update createMsg createModel
+                            Create.State.update createMsg createModel
 
                         ( newTxSentry, chainCmd ) =
                             ChainCmd.execute model.txSentry (ChainCmd.map CreateMsg chainCmdOrder)
@@ -198,7 +154,7 @@ updateValidModel msg model =
                 InteractModel interactModel ->
                     let
                         ( newInteractModel, interactCmd, chainCmdOrder ) =
-                            Interact.update interactMsg interactModel
+                            Interact.State.update interactMsg interactModel
 
                         ( newTxSentry, chainCmd ) =
                             ChainCmd.execute model.txSentry (ChainCmd.map InteractMsg chainCmdOrder)
@@ -235,102 +191,13 @@ updateSubmodelWithUserAddress submodel userAddress =
             submodel
 
         CreateModel createModel ->
-            CreateModel (Create.updateWithUserAddress createModel userAddress)
+            CreateModel (Create.State.updateWithUserAddress createModel userAddress)
 
         InteractModel interactModel ->
-            InteractModel (Interact.updateWithUserAddress interactModel userAddress)
+            InteractModel (Interact.State.updateWithUserAddress interactModel userAddress)
 
         None ->
             None
-
-
-view : Model -> Html.Html Msg
-view maybeValidModel =
-    case maybeValidModel of
-        Running model ->
-            let
-                mainElementAttributes =
-                    [ Element.width Element.fill
-                    , Element.Background.color EH.pageBackgroundColor
-                    ]
-
-                mainColumnAttributes =
-                    [ Element.width Element.fill
-                    ]
-            in
-            Element.layout mainElementAttributes
-                (Element.column mainColumnAttributes
-                    [ headerElement model
-                    , bodyElement model
-                    ]
-                )
-
-        Failed str ->
-            Element.layout []
-                (Element.text ("ERROR: " ++ str))
-
-
-headerElement : ValidModel -> Element.Element Msg
-headerElement model =
-    Element.row
-        [ Element.Background.color EH.headerBackgroundColor
-        , Element.width Element.fill
-        , Element.padding 15
-        , Element.spacing 30
-        , Element.Font.size 24
-        ]
-        [ Element.Input.button [ Element.centerX ]
-            { onPress = Just GotoCreate
-            , label = Element.text "Create"
-            }
-        , Element.Input.button [ Element.centerX ]
-            { onPress = Just GotoInteract
-            , label = Element.text "Interact"
-            }
-        ]
-
-
-bodyElement : ValidModel -> Element.Element Msg
-bodyElement model =
-    Element.el [ Element.paddingXY 100 25, Element.width Element.fill ]
-        (subModelElement model)
-
-
-subModelElement : ValidModel -> Element.Element Msg
-subModelElement model =
-    let
-        subModelStyles =
-            [ Element.width Element.fill
-            , Element.spacing 20
-            ]
-
-        bodyStyles =
-            [ Element.Border.rounded 15
-            , Element.Background.color EH.subpageBackgroundColor
-            , Element.padding 20
-            , Element.spacing 50
-            , Element.width Element.fill
-            ]
-    in
-    (\( title, element ) ->
-        Element.column subModelStyles
-            [ EH.pageTitle title
-            , Element.el bodyStyles element
-            ]
-    )
-        (case model.submodel of
-            Home ->
-                ( "Home", Element.none )
-
-            CreateModel createModel ->
-                ( "Create", Element.map CreateMsg (Create.view createModel) )
-
-            InteractModel interactModel ->
-                ( "Interact", Element.map InteractMsg (Interact.view interactModel model.time) )
-
-            None ->
-                ( "none", Element.none )
-        )
 
 
 subscriptions : Model -> Sub Msg

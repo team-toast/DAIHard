@@ -1,11 +1,11 @@
 var elm_ethereum_ports = require('elm-ethereum-ports');
 
-import { Elm } from '../../src/Main'
+import { Elm } from '../../src/App'
 
 window.addEventListener('load', function () {
     if (typeof web3 !== 'undefined') {
         web3.version.getNetwork(function (e, networkId) {
-            window.app = Elm.Main.init({
+            window.app = Elm.App.init({
                 node: document.getElementById('elm'),
                 flags: {
                     tokenContractDecimals: 18,
@@ -18,7 +18,7 @@ window.addEventListener('load', function () {
             elm_ethereum_ports.walletSentry(window.app.ports.walletSentryPort, web3);
         });
     } else {
-        window.app = Elm.Main.init({
+        window.app = Elm.App.init({
             node: document.getElementById('elm'),
             flags: {
                 tokenContractDecimals: 18,

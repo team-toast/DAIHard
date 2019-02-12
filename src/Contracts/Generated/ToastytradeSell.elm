@@ -1,4 +1,4 @@
-module Contracts.ToastytradeSell exposing
+module Contracts.Generated.ToastytradeSell exposing
     ( Committed
     , GetParameters
     , GetState

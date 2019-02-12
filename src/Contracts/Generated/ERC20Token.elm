@@ -1,4 +1,4 @@
-module Contracts.ERC20Token exposing
+module Contracts.Generated.ERC20Token exposing
     ( Approval
     , Transfer
     , allowance

@@ -1,25 +1,25 @@
-module ChainCmd exposing (ChainCmdOrder, custom, execute, map, none)
+module ChainCmd exposing (ChainCmd, custom, execute, map, none)
 
 import Eth.Sentry.Tx as TxSentry
 import Eth.Types
 
 
-type ChainCmdOrder msg
+type ChainCmd msg
     = CustomSend (TxSentry.CustomSend msg) Eth.Types.Send
     | None
 
 
-none : ChainCmdOrder msg
+none : ChainCmd msg
 none =
     None
 
 
-custom : TxSentry.CustomSend msg -> Eth.Types.Send -> ChainCmdOrder msg
+custom : TxSentry.CustomSend msg -> Eth.Types.Send -> ChainCmd msg
 custom customSend txParams =
     CustomSend customSend txParams
 
 
-execute : TxSentry.TxSentry msg -> ChainCmdOrder msg -> ( TxSentry.TxSentry msg, Cmd msg )
+execute : TxSentry.TxSentry msg -> ChainCmd msg -> ( TxSentry.TxSentry msg, Cmd msg )
 execute txSentry chainCmdOrder =
     case chainCmdOrder of
         None ->
@@ -29,7 +29,7 @@ execute txSentry chainCmdOrder =
             TxSentry.customSend txSentry customSend txParams
 
 
-map : (subMsg -> msg) -> ChainCmdOrder subMsg -> ChainCmdOrder msg
+map : (subMsg -> msg) -> ChainCmd subMsg -> ChainCmd msg
 map f chainCmdOrder =
     case chainCmdOrder of
         None ->

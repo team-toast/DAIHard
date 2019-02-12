@@ -1,4 +1,4 @@
-module Contracts.ToastytradeFactory exposing
+module Contracts.Generated.ToastytradeFactory exposing
     ( NewToastytradeSell
     , createToastytradeSell
     , newToastytradeSellDecoder
