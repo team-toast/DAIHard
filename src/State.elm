@@ -1,4 +1,4 @@
-port module State exposing (initialState, subscriptions, update)
+port module State exposing (init, subscriptions, update)
 
 import Browser.Navigation
 import ChainCmd exposing (ChainCmd)
@@ -11,13 +11,14 @@ import Eth.Utils
 import EthHelpers
 import Interact.State
 import Json.Decode
+import Routing
 import Time
 import Types exposing (..)
 import Url exposing (Url)
 
 
-initialState : Flags -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
-initialState flags key url =
+init : Flags -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
+init flags url key =
     case ( Eth.Utils.toAddress flags.tokenContractAddressString, Eth.Utils.toAddress flags.factoryAddressString ) of
         ( Ok tokenContractAddress, Ok factoryAddress ) ->
             let
@@ -28,18 +29,19 @@ initialState flags key url =
                 txSentry =
                     TxSentry.init ( txOut, txIn ) TxSentryMsg node.http
             in
-            ( Running
-                { tokenContractAddress = tokenContractAddress
+            updateFromUrl
+                { url = url
+                , key = key
+                , tokenContractAddress = tokenContractAddress
                 , factoryAddress = factoryAddress
                 , time = Time.millisToPosix 0
                 , node = node
                 , txSentry = txSentry
                 , userAddress = Nothing
                 , tokenContractDecimals = flags.tokenContractDecimals
-                , submodel = Home
+                , submodel = HomeModel
                 }
-            , Cmd.none
-            )
+                url
 
         ( Err errstr, _ ) ->
             ( Failed ("error interpreting token contract address: " ++ errstr), Cmd.none )
@@ -54,7 +56,7 @@ update msg maybeValidModel =
         Running model ->
             updateValidModel msg model
 
-        Failed str ->
+        Failed _ ->
             ( maybeValidModel, Cmd.none )
 
 
@@ -69,49 +71,10 @@ updateValidModel msg model =
             ( Running model, Cmd.none )
 
         UrlChanged url ->
-            let
-                _ =
-                    Debug.log "urlChanged" url
-            in
-            ( Running model, Cmd.none )
+            updateFromUrl model url
 
-        GotoCreate ->
-            let
-                ( createModel, createCmd, chainCmdOrder ) =
-                    Create.State.initialState model.tokenContractAddress model.tokenContractDecimals model.factoryAddress model.userAddress
-
-                ( newTxSentry, chainCmd ) =
-                    ChainCmd.execute model.txSentry (ChainCmd.map CreateMsg chainCmdOrder)
-            in
-            ( Running
-                { model
-                    | submodel = CreateModel createModel
-                    , txSentry = newTxSentry
-                }
-            , Cmd.batch
-                [ Cmd.map CreateMsg createCmd
-                , chainCmd
-                ]
-            )
-
-        GotoInteract ->
-            let
-                ( interactModel, interactCmd, chainCmdOrder ) =
-                    Interact.State.initialState model.node model.tokenContractAddress model.tokenContractDecimals model.userAddress Nothing
-
-                ( newTxSentry, chainCmd ) =
-                    ChainCmd.execute model.txSentry (ChainCmd.map InteractMsg chainCmdOrder)
-            in
-            ( Running
-                { model
-                    | submodel = InteractModel interactModel
-                    , txSentry = newTxSentry
-                }
-            , Cmd.batch
-                [ Cmd.map InteractMsg interactCmd
-                , chainCmd
-                ]
-            )
+        GotoRoute route ->
+            gotoRoute model route
 
         Tick newTime ->
             ( Running { model | time = newTime }, Cmd.none )
@@ -184,10 +147,65 @@ updateValidModel msg model =
             ( Failed str, Cmd.none )
 
 
+updateFromUrl : ValidModel -> Url -> ( Model, Cmd Msg )
+updateFromUrl model url =
+    gotoRoute model (Routing.urlToRoute url)
+
+
+gotoRoute : ValidModel -> Route -> ( Model, Cmd Msg )
+gotoRoute model route =
+    case route of
+        Home ->
+            ( Running { model | submodel = HomeModel }
+            , Cmd.none
+            )
+
+        Create ->
+            let
+                ( createModel, createCmd, chainCmdOrder ) =
+                    Create.State.init model.tokenContractAddress model.tokenContractDecimals model.factoryAddress model.userAddress
+
+                ( newTxSentry, chainCmd ) =
+                    ChainCmd.execute model.txSentry (ChainCmd.map CreateMsg chainCmdOrder)
+            in
+            ( Running
+                { model
+                    | submodel = CreateModel createModel
+                    , txSentry = newTxSentry
+                }
+            , Cmd.batch
+                [ Cmd.map CreateMsg createCmd
+                , chainCmd
+                ]
+            )
+
+        Interact addressString ->
+            let
+                ( interactModel, interactCmd, chainCmdOrder ) =
+                    Interact.State.init model.node model.tokenContractAddress model.tokenContractDecimals model.userAddress addressString
+
+                ( newTxSentry, chainCmd ) =
+                    ChainCmd.execute model.txSentry (ChainCmd.map InteractMsg chainCmdOrder)
+            in
+            ( Running
+                { model
+                    | submodel = InteractModel interactModel
+                    , txSentry = newTxSentry
+                }
+            , Cmd.batch
+                [ Cmd.map InteractMsg interactCmd
+                , chainCmd
+                ]
+            )
+
+        NotFound ->
+            ( Failed "Don't understand that url...", Cmd.none )
+
+
 updateSubmodelWithUserAddress : Submodel -> Maybe Address -> Submodel
 updateSubmodelWithUserAddress submodel userAddress =
     case submodel of
-        Home ->
+        HomeModel ->
             submodel
 
         CreateModel createModel ->

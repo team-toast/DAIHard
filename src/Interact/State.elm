@@ -1,9 +1,8 @@
-module Interact.State exposing (getContractInfoCmd, handleBadFetchResult, initialState, update, updateParameters, updateState, updateWithUserAddress)
+module Interact.State exposing (getContractInfoCmd, handleBadFetchResult, init, update, updateWithUserAddress)
 
 import ChainCmd exposing (ChainCmd)
 import Contracts.Generated.ERC20Token as TokenContract
 import Contracts.Generated.ToastytradeSell as TTS
-import Contracts.Types
 import Contracts.Wrappers
 import Eth
 import Eth.Types exposing (Address)
@@ -15,19 +14,12 @@ import RenderContract.Types
 import TokenValue
 
 
-updateParameters : TTSInfo -> Maybe Contracts.Types.FullParameters -> TTSInfo
-updateParameters ttsInfo parameters =
-    { ttsInfo | parameters = parameters }
-
-
-updateState : TTSInfo -> Maybe Contracts.Types.State -> TTSInfo
-updateState ttsInfo state =
-    { ttsInfo | state = state }
-
-
-initialState : EthHelpers.EthNode -> Address -> Int -> Maybe Address -> Maybe Address -> ( Model, Cmd Msg, ChainCmd Msg )
-initialState ethNode tokenAddress tokenDecimals userAddress maybeTTAddress =
+init : EthHelpers.EthNode -> Address -> Int -> Maybe Address -> String -> ( Model, Cmd Msg, ChainCmd Msg )
+init ethNode tokenAddress tokenDecimals userAddress ttAddressString =
     let
+        maybeTTAddress =
+            Result.toMaybe (Eth.Utils.toAddress ttAddressString)
+
         cmd =
             case maybeTTAddress of
                 Just address ->
@@ -40,11 +32,9 @@ initialState ethNode tokenAddress tokenDecimals userAddress maybeTTAddress =
       , userAddress = userAddress
       , tokenAddress = tokenAddress
       , tokenDecimals = tokenDecimals
-      , addressInput =
-            Maybe.map Eth.Utils.addressToString maybeTTAddress
-                |> Maybe.withDefault ""
+      , addressInput = ttAddressString
       , ttsInfo =
-            { address = Nothing
+            { address = maybeTTAddress
             , parameters = Nothing
             , state = Nothing
             }

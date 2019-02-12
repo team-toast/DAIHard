@@ -1,4 +1,4 @@
-module Create.State exposing (initialState, update, updateParameters, updateWithUserAddress, validateInputs)
+module Create.State exposing (init, update, updateParameters, updateWithUserAddress, validateInputs)
 
 import ChainCmd exposing (ChainCmd)
 import Contracts.Generated.ERC20Token as TokenContract
@@ -12,8 +12,8 @@ import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
-initialState : Address -> Int -> Address -> Maybe Address -> ( Model, Cmd Msg, ChainCmd Msg )
-initialState tokenAddress tokenDecimals factoryAddress userAddress =
+init : Address -> Int -> Address -> Maybe Address -> ( Model, Cmd Msg, ChainCmd Msg )
+init tokenAddress tokenDecimals factoryAddress userAddress =
     let
         initialInputs =
             { uncoiningAmount = "100"

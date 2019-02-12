@@ -9,6 +9,7 @@ import Element.Font
 import Element.Input
 import ElementHelpers as EH
 import Interact.View
+import Routing
 import Types exposing (..)
 
 
@@ -30,7 +31,7 @@ root maybeValidModel =
                 in
                 Element.layout mainElementAttributes
                     (Element.column mainColumnAttributes
-                        [ headerElement model
+                        [ headerElement
                         , bodyElement model
                         ]
                     )
@@ -42,8 +43,8 @@ root maybeValidModel =
     }
 
 
-headerElement : ValidModel -> Element.Element Msg
-headerElement model =
+headerElement : Element.Element Msg
+headerElement =
     Element.row
         [ Element.Background.color EH.headerBackgroundColor
         , Element.width Element.fill
@@ -52,11 +53,11 @@ headerElement model =
         , Element.Font.size 24
         ]
         [ Element.Input.button [ Element.centerX ]
-            { onPress = Just GotoCreate
+            { onPress = Just (GotoRoute Create)
             , label = Element.text "Create"
             }
         , Element.Input.button [ Element.centerX ]
-            { onPress = Just GotoInteract
+            { onPress = Just (GotoRoute (Interact ""))
             , label = Element.text "Interact"
             }
         ]
@@ -91,7 +92,7 @@ subModelElement model =
             ]
     )
         (case model.submodel of
-            Home ->
+            HomeModel ->
                 ( "Home", Element.none )
 
             CreateModel createModel ->

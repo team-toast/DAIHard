@@ -1,10 +1,20 @@
-module Interact.Types exposing (Model, Msg(..), TTSInfo)
+module Interact.Types exposing (Model, Msg(..), TTSInfo, updateParameters, updateState)
 
 import Contracts.Types
 import Eth.Types exposing (Address)
 import EthHelpers
 import Http
 import RenderContract.Types
+
+
+updateParameters : TTSInfo -> Maybe Contracts.Types.FullParameters -> TTSInfo
+updateParameters ttsInfo parameters =
+    { ttsInfo | parameters = parameters }
+
+
+updateState : TTSInfo -> Maybe Contracts.Types.State -> TTSInfo
+updateState ttsInfo state =
+    { ttsInfo | state = state }
 
 
 type alias Model =
