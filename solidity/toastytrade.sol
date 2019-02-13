@@ -3,9 +3,11 @@ pragma solidity 0.5.2;
 import "ERC20Interface.sol";
 
 contract ToastytradeFactory {
-    event NewToastytradeSell(address toastytradeSellAddress);
+    event NewToastytradeSell(uint id, address toastytradeSellAddress);
 
     ERC20Interface public tokenContract;
+
+    ToastytradeSell[] public createdSells;
 
     constructor(ERC20Interface _tokenContract)
     public {
@@ -17,11 +19,13 @@ contract ToastytradeFactory {
     returns (ToastytradeSell) {
         ToastytradeSell newTT = new ToastytradeSell(tokenContract);
 
+        createdSells.push(newTT);
+
         require(tokenContract.transferFrom(msg.sender, address(newTT), sellAmount), "Token transfer failed. Did you call approve()?");
 
         newTT.open(_initiator, price, _responderDeposit, _autorecallInterval, _depositDeadlineInterval, _autoreleaseInterval, _logisticsString);
 
-        emit NewToastytradeSell(address(newTT));
+        emit NewToastytradeSell(createdSells.length-1, address(newTT));
 
         return newTT;
     }

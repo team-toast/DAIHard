@@ -1,5 +1,38 @@
 [
     {
+        "constant": true,
+        "inputs": [],
+        "name": "tokenContract",
+        "outputs": [
+            {
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [
+            {
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "name": "createdSells",
+        "outputs": [
+            {
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
         "constant": false,
         "inputs": [
             {
@@ -62,25 +95,16 @@
         "inputs": [
             {
                 "indexed": false,
+                "name": "id",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
                 "name": "toastytradeSellAddress",
                 "type": "address"
             }
         ],
         "name": "NewToastytradeSell",
         "type": "event"
-    },
-    {
-        "constant": true,
-        "inputs": [],
-        "name": "tokenContract",
-        "outputs": [
-            {
-                "name": "",
-                "type": "address"
-            }
-        ],
-        "payable": false,
-        "stateMutability": "view",
-        "type": "function"
     }
 ]

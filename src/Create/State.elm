@@ -198,13 +198,10 @@ update msg model =
             ( model, Cmd.none, ChainCmd.none )
 
         CreateMined (Ok txReceipt) ->
-            let
-                _ =
-                    Debug.log "addresssss" (Contracts.Types.txReceiptToCreatedToastytradeSellAddress model.factoryAddress txReceipt)
-
-                _ =
-                    Debug.log "status" txReceipt.status
-            in
+            -- let
+            --     _ =
+            --         Debug.log "id" <| Result.map BigInt.toString (Contracts.Types.txReceiptToCreatedToastytradeSellId model.factoryAddress txReceipt)
+            -- in
             ( model, Cmd.none, ChainCmd.none )
 
         NoOp ->

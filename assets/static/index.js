@@ -2,6 +2,9 @@ var elm_ethereum_ports = require('elm-ethereum-ports');
 
 import { Elm } from '../../src/App'
 
+window.factoryAddress = "0xDD5897Dd6D39E1106e32263F405f35552e1867C4";
+window.tokenContractAddress = "0xC4375B7De8af5a38a93548eb8453a498222C4fF2";
+
 window.addEventListener('load', function () {
     if (typeof web3 !== 'undefined') {
         web3.version.getNetwork(function (e, networkId) {
@@ -10,8 +13,8 @@ window.addEventListener('load', function () {
                 flags: {
                     tokenContractDecimals: 18,
                     networkId: parseInt(networkId),
-                    tokenContractAddressString: "0xC4375B7De8af5a38a93548eb8453a498222C4fF2",
-                    factoryAddressString: "0x710808c18cF3ae568317b3be8694b57CB76b20B9"
+                    tokenContractAddressString: tokenContractAddress,
+                    factoryAddressString: factoryAddress
                 }
             });
             elm_ethereum_ports.txSentry(window.app.ports.txOut, app.ports.txIn, web3);
@@ -23,8 +26,8 @@ window.addEventListener('load', function () {
             flags: {
                 tokenContractDecimals: 18,
                 networkId: parseInt(networkId),
-                tokenContractAddressString: "0xC4375B7De8af5a38a93548eb8453a498222C4fF2",
-                factoryAddressString: "0x710808c18cF3ae568317b3be8694b57CB76b20B9"
+                tokenContractAddressString: tokenContractAddress,
+                factoryAddressString: factoryAddress
             }
         });
         console.log("Metamask not detected.");

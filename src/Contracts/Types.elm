@@ -1,4 +1,4 @@
-module Contracts.Types exposing (FullParameters, Phase(..), State, UserParameters, bigIntToPhase, buildFullParameters, decodeState, phaseToString, txReceiptToCreatedToastytradeSellAddress)
+module Contracts.Types exposing (FullParameters, Phase(..), State, UserParameters, bigIntToPhase, buildFullParameters, decodeState, phaseToString, txReceiptToCreatedToastytradeSellAddress, txReceiptToCreatedToastytradeSellId)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
@@ -59,7 +59,32 @@ txReceiptToCreatedToastytradeSellAddress factoryAddress txReceipt =
     in
     case maybeCreateEventData of
         Just createEventData ->
-            Abi.Decode.fromString Abi.Decode.address (String.dropLeft 2 createEventData)
+            createEventData
+                |> String.dropLeft (2 + 64)
+                |> String.left 64
+                |> Abi.Decode.fromString Abi.Decode.address
+
+        Nothing ->
+            Err "Can't find a log generated from the given factoryAddress. Are you looking at the wrong transaction?"
+
+
+txReceiptToCreatedToastytradeSellId : Address -> Eth.Types.TxReceipt -> Result String BigInt
+txReceiptToCreatedToastytradeSellId factoryAddress txReceipt =
+    let
+        maybeCreateEventData =
+            txReceipt.logs
+                |> List.filter (\log -> log.address == factoryAddress)
+                |> List.head
+                |> Maybe.map (\log -> log.data)
+    in
+    case maybeCreateEventData of
+        Just createEventData ->
+            createEventData
+                -- Remove the '0x' at the beginning
+                |> String.dropLeft 2
+                -- Take the first 64-char argument
+                |> String.left 64
+                |> Abi.Decode.fromString Abi.Decode.uint
 
         Nothing ->
             Err "Can't find a log generated from the given factoryAddress. Are you looking at the wrong transaction?"

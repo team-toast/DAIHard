@@ -1,6 +1,7 @@
 module Contracts.Generated.ToastytradeFactory exposing
     ( NewToastytradeSell
     , createToastytradeSell
+    , createdSells
     , newToastytradeSellDecoder
     , newToastytradeSellEvent
     , tokenContract
@@ -38,6 +39,21 @@ createToastytradeSell contractAddress initiator sellAmount price responderDeposi
     }
 
 
+{-| "createdSells(uint256)" function
+-}
+createdSells : Address -> BigInt -> Call Address
+createdSells contractAddress a =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "createdSells(uint256)" [ AbiEncode.uint a ]
+    , nonce = Nothing
+    , decoder = toElmDecoder AbiDecode.address
+    }
+
+
 {-| "tokenContract()" function
 -}
 tokenContract : Address -> Call Address
@@ -53,10 +69,12 @@ tokenContract contractAddress =
     }
 
 
-{-| "NewToastytradeSell(address)" event
+{-| "NewToastytradeSell(uint256,address)" event
 -}
 type alias NewToastytradeSell =
-    { toastytradeSellAddress : Address }
+    { id : BigInt
+    , toastytradeSellAddress : Address
+    }
 
 
 newToastytradeSellEvent : Address -> LogFilter
@@ -64,11 +82,12 @@ newToastytradeSellEvent contractAddress =
     { fromBlock = LatestBlock
     , toBlock = LatestBlock
     , address = contractAddress
-    , topics = [ Just <| U.keccak256 "NewToastytradeSell(address)" ]
+    , topics = [ Just <| U.keccak256 "NewToastytradeSell(uint256,address)" ]
     }
 
 
 newToastytradeSellDecoder : Decoder NewToastytradeSell
 newToastytradeSellDecoder =
     succeed NewToastytradeSell
-        |> custom (data 0 AbiDecode.address)
+        |> custom (data 0 AbiDecode.uint)
+        |> custom (data 1 AbiDecode.address)
