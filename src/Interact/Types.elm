@@ -1,10 +1,16 @@
-module Interact.Types exposing (Model, Msg(..), TTSInfo, updateParameters, updateState)
+module Interact.Types exposing (Model, Msg(..), TTSInfo, updateAddress, updateParameters, updateState)
 
+import BigInt exposing (BigInt)
 import Contracts.Types
 import Eth.Types exposing (Address)
 import EthHelpers
 import Http
 import RenderContract.Types
+
+
+updateAddress : TTSInfo -> Maybe Address -> TTSInfo
+updateAddress ttsInfo address =
+    { ttsInfo | address = address }
 
 
 updateParameters : TTSInfo -> Maybe Contracts.Types.FullParameters -> TTSInfo
@@ -22,20 +28,21 @@ type alias Model =
     , userAddress : Maybe Address
     , tokenAddress : Address
     , tokenDecimals : Int
-    , addressInput : String
+    , idInput : String
     , ttsInfo : TTSInfo
     }
 
 
 type alias TTSInfo =
-    { address : Maybe Address
+    { id : BigInt
+    , address : Maybe Address
     , parameters : Maybe Contracts.Types.FullParameters
     , state : Maybe Contracts.Types.State
     }
 
 
 type Msg
-    = AddressInputChanged String
+    = AddressFetched (Result Http.Error Address)
     | StateFetched (Result Http.Error (Maybe Contracts.Types.State))
     | ParametersFetched (Result Http.Error (Maybe Contracts.Types.FullParameters))
     | ContractAction RenderContract.Types.Msg

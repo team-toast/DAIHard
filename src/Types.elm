@@ -1,5 +1,6 @@
 module Types exposing (Flags, Model(..), Msg(..), Route(..), Submodel(..), ValidModel)
 
+import BigInt exposing (BigInt)
 import Browser
 import Browser.Navigation
 import Create.Types
@@ -15,7 +16,7 @@ import Url exposing (Url)
 type Route
     = Home
     | Create
-    | Interact (Maybe String)
+    | Interact (Maybe Int)
     | NotFound
 
 

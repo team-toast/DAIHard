@@ -1,5 +1,6 @@
-module Contracts.Wrappers exposing (createSell, decodeParameters, getParametersCmd, getStateCmd)
+module Contracts.Wrappers exposing (createSell, decodeParameters, getAddressFromIdCmd, getParametersCmd, getStateCmd)
 
+import BigInt exposing (BigInt)
 import Contracts.Generated.ToastytradeFactory as TTF
 import Contracts.Generated.ToastytradeSell as TTS
 import Contracts.Types exposing (..)
@@ -34,10 +35,23 @@ createSell contractAddress parameters =
         )
 
 
+getAddressFromIdCmd : EthHelpers.EthNode -> Address -> BigInt -> (Result Http.Error Address -> msg) -> Cmd msg
+getAddressFromIdCmd ethNode factoryAddress ttId msgConstructor =
+    Eth.call ethNode.http (TTF.createdSells factoryAddress ttId)
+        |> Task.attempt msgConstructor
+
+
 getParametersCmd : EthHelpers.EthNode -> Int -> Address -> (Result Http.Error (Maybe FullParameters) -> msg) -> Cmd msg
 getParametersCmd ethNode numDecimals ttAddress msgConstructor =
     Eth.call ethNode.http (TTS.getParameters ttAddress)
         |> Task.map (decodeParameters numDecimals)
+        |> Task.attempt msgConstructor
+
+
+getStateCmd : EthHelpers.EthNode -> Int -> Address -> (Result Http.Error (Maybe State) -> msg) -> Cmd msg
+getStateCmd ethNode numDecimals ttAddress msgConstructor =
+    Eth.call ethNode.http (TTS.getState ttAddress)
+        |> Task.map (decodeState numDecimals)
         |> Task.attempt msgConstructor
 
 
@@ -68,10 +82,3 @@ decodeParameters numDecimals encodedParameters =
         maybeAutorecallInterval
         maybeDepositDeadlineInterval
         maybeAutoreleaseInterval
-
-
-getStateCmd : EthHelpers.EthNode -> Int -> Address -> (Result Http.Error (Maybe State) -> msg) -> Cmd msg
-getStateCmd ethNode numDecimals ttAddress msgConstructor =
-    Eth.call ethNode.http (TTS.getState ttAddress)
-        |> Task.map (decodeState numDecimals)
-        |> Task.attempt msgConstructor

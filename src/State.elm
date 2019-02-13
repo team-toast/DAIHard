@@ -1,5 +1,6 @@
 port module State exposing (init, subscriptions, update)
 
+import BigInt
 import Browser
 import Browser.Navigation
 import ChainCmd exposing (ChainCmd)
@@ -192,25 +193,30 @@ gotoRoute model route =
                 ]
             )
 
-        Interact addressString ->
-            let
-                ( interactModel, interactCmd, chainCmdOrder ) =
-                    Interact.State.init model.node model.tokenContractAddress model.tokenContractDecimals model.userAddress addressString
+        Interact id ->
+            case Maybe.map BigInt.fromInt id of
+                Nothing ->
+                    ( Failed "Error interpreting url", Browser.Navigation.pushUrl model.key newUrlString )
 
-                ( newTxSentry, chainCmd ) =
-                    ChainCmd.execute model.txSentry (ChainCmd.map InteractMsg chainCmdOrder)
-            in
-            ( Running
-                { model
-                    | submodel = InteractModel interactModel
-                    , txSentry = newTxSentry
-                }
-            , Cmd.batch
-                [ Cmd.map InteractMsg interactCmd
-                , chainCmd
-                , Browser.Navigation.pushUrl model.key newUrlString
-                ]
-            )
+                Just bigIntId ->
+                    let
+                        ( interactModel, interactCmd, chainCmdOrder ) =
+                            Interact.State.init model.node model.factoryAddress model.tokenContractAddress model.tokenContractDecimals model.userAddress bigIntId
+
+                        ( newTxSentry, chainCmd ) =
+                            ChainCmd.execute model.txSentry (ChainCmd.map InteractMsg chainCmdOrder)
+                    in
+                    ( Running
+                        { model
+                            | submodel = InteractModel interactModel
+                            , txSentry = newTxSentry
+                        }
+                    , Cmd.batch
+                        [ Cmd.map InteractMsg interactCmd
+                        , chainCmd
+                        , Browser.Navigation.pushUrl model.key newUrlString
+                        ]
+                    )
 
         NotFound ->
             ( Failed "Don't understand that url...", Browser.Navigation.pushUrl model.key newUrlString )

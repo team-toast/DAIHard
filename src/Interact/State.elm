@@ -1,5 +1,6 @@
 module Interact.State exposing (getContractInfoCmd, handleBadFetchResult, init, update, updateWithUserAddress)
 
+import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
 import Contracts.Generated.ERC20Token as TokenContract
 import Contracts.Generated.ToastytradeSell as TTS
@@ -14,32 +15,20 @@ import RenderContract.Types
 import TokenValue
 
 
-init : EthHelpers.EthNode -> Address -> Int -> Maybe Address -> Maybe String -> ( Model, Cmd Msg, ChainCmd Msg )
-init ethNode tokenAddress tokenDecimals userAddress maybeTTAddressString =
+init : EthHelpers.EthNode -> Address -> Address -> Int -> Maybe Address -> BigInt -> ( Model, Cmd Msg, ChainCmd Msg )
+init ethNode factoryAddress tokenAddress tokenDecimals userAddress ttId =
     let
-        maybeTTAddress =
-            case maybeTTAddressString of
-                Nothing ->
-                    Nothing
-
-                Just ttAddressString ->
-                    Result.toMaybe (Eth.Utils.toAddress ttAddressString)
-
         cmd =
-            case maybeTTAddress of
-                Just address ->
-                    getContractInfoCmd ethNode tokenDecimals address
-
-                Nothing ->
-                    Cmd.none
+            getContractAddressCmd ethNode factoryAddress ttId
     in
     ( { ethNode = ethNode
       , userAddress = userAddress
       , tokenAddress = tokenAddress
       , tokenDecimals = tokenDecimals
-      , addressInput = Maybe.withDefault "" maybeTTAddressString
+      , idInput = BigInt.toString ttId
       , ttsInfo =
-            { address = maybeTTAddress
+            { id = ttId
+            , address = Nothing
             , parameters = Nothing
             , state = Nothing
             }
@@ -47,6 +36,11 @@ init ethNode tokenAddress tokenDecimals userAddress maybeTTAddressString =
     , cmd
     , ChainCmd.none
     )
+
+
+getContractAddressCmd : EthHelpers.EthNode -> Address -> BigInt -> Cmd Msg
+getContractAddressCmd ethNode factoryAddress id =
+    Contracts.Wrappers.getAddressFromIdCmd ethNode factoryAddress id AddressFetched
 
 
 getContractInfoCmd : EthHelpers.EthNode -> Int -> Address -> Cmd Msg
@@ -65,26 +59,20 @@ updateWithUserAddress model userAddress =
 update : Msg -> Model -> ( Model, Cmd Msg, ChainCmd Msg )
 update msg model =
     case msg of
-        AddressInputChanged newInput ->
-            let
-                ttsInfo =
-                    { address = Result.toMaybe (Eth.Utils.toAddress newInput)
-                    , parameters = Nothing
-                    , state = Nothing
-                    }
-            in
-            ( { model
-                | addressInput = newInput
-                , ttsInfo = ttsInfo
-              }
-            , case ttsInfo.address of
-                Just address ->
-                    getContractInfoCmd model.ethNode model.tokenDecimals address
+        AddressFetched fetchResult ->
+            case Debug.log "res" fetchResult of
+                Ok address ->
+                    ( { model | ttsInfo = updateAddress model.ttsInfo (Just address) }
+                    , getContractInfoCmd model.ethNode model.tokenDecimals address
+                    , ChainCmd.none
+                    )
 
-                Nothing ->
-                    Cmd.none
-            , ChainCmd.none
-            )
+                Err errstr ->
+                    let
+                        _ =
+                            Debug.log "can't fetch full state: " errstr
+                    in
+                    ( model, Cmd.none, ChainCmd.none )
 
         StateFetched fetchResult ->
             case fetchResult of

@@ -1,5 +1,6 @@
 module Routing exposing (routeToString, urlToRoute)
 
+import BigInt exposing (BigInt)
 import Types exposing (..)
 import Url exposing (Url)
 import Url.Builder
@@ -12,7 +13,7 @@ routeParser =
     Url.Parser.oneOf
         [ Url.Parser.map Home Url.Parser.top
         , Url.Parser.map Create (Url.Parser.s "create")
-        , Url.Parser.map Interact (Url.Parser.s "interact" <?> Url.Parser.Query.string "id")
+        , Url.Parser.map Interact (Url.Parser.s "interact" <?> Url.Parser.Query.int "id")
         ]
 
 
@@ -30,14 +31,14 @@ routeToString route =
         Create ->
             Url.Builder.absolute [ "create" ] []
 
-        Interact maybeString ->
+        Interact maybeId ->
             Url.Builder.absolute [ "interact" ]
-                (case maybeString of
+                (case maybeId of
                     Nothing ->
                         []
 
-                    Just string ->
-                        [ Url.Builder.string "id" string ]
+                    Just id ->
+                        [ Url.Builder.string "id" <| String.fromInt id ]
                 )
 
         NotFound ->

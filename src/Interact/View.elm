@@ -12,22 +12,22 @@ import Time
 root : Model -> Time.Posix -> Element.Element Msg
 root model time =
     Element.column [ Element.spacing 40, Element.width Element.fill ]
-        [ addressInputFormElement model
-        , maybeContractElement model time
+        [ maybeContractElement model time
         ]
 
 
-addressInputFormElement : Model -> Element.Element Msg
-addressInputFormElement model =
-    Element.column [ Element.width Element.fill, Element.spacing 10 ]
-        [ Element.el [ Element.centerX, Element.Font.size 16 ] (Element.text "Uncoining Contract at:")
-        , Element.Input.text [ Element.centerX, Element.width (Element.px 430), Element.Font.size 16 ]
-            { onChange = AddressInputChanged
-            , text = model.addressInput
-            , placeholder = Just (Element.Input.placeholder [] (Element.text "contract address"))
-            , label = Element.Input.labelHidden "address"
-            }
-        ]
+
+-- addressInputFormElement : Model -> Element.Element Msg
+-- addressInputFormElement model =
+--     Element.column [ Element.width Element.fill, Element.spacing 10 ]
+--         [ Element.el [ Element.centerX, Element.Font.size 16 ] (Element.text "Uncoining Contract at:")
+--         , Element.Input.text [ Element.centerX, Element.width (Element.px 430), Element.Font.size 16 ]
+--             { onChange = AddressInputChanged
+--             , text = model.addressInput
+--             , placeholder = Just (Element.Input.placeholder [] (Element.text "contract address"))
+--             , label = Element.Input.labelHidden "address"
+--             }
+--         ]
 
 
 maybeContractElement : Model -> Time.Posix -> Element.Element Msg
