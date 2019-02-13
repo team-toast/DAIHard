@@ -15,7 +15,7 @@ import Url exposing (Url)
 type Route
     = Home
     | Create
-    | Interact String
+    | Interact (Maybe String)
     | NotFound
 
 
@@ -33,8 +33,7 @@ type Model
 
 
 type alias ValidModel =
-    { url : Url.Url
-    , key : Browser.Navigation.Key
+    { key : Browser.Navigation.Key
     , tokenContractAddress : Address
     , factoryAddress : Address
     , time : Time.Posix

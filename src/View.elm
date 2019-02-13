@@ -57,7 +57,7 @@ headerElement =
             , label = Element.text "Create"
             }
         , Element.Input.button [ Element.centerX ]
-            { onPress = Just (GotoRoute (Interact ""))
+            { onPress = Just (GotoRoute (Interact Nothing))
             , label = Element.text "Interact"
             }
         ]

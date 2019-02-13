@@ -14,11 +14,16 @@ import RenderContract.Types
 import TokenValue
 
 
-init : EthHelpers.EthNode -> Address -> Int -> Maybe Address -> String -> ( Model, Cmd Msg, ChainCmd Msg )
-init ethNode tokenAddress tokenDecimals userAddress ttAddressString =
+init : EthHelpers.EthNode -> Address -> Int -> Maybe Address -> Maybe String -> ( Model, Cmd Msg, ChainCmd Msg )
+init ethNode tokenAddress tokenDecimals userAddress maybeTTAddressString =
     let
         maybeTTAddress =
-            Result.toMaybe (Eth.Utils.toAddress ttAddressString)
+            case maybeTTAddressString of
+                Nothing ->
+                    Nothing
+
+                Just ttAddressString ->
+                    Result.toMaybe (Eth.Utils.toAddress ttAddressString)
 
         cmd =
             case maybeTTAddress of
@@ -32,7 +37,7 @@ init ethNode tokenAddress tokenDecimals userAddress ttAddressString =
       , userAddress = userAddress
       , tokenAddress = tokenAddress
       , tokenDecimals = tokenDecimals
-      , addressInput = ttAddressString
+      , addressInput = Maybe.withDefault "" maybeTTAddressString
       , ttsInfo =
             { address = maybeTTAddress
             , parameters = Nothing

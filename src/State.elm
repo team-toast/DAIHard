@@ -1,5 +1,6 @@
 port module State exposing (init, subscriptions, update)
 
+import Browser
 import Browser.Navigation
 import ChainCmd exposing (ChainCmd)
 import Create.State
@@ -30,8 +31,7 @@ init flags url key =
                     TxSentry.init ( txOut, txIn ) TxSentryMsg node.http
             in
             updateFromUrl
-                { url = url
-                , key = key
+                { key = key
                 , tokenContractAddress = tokenContractAddress
                 , factoryAddress = factoryAddress
                 , time = Time.millisToPosix 0
@@ -65,13 +65,18 @@ updateValidModel msg model =
     case msg of
         LinkClicked urlRequest ->
             let
-                _ =
-                    Debug.log "urlRequest" urlRequest
+                cmd =
+                    case urlRequest of
+                        Browser.Internal url ->
+                            Browser.Navigation.pushUrl model.key (Url.toString url)
+
+                        Browser.External href ->
+                            Browser.Navigation.load href
             in
-            ( Running model, Cmd.none )
+            ( Running model, cmd )
 
         UrlChanged url ->
-            updateFromUrl model url
+            ( Running model, Cmd.none )
 
         GotoRoute route ->
             gotoRoute model route
@@ -154,10 +159,17 @@ updateFromUrl model url =
 
 gotoRoute : ValidModel -> Route -> ( Model, Cmd Msg )
 gotoRoute model route =
+    let
+        newUrlString =
+            Routing.routeToString route
+    in
     case route of
         Home ->
-            ( Running { model | submodel = HomeModel }
-            , Cmd.none
+            ( Running
+                { model
+                    | submodel = HomeModel
+                }
+            , Browser.Navigation.pushUrl model.key newUrlString
             )
 
         Create ->
@@ -176,6 +188,7 @@ gotoRoute model route =
             , Cmd.batch
                 [ Cmd.map CreateMsg createCmd
                 , chainCmd
+                , Browser.Navigation.pushUrl model.key newUrlString
                 ]
             )
 
@@ -195,11 +208,12 @@ gotoRoute model route =
             , Cmd.batch
                 [ Cmd.map InteractMsg interactCmd
                 , chainCmd
+                , Browser.Navigation.pushUrl model.key newUrlString
                 ]
             )
 
         NotFound ->
-            ( Failed "Don't understand that url...", Cmd.none )
+            ( Failed "Don't understand that url...", Browser.Navigation.pushUrl model.key newUrlString )
 
 
 updateSubmodelWithUserAddress : Submodel -> Maybe Address -> Submodel
