@@ -1,4 +1,4 @@
-module RenderContract.View exposing (claimedPhaseElement, committedPhaseElement, fiatTransferMethodsElement, indentedElement, oldCommittedPhaseElement, openPhaseElement, phaseCountdownString, phaseHeading, phaseInterval, phaseStyleWithViewMode, render)
+module RenderContract.View exposing (render)
 
 import Contracts.Types
 import Element
@@ -252,111 +252,6 @@ fiatTransferMethodsElement transferMethodsString =
             , Element.padding 10
             ]
             (Element.text transferMethodsString)
-        ]
-
-
-oldCommittedPhaseElement : ViewMode -> Contracts.Types.FullParameters -> TokenValue -> TokenValue -> Element.Element Msg
-oldCommittedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount =
-    Element.column (phaseStyleWithViewMode Contracts.Types.Committed viewMode)
-        [ phaseHeading Contracts.Types.Committed parameters viewMode
-        , indentedElement
-            (Element.column []
-                [ Element.paragraph []
-                    [ Element.text "During the "
-                    , EH.sectionReference "Committed Phase"
-                    , Element.text ", the "
-                    , EH.responder []
-                    , Element.text " is expected to transfer "
-                    , EH.usdValue parameters.uncoiningAmount
-                    , Element.text " to the "
-                    , EH.initiator []
-                    , Element.text " via one of the "
-                    , EH.sectionReference "Fiat Transfer Methods"
-                    , Element.text " and mark the deposit as complete, moving the contract to the "
-                    , EH.sectionReference "Claimed Phase"
-                    , Element.text "."
-                    ]
-                , Element.paragraph [] [ Element.text " Specifically:" ]
-                , EH.clauseList
-                    [ Element.paragraph []
-                        [ Element.text "The contract has two parties (the "
-                        , EH.initiator []
-                        , Element.text " and the "
-                        , EH.responder []
-                        , Element.text "), and has a total balance of "
-                        , EH.tokenValue postCommitBalance
-                        , Element.text "."
-                        ]
-                    , Element.paragraph []
-                        [ Element.text "The "
-                        , EH.responder []
-                        , Element.text " is expected to transfer "
-                        , EH.usdValue parameters.uncoiningAmount
-                        , Element.text " to the "
-                        , EH.initiator []
-                        , Element.text " as described in "
-                        , EH.sectionReference "Fiat Transfer Methods"
-                        , Element.text " (see below). Once the "
-                        , EH.responder []
-                        , Element.text " has done so, he is expected to execute the "
-                        , EH.methodName "claim"
-                        , Element.text " method. This will move the contract to the "
-                        , EH.sectionReference "Claimed Phase"
-                        , Element.text "."
-                        ]
-                    , Element.paragraph []
-                        [ Element.text "The "
-                        , EH.initiator []
-                        , Element.text " is expected to communicate any additional information the "
-                        , EH.responder []
-                        , Element.text " needs to complete the transfer (such as bank account numbers, contact info, etc.), either via CoinerTool's secure messaging or some other medium."
-                        ]
-                    , Element.paragraph []
-                        [ Element.text "If the "
-                        , EH.responder []
-                        , Element.text " does not claim within "
-                        , EH.timeValue parameters.depositDeadlineInterval
-                        , Element.text ", "
-                        , EH.sectionReference "the contract is closed"
-                        , Element.text ", and the balance of "
-                        , EH.tokenValue postCommitBalance
-                        , Element.text " is handled as follows:"
-                        , EH.clauseList
-                            [ Element.paragraph []
-                                [ Element.text "Half of the "
-                                , EH.responder []
-                                , Element.text "’s deposit ("
-                                , EH.tokenValue claimFailBurnAmount
-                                , Element.text ") is burned and half ("
-                                , EH.tokenValue claimFailBurnAmount
-                                , Element.text ") is returned to the "
-                                , EH.responder []
-                                , Element.text "."
-                                ]
-                            , Element.paragraph []
-                                [ Element.text "The "
-                                , EH.initiator []
-                                , Element.text "’s original investment of "
-                                , EH.tokenValue parameters.uncoiningAmount
-                                , Element.text " is refunded."
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
-            )
-        , case viewMode of
-            Draft ->
-                Element.none
-
-            Active context ->
-                if context.state.phase == Contracts.Types.Committed then
-                    Element.row [ Element.spacing 50, Element.padding 20, Element.centerX ]
-                        [ EH.contractActionButton "Claim" EH.buttonGreen context.userIsResponder Claim
-                        ]
-
-                else
-                    Element.none
         ]
 
 
