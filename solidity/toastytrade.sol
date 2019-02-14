@@ -29,6 +29,13 @@ contract ToastytradeFactory {
 
         return newTT;
     }
+
+    function getNumToastytradeSells()
+    external
+    view
+    returns (uint num) {
+        return createdSells.length;
+    }
 }
 
 contract ToastytradeSell {

@@ -2,6 +2,7 @@ module Contracts.Generated.ToastytradeFactory exposing
     ( NewToastytradeSell
     , createToastytradeSell
     , createdSells
+    , getNumToastytradeSells
     , newToastytradeSellDecoder
     , newToastytradeSellEvent
     , tokenContract
@@ -51,6 +52,21 @@ createdSells contractAddress a =
     , data = Just <| AbiEncode.functionCall "createdSells(uint256)" [ AbiEncode.uint a ]
     , nonce = Nothing
     , decoder = toElmDecoder AbiDecode.address
+    }
+
+
+{-| "getNumToastytradeSells()" function
+-}
+getNumToastytradeSells : Address -> Call BigInt
+getNumToastytradeSells contractAddress =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "getNumToastytradeSells()" []
+    , nonce = Nothing
+    , decoder = toElmDecoder AbiDecode.uint
     }
 
 

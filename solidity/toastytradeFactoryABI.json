@@ -80,6 +80,20 @@
         "type": "function"
     },
     {
+        "constant": true,
+        "inputs": [],
+        "name": "getNumToastytradeSells",
+        "outputs": [
+            {
+                "name": "num",
+                "type": "uint256"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
         "inputs": [
             {
                 "name": "_tokenContract",

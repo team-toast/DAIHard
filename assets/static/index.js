@@ -2,7 +2,7 @@ var elm_ethereum_ports = require('elm-ethereum-ports');
 
 import { Elm } from '../../src/App'
 
-window.factoryAddress = "0xDD5897Dd6D39E1106e32263F405f35552e1867C4";
+window.factoryAddress = "0x603169e7eabD51E669977D9Db811acc85C231Ade";
 window.tokenContractAddress = "0xC4375B7De8af5a38a93548eb8453a498222C4fF2";
 
 window.addEventListener('load', function () {
