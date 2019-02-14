@@ -7,6 +7,7 @@ import Browse.Types exposing (..)
 import Contracts.Wrappers
 import Eth.Types exposing (Address)
 import EthHelpers
+import Types as ParentTypes
 
 
 init : EthHelpers.EthNode -> Address -> Int -> Maybe Address -> ( Model, Cmd Msg )
@@ -22,7 +23,7 @@ init ethNode factoryAddress tokenDecimals maybeUserAddress =
     )
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> Model -> ( Model, Cmd Msg, Maybe ParentTypes.Route )
 update msg model =
     case msg of
         NumTTsFetched fetchResult ->
@@ -57,6 +58,7 @@ update msg model =
                                 , ttArray = ttArray
                               }
                             , fetchAddressesCmd
+                            , Nothing
                             )
 
                         Nothing ->
@@ -64,20 +66,21 @@ update msg model =
                                 _ =
                                     Debug.log "can't convert the numTTs bigInt value to an int"
                             in
-                            ( model, Cmd.none )
+                            ( model, Cmd.none, Nothing )
 
                 Err errstr ->
                     let
                         _ =
                             Debug.log "can't fetch numTTs:" errstr
                     in
-                    ( model, Cmd.none )
+                    ( model, Cmd.none, Nothing )
 
         AddressFetched id fetchResult ->
             case fetchResult of
                 Ok address ->
                     ( model |> updateTTAddress id (Just address)
                     , Contracts.Wrappers.getContractParametersAndStateCmd model.ethNode model.tokenDecimals address (ParametersFetched id) (StateFetched id)
+                    , Nothing
                     )
 
                 Err errstr ->
@@ -85,13 +88,14 @@ update msg model =
                         _ =
                             Debug.log "Error fetching address on id" id
                     in
-                    ( model, Cmd.none )
+                    ( model, Cmd.none, Nothing )
 
         ParametersFetched id fetchResult ->
             case fetchResult of
                 Ok (Just parameters) ->
                     ( model |> updateTTParameters id (Just parameters)
                     , Cmd.none
+                    , Nothing
                     )
 
                 _ ->
@@ -99,13 +103,14 @@ update msg model =
                         _ =
                             EthHelpers.logBadFetchResultMaybe fetchResult
                     in
-                    ( model, Cmd.none )
+                    ( model, Cmd.none, Nothing )
 
         StateFetched id fetchResult ->
             case fetchResult of
                 Ok (Just state) ->
                     ( model |> updateTTState id (Just state)
                     , Cmd.none
+                    , Nothing
                     )
 
                 _ ->
@@ -113,7 +118,10 @@ update msg model =
                         _ =
                             EthHelpers.logBadFetchResultMaybe fetchResult
                     in
-                    ( model, Cmd.none )
+                    ( model, Cmd.none, Nothing )
+
+        ItemClicked id ->
+            ( model, Cmd.none, Just (ParentTypes.Interact (Just id)) )
 
 
 updateWithUserAddress : Model -> Maybe Address -> Model

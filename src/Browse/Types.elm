@@ -23,6 +23,7 @@ type Msg
     | AddressFetched Int (Result Http.Error Address)
     | ParametersFetched Int (Result Http.Error (Maybe Contracts.Types.FullParameters))
     | StateFetched Int (Result Http.Error (Maybe Contracts.Types.State))
+    | ItemClicked Int
 
 
 type alias TTListItem =

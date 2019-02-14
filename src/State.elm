@@ -147,13 +147,17 @@ updateValidModel msg model =
             case model.submodel of
                 BrowseModel browseModel ->
                     let
-                        ( newBrowseModel, browseCmd ) =
+                        ( newBrowseModel, browseCmd, newRoute ) =
                             Browse.State.update browseMsg browseModel
                     in
-                    ( Running
-                        { model | submodel = BrowseModel newBrowseModel }
-                    , Cmd.map BrowseMsg browseCmd
-                    )
+                    case newRoute of
+                        Nothing ->
+                            ( Running { model | submodel = BrowseModel newBrowseModel }
+                            , Cmd.map BrowseMsg browseCmd
+                            )
+
+                        Just route ->
+                            gotoRoute model route
 
                 _ ->
                     ( Running model, Cmd.none )
