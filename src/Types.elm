@@ -1,4 +1,4 @@
-module Types exposing (Flags, Model(..), Msg(..), Route(..), Submodel(..), ValidModel)
+module Types exposing (Flags, Model(..), Msg(..), Submodel(..), ValidModel)
 
 import BigInt exposing (BigInt)
 import Browse.Types
@@ -10,16 +10,9 @@ import Eth.Sentry.Wallet as WalletSentry exposing (WalletSentry)
 import Eth.Types exposing (Address)
 import EthHelpers
 import Interact.Types
+import Routing
 import Time
 import Url exposing (Url)
-
-
-type Route
-    = Home
-    | Create
-    | Interact (Maybe Int)
-    | Browse
-    | NotFound
 
 
 type alias Flags =
@@ -59,7 +52,7 @@ type Submodel
 type Msg
     = LinkClicked Browser.UrlRequest
     | UrlChanged Url
-    | GotoRoute Route
+    | GotoRoute Routing.Route
     | Tick Time.Posix
     | WalletStatus WalletSentry
     | TxSentryMsg TxSentry.Msg

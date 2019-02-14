@@ -1,5 +1,7 @@
 module Create.State exposing (init, update, updateParameters, updateWithUserAddress, validateInputs)
 
+import BigInt
+import BigIntHelpers
 import ChainCmd exposing (ChainCmd)
 import Contracts.Generated.ERC20Token as TokenContract
 import Contracts.Types
@@ -8,6 +10,7 @@ import Create.Types exposing (..)
 import Eth
 import Eth.Types exposing (Address)
 import Flip exposing (flip)
+import Routing
 import TimeHelpers
 import TokenValue exposing (TokenValue)
 
@@ -47,7 +50,7 @@ updateWithUserAddress model userAddress =
         |> flip updateParameters model.parameterInputs
 
 
-update : Msg -> Model -> ( Model, Cmd Msg, ChainCmd Msg )
+update : Msg -> Model -> UpdateResult
 update msg model =
     case msg of
         UncoiningAmountChanged newAmountStr ->
@@ -55,60 +58,42 @@ update msg model =
                 oldInputs =
                     model.parameterInputs
             in
-            ( updateParameters model { oldInputs | uncoiningAmount = newAmountStr }
-            , Cmd.none
-            , ChainCmd.none
-            )
+            justModelUpdate (updateParameters model { oldInputs | uncoiningAmount = newAmountStr })
 
         PriceChanged newAmountStr ->
             let
                 oldInputs =
                     model.parameterInputs
             in
-            ( updateParameters model { oldInputs | price = newAmountStr }
-            , Cmd.none
-            , ChainCmd.none
-            )
+            justModelUpdate (updateParameters model { oldInputs | price = newAmountStr })
 
         TransferMethodsChanged newStr ->
             let
                 oldInputs =
                     model.parameterInputs
             in
-            ( updateParameters model { oldInputs | transferMethods = newStr }
-            , Cmd.none
-            , ChainCmd.none
-            )
+            justModelUpdate (updateParameters model { oldInputs | transferMethods = newStr })
 
         AutorecallIntervalChanged newTimeStr ->
             let
                 oldInputs =
                     model.parameterInputs
             in
-            ( updateParameters model { oldInputs | autorecallInterval = newTimeStr }
-            , Cmd.none
-            , ChainCmd.none
-            )
+            justModelUpdate (updateParameters model { oldInputs | autorecallInterval = newTimeStr })
 
         DepositDeadlineIntervalChanged newTimeStr ->
             let
                 oldInputs =
                     model.parameterInputs
             in
-            ( updateParameters model { oldInputs | depositDeadlineInterval = newTimeStr }
-            , Cmd.none
-            , ChainCmd.none
-            )
+            justModelUpdate (updateParameters model { oldInputs | depositDeadlineInterval = newTimeStr })
 
         AutoreleaseIntervalChanged newTimeStr ->
             let
                 oldInputs =
                     model.parameterInputs
             in
-            ( updateParameters model { oldInputs | autoreleaseInterval = newTimeStr }
-            , Cmd.none
-            , ChainCmd.none
-            )
+            justModelUpdate (updateParameters model { oldInputs | autoreleaseInterval = newTimeStr })
 
         BeginCreateProcess ->
             case ( model.userAddress, model.contractParameters ) of
@@ -133,21 +118,25 @@ update msg model =
                         newModel =
                             { model | busyWithTxChain = True }
                     in
-                    ( newModel, Cmd.none, ChainCmd.custom customSend txParams )
+                    { model = newModel
+                    , cmd = Cmd.none
+                    , chainCmd = ChainCmd.custom customSend txParams
+                    , newRoute = Nothing
+                    }
 
                 ( Nothing, _ ) ->
                     let
                         _ =
                             Debug.log "Metamask seems to be locked! I can't find the user address."
                     in
-                    ( model, Cmd.none, ChainCmd.none )
+                    justModelUpdate model
 
                 ( _, Nothing ) ->
                     let
                         _ =
                             Debug.log "Can't create without a valid contract!" ""
                     in
-                    ( model, Cmd.none, ChainCmd.none )
+                    justModelUpdate model
 
         ApproveMined (Err errstr) ->
             let
@@ -155,7 +144,7 @@ update msg model =
                     Debug.log "'approve' call mining error"
                         errstr
             in
-            ( model, Cmd.none, ChainCmd.none )
+            justModelUpdate model
 
         ApproveMined (Ok txReceipt) ->
             if not model.busyWithTxChain then
@@ -163,7 +152,7 @@ update msg model =
                     _ =
                         Debug.log "Not ready to catch this mined tx. Did you somehow cancel the tx chain?" ""
                 in
-                ( model, Cmd.none, ChainCmd.none )
+                justModelUpdate model
 
             else
                 case model.contractParameters of
@@ -172,7 +161,7 @@ update msg model =
                             _ =
                                 Debug.log "Can't find valid contract parameters. What the heck?????" ""
                         in
-                        ( model, Cmd.none, ChainCmd.none )
+                        justModelUpdate model
 
                     Just contractParameters ->
                         let
@@ -188,24 +177,43 @@ update msg model =
                                 , onBroadcast = Nothing
                                 }
                         in
-                        ( model, Cmd.none, ChainCmd.custom customSend txParams )
+                        { model = model
+                        , cmd = Cmd.none
+                        , chainCmd = ChainCmd.custom customSend txParams
+                        , newRoute = Nothing
+                        }
 
         CreateMined (Err errstr) ->
             let
                 _ =
                     Debug.log "error mining create contract tx" errstr
             in
-            ( model, Cmd.none, ChainCmd.none )
+            justModelUpdate model
 
         CreateMined (Ok txReceipt) ->
-            -- let
-            --     _ =
-            --         Debug.log "id" <| Result.map BigInt.toString (Contracts.Types.txReceiptToCreatedToastytradeSellId model.factoryAddress txReceipt)
-            -- in
-            ( model, Cmd.none, ChainCmd.none )
+            let
+                maybeId =
+                    Contracts.Types.txReceiptToCreatedToastytradeSellId model.factoryAddress txReceipt
+                        |> Result.toMaybe
+                        |> Maybe.andThen BigIntHelpers.toInt
+            in
+            case maybeId of
+                Just id ->
+                    { model = model
+                    , cmd = Cmd.none
+                    , chainCmd = ChainCmd.none
+                    , newRoute = Just (Routing.Interact (Just id))
+                    }
+
+                Nothing ->
+                    let
+                        _ =
+                            Debug.log "Error getting the ID of the created contract. Here's the txReceipt" txReceipt
+                    in
+                    justModelUpdate model
 
         NoOp ->
-            ( model, Cmd.none, ChainCmd.none )
+            justModelUpdate model
 
 
 updateParameters : Model -> ContractParameterInputs -> Model

@@ -54,11 +54,11 @@ headerElement =
         , Element.Font.size 24
         ]
         [ Element.Input.button [ Element.centerX ]
-            { onPress = Just (GotoRoute Create)
+            { onPress = Just (GotoRoute Routing.Create)
             , label = Element.text "Create"
             }
         , Element.Input.button [ Element.centerX ]
-            { onPress = Just (GotoRoute Browse)
+            { onPress = Just (GotoRoute Routing.Browse)
             , label = Element.text "Browse"
             }
         ]

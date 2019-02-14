@@ -99,22 +99,27 @@ updateValidModel msg model =
             case model.submodel of
                 CreateModel createModel ->
                     let
-                        ( newCreateModel, createCmd, chainCmdOrder ) =
+                        updateResult =
                             Create.State.update createMsg createModel
 
                         ( newTxSentry, chainCmd ) =
-                            ChainCmd.execute model.txSentry (ChainCmd.map CreateMsg chainCmdOrder)
+                            ChainCmd.execute model.txSentry (ChainCmd.map CreateMsg updateResult.chainCmd)
                     in
-                    ( Running
-                        { model
-                            | submodel = CreateModel newCreateModel
-                            , txSentry = newTxSentry
-                        }
-                    , Cmd.batch
-                        [ Cmd.map CreateMsg createCmd
-                        , chainCmd
-                        ]
-                    )
+                    case updateResult.newRoute of
+                        Nothing ->
+                            ( Running
+                                { model
+                                    | submodel = CreateModel updateResult.model
+                                    , txSentry = newTxSentry
+                                }
+                            , Cmd.batch
+                                [ Cmd.map CreateMsg updateResult.cmd
+                                , chainCmd
+                                ]
+                            )
+
+                        Just route ->
+                            gotoRoute model route
 
                 _ ->
                     ( Running model, Cmd.none )
@@ -178,14 +183,14 @@ updateFromUrl model url =
     gotoRoute model (Routing.urlToRoute url)
 
 
-gotoRoute : ValidModel -> Route -> ( Model, Cmd Msg )
+gotoRoute : ValidModel -> Routing.Route -> ( Model, Cmd Msg )
 gotoRoute model route =
     let
         newUrlString =
             Routing.routeToString route
     in
     case route of
-        Home ->
+        Routing.Home ->
             ( Running
                 { model
                     | submodel = HomeModel
@@ -193,7 +198,7 @@ gotoRoute model route =
             , Browser.Navigation.pushUrl model.key newUrlString
             )
 
-        Create ->
+        Routing.Create ->
             let
                 ( createModel, createCmd, chainCmdOrder ) =
                     Create.State.init model.tokenContractAddress model.tokenContractDecimals model.factoryAddress model.userAddress
@@ -213,7 +218,7 @@ gotoRoute model route =
                 ]
             )
 
-        Interact id ->
+        Routing.Interact id ->
             case Maybe.map BigInt.fromInt id of
                 Nothing ->
                     ( Failed "Error interpreting url", Browser.Navigation.pushUrl model.key newUrlString )
@@ -238,7 +243,7 @@ gotoRoute model route =
                         ]
                     )
 
-        Browse ->
+        Routing.Browse ->
             let
                 ( browseModel, browseCmd ) =
                     Browse.State.init model.node model.factoryAddress model.tokenContractDecimals model.userAddress
@@ -253,7 +258,7 @@ gotoRoute model route =
                 ]
             )
 
-        NotFound ->
+        Routing.NotFound ->
             ( Failed "Don't understand that url...", Browser.Navigation.pushUrl model.key newUrlString )
 
 

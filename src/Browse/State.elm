@@ -7,6 +7,7 @@ import Browse.Types exposing (..)
 import Contracts.Wrappers
 import Eth.Types exposing (Address)
 import EthHelpers
+import Routing
 import Types as ParentTypes
 
 
@@ -23,7 +24,7 @@ init ethNode factoryAddress tokenDecimals maybeUserAddress =
     )
 
 
-update : Msg -> Model -> ( Model, Cmd Msg, Maybe ParentTypes.Route )
+update : Msg -> Model -> ( Model, Cmd Msg, Maybe Routing.Route )
 update msg model =
     case msg of
         NumTTsFetched fetchResult ->
@@ -121,7 +122,7 @@ update msg model =
                     ( model, Cmd.none, Nothing )
 
         ItemClicked id ->
-            ( model, Cmd.none, Just (ParentTypes.Interact (Just id)) )
+            ( model, Cmd.none, Just (Routing.Interact (Just id)) )
 
 
 updateWithUserAddress : Model -> Maybe Address -> Model

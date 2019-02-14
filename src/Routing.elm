@@ -1,11 +1,18 @@
-module Routing exposing (routeToString, urlToRoute)
+module Routing exposing (Route(..), routeToString, urlToRoute)
 
 import BigInt exposing (BigInt)
-import Types exposing (..)
 import Url exposing (Url)
 import Url.Builder
 import Url.Parser exposing ((</>), (<?>), Parser)
 import Url.Parser.Query
+
+
+type Route
+    = Home
+    | Create
+    | Interact (Maybe Int)
+    | Browse
+    | NotFound
 
 
 routeParser : Parser (Route -> a) a

@@ -1,7 +1,9 @@
-module Create.Types exposing (ContractParameterInputs, Model, Msg(..))
+module Create.Types exposing (ContractParameterInputs, Model, Msg(..), UpdateResult, justModelUpdate)
 
+import ChainCmd exposing (ChainCmd)
 import Contracts.Types
 import Eth.Types exposing (Address, TxReceipt)
+import Routing
 import TokenValue exposing (TokenValue)
 
 
@@ -38,3 +40,20 @@ type Msg
     | ApproveMined (Result String TxReceipt)
     | CreateMined (Result String TxReceipt)
     | NoOp
+
+
+type alias UpdateResult =
+    { model : Model
+    , cmd : Cmd Msg
+    , chainCmd : ChainCmd Msg
+    , newRoute : Maybe Routing.Route
+    }
+
+
+justModelUpdate : Model -> UpdateResult
+justModelUpdate model =
+    { model = model
+    , cmd = Cmd.none
+    , chainCmd = ChainCmd.none
+    , newRoute = Nothing
+    }
