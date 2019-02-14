@@ -411,16 +411,14 @@ phaseHeading phase parameters viewMode =
 phaseCountdownString : Contracts.Types.Phase -> Contracts.Types.FullParameters -> ViewContext -> String
 phaseCountdownString phase parameters context =
     if phase == context.state.phase then
-        let
-            timeLeft =
-                TimeHelpers.add
+        "("
+            ++ EH.secondsRemainingString
+                (TimeHelpers.add
                     context.state.phaseStartTime
                     (phaseInterval phase parameters)
-                    |> flip TimeHelpers.sub context.currentTime
-        in
-        "("
-            ++ String.fromInt (Time.posixToMillis timeLeft // 1000)
-            ++ " seconds left)"
+                )
+                context.currentTime
+            ++ " left)"
 
     else
         ""

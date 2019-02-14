@@ -1,4 +1,4 @@
-module TimeHelpers exposing (add, daysStrToMaybePosix, isNegative, posixToMillisBigInt, posixToSeconds, posixToSecondsBigInt, secondsBigIntToMaybePosix, sub)
+module TimeHelpers exposing (add, daysStrToMaybePosix, isNegative, posixToMillisBigInt, posixToSeconds, posixToSecondsBigInt, secondsBigIntToMaybePosix, sub, toString)
 
 import BigInt exposing (BigInt)
 import Time
@@ -59,3 +59,11 @@ posixToMillisBigInt t =
 posixToSecondsBigInt : Time.Posix -> BigInt
 posixToSecondsBigInt t =
     BigInt.div (posixToMillisBigInt t) (BigInt.fromInt 1000)
+
+
+toString : Time.Posix -> String
+toString t =
+    (posixToSeconds t
+        |> String.fromInt
+    )
+        ++ " seconds"

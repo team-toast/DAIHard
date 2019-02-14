@@ -1,5 +1,6 @@
 module View exposing (root)
 
+import Browse.View
 import Browser
 import Create.View
 import Element
@@ -56,6 +57,10 @@ headerElement =
             { onPress = Just (GotoRoute Create)
             , label = Element.text "Create"
             }
+        , Element.Input.button [ Element.centerX ]
+            { onPress = Just (GotoRoute Browse)
+            , label = Element.text "Browse"
+            }
         ]
 
 
@@ -95,7 +100,10 @@ subModelElement model =
                 ( "Create", Element.map CreateMsg (Create.View.root createModel) )
 
             InteractModel interactModel ->
-                ( "Interact", Element.map InteractMsg (Interact.View.root interactModel model.time) )
+                ( "Interact", Element.map InteractMsg (Interact.View.root model.time interactModel) )
+
+            BrowseModel browseModel ->
+                ( "Browse", Element.map BrowseMsg (Browse.View.root model.time browseModel) )
 
             None ->
                 ( "none", Element.none )

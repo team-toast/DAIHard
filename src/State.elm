@@ -1,6 +1,7 @@
 port module State exposing (init, subscriptions, update)
 
 import BigInt
+import Browse.State
 import Browser
 import Browser.Navigation
 import ChainCmd exposing (ChainCmd)
@@ -142,6 +143,21 @@ updateValidModel msg model =
                 _ ->
                     ( Running model, Cmd.none )
 
+        BrowseMsg browseMsg ->
+            case model.submodel of
+                BrowseModel browseModel ->
+                    let
+                        ( newBrowseModel, browseCmd ) =
+                            Browse.State.update browseMsg browseModel
+                    in
+                    ( Running
+                        { model | submodel = BrowseModel newBrowseModel }
+                    , Cmd.map BrowseMsg browseCmd
+                    )
+
+                _ ->
+                    ( Running model, Cmd.none )
+
         TxSentryMsg subMsg ->
             let
                 ( submodel, subCmd ) =
@@ -218,6 +234,21 @@ gotoRoute model route =
                         ]
                     )
 
+        Browse ->
+            let
+                ( browseModel, browseCmd ) =
+                    Browse.State.init model.node model.factoryAddress model.tokenContractDecimals model.userAddress
+            in
+            ( Running
+                { model
+                    | submodel = BrowseModel browseModel
+                }
+            , Cmd.batch
+                [ Cmd.map BrowseMsg browseCmd
+                , Browser.Navigation.pushUrl model.key newUrlString
+                ]
+            )
+
         NotFound ->
             ( Failed "Don't understand that url...", Browser.Navigation.pushUrl model.key newUrlString )
 
@@ -233,6 +264,9 @@ updateSubmodelWithUserAddress submodel userAddress =
 
         InteractModel interactModel ->
             InteractModel (Interact.State.updateWithUserAddress interactModel userAddress)
+
+        BrowseModel browseModel ->
+            BrowseModel (Browse.State.updateWithUserAddress browseModel userAddress)
 
         None ->
             None

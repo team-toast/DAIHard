@@ -9,10 +9,10 @@ import RenderContract.View
 import Time
 
 
-root : Model -> Time.Posix -> Element.Element Msg
-root model time =
+root : Time.Posix -> Model -> Element.Element Msg
+root time model =
     Element.column [ Element.spacing 40, Element.width Element.fill ]
-        [ maybeContractElement model time
+        [ maybeContractElement time model
         ]
 
 
@@ -30,8 +30,8 @@ root model time =
 --         ]
 
 
-maybeContractElement : Model -> Time.Posix -> Element.Element Msg
-maybeContractElement model time =
+maybeContractElement : Time.Posix -> Model -> Element.Element Msg
+maybeContractElement time model =
     case ( model.userAddress, model.ttsInfo.parameters, model.ttsInfo.state ) of
         ( Just userAddress, Just parameters, Just state ) ->
             let

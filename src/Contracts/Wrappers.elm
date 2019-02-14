@@ -1,4 +1,4 @@
-module Contracts.Wrappers exposing (createSell, decodeParameters, getAddressFromIdCmd, getParametersCmd, getStateCmd)
+module Contracts.Wrappers exposing (createSell, decodeParameters, getAddressFromIdCmd, getContractParametersAndStateCmd, getNumTTsCmd, getParametersCmd, getStateCmd)
 
 import BigInt exposing (BigInt)
 import Contracts.Generated.ToastytradeFactory as TTF
@@ -35,10 +35,24 @@ createSell contractAddress parameters =
         )
 
 
+getNumTTsCmd : EthHelpers.EthNode -> Address -> (Result Http.Error BigInt -> msg) -> Cmd msg
+getNumTTsCmd ethNode factoryAddress msgConstructor =
+    Eth.call ethNode.http (TTF.getNumToastytradeSells factoryAddress)
+        |> Task.attempt msgConstructor
+
+
 getAddressFromIdCmd : EthHelpers.EthNode -> Address -> BigInt -> (Result Http.Error Address -> msg) -> Cmd msg
 getAddressFromIdCmd ethNode factoryAddress ttId msgConstructor =
     Eth.call ethNode.http (TTF.createdSells factoryAddress ttId)
         |> Task.attempt msgConstructor
+
+
+getContractParametersAndStateCmd : EthHelpers.EthNode -> Int -> Address -> (Result Http.Error (Maybe FullParameters) -> msg) -> (Result Http.Error (Maybe State) -> msg) -> Cmd msg
+getContractParametersAndStateCmd ethNode tokenDecimals address parametersMsgConstructor stateMsgConstructor =
+    Cmd.batch
+        [ getParametersCmd ethNode tokenDecimals address parametersMsgConstructor
+        , getStateCmd ethNode tokenDecimals address stateMsgConstructor
+        ]
 
 
 getParametersCmd : EthHelpers.EthNode -> Int -> Address -> (Result Http.Error (Maybe FullParameters) -> msg) -> Cmd msg

@@ -1,4 +1,4 @@
-module EthHelpers exposing (EthNode, addressIfNot0x0, ethNode, getLogAt)
+module EthHelpers exposing (EthNode, addressIfNot0x0, ethNode, getLogAt, logBadFetchResultMaybe)
 
 import Array
 import BigInt exposing (BigInt)
@@ -46,3 +46,16 @@ getLogAt : Int -> List Eth.Types.Log -> Maybe Eth.Types.Log
 getLogAt index logList =
     Array.fromList logList
         |> Array.get index
+
+
+logBadFetchResultMaybe : Result a (Maybe b) -> Result a (Maybe b)
+logBadFetchResultMaybe fetchResult =
+    case fetchResult of
+        Ok (Just a) ->
+            Debug.log "I'm confused about whether this is a bad fetch result or not!." fetchResult
+
+        Ok Nothing ->
+            Debug.log "The data was fetched, but could not be decoded." fetchResult
+
+        Err _ ->
+            Debug.log "can't fetch from Ethereum: " fetchResult

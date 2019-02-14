@@ -1,6 +1,7 @@
 module Types exposing (Flags, Model(..), Msg(..), Route(..), Submodel(..), ValidModel)
 
 import BigInt exposing (BigInt)
+import Browse.Types
 import Browser
 import Browser.Navigation
 import Create.Types
@@ -17,6 +18,7 @@ type Route
     = Home
     | Create
     | Interact (Maybe Int)
+    | Browse
     | NotFound
 
 
@@ -50,6 +52,7 @@ type Submodel
     = HomeModel
     | CreateModel Create.Types.Model
     | InteractModel Interact.Types.Model
+    | BrowseModel Browse.Types.Model
     | None
 
 
@@ -62,4 +65,5 @@ type Msg
     | TxSentryMsg TxSentry.Msg
     | CreateMsg Create.Types.Msg
     | InteractMsg Interact.Types.Msg
+    | BrowseMsg Browse.Types.Msg
     | Fail String

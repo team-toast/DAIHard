@@ -1,4 +1,4 @@
-module Interact.State exposing (getContractInfoCmd, handleBadFetchResult, init, update, updateWithUserAddress)
+module Interact.State exposing (init, update, updateWithUserAddress)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -43,14 +43,6 @@ getContractAddressCmd ethNode factoryAddress id =
     Contracts.Wrappers.getAddressFromIdCmd ethNode factoryAddress id AddressFetched
 
 
-getContractInfoCmd : EthHelpers.EthNode -> Int -> Address -> Cmd Msg
-getContractInfoCmd ethNode tokenDecimals address =
-    Cmd.batch
-        [ Contracts.Wrappers.getStateCmd ethNode tokenDecimals address StateFetched
-        , Contracts.Wrappers.getParametersCmd ethNode tokenDecimals address ParametersFetched
-        ]
-
-
 updateWithUserAddress : Model -> Maybe Address -> Model
 updateWithUserAddress model userAddress =
     { model | userAddress = userAddress }
@@ -60,10 +52,10 @@ update : Msg -> Model -> ( Model, Cmd Msg, ChainCmd Msg )
 update msg model =
     case msg of
         AddressFetched fetchResult ->
-            case Debug.log "res" fetchResult of
+            case fetchResult of
                 Ok address ->
                     ( { model | ttsInfo = updateAddress model.ttsInfo (Just address) }
-                    , getContractInfoCmd model.ethNode model.tokenDecimals address
+                    , Contracts.Wrappers.getContractParametersAndStateCmd model.ethNode model.tokenDecimals address ParametersFetched StateFetched
                     , ChainCmd.none
                     )
 
@@ -80,7 +72,11 @@ update msg model =
                     ( { model | ttsInfo = updateState model.ttsInfo (Just state) }, Cmd.none, ChainCmd.none )
 
                 _ ->
-                    handleBadFetchResult model fetchResult
+                    let
+                        _ =
+                            EthHelpers.logBadFetchResultMaybe fetchResult
+                    in
+                    ( model, Cmd.none, ChainCmd.none )
 
         ParametersFetched fetchResult ->
             case fetchResult of
@@ -88,7 +84,11 @@ update msg model =
                     ( { model | ttsInfo = updateParameters model.ttsInfo (Just parameters) }, Cmd.none, ChainCmd.none )
 
                 _ ->
-                    handleBadFetchResult model fetchResult
+                    let
+                        _ =
+                            EthHelpers.logBadFetchResultMaybe fetchResult
+                    in
+                    ( model, Cmd.none, ChainCmd.none )
 
         ContractAction actionMsg ->
             let
@@ -209,31 +209,6 @@ update msg model =
                                         |> Eth.toSend
                             in
                             ( model, Cmd.none, ChainCmd.custom genericCustomSend txParams )
-
-
-handleBadFetchResult : Model -> Result Http.Error (Maybe a) -> ( Model, Cmd Msg, ChainCmd Msg )
-handleBadFetchResult model fetchResult =
-    case fetchResult of
-        Ok (Just a) ->
-            let
-                _ =
-                    Debug.log "I'm confused about whether this is a bad fetch result or not!."
-            in
-            ( model, Cmd.none, ChainCmd.none )
-
-        Ok Nothing ->
-            let
-                _ =
-                    Debug.log "The data was fetched, but could not be decoded."
-            in
-            ( model, Cmd.none, ChainCmd.none )
-
-        Err errstr ->
-            let
-                _ =
-                    Debug.log "can't fetch full state: " errstr
-            in
-            ( model, Cmd.none, ChainCmd.none )
 
 
 genericCustomSend =
