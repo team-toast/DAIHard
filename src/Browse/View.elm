@@ -2,6 +2,7 @@ module Browse.View exposing (root)
 
 import Array exposing (Array)
 import Browse.Types exposing (..)
+import Contracts.Types
 import Element
 import Element.Border
 import Element.Events
@@ -26,6 +27,15 @@ viewList time ttArray =
         ]
         (ttArray
             |> Array.toList
+            |> List.filter
+                (\listItem ->
+                    case listItem.state of
+                        Nothing ->
+                            False
+
+                        Just state ->
+                            state.phase == Contracts.Types.Open
+                )
             |> List.map (viewListItem time)
         )
 
@@ -55,7 +65,15 @@ viewListItem time info =
                         ]
                         [ Element.el [ Element.centerX, Element.Font.size 24 ] (Element.text ((parameters.uncoiningAmount |> TokenValue.renderToString (Just 2)) ++ " Dai"))
                         , Element.el [ Element.centerX, Element.Font.size 16, Element.Font.italic ] (Element.text "for")
-                        , Element.el [ Element.centerX, Element.Font.size 24 ] (Element.text ("$" ++ (parameters.price |> TokenValue.renderToString (Just 2))))
+                        , Element.el [ Element.centerX, Element.Font.size 24 ]
+                            (Element.text
+                                (if TokenValue.isZero parameters.price then
+                                    "???"
+
+                                 else
+                                    "$" ++ (parameters.price |> TokenValue.renderToString (Just 2))
+                                )
+                            )
                         ]
                     , Element.column
                         [ Element.width (Element.fillPortion 1)

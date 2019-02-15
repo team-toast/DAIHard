@@ -1,4 +1,4 @@
-module TokenValue exposing (TokenValue, add, div, divByInt, fromString, getBigInt, mul, numDecimals, renderToString, sub, tokenValue, updateValue, updateViaString, zero)
+module TokenValue exposing (TokenValue, add, div, divByInt, fromString, getBigInt, isZero, mul, numDecimals, renderToString, sub, tokenValue, updateValue, updateViaString, zero)
 
 import BigInt exposing (BigInt)
 
@@ -29,6 +29,11 @@ zero numDecimals_ =
         { numDecimals = numDecimals_
         , value = BigInt.fromInt 0
         }
+
+
+isZero : TokenValue -> Bool
+isZero tv =
+    BigInt.fromInt 0 == getBigInt tv
 
 
 updateValue : TokenValue -> BigInt -> TokenValue
