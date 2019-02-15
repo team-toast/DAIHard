@@ -267,19 +267,14 @@ timeInput labelStr value msgConstructor =
 -- BUTTONS
 
 
-contractActionButton : String -> Element.Color -> Bool -> msg -> Element.Element msg
-contractActionButton name color active msgConstructor =
+contractActionButton : String -> Element.Color -> msg -> Element.Element msg
+contractActionButton name color msgConstructor =
     Element.Input.button
         [ Element.padding 15
         , Element.Background.color color
         , Element.Border.rounded 5
         ]
-        { onPress =
-            if active then
-                Just msgConstructor
-
-            else
-                Nothing
+        { onPress = Just msgConstructor
         , label = Element.text name
         }
 

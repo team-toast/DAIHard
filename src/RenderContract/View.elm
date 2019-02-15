@@ -8,6 +8,7 @@ import Element.Font
 import ElementHelpers as EH
 import Eth.Utils
 import Flip exposing (flip)
+import Maybe.Extra
 import RenderContract.Types exposing (..)
 import Time
 import TimeHelpers
@@ -146,9 +147,19 @@ openPhaseElement viewMode parameters =
             Active context ->
                 if context.state.phase == Contracts.Types.Open then
                     Element.row [ Element.spacing 50, Element.padding 20, Element.centerX ]
-                        [ EH.contractActionButton "Recall" EH.buttonBlue context.userIsInitiator Recall
-                        , EH.contractActionButton "Commit" EH.buttonBlue (not context.userIsInitiator) Commit
-                        ]
+                        (Maybe.Extra.values
+                            [ if context.userIsInitiator then
+                                Just <| EH.contractActionButton "Recall" EH.buttonBlue Recall
+
+                              else
+                                Nothing
+                            , if not context.userIsInitiator then
+                                Just <| EH.contractActionButton "Commit" EH.buttonBlue Commit
+
+                              else
+                                Nothing
+                            ]
+                        )
 
                 else
                     Element.none
@@ -231,8 +242,13 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
             Active context ->
                 if context.state.phase == Contracts.Types.Committed then
                     Element.row [ Element.spacing 50, Element.padding 20, Element.centerX ]
-                        [ EH.contractActionButton "Claim" EH.buttonGreen context.userIsResponder Claim
-                        ]
+                        (if context.userIsResponder then
+                            [ EH.contractActionButton "Claim" EH.buttonGreen Claim
+                            ]
+
+                         else
+                            []
+                        )
 
                 else
                     Element.none
@@ -355,9 +371,19 @@ claimedPhaseElement viewMode parameters postCommitBalance =
             Active context ->
                 if context.state.phase == Contracts.Types.Claimed then
                     Element.row [ Element.spacing 50, Element.padding 20, Element.centerX ]
-                        [ EH.contractActionButton "Release" EH.buttonGreen context.userIsInitiator Release
-                        , EH.contractActionButton "Burn" EH.buttonRed context.userIsInitiator Burn
-                        ]
+                        (Maybe.Extra.values
+                            [ if context.userIsInitiator then
+                                Just <| EH.contractActionButton "Release" EH.buttonGreen Release
+
+                              else
+                                Nothing
+                            , if context.userIsInitiator then
+                                Just <| EH.contractActionButton "Burn" EH.buttonRed Burn
+
+                              else
+                                Nothing
+                            ]
+                        )
 
                 else
                     Element.none
