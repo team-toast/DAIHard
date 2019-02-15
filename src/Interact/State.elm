@@ -1,4 +1,4 @@
-module Interact.State exposing (init, update, updateWithUserAddress)
+module Interact.State exposing (init, subscriptions, update, updateWithUserAddress)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -216,3 +216,8 @@ genericCustomSend =
     , onSign = Nothing
     , onBroadcast = Nothing
     }
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.none

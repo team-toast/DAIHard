@@ -46,7 +46,6 @@ type Submodel
     | CreateModel Create.Types.Model
     | InteractModel Interact.Types.Model
     | BrowseModel Browse.Types.Model
-    | None
 
 
 type Msg

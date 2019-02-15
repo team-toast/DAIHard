@@ -1,4 +1,4 @@
-module Browse.State exposing (init, update, updateWithUserAddress)
+module Browse.State exposing (init, subscriptions, update, updateWithUserAddress)
 
 import Array
 import BigInt exposing (BigInt)
@@ -128,3 +128,8 @@ update msg model =
 updateWithUserAddress : Model -> Maybe Address -> Model
 updateWithUserAddress model address =
     { model | userAddress = address }
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.none

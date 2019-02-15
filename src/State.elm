@@ -277,22 +277,37 @@ updateSubmodelWithUserAddress submodel userAddress =
         BrowseModel browseModel ->
             BrowseModel (Browse.State.updateWithUserAddress browseModel userAddress)
 
-        None ->
-            None
-
 
 subscriptions : Model -> Sub Msg
 subscriptions maybeValidModel =
     case maybeValidModel of
         Running model ->
             Sub.batch
-                [ Time.every 1000 Tick
-                , walletSentryPort (WalletSentry.decodeToMsg Fail WalletStatus)
-                , TxSentry.listen model.txSentry
-                ]
+                ([ Time.every 1000 Tick
+                 , walletSentryPort (WalletSentry.decodeToMsg Fail WalletStatus)
+                 , TxSentry.listen model.txSentry
+                 ]
+                    ++ [ submodelSubscriptions model ]
+                )
 
         Failed _ ->
             Sub.none
+
+
+submodelSubscriptions : ValidModel -> Sub Msg
+submodelSubscriptions model =
+    case model.submodel of
+        HomeModel ->
+            Sub.none
+
+        CreateModel createModel ->
+            Sub.map CreateMsg <| Create.State.subscriptions createModel
+
+        InteractModel interactModel ->
+            Sub.map InteractMsg <| Interact.State.subscriptions interactModel
+
+        BrowseModel browseModel ->
+            Sub.map BrowseMsg <| Browse.State.subscriptions browseModel
 
 
 port walletSentryPort : (Json.Decode.Value -> msg) -> Sub msg

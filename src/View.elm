@@ -104,7 +104,4 @@ subModelElement model =
 
             BrowseModel browseModel ->
                 ( "Browse", Element.map BrowseMsg (Browse.View.root model.time browseModel) )
-
-            None ->
-                ( "none", Element.none )
         )
