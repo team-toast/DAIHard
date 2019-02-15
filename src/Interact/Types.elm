@@ -6,6 +6,7 @@ import Eth.Types exposing (Address)
 import EthHelpers
 import Http
 import RenderContract.Types
+import Time
 
 
 updateAddress : TTSInfo -> Maybe Address -> TTSInfo
@@ -48,3 +49,4 @@ type Msg
     | ContractAction RenderContract.Types.Msg
     | PreCommitApproveMined (Result String Eth.Types.TxReceipt)
     | ContractActionMined (Result String Eth.Types.TxReceipt)
+    | Refresh Time.Posix

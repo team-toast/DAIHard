@@ -12,6 +12,7 @@ import EthHelpers
 import Http
 import Interact.Types exposing (..)
 import RenderContract.Types
+import Time
 import TokenValue
 
 
@@ -51,11 +52,22 @@ updateWithUserAddress model userAddress =
 update : Msg -> Model -> ( Model, Cmd Msg, ChainCmd Msg )
 update msg model =
     case msg of
+        Refresh time ->
+            case ( model.ttsInfo.address, model.ttsInfo.parameters ) of
+                ( Just address, Just state ) ->
+                    ( model
+                    , Contracts.Wrappers.getStateCmd model.ethNode model.tokenDecimals address StateFetched
+                    , ChainCmd.none
+                    )
+
+                ( _, _ ) ->
+                    ( model, Cmd.none, ChainCmd.none )
+
         AddressFetched fetchResult ->
             case fetchResult of
                 Ok address ->
                     ( { model | ttsInfo = updateAddress model.ttsInfo (Just address) }
-                    , Contracts.Wrappers.getContractParametersAndStateCmd model.ethNode model.tokenDecimals address ParametersFetched StateFetched
+                    , Contracts.Wrappers.getParametersAndStateCmd model.ethNode model.tokenDecimals address ParametersFetched StateFetched
                     , ChainCmd.none
                     )
 
@@ -220,4 +232,4 @@ genericCustomSend =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    Time.every 3000 Refresh

@@ -1,4 +1,4 @@
-module Contracts.Wrappers exposing (createSell, decodeParameters, getAddressFromIdCmd, getContractParametersAndStateCmd, getNumTTsCmd, getParametersCmd, getStateCmd)
+module Contracts.Wrappers exposing (createSell, decodeParameters, getAddressFromIdCmd, getNumTTsCmd, getParametersAndStateCmd, getParametersCmd, getStateCmd)
 
 import BigInt exposing (BigInt)
 import Contracts.Generated.ToastytradeFactory as TTF
@@ -47,8 +47,8 @@ getAddressFromIdCmd ethNode factoryAddress ttId msgConstructor =
         |> Task.attempt msgConstructor
 
 
-getContractParametersAndStateCmd : EthHelpers.EthNode -> Int -> Address -> (Result Http.Error (Maybe FullParameters) -> msg) -> (Result Http.Error (Maybe State) -> msg) -> Cmd msg
-getContractParametersAndStateCmd ethNode tokenDecimals address parametersMsgConstructor stateMsgConstructor =
+getParametersAndStateCmd : EthHelpers.EthNode -> Int -> Address -> (Result Http.Error (Maybe FullParameters) -> msg) -> (Result Http.Error (Maybe State) -> msg) -> Cmd msg
+getParametersAndStateCmd ethNode tokenDecimals address parametersMsgConstructor stateMsgConstructor =
     Cmd.batch
         [ getParametersCmd ethNode tokenDecimals address parametersMsgConstructor
         , getStateCmd ethNode tokenDecimals address stateMsgConstructor

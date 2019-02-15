@@ -80,7 +80,7 @@ update msg model =
             case fetchResult of
                 Ok address ->
                     ( model |> updateTTAddress id (Just address)
-                    , Contracts.Wrappers.getContractParametersAndStateCmd model.ethNode model.tokenDecimals address (ParametersFetched id) (StateFetched id)
+                    , Contracts.Wrappers.getParametersAndStateCmd model.ethNode model.tokenDecimals address (ParametersFetched id) (StateFetched id)
                     , Nothing
                     )
 
