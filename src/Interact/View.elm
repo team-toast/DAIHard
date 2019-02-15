@@ -16,20 +16,6 @@ root time model =
         ]
 
 
-
--- addressInputFormElement : Model -> Element.Element Msg
--- addressInputFormElement model =
---     Element.column [ Element.width Element.fill, Element.spacing 10 ]
---         [ Element.el [ Element.centerX, Element.Font.size 16 ] (Element.text "Uncoining Contract at:")
---         , Element.Input.text [ Element.centerX, Element.width (Element.px 430), Element.Font.size 16 ]
---             { onChange = AddressInputChanged
---             , text = model.addressInput
---             , placeholder = Just (Element.Input.placeholder [] (Element.text "contract address"))
---             , label = Element.Input.labelHidden "address"
---             }
---         ]
-
-
 maybeContractElement : Time.Posix -> Model -> Element.Element Msg
 maybeContractElement time model =
     case ( model.userAddress, model.ttsInfo.parameters, model.ttsInfo.state ) of
