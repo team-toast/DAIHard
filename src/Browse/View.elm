@@ -48,6 +48,7 @@ viewListItem time info =
         , Element.Border.width 1
         , Element.Border.rounded 10
         , Element.Events.onClick (ItemClicked info.id)
+        , Element.pointer
         ]
         (case ( info.address, info.parameters, info.state ) of
             ( Just _, Just parameters, Just state ) ->
