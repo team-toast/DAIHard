@@ -28,13 +28,13 @@ init ethNode factoryAddress tokenAddress tokenDecimals userAddress ttId =
       , userAddress = userAddress
       , tokenAddress = tokenAddress
       , tokenDecimals = tokenDecimals
-      , idInput = BigInt.toString ttId
       , ttsInfo =
             { id = ttId
             , creationInfo = Nothing
             , parameters = Nothing
             , state = Nothing
             }
+      , messages = []
       }
     , cmd
     , ChainCmd.none
@@ -155,17 +155,67 @@ update msg model =
 
         InitiatorStatementsFetched fetchResult ->
             let
-                _ =
-                    Debug.log "initiator" fetchResult
+                newModel =
+                    case fetchResult of
+                        Ok events ->
+                            { model
+                                | messages =
+                                    addMessages
+                                        (events
+                                            |> List.map
+                                                (\event ->
+                                                    { who = Initiator
+                                                    , message = event.returnData.statement
+                                                    , blocknum = event.blockNumber
+                                                    }
+                                                )
+                                        )
+                                        model.messages
+                            }
+
+                        Err errstr ->
+                            let
+                                _ =
+                                    Debug.log "error with initiator statement fetch" errstr
+                            in
+                            model
             in
-            ( model, Cmd.none, ChainCmd.none )
+            ( newModel
+            , Cmd.none
+            , ChainCmd.none
+            )
 
         ResponderStatementsFetched fetchResult ->
             let
-                _ =
-                    Debug.log "responder" fetchResult
+                newModel =
+                    case fetchResult of
+                        Ok events ->
+                            { model
+                                | messages =
+                                    addMessages
+                                        (events
+                                            |> List.map
+                                                (\event ->
+                                                    { who = Responder
+                                                    , message = event.returnData.statement
+                                                    , blocknum = event.blockNumber
+                                                    }
+                                                )
+                                        )
+                                        model.messages
+                            }
+
+                        Err errstr ->
+                            let
+                                _ =
+                                    Debug.log "error with initiator statement fetch" errstr
+                            in
+                            model
             in
-            ( model, Cmd.none, ChainCmd.none )
+            ( newModel
+            , Cmd.none
+            , ChainCmd.none
+            )
 
         ContractAction actionMsg ->
             let
@@ -286,6 +336,12 @@ update msg model =
                                         |> Eth.toSend
                             in
                             ( model, Cmd.none, ChainCmd.custom genericCustomSend txParams )
+
+
+addMessages : List CommMessage -> List CommMessage -> List CommMessage
+addMessages newMessages messageList =
+    List.append newMessages messageList
+        |> List.sortBy .blocknum
 
 
 genericCustomSend =

@@ -1,4 +1,4 @@
-module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonGreen, buttonRed, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, fakeLink, fillWidthBlock, headerBackgroundColor, initiator, methodName, pageBackgroundColor, pageTitle, responder, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, timeValue, tokenValue, usdValue)
+module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonGreen, buttonRed, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, fakeLink, fillWidthBlock, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, methodName, pageBackgroundColor, pageTitle, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, timeValue, tokenValue, usdValue)
 
 import Element
 import Element.Background
@@ -21,6 +21,22 @@ black =
 
 white =
     Element.rgb 1 1 1
+
+
+initiatorColor =
+    Element.rgb 0 0.7 0
+
+
+responderColor =
+    Element.rgb 1 0.55 0
+
+
+initiatorBackgroundColor =
+    Element.rgb 0.6 1 0.6
+
+
+responderBackgroundColor =
+    Element.rgb 1 0.7 0.5
 
 
 buttonBlue =
@@ -139,12 +155,12 @@ fillWidthBlock title bodyElement =
 
 initiator : List (Element.Attribute a) -> Element.Element a
 initiator attributes =
-    Element.el (attributes ++ [ Element.Font.color (Element.rgb 0 0.7 0) ]) (Element.text "Initiator")
+    Element.el (attributes ++ [ Element.Font.color initiatorColor ]) (Element.text "Initiator")
 
 
 responder : List (Element.Attribute a) -> Element.Element a
 responder attributes =
-    Element.el (attributes ++ [ Element.Font.color (Element.rgb 1 0.55 0) ]) (Element.text "Responder")
+    Element.el (attributes ++ [ Element.Font.color responderColor ]) (Element.text "Responder")
 
 
 

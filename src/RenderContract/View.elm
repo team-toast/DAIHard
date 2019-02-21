@@ -68,7 +68,7 @@ render viewMode parameters =
                 ]
     in
     Element.el
-        [ Element.paddingXY 150 0
+        [ Element.paddingXY 10 0
         , Element.width Element.fill
         ]
         (Element.column

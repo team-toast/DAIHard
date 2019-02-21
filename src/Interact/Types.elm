@@ -1,4 +1,4 @@
-module Interact.Types exposing (Model, Msg(..), TTSInfo, updateCreationInfo, updateParameters, updateState)
+module Interact.Types exposing (CommMessage, InitiatorOrResponder(..), Model, Msg(..), TTSInfo, getUserRole, updateCreationInfo, updateParameters, updateState)
 
 import BigInt exposing (BigInt)
 import Contracts.Generated.ToastytradeFactory as TTF
@@ -33,16 +33,8 @@ type alias Model =
     , userAddress : Maybe Address
     , tokenAddress : Address
     , tokenDecimals : Int
-    , idInput : String
     , ttsInfo : TTSInfo
-    }
-
-
-type alias TTSInfo =
-    { id : BigInt
-    , creationInfo : Maybe TTF.CreatedSell
-    , parameters : Maybe Contracts.Types.FullParameters
-    , state : Maybe Contracts.Types.State
+    , messages : List CommMessage
     }
 
 
@@ -56,3 +48,40 @@ type Msg
     | Refresh Time.Posix
     | InitiatorStatementsFetched (Result Http.Error (List (Eth.Types.Event TTS.InitiatorStatementLog)))
     | ResponderStatementsFetched (Result Http.Error (List (Eth.Types.Event TTS.ResponderStatementLog)))
+
+
+type alias TTSInfo =
+    { id : BigInt
+    , creationInfo : Maybe TTF.CreatedSell
+    , parameters : Maybe Contracts.Types.FullParameters
+    , state : Maybe Contracts.Types.State
+    }
+
+
+type InitiatorOrResponder
+    = Initiator
+    | Responder
+
+
+type alias CommMessage =
+    { who : InitiatorOrResponder
+    , message : String
+    , blocknum : Int
+    }
+
+
+getUserRole : Contracts.Types.FullParameters -> Contracts.Types.State -> Address -> Maybe InitiatorOrResponder
+getUserRole parameters state userAddress =
+    if userAddress == parameters.initiatorAddress then
+        Just Initiator
+
+    else
+        state.responder
+            |> Maybe.andThen
+                (\responder ->
+                    if userAddress == responder then
+                        Just Responder
+
+                    else
+                        Nothing
+                )

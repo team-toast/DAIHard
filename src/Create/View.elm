@@ -30,7 +30,7 @@ root model =
     Element.column [ Element.spacing 20, Element.width Element.fill ]
         [ contractParametersFormElement model
         , createButton
-        , contractRendered
+        , Element.el [ Element.paddingXY 150 0 ] contractRendered
         , createButton
         ]
 
