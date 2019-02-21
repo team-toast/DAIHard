@@ -1,6 +1,7 @@
 module Interact.Types exposing (Model, Msg(..), TTSInfo, updateAddress, updateParameters, updateState)
 
 import BigInt exposing (BigInt)
+import Contracts.Generated.ToastytradeFactory as TTF
 import Contracts.Generated.ToastytradeSell as TTS
 import Contracts.Types
 import Eth.Types exposing (Address)
@@ -44,7 +45,7 @@ type alias TTSInfo =
 
 
 type Msg
-    = AddressFetched (Result Http.Error Address)
+    = CreationInfoFetched (Result Http.Error TTF.CreatedSell)
     | StateFetched (Result Http.Error (Maybe Contracts.Types.State))
     | ParametersFetched (Result Http.Error (Maybe Contracts.Types.FullParameters))
     | ContractAction RenderContract.Types.Msg

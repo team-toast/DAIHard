@@ -7,7 +7,12 @@ contract ToastytradeFactory {
 
     ERC20Interface public tokenContract;
 
-    ToastytradeSell[] public createdSells;
+    struct CreationInfo {
+        address address_;
+        uint blocknum;
+    }
+
+    CreationInfo[] public createdSells;
 
     constructor(ERC20Interface _tokenContract)
     public {
@@ -19,7 +24,7 @@ contract ToastytradeFactory {
     returns (ToastytradeSell) {
         ToastytradeSell newTT = new ToastytradeSell(tokenContract);
 
-        createdSells.push(newTT);
+        createdSells.push(CreationInfo(address(newTT), block.number));
 
         require(tokenContract.transferFrom(msg.sender, address(newTT), sellAmount), "Token transfer failed. Did you call approve()?");
 

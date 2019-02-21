@@ -21,7 +21,7 @@ init : EthHelpers.EthNode -> Address -> Address -> Int -> Maybe Address -> BigIn
 init ethNode factoryAddress tokenAddress tokenDecimals userAddress ttId =
     let
         cmd =
-            getContractAddressCmd ethNode factoryAddress ttId
+            getContractCreationInfoCmd ethNode factoryAddress ttId
     in
     ( { ethNode = ethNode
       , userAddress = userAddress
@@ -40,9 +40,9 @@ init ethNode factoryAddress tokenAddress tokenDecimals userAddress ttId =
     )
 
 
-getContractAddressCmd : EthHelpers.EthNode -> Address -> BigInt -> Cmd Msg
-getContractAddressCmd ethNode factoryAddress id =
-    Contracts.Wrappers.getAddressFromIdCmd ethNode factoryAddress id AddressFetched
+getContractCreationInfoCmd : EthHelpers.EthNode -> Address -> BigInt -> Cmd Msg
+getContractCreationInfoCmd ethNode factoryAddress id =
+    Contracts.Wrappers.getCreationInfoFromIdCmd ethNode factoryAddress id CreationInfoFetched
 
 
 updateWithUserAddress : Model -> Maybe Address -> Model
@@ -67,19 +67,19 @@ update msg model =
         TestResult fetchResult ->
             let
                 _ =
-                    Debug.log "res" fetchResult
+                    Debug.log "chats" fetchResult
             in
             ( model, Cmd.none, ChainCmd.none )
 
-        AddressFetched fetchResult ->
+        CreationInfoFetched fetchResult ->
             case fetchResult of
-                Ok address ->
-                    ( { model | ttsInfo = updateAddress model.ttsInfo (Just address) }
+                Ok creationInfo ->
+                    ( { model | ttsInfo = updateAddress model.ttsInfo (Just creationInfo.address_) }
                     , Cmd.batch
-                        [ Contracts.Wrappers.getParametersAndStateCmd model.ethNode model.tokenDecimals address ParametersFetched StateFetched
+                        [ Contracts.Wrappers.getParametersAndStateCmd model.ethNode model.tokenDecimals creationInfo.address_ ParametersFetched StateFetched
                         , EventHack.fetchEventLogs
                             model.ethNode.http
-                            address
+                            creationInfo.address_
                             TTS.initiatorStatementLogEvent
                             ( Eth.Types.BlockNum 10406687, Eth.Types.BlockNum 10406687 )
                             TTS.initiatorStatementLogDecoder

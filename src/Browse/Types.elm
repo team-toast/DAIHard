@@ -2,6 +2,7 @@ module Browse.Types exposing (Model, Msg(..), TTListItem, updateTTAddress, updat
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
+import Contracts.Generated.ToastytradeFactory as TTF
 import Contracts.Types
 import Eth.Types exposing (Address)
 import EthHelpers
@@ -20,7 +21,7 @@ type alias Model =
 
 type Msg
     = NumTTsFetched (Result Http.Error BigInt)
-    | AddressFetched Int (Result Http.Error Address)
+    | CreationInfoFetched Int (Result Http.Error TTF.CreatedSell)
     | ParametersFetched Int (Result Http.Error (Maybe Contracts.Types.FullParameters))
     | StateFetched Int (Result Http.Error (Maybe Contracts.Types.State))
     | ItemClicked Int

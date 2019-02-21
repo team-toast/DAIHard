@@ -33,12 +33,12 @@ update msg model =
                     case BigIntHelpers.toInt bigInt of
                         Just numTTs ->
                             let
-                                fetchAddressesCmd =
+                                fetchCreationInfoCmd =
                                     Cmd.batch
                                         (List.range 0 (numTTs - 1)
                                             |> List.map
                                                 (\id ->
-                                                    Contracts.Wrappers.getAddressFromIdCmd model.ethNode model.factoryAddress (BigInt.fromInt id) (AddressFetched id)
+                                                    Contracts.Wrappers.getCreationInfoFromIdCmd model.ethNode model.factoryAddress (BigInt.fromInt id) (CreationInfoFetched id)
                                                 )
                                         )
 
@@ -58,7 +58,7 @@ update msg model =
                                 | numTTs = Just numTTs
                                 , ttArray = ttArray
                               }
-                            , fetchAddressesCmd
+                            , fetchCreationInfoCmd
                             , Nothing
                             )
 
@@ -76,18 +76,22 @@ update msg model =
                     in
                     ( model, Cmd.none, Nothing )
 
-        AddressFetched id fetchResult ->
+        CreationInfoFetched id fetchResult ->
             case fetchResult of
-                Ok address ->
-                    ( model |> updateTTAddress id (Just address)
-                    , Contracts.Wrappers.getParametersAndStateCmd model.ethNode model.tokenDecimals address (ParametersFetched id) (StateFetched id)
+                Ok creationInfo ->
+                    let
+                        _ =
+                            Debug.log "creationinfo" creationInfo
+                    in
+                    ( model |> updateTTAddress id (Just creationInfo.address_)
+                    , Contracts.Wrappers.getParametersAndStateCmd model.ethNode model.tokenDecimals creationInfo.address_ (ParametersFetched id) (StateFetched id)
                     , Nothing
                     )
 
                 Err errstr ->
                     let
                         _ =
-                            Debug.log "Error fetching address on id" id
+                            Debug.log ("Error fetching address on id" ++ String.fromInt id) errstr
                     in
                     ( model, Cmd.none, Nothing )
 

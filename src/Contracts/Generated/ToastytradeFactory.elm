@@ -1,7 +1,9 @@
 module Contracts.Generated.ToastytradeFactory exposing
-    ( NewToastytradeSell
+    ( CreatedSell
+    , NewToastytradeSell
     , createToastytradeSell
     , createdSells
+    , createdSellsDecoder
     , getNumToastytradeSells
     , newToastytradeSellDecoder
     , newToastytradeSellEvent
@@ -42,7 +44,13 @@ createToastytradeSell contractAddress initiator sellAmount price responderDeposi
 
 {-| "createdSells(uint256)" function
 -}
-createdSells : Address -> BigInt -> Call Address
+type alias CreatedSell =
+    { address_ : Address
+    , blocknum : BigInt
+    }
+
+
+createdSells : Address -> BigInt -> Call CreatedSell
 createdSells contractAddress a =
     { to = Just contractAddress
     , from = Nothing
@@ -51,8 +59,16 @@ createdSells contractAddress a =
     , value = Nothing
     , data = Just <| AbiEncode.functionCall "createdSells(uint256)" [ AbiEncode.uint a ]
     , nonce = Nothing
-    , decoder = toElmDecoder AbiDecode.address
+    , decoder = createdSellsDecoder
     }
+
+
+createdSellsDecoder : Decoder CreatedSell
+createdSellsDecoder =
+    abiDecode CreatedSell
+        |> andMap AbiDecode.address
+        |> andMap AbiDecode.uint
+        |> toElmDecoder
 
 
 {-| "getNumToastytradeSells()" function

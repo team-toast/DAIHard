@@ -24,8 +24,12 @@
         "name": "createdSells",
         "outputs": [
             {
-                "name": "",
+                "name": "address_",
                 "type": "address"
+            },
+            {
+                "name": "blocknum",
+                "type": "uint256"
             }
         ],
         "payable": false,
