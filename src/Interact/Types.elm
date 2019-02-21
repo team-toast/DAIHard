@@ -1,4 +1,4 @@
-module Interact.Types exposing (Model, Msg(..), TTSInfo, updateAddress, updateParameters, updateState)
+module Interact.Types exposing (Model, Msg(..), TTSInfo, updateCreationInfo, updateParameters, updateState)
 
 import BigInt exposing (BigInt)
 import Contracts.Generated.ToastytradeFactory as TTF
@@ -11,9 +11,11 @@ import RenderContract.Types
 import Time
 
 
-updateAddress : TTSInfo -> Maybe Address -> TTSInfo
-updateAddress ttsInfo address =
-    { ttsInfo | address = address }
+updateCreationInfo : TTSInfo -> Maybe TTF.CreatedSell -> TTSInfo
+updateCreationInfo ttsInfo creationInfo =
+    { ttsInfo
+        | creationInfo = creationInfo
+    }
 
 
 updateParameters : TTSInfo -> Maybe Contracts.Types.FullParameters -> TTSInfo
@@ -38,7 +40,7 @@ type alias Model =
 
 type alias TTSInfo =
     { id : BigInt
-    , address : Maybe Address
+    , creationInfo : Maybe TTF.CreatedSell
     , parameters : Maybe Contracts.Types.FullParameters
     , state : Maybe Contracts.Types.State
     }
@@ -52,4 +54,5 @@ type Msg
     | PreCommitApproveMined (Result String Eth.Types.TxReceipt)
     | ContractActionMined (Result String Eth.Types.TxReceipt)
     | Refresh Time.Posix
-    | TestResult (Result Http.Error (List (Eth.Types.Event TTS.InitiatorStatementLog)))
+    | InitiatorStatementsFetched (Result Http.Error (List (Eth.Types.Event TTS.InitiatorStatementLog)))
+    | ResponderStatementsFetched (Result Http.Error (List (Eth.Types.Event TTS.ResponderStatementLog)))

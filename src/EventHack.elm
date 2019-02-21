@@ -1,4 +1,4 @@
-module EventHack exposing (fetchEventLogs, withBlockrange)
+module EventHack exposing (fetchEvents, withBlockrange)
 
 import Eth
 import Eth.Decode
@@ -8,7 +8,7 @@ import Json.Decode exposing (Decoder)
 import Task
 
 
-fetchEventLogs :
+fetchEvents :
     Eth.Types.HttpProvider
     -> Address
     -> (Address -> Eth.Types.LogFilter)
@@ -16,7 +16,7 @@ fetchEventLogs :
     -> Decoder eventType
     -> (Result Http.Error (List (Eth.Types.Event eventType)) -> msg)
     -> Cmd msg
-fetchEventLogs httpProvider contractAddress lfMaker blockrange eventDecoder msgConstructor =
+fetchEvents httpProvider contractAddress lfMaker blockrange eventDecoder msgConstructor =
     let
         logFilter =
             lfMaker contractAddress

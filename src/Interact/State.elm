@@ -1,6 +1,7 @@
 module Interact.State exposing (init, subscriptions, update, updateWithUserAddress)
 
 import BigInt exposing (BigInt)
+import BigIntHelpers
 import ChainCmd exposing (ChainCmd)
 import Contracts.Generated.ERC20Token as TokenContract
 import Contracts.Generated.ToastytradeSell as TTS
@@ -30,7 +31,7 @@ init ethNode factoryAddress tokenAddress tokenDecimals userAddress ttId =
       , idInput = BigInt.toString ttId
       , ttsInfo =
             { id = ttId
-            , address = Nothing
+            , creationInfo = Nothing
             , parameters = Nothing
             , state = Nothing
             }
@@ -50,40 +51,73 @@ updateWithUserAddress model userAddress =
     { model | userAddress = userAddress }
 
 
+fetchStatementsCmd : Model -> Cmd Msg
+fetchStatementsCmd model =
+    case model.ttsInfo.creationInfo of
+        Just creationInfo ->
+            case BigIntHelpers.toInt creationInfo.blocknum of
+                Just startblock ->
+                    let
+                        blockrange =
+                            ( Eth.Types.BlockNum startblock, Eth.Types.LatestBlock )
+                    in
+                    Cmd.batch
+                        [ EventHack.fetchEvents
+                            model.ethNode.http
+                            creationInfo.address_
+                            TTS.initiatorStatementLogEvent
+                            blockrange
+                            TTS.initiatorStatementLogDecoder
+                            InitiatorStatementsFetched
+                        , EventHack.fetchEvents
+                            model.ethNode.http
+                            creationInfo.address_
+                            TTS.responderStatementLogEvent
+                            blockrange
+                            TTS.responderStatementLogDecoder
+                            ResponderStatementsFetched
+                        ]
+
+                Nothing ->
+                    let
+                        _ =
+                            Debug.log "Can't decode startblock in fetchStatementsCmd" ""
+                    in
+                    Cmd.none
+
+        Nothing ->
+            let
+                _ =
+                    Debug.log "No expected creationInfo in fetchStatementsCmd" ""
+            in
+            Cmd.none
+
+
 update : Msg -> Model -> ( Model, Cmd Msg, ChainCmd Msg )
 update msg model =
     case msg of
         Refresh time ->
-            case ( model.ttsInfo.address, model.ttsInfo.parameters ) of
-                ( Just address, Just state ) ->
+            case ( model.ttsInfo.creationInfo, model.ttsInfo.parameters ) of
+                ( Just creationInfo, Just state ) ->
                     ( model
-                    , Contracts.Wrappers.getStateCmd model.ethNode model.tokenDecimals address StateFetched
+                    , Contracts.Wrappers.getStateCmd model.ethNode model.tokenDecimals creationInfo.address_ StateFetched
                     , ChainCmd.none
                     )
 
                 ( _, _ ) ->
                     ( model, Cmd.none, ChainCmd.none )
 
-        TestResult fetchResult ->
-            let
-                _ =
-                    Debug.log "chats" fetchResult
-            in
-            ( model, Cmd.none, ChainCmd.none )
-
         CreationInfoFetched fetchResult ->
             case fetchResult of
                 Ok creationInfo ->
-                    ( { model | ttsInfo = updateAddress model.ttsInfo (Just creationInfo.address_) }
+                    let
+                        newModel =
+                            { model | ttsInfo = updateCreationInfo model.ttsInfo (Just creationInfo) }
+                    in
+                    ( newModel
                     , Cmd.batch
-                        [ Contracts.Wrappers.getParametersAndStateCmd model.ethNode model.tokenDecimals creationInfo.address_ ParametersFetched StateFetched
-                        , EventHack.fetchEventLogs
-                            model.ethNode.http
-                            creationInfo.address_
-                            TTS.initiatorStatementLogEvent
-                            ( Eth.Types.BlockNum 10406687, Eth.Types.BlockNum 10406687 )
-                            TTS.initiatorStatementLogDecoder
-                            TestResult
+                        [ Contracts.Wrappers.getParametersAndStateCmd newModel.ethNode newModel.tokenDecimals creationInfo.address_ ParametersFetched StateFetched
+                        , fetchStatementsCmd newModel
                         ]
                     , ChainCmd.none
                     )
@@ -119,14 +153,28 @@ update msg model =
                     in
                     ( model, Cmd.none, ChainCmd.none )
 
+        InitiatorStatementsFetched fetchResult ->
+            let
+                _ =
+                    Debug.log "initiator" fetchResult
+            in
+            ( model, Cmd.none, ChainCmd.none )
+
+        ResponderStatementsFetched fetchResult ->
+            let
+                _ =
+                    Debug.log "responder" fetchResult
+            in
+            ( model, Cmd.none, ChainCmd.none )
+
         ContractAction actionMsg ->
             let
                 chainCmd =
-                    case ( model.ttsInfo.address, model.ttsInfo.parameters ) of
+                    case ( model.ttsInfo.creationInfo, model.ttsInfo.parameters ) of
                         ( Nothing, _ ) ->
                             let
                                 _ =
-                                    Debug.log "Trying to handle ContractAction msg, but can't find the contract address :/" actionMsg
+                                    Debug.log "Trying to handle ContractAction msg, but can't find the contract creationInfo :/" actionMsg
                             in
                             ChainCmd.none
 
@@ -137,12 +185,12 @@ update msg model =
                             in
                             ChainCmd.none
 
-                        ( Just ttsAddress, Just parameters ) ->
+                        ( Just creationInfo, Just parameters ) ->
                             case actionMsg of
                                 RenderContract.Types.Recall ->
                                     let
                                         txParams =
-                                            TTS.recall ttsAddress
+                                            TTS.recall creationInfo.address_
                                                 |> Eth.toSend
                                     in
                                     ChainCmd.custom genericCustomSend txParams
@@ -152,7 +200,7 @@ update msg model =
                                         txParams =
                                             TokenContract.approve
                                                 model.tokenAddress
-                                                ttsAddress
+                                                creationInfo.address_
                                                 (TokenValue.getBigInt parameters.responderDeposit)
                                                 |> Eth.toSend
 
@@ -168,7 +216,7 @@ update msg model =
                                 RenderContract.Types.Claim ->
                                     let
                                         txParams =
-                                            TTS.claim ttsAddress ""
+                                            TTS.claim creationInfo.address_ ""
                                                 |> Eth.toSend
                                     in
                                     ChainCmd.custom genericCustomSend txParams
@@ -176,7 +224,7 @@ update msg model =
                                 RenderContract.Types.Release ->
                                     let
                                         txParams =
-                                            TTS.release ttsAddress
+                                            TTS.release creationInfo.address_
                                                 |> Eth.toSend
                                     in
                                     ChainCmd.custom genericCustomSend txParams
@@ -184,7 +232,7 @@ update msg model =
                                 RenderContract.Types.Burn ->
                                     let
                                         txParams =
-                                            TTS.burn ttsAddress ""
+                                            TTS.burn creationInfo.address_ ""
                                                 |> Eth.toSend
                                     in
                                     ChainCmd.custom genericCustomSend txParams
@@ -192,7 +240,7 @@ update msg model =
                                 RenderContract.Types.Poke ->
                                     let
                                         txParams =
-                                            TTS.poke ttsAddress
+                                            TTS.poke creationInfo.address_
                                                 |> Eth.toSend
                                     in
                                     ChainCmd.custom genericCustomSend txParams
@@ -216,11 +264,11 @@ update msg model =
                     ( model, Cmd.none, ChainCmd.none )
 
                 Ok txReceipt ->
-                    case ( model.ttsInfo.address, model.ttsInfo.parameters ) of
+                    case ( model.ttsInfo.creationInfo, model.ttsInfo.parameters ) of
                         ( Nothing, _ ) ->
                             let
                                 _ =
-                                    Debug.log "Trying to handle PreCommitApproveMined, but can't find the contract address :/" ""
+                                    Debug.log "Trying to handle PreCommitApproveMined, but can't find the contract creationInfo :/" ""
                             in
                             ( model, Cmd.none, ChainCmd.none )
 
@@ -231,10 +279,10 @@ update msg model =
                             in
                             ( model, Cmd.none, ChainCmd.none )
 
-                        ( Just ttsAddress, Just parameters ) ->
+                        ( Just creationInfo, Just parameters ) ->
                             let
                                 txParams =
-                                    TTS.commit ttsAddress ""
+                                    TTS.commit creationInfo.address_ ""
                                         |> Eth.toSend
                             in
                             ( model, Cmd.none, ChainCmd.custom genericCustomSend txParams )
