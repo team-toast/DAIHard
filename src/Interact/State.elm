@@ -9,6 +9,7 @@ import Eth
 import Eth.Types exposing (Address)
 import Eth.Utils
 import EthHelpers
+import EventHack
 import Http
 import Interact.Types exposing (..)
 import RenderContract.Types
@@ -63,11 +64,27 @@ update msg model =
                 ( _, _ ) ->
                     ( model, Cmd.none, ChainCmd.none )
 
+        TestResult fetchResult ->
+            let
+                _ =
+                    Debug.log "res" fetchResult
+            in
+            ( model, Cmd.none, ChainCmd.none )
+
         AddressFetched fetchResult ->
             case fetchResult of
                 Ok address ->
                     ( { model | ttsInfo = updateAddress model.ttsInfo (Just address) }
-                    , Contracts.Wrappers.getParametersAndStateCmd model.ethNode model.tokenDecimals address ParametersFetched StateFetched
+                    , Cmd.batch
+                        [ Contracts.Wrappers.getParametersAndStateCmd model.ethNode model.tokenDecimals address ParametersFetched StateFetched
+                        , EventHack.fetchEventLogs
+                            model.ethNode.http
+                            address
+                            TTS.initiatorStatementLogEvent
+                            ( Eth.Types.BlockNum 10406687, Eth.Types.BlockNum 10406687 )
+                            TTS.initiatorStatementLogDecoder
+                            TestResult
+                        ]
                     , ChainCmd.none
                     )
 

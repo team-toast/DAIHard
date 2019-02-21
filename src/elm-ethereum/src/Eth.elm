@@ -5,6 +5,7 @@ module Eth exposing
     , getBlockNumber, getBlock, getBlockByHash, getBlockWithTxObjs, getBlockByHashWithTxObjs, getBlockTxCount, getBlockTxCountByHash, getUncleCount, getUncleCountByHash, getUncleAtIndex, getUncleByBlockHashAtIndex
     , getLogs, newFilter, newBlockFilter, newPendingTxFilter, getFilterChanges, getFilterLogs, uninstallFilter
     , sign, protocolVersion, syncing, coinbase, mining, hashrate, gasPrice, accounts
+    , getDecodedLogs
     )
 
 {-| Ethereum RPC Methods
@@ -517,6 +518,16 @@ getLogs ethNode logFilter =
         , method = "eth_getLogs"
         , params = [ Encode.logFilter logFilter ]
         , decoder = Decode.list Decode.log
+        }
+
+
+getDecodedLogs : HttpProvider -> LogFilter -> Decoder decodeType -> Task Http.Error (List decodeType)
+getDecodedLogs ethNode logFilter decoder =
+    RPC.toTask
+        { url = ethNode
+        , method = "eth_getLogs"
+        , params = [ Encode.logFilter logFilter ]
+        , decoder = Decode.list decoder
         }
 
 

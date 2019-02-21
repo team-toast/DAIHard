@@ -1,6 +1,7 @@
 module Interact.Types exposing (Model, Msg(..), TTSInfo, updateAddress, updateParameters, updateState)
 
 import BigInt exposing (BigInt)
+import Contracts.Generated.ToastytradeSell as TTS
 import Contracts.Types
 import Eth.Types exposing (Address)
 import EthHelpers
@@ -50,3 +51,4 @@ type Msg
     | PreCommitApproveMined (Result String Eth.Types.TxReceipt)
     | ContractActionMined (Result String Eth.Types.TxReceipt)
     | Refresh Time.Posix
+    | TestResult (Result Http.Error (List (Eth.Types.Event TTS.InitiatorStatementLog)))
