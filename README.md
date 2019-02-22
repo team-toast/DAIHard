@@ -18,4 +18,4 @@ Decentralized fiat/crypto trading
 
 - `npm run dev`
 
-- navigate to localhost:8080 to see the dapp
+- navigate to localhost:8080 to see the dapp. Make sure you have Metamask installed and unlocked.
