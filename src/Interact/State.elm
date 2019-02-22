@@ -13,6 +13,7 @@ import EthHelpers
 import EventHack
 import Http
 import Interact.Types exposing (..)
+import Maybe.Extra
 import RenderContract.Types
 import Time
 import TokenValue
@@ -35,6 +36,7 @@ init ethNode factoryAddress tokenAddress tokenDecimals userAddress ttId =
             , state = Nothing
             }
       , messages = []
+      , messageInput = ""
       }
     , cmd
     , ChainCmd.none
@@ -336,6 +338,43 @@ update msg model =
                                         |> Eth.toSend
                             in
                             ( model, Cmd.none, ChainCmd.custom genericCustomSend txParams )
+
+        MessageInputChanged newMessageStr ->
+            ( { model | messageInput = newMessageStr }
+            , Cmd.none
+            , ChainCmd.none
+            )
+
+        MessageSubmit ->
+            let
+                userRole =
+                    Maybe.map3 getUserRole model.ttsInfo.parameters model.ttsInfo.state model.userAddress
+                        |> Maybe.Extra.join
+
+                chainCmd =
+                    case ( userRole, model.ttsInfo.creationInfo ) of
+                        ( Just role, Just creationInfo ) ->
+                            let
+                                txParams =
+                                    case role of
+                                        Initiator ->
+                                            TTS.initiatorStatement creationInfo.address_ model.messageInput
+                                                |> Eth.toSend
+
+                                        Responder ->
+                                            TTS.responderStatement creationInfo.address_ model.messageInput
+                                                |> Eth.toSend
+                            in
+                            ChainCmd.custom genericCustomSend txParams
+
+                        _ ->
+                            let
+                                _ =
+                                    Debug.log "MessageSubmit called, but we're missing some crucial info! HOW DID THIS HAPPEN" ( userRole, model.ttsInfo.creationInfo )
+                            in
+                            ChainCmd.none
+            in
+            ( model, Cmd.none, chainCmd )
 
 
 addMessages : List CommMessage -> List CommMessage -> List CommMessage

@@ -52,18 +52,28 @@ maybeContractElement time model =
 
 commsElement : Model -> Element.Element Msg
 commsElement model =
-    Element.column [ Element.width Element.fill, Element.spacing 10 ]
-        [ messagesElement model.messages
-        , maybeCommInputElement model
+    Element.column [ Element.width Element.fill, Element.spacing 20 ]
+        [ Element.el [ Element.centerX, Element.Font.size 36 ]
+            (Element.text "Chat")
+        , Element.column [ Element.width Element.fill, Element.spacing 10, Element.Border.width 1, Element.Border.rounded 5, Element.padding 10 ]
+            [ messagesElement model.messages
+            , maybeCommInputElement model
+            ]
         ]
 
 
 messagesElement : List CommMessage -> Element.Element Msg
 messagesElement messages =
-    Element.column [ Element.width Element.fill, Element.spacing 10 ]
-        (messages
-            |> List.map renderMessage
-        )
+    case messages of
+        [] ->
+            Element.el [ Element.centerX, Element.Font.color (Element.rgb 0.5 0.5 0.5), Element.Font.italic ]
+                (Element.text "no messages found.")
+
+        messageList ->
+            Element.column [ Element.width Element.fill, Element.spacing 10 ]
+                (messageList
+                    |> List.map renderMessage
+                )
 
 
 renderMessage : CommMessage -> Element.Element Msg
@@ -89,16 +99,18 @@ renderMessage message =
          ]
             ++ roleDependentAttributes
         )
-        (Element.text
-            ((case message.who of
-                Initiator ->
-                    "I: "
+        (Element.paragraph []
+            [ Element.text
+                ((case message.who of
+                    Initiator ->
+                        "I: "
 
-                Responder ->
-                    "R: "
-             )
-                ++ message.message
-            )
+                    Responder ->
+                        "R: "
+                 )
+                    ++ message.message
+                )
+            ]
         )
 
 
@@ -106,7 +118,24 @@ maybeCommInputElement : Model -> Element.Element Msg
 maybeCommInputElement model =
     case ( model.userAddress, model.ttsInfo.parameters, model.ttsInfo.state ) of
         ( Just userAddress, Just parameters, Just state ) ->
-            Element.text "displayinput"
+            case getUserRole parameters state userAddress of
+                Just _ ->
+                    Element.column [ Element.width Element.fill, Element.spacing 10 ]
+                        [ Element.Input.multiline [ Element.width Element.fill, Element.height (Element.px 100) ]
+                            { onChange = MessageInputChanged
+                            , text = model.messageInput
+                            , placeholder = Nothing
+                            , label = Element.Input.labelHidden "messageInput"
+                            , spellcheck = False
+                            }
+                        , Element.Input.button [ Element.centerX, Element.Font.size 24 ]
+                            { onPress = Just MessageSubmit
+                            , label = Element.text "Submit"
+                            }
+                        ]
+
+                Nothing ->
+                    Element.none
 
         _ ->
             Element.none

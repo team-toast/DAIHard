@@ -35,6 +35,7 @@ type alias Model =
     , tokenDecimals : Int
     , ttsInfo : TTSInfo
     , messages : List CommMessage
+    , messageInput : String
     }
 
 
@@ -48,6 +49,8 @@ type Msg
     | Refresh Time.Posix
     | InitiatorStatementsFetched (Result Http.Error (List (Eth.Types.Event TTS.InitiatorStatementLog)))
     | ResponderStatementsFetched (Result Http.Error (List (Eth.Types.Event TTS.ResponderStatementLog)))
+    | MessageInputChanged String
+    | MessageSubmit
 
 
 type alias TTSInfo =
