@@ -6,13 +6,14 @@ import Contracts.Generated.ToastytradeSell as TTS
 import Contracts.Types
 import Eth.Types exposing (Address)
 import EthHelpers
+import EventSentryHack exposing (EventSentry)
 import Http
 import RenderContract.Types
 import Time
 
 
-updateCreationInfo : TTSInfo -> Maybe TTF.CreatedSell -> TTSInfo
-updateCreationInfo ttsInfo creationInfo =
+updateCreationInfo : Maybe CreationInfo -> TTSInfo -> TTSInfo
+updateCreationInfo creationInfo ttsInfo =
     { ttsInfo
         | creationInfo = creationInfo
     }
@@ -36,6 +37,7 @@ type alias Model =
     , ttsInfo : TTSInfo
     , messages : List CommMessage
     , messageInput : String
+    , eventSentries : Maybe ( EventSentry TTS.InitiatorStatementLog Msg, EventSentry TTS.ResponderStatementLog Msg )
     }
 
 
@@ -51,13 +53,21 @@ type Msg
     | ResponderStatementsFetched (Result Http.Error (List (Eth.Types.Event TTS.ResponderStatementLog)))
     | MessageInputChanged String
     | MessageSubmit
+    | InitiatorStatementEventSentryMsg EventSentryHack.Msg
+    | ResponderStatementEventSentryMsg EventSentryHack.Msg
 
 
 type alias TTSInfo =
     { id : BigInt
-    , creationInfo : Maybe TTF.CreatedSell
+    , creationInfo : Maybe CreationInfo
     , parameters : Maybe Contracts.Types.FullParameters
     , state : Maybe Contracts.Types.State
+    }
+
+
+type alias CreationInfo =
+    { address : Address
+    , blocknum : Int
     }
 
 
