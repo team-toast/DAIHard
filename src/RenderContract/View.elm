@@ -199,14 +199,22 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
             , Element.paragraph []
                 [ Element.text "The "
                 , EH.initiator []
-                , Element.text " is expected to communicate any additional information the "
+                , Element.text " and "
                 , EH.responder []
-                , Element.text " needs to complete the transfer (such as bank account numbers, contact info, etc.), either via CoinerTool's secure messaging or some other medium."
+                , Element.text " are expected to work together to resolve any ambiguity or difficulty regarding the fiat transfer "
+                , Element.el [ Element.Font.bold ] (Element.text "before")
+                , Element.text " the "
+                , EH.responder []
+                , Element.text " calls "
+                , EH.methodName "claim"
+                , Element.text "."
                 ]
             , Element.paragraph []
                 [ Element.text "If the "
                 , EH.responder []
-                , Element.text " does not claim within "
+                , Element.text " does not "
+                , EH.methodName "claim"
+                , Element.text " within "
                 , EH.timeValue parameters.depositDeadlineInterval
                 , Element.text ", "
                 , EH.sectionReference "the contract is closed"
@@ -228,9 +236,11 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
                     , Element.paragraph []
                         [ Element.text "The "
                         , EH.initiator []
-                        , Element.text "’s original investment of "
-                        , EH.tokenValue parameters.uncoiningAmount
-                        , Element.text " is refunded."
+                        , Element.text " faces the same punishment ("
+                        , EH.tokenValue claimFailBurnAmount
+                        , Element.text " burned), and the rest of his deposit ("
+                        , EH.tokenValue (TokenValue.sub parameters.uncoiningAmount claimFailBurnAmount)
+                        , Element.text ") is refunded."
                         ]
                     ]
                 ]
@@ -273,6 +283,88 @@ fiatTransferMethodsElement transferMethodsString =
 
 claimedPhaseElement : ViewMode -> Contracts.Types.FullParameters -> TokenValue -> Element.Element Msg
 claimedPhaseElement viewMode parameters postCommitBalance =
+    Element.column (phaseStyleWithViewMode Contracts.Types.Claimed viewMode)
+        [ phaseHeading Contracts.Types.Claimed parameters viewMode
+        , Element.column []
+            [ EH.clauseList
+                [ Element.paragraph []
+                    [ Element.text "The "
+                    , EH.initiator []
+                    , Element.text " is expected to verify with certainty whether he has received at least "
+                    , EH.usdValue parameters.uncoiningAmount
+                    , Element.text " from the "
+                    , EH.responder []
+                    , Element.text "."
+                    , EH.clauseList
+                        [ Element.paragraph []
+                            [ Element.text "If the transfer has taken place, the "
+                            , EH.initiator []
+                            , Element.text " is expected to execute the "
+                            , EH.methodName "release"
+                            , Element.text " method. This releases the entire balance of the contract ("
+                            , EH.tokenValue postCommitBalance
+                            , Element.text ") to the "
+                            , EH.responder []
+                            , Element.text " and closes the contract."
+                            ]
+                        , Element.paragraph []
+                            [ Element.text "If the transfer has not taken place, or if the transfer amount was less than "
+                            , EH.usdValue parameters.uncoiningAmount
+                            , Element.text ", the "
+                            , EH.initiator []
+                            , Element.text " is expected to execute the "
+                            , EH.methodName "burn"
+                            , Element.text " method. This burns the entire balance of the contract ("
+                            , EH.tokenValue postCommitBalance
+                            , Element.text ") and "
+                            , EH.sectionReference "closes the contract"
+                            , Element.text "."
+                            ]
+                        ]
+                    ]
+                , Element.paragraph []
+                    [ Element.text "If the "
+                    , EH.initiator []
+                    , Element.text " has not executed a "
+                    , EH.methodName "burn"
+                    , Element.text " or "
+                    , EH.methodName "release"
+                    , Element.text " within "
+                    , EH.timeValue parameters.autoreleaseInterval
+                    , Element.text ", "
+                    , EH.methodName "release"
+                    , Element.text " is triggered automatically."
+                    ]
+                ]
+            ]
+        , case viewMode of
+            Draft ->
+                Element.none
+
+            Active context ->
+                if context.state.phase == Contracts.Types.Claimed then
+                    Element.row [ Element.spacing 50, Element.padding 20, Element.centerX ]
+                        (Maybe.Extra.values
+                            [ if context.userIsInitiator then
+                                Just <| EH.contractActionButton "Release" EH.buttonGreen Release
+
+                              else
+                                Nothing
+                            , if context.userIsInitiator then
+                                Just <| EH.contractActionButton "Burn" EH.buttonRed Burn
+
+                              else
+                                Nothing
+                            ]
+                        )
+
+                else
+                    Element.none
+        ]
+
+
+oldClaimedPhaseElement : ViewMode -> Contracts.Types.FullParameters -> TokenValue -> Element.Element Msg
+oldClaimedPhaseElement viewMode parameters postCommitBalance =
     Element.column (phaseStyleWithViewMode Contracts.Types.Claimed viewMode)
         [ phaseHeading Contracts.Types.Claimed parameters viewMode
         , indentedElement
