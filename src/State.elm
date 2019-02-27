@@ -5,6 +5,7 @@ import Browse.State
 import Browser
 import Browser.Navigation
 import ChainCmd exposing (ChainCmd)
+import CommonTypes exposing (UserInfo)
 import Create.State
 import Eth.Net
 import Eth.Sentry.Tx as TxSentry
@@ -14,6 +15,7 @@ import Eth.Utils
 import EthHelpers
 import Interact.State
 import Json.Decode
+import Json.Encode
 import Routing
 import Time
 import Types exposing (..)
@@ -22,6 +24,14 @@ import Url exposing (Url)
 
 init : Flags -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init flags url key =
+    let
+        _ =
+            ( genPrivkey
+            , encryptToPubkeys
+            )
+
+        -- Hack because Elm 0.19 will discard code that isn't used elsewhere in Elm code, event outgoing ports. >:(
+    in
     case ( Eth.Utils.toAddress flags.tokenContractAddressString, Eth.Utils.toAddress flags.factoryAddressString ) of
         ( Ok tokenContractAddress, Ok factoryAddress ) ->
             let
@@ -40,6 +50,7 @@ init flags url key =
                 , node = node
                 , txSentry = txSentry
                 , userAddress = Nothing
+                , userInfo = Nothing
                 , tokenContractDecimals = flags.tokenContractDecimals
                 , submodel = HomeModel
                 }
@@ -60,6 +71,14 @@ update msg maybeValidModel =
 
         Failed _ ->
             ( maybeValidModel, Cmd.none )
+
+
+type alias EncryptedMessage =
+    { encapsulatedKey : String
+    , iv : String
+    , tag : String
+    , message : String
+    }
 
 
 updateValidModel : Msg -> ValidModel -> ( Model, Cmd Msg )
@@ -90,10 +109,75 @@ updateValidModel msg model =
             ( Running
                 { model
                     | userAddress = walletSentry.account
-                    , submodel = updateSubmodelWithUserAddress model.submodel walletSentry.account
                 }
-            , Cmd.none
+            , case walletSentry.account of
+                Nothing ->
+                    Cmd.none
+
+                Just _ ->
+                    genPrivkey "Insert scary message here!"
             )
+
+        UserPubkeySet commPubkeyValue ->
+            case Json.Decode.decodeValue Json.Decode.string commPubkeyValue of
+                Ok commPubkey ->
+                    case model.userAddress of
+                        Just userAddress ->
+                            let
+                                userInfo =
+                                    Debug.log "userInfo" <|
+                                        Just
+                                            { address = userAddress
+                                            , commPubkey = commPubkey
+                                            }
+                            in
+                            ( Running
+                                { model
+                                    | userInfo = userInfo
+                                    , submodel = model.submodel |> updateSubmodelUserInfo userInfo
+                                }
+                            , Cmd.none
+                            )
+
+                        Nothing ->
+                            let
+                                _ =
+                                    Debug.log "User pubkey set, but I can no longer find the user address!" ""
+                            in
+                            ( Running model, Cmd.none )
+
+                Err errstr ->
+                    let
+                        _ =
+                            Debug.log "error decoding commPubkey from JS" errstr
+                    in
+                    ( Running model, Cmd.none )
+
+        -- ( Running model
+        -- , encryptToPubkeys
+        --     (Json.Encode.object
+        --         [ ( "message", Json.Encode.string "hiiii" )
+        --         , ( "pubkeyHexStrings", Json.Encode.list Json.Encode.string [ pubkeyHexString ] )
+        --         ]
+        --     )
+        -- )
+        MessagesEncrypted encryptedMessages ->
+            let
+                objectDecoder =
+                    Json.Decode.map4 EncryptedMessage
+                        (Json.Decode.field "encapsulated" Json.Decode.string)
+                        (Json.Decode.field "iv" Json.Decode.string)
+                        (Json.Decode.field "tag" Json.Decode.string)
+                        (Json.Decode.field "encrypted" Json.Decode.string)
+
+                decoder =
+                    Json.Decode.list objectDecoder
+
+                _ =
+                    Debug.log "decoded"
+                        (Json.Decode.decodeValue decoder encryptedMessages)
+            in
+            ( Running model, Cmd.none )
 
         CreateMsg createMsg ->
             case model.submodel of
@@ -201,7 +285,7 @@ gotoRoute model route =
         Routing.Create ->
             let
                 ( createModel, createCmd, chainCmdOrder ) =
-                    Create.State.init model.tokenContractAddress model.tokenContractDecimals model.factoryAddress model.userAddress
+                    Create.State.init model.tokenContractAddress model.tokenContractDecimals model.factoryAddress model.userInfo
 
                 ( newTxSentry, chainCmd ) =
                     ChainCmd.execute model.txSentry (ChainCmd.map CreateMsg chainCmdOrder)
@@ -226,7 +310,7 @@ gotoRoute model route =
                 Just bigIntId ->
                     let
                         ( interactModel, interactCmd, chainCmdOrder ) =
-                            Interact.State.init model.node model.factoryAddress model.tokenContractAddress model.tokenContractDecimals model.userAddress bigIntId
+                            Interact.State.init model.node model.factoryAddress model.tokenContractAddress model.tokenContractDecimals model.userInfo bigIntId
 
                         ( newTxSentry, chainCmd ) =
                             ChainCmd.execute model.txSentry (ChainCmd.map InteractMsg chainCmdOrder)
@@ -246,7 +330,7 @@ gotoRoute model route =
         Routing.Browse ->
             let
                 ( browseModel, browseCmd ) =
-                    Browse.State.init model.node model.factoryAddress model.tokenContractDecimals model.userAddress
+                    Browse.State.init model.node model.factoryAddress model.tokenContractDecimals model.userInfo
             in
             ( Running
                 { model
@@ -262,20 +346,20 @@ gotoRoute model route =
             ( Failed "Don't understand that url...", Browser.Navigation.pushUrl model.key newUrlString )
 
 
-updateSubmodelWithUserAddress : Submodel -> Maybe Address -> Submodel
-updateSubmodelWithUserAddress submodel userAddress =
+updateSubmodelUserInfo : Maybe UserInfo -> Submodel -> Submodel
+updateSubmodelUserInfo userInfo submodel =
     case submodel of
         HomeModel ->
             submodel
 
         CreateModel createModel ->
-            CreateModel (Create.State.updateWithUserAddress createModel userAddress)
+            CreateModel (createModel |> Create.State.updateUserInfo userInfo)
 
         InteractModel interactModel ->
-            InteractModel (Interact.State.updateWithUserAddress interactModel userAddress)
+            InteractModel (interactModel |> Interact.State.updateUserInfo userInfo)
 
         BrowseModel browseModel ->
-            BrowseModel (Browse.State.updateWithUserAddress browseModel userAddress)
+            BrowseModel (browseModel |> Browse.State.updateUserInfo userInfo)
 
 
 subscriptions : Model -> Sub Msg
@@ -286,6 +370,8 @@ subscriptions maybeValidModel =
                 ([ Time.every 1000 Tick
                  , walletSentryPort (WalletSentry.decodeToMsg Fail WalletStatus)
                  , TxSentry.listen model.txSentry
+                 , userPubkeyResult UserPubkeySet
+                 , encryptResult MessagesEncrypted
                  ]
                     ++ [ submodelSubscriptions model ]
                 )
@@ -317,3 +403,15 @@ port txOut : Json.Decode.Value -> Cmd msg
 
 
 port txIn : (Json.Decode.Value -> msg) -> Sub msg
+
+
+port genPrivkey : String -> Cmd msg
+
+
+port userPubkeyResult : (Json.Decode.Value -> msg) -> Sub msg
+
+
+port encryptToPubkeys : Json.Encode.Value -> Cmd msg
+
+
+port encryptResult : (Json.Decode.Value -> msg) -> Sub msg

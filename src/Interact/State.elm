@@ -1,8 +1,9 @@
-module Interact.State exposing (init, subscriptions, update, updateWithUserAddress)
+module Interact.State exposing (init, subscriptions, update, updateUserInfo)
 
 import BigInt exposing (BigInt)
 import BigIntHelpers
 import ChainCmd exposing (ChainCmd)
+import CommonTypes exposing (UserInfo)
 import Contracts.Generated.ERC20Token as TokenContract
 import Contracts.Generated.ToastytradeSell as TTS
 import Contracts.Wrappers
@@ -17,14 +18,14 @@ import Time
 import TokenValue
 
 
-init : EthHelpers.EthNode -> Address -> Address -> Int -> Maybe Address -> BigInt -> ( Model, Cmd Msg, ChainCmd Msg )
-init ethNode factoryAddress tokenAddress tokenDecimals userAddress ttId =
+init : EthHelpers.EthNode -> Address -> Address -> Int -> Maybe UserInfo -> BigInt -> ( Model, Cmd Msg, ChainCmd Msg )
+init ethNode factoryAddress tokenAddress tokenDecimals userInfo ttId =
     let
         cmd =
             getContractCreationInfoCmd ethNode factoryAddress ttId
     in
     ( { ethNode = ethNode
-      , userAddress = userAddress
+      , userInfo = userInfo
       , tokenAddress = tokenAddress
       , tokenDecimals = tokenDecimals
       , ttsInfo =
@@ -47,9 +48,9 @@ getContractCreationInfoCmd ethNode factoryAddress id =
     Contracts.Wrappers.getCreationInfoFromIdCmd ethNode factoryAddress id CreationInfoFetched
 
 
-updateWithUserAddress : Model -> Maybe Address -> Model
-updateWithUserAddress model userAddress =
-    { model | userAddress = userAddress }
+updateUserInfo : Maybe UserInfo -> Model -> Model
+updateUserInfo userInfo model =
+    { model | userInfo = userInfo }
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, ChainCmd Msg )
@@ -170,7 +171,7 @@ update msg model =
                                             |> List.map
                                                 (\event ->
                                                     { who = Initiator
-                                                    , message = event.returnData.statement
+                                                    , message = "showing encrypted for initiator, for now: " ++ event.returnData.encryptedForInitiator
                                                     , blocknum = event.blockNumber
                                                     }
                                                 )
@@ -202,7 +203,7 @@ update msg model =
                                             |> List.map
                                                 (\event ->
                                                     { who = Responder
-                                                    , message = event.returnData.statement
+                                                    , message = "showing encrypted for initiator, for now: " ++ event.returnData.encryptedForInitiator
                                                     , blocknum = event.blockNumber
                                                     }
                                                 )
@@ -271,7 +272,7 @@ update msg model =
                                 RenderContract.Types.Claim ->
                                     let
                                         txParams =
-                                            TTS.claim creationInfo.address ""
+                                            TTS.claim creationInfo.address
                                                 |> Eth.toSend
                                     in
                                     ChainCmd.custom genericCustomSend txParams
@@ -287,7 +288,7 @@ update msg model =
                                 RenderContract.Types.Burn ->
                                     let
                                         txParams =
-                                            TTS.burn creationInfo.address ""
+                                            TTS.burn creationInfo.address
                                                 |> Eth.toSend
                                     in
                                     ChainCmd.custom genericCustomSend txParams
@@ -319,25 +320,32 @@ update msg model =
                     ( model, Cmd.none, ChainCmd.none )
 
                 Ok txReceipt ->
-                    case ( model.ttsInfo.creationInfo, model.ttsInfo.parameters ) of
-                        ( Nothing, _ ) ->
+                    case ( model.ttsInfo.creationInfo, model.ttsInfo.parameters, model.userInfo ) of
+                        ( Nothing, _, _ ) ->
                             let
                                 _ =
                                     Debug.log "Trying to handle PreCommitApproveMined, but can't find the contract creationInfo :/" ""
                             in
                             ( model, Cmd.none, ChainCmd.none )
 
-                        ( _, Nothing ) ->
+                        ( _, Nothing, _ ) ->
                             let
                                 _ =
                                     Debug.log "Trying to handle PreCommitApproveMined, but can't find the contract parameters :/" ""
                             in
                             ( model, Cmd.none, ChainCmd.none )
 
-                        ( Just creationInfo, Just parameters ) ->
+                        ( _, _, Nothing ) ->
+                            let
+                                _ =
+                                    Debug.log "Trying to handle PreCommitApproveMined, but can't find userInfo :/" ""
+                            in
+                            ( model, Cmd.none, ChainCmd.none )
+
+                        ( Just creationInfo, Just parameters, Just userInfo ) ->
                             let
                                 txParams =
-                                    TTS.commit creationInfo.address ""
+                                    TTS.commit creationInfo.address userInfo.commPubkey
                                         |> Eth.toSend
                             in
                             ( model, Cmd.none, ChainCmd.custom genericCustomSend txParams )
@@ -350,8 +358,12 @@ update msg model =
 
         MessageSubmit ->
             let
+                userAddress =
+                    model.userInfo
+                        |> Maybe.map (\userInfo -> userInfo.address)
+
                 userRole =
-                    Maybe.map3 getUserRole model.ttsInfo.parameters model.ttsInfo.state model.userAddress
+                    Maybe.map3 getUserRole model.ttsInfo.parameters model.ttsInfo.state userAddress
                         |> Maybe.Extra.join
 
                 chainCmd =
@@ -361,11 +373,11 @@ update msg model =
                                 txParams =
                                     case role of
                                         Initiator ->
-                                            TTS.initiatorStatement creationInfo.address model.messageInput
+                                            TTS.initiatorStatement creationInfo.address model.messageInput "wait, this should be encrypted!!"
                                                 |> Eth.toSend
 
                                         Responder ->
-                                            TTS.responderStatement creationInfo.address model.messageInput
+                                            TTS.responderStatement creationInfo.address model.messageInput "wait, this should be encrypted!!"
                                                 |> Eth.toSend
                             in
                             ChainCmd.custom genericCustomSend txParams

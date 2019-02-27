@@ -2,6 +2,7 @@ module Contracts.Types exposing (FullParameters, Phase(..), State, UserParameter
 
 import Abi.Decode
 import BigInt exposing (BigInt)
+import CommonTypes exposing (UserInfo)
 import Contracts.Generated.ToastytradeSell as TTS
 import Eth.Types exposing (Address)
 import EthHelpers
@@ -32,6 +33,7 @@ type alias FullParameters =
     { uncoiningAmount : TokenValue
     , price : TokenValue
     , transferMethods : String
+    , initiatorCommPubkey : String
     , autorecallInterval : Time.Posix
     , depositDeadlineInterval : Time.Posix
     , autoreleaseInterval : Time.Posix
@@ -45,6 +47,7 @@ type alias State =
     , phase : Phase
     , phaseStartTime : Time.Posix
     , responder : Maybe Address
+    , responderCommPubkey : Maybe String
     }
 
 
@@ -135,8 +138,8 @@ phaseToString phase =
             "Closed"
 
 
-buildFullParameters : Address -> UserParameters -> FullParameters
-buildFullParameters initiatorAddress userParameters =
+buildFullParameters : UserInfo -> UserParameters -> FullParameters
+buildFullParameters initiatorInfo userParameters =
     let
         responderDeposit =
             TokenValue.divByInt userParameters.uncoiningAmount 3
@@ -147,7 +150,8 @@ buildFullParameters initiatorAddress userParameters =
     , depositDeadlineInterval = userParameters.depositDeadlineInterval
     , autoreleaseInterval = userParameters.autoreleaseInterval
     , transferMethods = userParameters.transferMethods
-    , initiatorAddress = initiatorAddress
+    , initiatorAddress = initiatorInfo.address
+    , initiatorCommPubkey = initiatorInfo.commPubkey
     , responderDeposit = responderDeposit
     }
 
@@ -167,6 +171,13 @@ decodeState numDecimals encodedState =
             , phase = phase
             , phaseStartTime = phaseStartTime
             , responder = EthHelpers.addressIfNot0x0 encodedState.responder
+            , responderCommPubkey =
+                case encodedState.responderCommPubkey of
+                    "" ->
+                        Nothing
+
+                    s ->
+                        Just s
             }
         )
         maybePhase

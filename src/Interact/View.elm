@@ -22,17 +22,17 @@ root time model =
 
 maybeContractElement : Time.Posix -> Model -> Element.Element Msg
 maybeContractElement time model =
-    case ( model.userAddress, model.ttsInfo.parameters, model.ttsInfo.state ) of
-        ( Just userAddress, Just parameters, Just state ) ->
+    case ( model.userInfo, model.ttsInfo.parameters, model.ttsInfo.state ) of
+        ( Just userInfo, Just parameters, Just state ) ->
             let
                 context =
                     { state = state
                     , currentTime = time
-                    , userIsInitiator = userAddress == parameters.initiatorAddress
+                    , userIsInitiator = userInfo.address == parameters.initiatorAddress
                     , userIsResponder =
                         case state.responder of
                             Just responderAddress ->
-                                userAddress == responderAddress
+                                userInfo.address == responderAddress
 
                             Nothing ->
                                 False
@@ -116,9 +116,9 @@ renderMessage message =
 
 maybeCommInputElement : Model -> Element.Element Msg
 maybeCommInputElement model =
-    case ( model.userAddress, model.ttsInfo.parameters, model.ttsInfo.state ) of
-        ( Just userAddress, Just parameters, Just state ) ->
-            case getUserRole parameters state userAddress of
+    case ( model.userInfo, model.ttsInfo.parameters, model.ttsInfo.state ) of
+        ( Just userInfo, Just parameters, Just state ) ->
+            case getUserRole parameters state userInfo.address of
                 Just _ ->
                     Element.column [ Element.width Element.fill, Element.spacing 10 ]
                         [ Element.Input.multiline [ Element.width Element.fill, Element.height (Element.px 100) ]

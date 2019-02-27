@@ -1,8 +1,9 @@
-module Create.State exposing (init, subscriptions, update, updateParameters, updateWithUserAddress, validateInputs)
+module Create.State exposing (init, subscriptions, udpateParameterInputs, update, updateUserInfo, validateInputs)
 
 import BigInt
 import BigIntHelpers
 import ChainCmd exposing (ChainCmd)
+import CommonTypes exposing (UserInfo)
 import Contracts.Generated.ERC20Token as TokenContract
 import Contracts.Types
 import Contracts.Wrappers
@@ -15,8 +16,8 @@ import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
-init : Address -> Int -> Address -> Maybe Address -> ( Model, Cmd Msg, ChainCmd Msg )
-init tokenAddress tokenDecimals factoryAddress userAddress =
+init : Address -> Int -> Address -> Maybe UserInfo -> ( Model, Cmd Msg, ChainCmd Msg )
+init tokenAddress tokenDecimals factoryAddress userInfo =
     let
         initialInputs =
             { uncoiningAmount = "100"
@@ -31,23 +32,23 @@ init tokenAddress tokenDecimals factoryAddress userAddress =
             { tokenAddress = tokenAddress
             , tokenDecimals = tokenDecimals
             , factoryAddress = factoryAddress
-            , userAddress = userAddress
+            , userInfo = userInfo
             , parameterInputs = initialInputs
             , devFee = TokenValue.zero tokenDecimals
             , contractParameters = Nothing
             , busyWithTxChain = False
             }
     in
-    ( updateParameters model initialInputs
+    ( model |> udpateParameterInputs initialInputs
     , Cmd.none
     , ChainCmd.none
     )
 
 
-updateWithUserAddress : Model -> Maybe Address -> Model
-updateWithUserAddress model userAddress =
-    { model | userAddress = userAddress }
-        |> flip updateParameters model.parameterInputs
+updateUserInfo : Maybe UserInfo -> Model -> Model
+updateUserInfo userInfo model =
+    { model | userInfo = userInfo }
+        |> udpateParameterInputs model.parameterInputs
 
 
 update : Msg -> Model -> UpdateResult
@@ -58,45 +59,45 @@ update msg model =
                 oldInputs =
                     model.parameterInputs
             in
-            justModelUpdate (updateParameters model { oldInputs | uncoiningAmount = newAmountStr })
+            justModelUpdate (model |> udpateParameterInputs { oldInputs | uncoiningAmount = newAmountStr })
 
         PriceChanged newAmountStr ->
             let
                 oldInputs =
                     model.parameterInputs
             in
-            justModelUpdate (updateParameters model { oldInputs | price = newAmountStr })
+            justModelUpdate (model |> udpateParameterInputs { oldInputs | price = newAmountStr })
 
         TransferMethodsChanged newStr ->
             let
                 oldInputs =
                     model.parameterInputs
             in
-            justModelUpdate (updateParameters model { oldInputs | transferMethods = newStr })
+            justModelUpdate (model |> udpateParameterInputs { oldInputs | transferMethods = newStr })
 
         AutorecallIntervalChanged newTimeStr ->
             let
                 oldInputs =
                     model.parameterInputs
             in
-            justModelUpdate (updateParameters model { oldInputs | autorecallInterval = newTimeStr })
+            justModelUpdate (model |> udpateParameterInputs { oldInputs | autorecallInterval = newTimeStr })
 
         DepositDeadlineIntervalChanged newTimeStr ->
             let
                 oldInputs =
                     model.parameterInputs
             in
-            justModelUpdate (updateParameters model { oldInputs | depositDeadlineInterval = newTimeStr })
+            justModelUpdate (model |> udpateParameterInputs { oldInputs | depositDeadlineInterval = newTimeStr })
 
         AutoreleaseIntervalChanged newTimeStr ->
             let
                 oldInputs =
                     model.parameterInputs
             in
-            justModelUpdate (updateParameters model { oldInputs | autoreleaseInterval = newTimeStr })
+            justModelUpdate (model |> udpateParameterInputs { oldInputs | autoreleaseInterval = newTimeStr })
 
         BeginCreateProcess ->
-            case ( model.userAddress, model.contractParameters ) of
+            case ( model.userInfo, model.contractParameters ) of
                 ( Just _, Just parameters ) ->
                     let
                         fullSendAmount =
@@ -216,15 +217,20 @@ update msg model =
             justModelUpdate model
 
 
-updateParameters : Model -> ContractParameterInputs -> Model
-updateParameters model newParameters =
+udpateParameterInputs : ContractParameterInputs -> Model -> Model
+udpateParameterInputs newParameters model =
+    { model | parameterInputs = newParameters }
+        |> updateParameters
+
+
+updateParameters : Model -> Model
+updateParameters model =
     { model
-        | parameterInputs = newParameters
-        , contractParameters =
+        | contractParameters =
             Maybe.map2
                 Contracts.Types.buildFullParameters
-                model.userAddress
-                (validateInputs model.tokenDecimals newParameters)
+                model.userInfo
+                (validateInputs model.tokenDecimals model.parameterInputs)
     }
 
 

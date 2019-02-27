@@ -19,7 +19,7 @@ contract ToastytradeFactory {
         tokenContract = _tokenContract;
     }
 
-    function createToastytradeSell(address payable _initiator, uint sellAmount, uint price, uint _responderDeposit, uint _autorecallInterval, uint _depositDeadlineInterval, uint _autoreleaseInterval, string calldata _logisticsString)
+    function createToastytradeSell(address payable _initiator, uint sellAmount, uint price, uint _responderDeposit, uint _autorecallInterval, uint _depositDeadlineInterval, uint _autoreleaseInterval, string calldata _logisticsString, string calldata _initiatorCommPubkey)
     external
     returns (ToastytradeSell) {
         ToastytradeSell newTT = new ToastytradeSell(tokenContract);
@@ -28,7 +28,7 @@ contract ToastytradeFactory {
 
         require(tokenContract.transferFrom(msg.sender, address(newTT), sellAmount), "Token transfer failed. Did you call approve()?");
 
-        newTT.open(_initiator, price, _responderDeposit, _autorecallInterval, _depositDeadlineInterval, _autoreleaseInterval, _logisticsString);
+        newTT.open(_initiator, price, _responderDeposit, _autorecallInterval, _depositDeadlineInterval, _autoreleaseInterval, _logisticsString, _initiatorCommPubkey);
 
         emit NewToastytradeSell(createdSells.length-1, address(newTT));
 
@@ -66,12 +66,19 @@ contract ToastytradeSell {
     address payable public initiator;
     address payable public responder;
 
+    string public initiatorCommPubkey;
+    string public responderCommPubkey;
+
     modifier onlyInitiator() {
         require(msg.sender == initiator, "msg.sender is not Initiator.");
         _;
     }
     modifier onlyResponder() {
         require(msg.sender == responder, "msg.sender is not Responder.");
+        _;
+    }
+    modifier onlyInitiatorOrResponder() {
+        require(msg.sender == initiator || msg.sender == responder, "msg.sender is not Initiator or Responder.");
         _;
     }
 
@@ -94,7 +101,7 @@ contract ToastytradeSell {
         tokenContract = _tokenContract;
     }
 
-    function open(address payable _initiator, uint _price, uint _responderDeposit, uint _autorecallInterval, uint _depositDeadlineInterval, uint _autoreleaseInterval, string memory _logisticsString)
+    function open(address payable _initiator, uint _price, uint _responderDeposit, uint _autorecallInterval, uint _depositDeadlineInterval, uint _autoreleaseInterval, string memory _logisticsString, string memory _initiatorCommPubkey)
     public {
         changePhase(Phase.Open);
 
@@ -107,6 +114,7 @@ contract ToastytradeSell {
         autoreleaseInterval = _autoreleaseInterval;
 
         logisticsString = _logisticsString;
+        initiatorCommPubkey = _initiatorCommPubkey;
     }
 
     /* ---------------------- OPEN PHASE --------------------------
@@ -149,7 +157,7 @@ contract ToastytradeSell {
         return (block.timestamp >= phaseStartTimestamps[uint(Phase.Open)] + autorecallInterval);
     }
 
-    function commit(string calldata note)
+    function commit(string calldata _responderCommPubkey)
     external
     inPhase(Phase.Open) {
         require(tokenContract.transferFrom(msg.sender, address(this), responderDeposit), "Can't transfer the required deposit from the token contract. Did you call approve first?");
@@ -157,13 +165,11 @@ contract ToastytradeSell {
 
         responder = msg.sender;
 
+        responderCommPubkey = _responderCommPubkey;
+
         emit Committed(responder);
 
         changePhase(Phase.Committed);
-
-        if (bytes(note).length > 0) {
-          emit ResponderStatementLog(note);
-        }
     }
 
     /* ---------------------- COMMITTED PHASE ---------------------
@@ -200,17 +206,13 @@ contract ToastytradeSell {
         changePhase(Phase.Closed);
     }
 
-    function claim(string calldata note)
+    function claim()
     external
     inPhase(Phase.Committed)
     onlyResponder() {
         require(!depositDeadlinePassed(), "The deposit deadline has passed!");
 
         changePhase(Phase.Claimed);
-
-        if (bytes(note).length > 0) {
-            emit ResponderStatementLog(note);
-        }
     }
 
     /* ---------------------- CLAIMED PHASE -----------------------
@@ -251,17 +253,13 @@ contract ToastytradeSell {
         changePhase(Phase.Closed);
     }
 
-    function burn(string calldata note)
+    function burn()
     external
     inPhase(Phase.Claimed)
     onlyInitiator() {
         require(!autoreleaseAvailable());
 
         internalBurn();
-
-        if (bytes(note).length > 0) {
-            emit InitiatorStatementLog(note);
-        }
     }
 
     function internalBurn()
@@ -278,8 +276,8 @@ contract ToastytradeSell {
     function getState()
     external
     view
-    returns(uint balance, Phase phase, uint phaseStartTimestamp, address responder) {
-        return (getBalance(), this.phase(), phaseStartTimestamps[uint(phase)], this.responder());
+    returns(uint balance, Phase phase, uint phaseStartTimestamp, address responder, string memory responderCommPubkey) {
+        return (getBalance(), this.phase(), phaseStartTimestamps[uint(phase)], this.responder(), this.responderCommPubkey());
     }
 
     function getBalance()
@@ -292,9 +290,9 @@ contract ToastytradeSell {
     function getParameters()
     external
     view
-    returns (address initiator, uint sellAmount, uint price, uint responderDeposit, uint autorecallInterval, uint depositDeadlineInterval, uint autoreleaseInterval, string memory logisticsString)
+    returns (address initiator, uint sellAmount, uint price, uint responderDeposit, uint autorecallInterval, uint depositDeadlineInterval, uint autoreleaseInterval, string memory logisticsString, string memory initiatorCommPubkey)
     {
-        return (this.initiator(), this.sellAmount(), this.price(), this.responderDeposit(), this.autorecallInterval(), this.depositDeadlineInterval(), this.autoreleaseInterval(), this.logisticsString());
+        return (this.initiator(), this.sellAmount(), this.price(), this.responderDeposit(), this.autorecallInterval(), this.depositDeadlineInterval(), this.autoreleaseInterval(), this.logisticsString(), this.initiatorCommPubkey());
     }
 
     // Poke function lets anyone move the contract along,
@@ -320,20 +318,23 @@ contract ToastytradeSell {
     }
 
     // StatementLogs allow a starting point for any necessary communication,
-    // and can be used in any phase, including the Closed phase.
+    // and can be used anytime by either party after a Responder commits (including in the Closed phase).
 
-    event InitiatorStatementLog(string statement);
-    event ResponderStatementLog(string statement);
 
-    function initiatorStatement(string memory statement)
+    event InitiatorStatementLog(string encryptedForInitiator, string encryptedForResponder);
+    event ResponderStatementLog(string encryptedForInitiator, string encryptedForResponder);
+
+    function initiatorStatement(string memory encryptedForInitiator, string memory encryptedForResponder)
     public
     onlyInitiator() {
-        emit InitiatorStatementLog(statement);
+        require(phase >= Phase.Committed);
+        emit InitiatorStatementLog(encryptedForInitiator, encryptedForResponder);
     }
 
-    function responderStatement(string memory statement)
+    function responderStatement(string memory encryptedForInitiator, string memory encryptedForResponder)
     public
     onlyResponder() {
-        emit ResponderStatementLog(statement);
+        require(phase >= Phase.Committed);
+        emit ResponderStatementLog(encryptedForInitiator, encryptedForResponder);
     }
 }

@@ -70,6 +70,10 @@
             {
                 "name": "_logisticsString",
                 "type": "string"
+            },
+            {
+                "name": "_initiatorCommPubkey",
+                "type": "string"
             }
         ],
         "name": "createToastytradeSell",

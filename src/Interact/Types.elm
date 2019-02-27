@@ -1,6 +1,7 @@
 module Interact.Types exposing (CommMessage, InitiatorOrResponder(..), Model, Msg(..), TTSInfo, getUserRole, updateCreationInfo, updateParameters, updateState)
 
 import BigInt exposing (BigInt)
+import CommonTypes exposing (UserInfo)
 import Contracts.Generated.ToastytradeFactory as TTF
 import Contracts.Generated.ToastytradeSell as TTS
 import Contracts.Types
@@ -31,7 +32,7 @@ updateState ttsInfo state =
 
 type alias Model =
     { ethNode : EthHelpers.EthNode
-    , userAddress : Maybe Address
+    , userInfo : Maybe UserInfo
     , tokenAddress : Address
     , tokenDecimals : Int
     , ttsInfo : TTSInfo

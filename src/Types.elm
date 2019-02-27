@@ -4,12 +4,14 @@ import BigInt exposing (BigInt)
 import Browse.Types
 import Browser
 import Browser.Navigation
+import CommonTypes exposing (UserInfo)
 import Create.Types
 import Eth.Sentry.Tx as TxSentry exposing (TxSentry)
 import Eth.Sentry.Wallet as WalletSentry exposing (WalletSentry)
 import Eth.Types exposing (Address)
 import EthHelpers
 import Interact.Types
+import Json.Decode
 import Routing
 import Time
 import Url exposing (Url)
@@ -36,6 +38,7 @@ type alias ValidModel =
     , node : EthHelpers.EthNode
     , txSentry : TxSentry Msg
     , userAddress : Maybe Address
+    , userInfo : Maybe UserInfo
     , tokenContractDecimals : Int
     , submodel : Submodel
     }
@@ -55,6 +58,8 @@ type Msg
     | Tick Time.Posix
     | WalletStatus WalletSentry
     | TxSentryMsg TxSentry.Msg
+    | UserPubkeySet Json.Decode.Value
+    | MessagesEncrypted Json.Decode.Value
     | CreateMsg Create.Types.Msg
     | InteractMsg Interact.Types.Msg
     | BrowseMsg Browse.Types.Msg
