@@ -1,4 +1,4 @@
-module Interact.State exposing (init, subscriptions, update, updateUserInfo)
+port module Interact.State exposing (init, subscriptions, update, updateUserInfo)
 
 import BigInt exposing (BigInt)
 import BigIntHelpers
@@ -12,6 +12,8 @@ import Eth.Types exposing (Address)
 import EthHelpers
 import EventSentryHack exposing (EventSentry)
 import Interact.Types exposing (..)
+import Json.Decode
+import Json.Encode
 import Maybe.Extra
 import RenderContract.Types
 import Time
@@ -331,11 +333,31 @@ update msg model =
         MessageSubmit ->
             case ( model.userInfo, model.ttsInfo ) of
                 ( Just userInfo, Loaded ttsInfo ) ->
+                    let
+                        cmd =
+                            encryptToPubkeys (encodeEncryptionArgs model.messageInput (getCommPubkeys ttsInfo))
+                    in
+                    ( model, cmd, ChainCmd.none )
+
+                incomplete ->
+                    let
+                        _ =
+                            Debug.log "Incomplete data found when processing MessageSubmit" incomplete
+                    in
+                    ( model, Cmd.none, ChainCmd.none )
+
+        EncryptionFinished encryptedMessagesValue ->
+            let
+                _ =
+                    Debug.log "encryption result" (decodeEncryptionResult encryptedMessagesValue)
+            in
+            case ( model.userInfo, model.ttsInfo ) of
+                ( Just userInfo, Loaded ttsInfo ) ->
                     case getUserRole ttsInfo.parameters ttsInfo.state userInfo.address of
                         Nothing ->
                             let
                                 _ =
-                                    Debug.log "How did you click that button? You don't seem to be the Initiator or Responder..."
+                                    Debug.log "How did you click that button? You don't seem to be the Initiator or Responder..." ""
                             in
                             ( model, Cmd.none, ChainCmd.none )
 
@@ -414,6 +436,48 @@ update msg model =
                     ( model, Cmd.none, ChainCmd.none )
 
 
+encodeEncryptionArgs : String -> List String -> Json.Encode.Value
+encodeEncryptionArgs message commPubkeys =
+    Json.Encode.object
+        [ ( "message", Json.Encode.string message )
+        , ( "pubkeyHexStrings"
+          , Json.Encode.list Json.Encode.string commPubkeys
+          )
+        ]
+
+
+decodeEncryptionResult : Json.Decode.Value -> Result Json.Decode.Error (List EncryptedMessage)
+decodeEncryptionResult value =
+    let
+        encryptedMessageDecoder =
+            Json.Decode.map4 EncryptedMessage
+                (Json.Decode.field "encapsulated" Json.Decode.string)
+                (Json.Decode.field "iv" Json.Decode.string)
+                (Json.Decode.field "tag" Json.Decode.string)
+                (Json.Decode.field "encrypted" Json.Decode.string)
+
+        decoder =
+            Json.Decode.list encryptedMessageDecoder
+    in
+    Json.Decode.decodeValue decoder value
+
+
+getCommPubkeys : TTSFullInfo -> List String
+getCommPubkeys ttsInfo =
+    case ttsInfo.state.responderCommPubkey of
+        Just responderCommPubkey ->
+            [ ttsInfo.parameters.initiatorCommPubkey
+            , responderCommPubkey
+            ]
+
+        Nothing ->
+            let
+                _ =
+                    Debug.log "Trying to encrypt a message, but can't find the responderCommPubkey! Is the contract still in the Open phase?" ""
+            in
+            []
+
+
 getSentryPollCmd : ( EventSentry TTS.InitiatorStatementLog Msg, EventSentry TTS.ResponderStatementLog Msg ) -> Cmd Msg
 getSentryPollCmd sentries =
     Cmd.batch
@@ -437,4 +501,13 @@ genericCustomSend =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Time.every 3000 Refresh
+    Sub.batch
+        [ Time.every 3000 Refresh
+        , encryptionFinished EncryptionFinished
+        ]
+
+
+port encryptToPubkeys : Json.Encode.Value -> Cmd msg
+
+
+port encryptionFinished : (Json.Decode.Value -> msg) -> Sub msg

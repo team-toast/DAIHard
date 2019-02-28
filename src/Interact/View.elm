@@ -1,5 +1,6 @@
 module Interact.View exposing (root)
 
+import Contracts.Types
 import Element
 import Element.Background
 import Element.Border
@@ -22,15 +23,15 @@ root time model =
 
 maybeContractElement : Time.Posix -> Model -> Element.Element Msg
 maybeContractElement time model =
-    case ( model.userInfo, model.ttsInfo.parameters, model.ttsInfo.state ) of
-        ( Just userInfo, Just parameters, Just state ) ->
+    case ( model.userInfo, model.ttsInfo ) of
+        ( Just userInfo, Loaded ttsInfo ) ->
             let
                 context =
-                    { state = state
+                    { state = ttsInfo.state
                     , currentTime = time
-                    , userIsInitiator = userInfo.address == parameters.initiatorAddress
+                    , userIsInitiator = userInfo.address == ttsInfo.parameters.initiatorAddress
                     , userIsResponder =
-                        case state.responder of
+                        case ttsInfo.state.responder of
                             Just responderAddress ->
                                 userInfo.address == responderAddress
 
@@ -38,16 +39,13 @@ maybeContractElement time model =
                                 False
                     }
             in
-            Element.map ContractAction (RenderContract.View.render (RenderContract.Types.Active context) parameters)
+            Element.map ContractAction (RenderContract.View.render (RenderContract.Types.Active context) ttsInfo.parameters)
 
-        ( Nothing, _, _ ) ->
-            Element.text "Can't find user address!"
+        ( Nothing, _ ) ->
+            Element.text "Can't find user address. Is Metamask unlocked?"
 
-        ( _, Nothing, _ ) ->
-            Element.text "Don't have contract parameters!"
-
-        ( _, _, Nothing ) ->
-            Element.text "Don't have contract state!"
+        ( _, _ ) ->
+            Element.text "Contract state is not yet loaded."
 
 
 commsElement : Model -> Element.Element Msg
@@ -116,26 +114,34 @@ renderMessage message =
 
 maybeCommInputElement : Model -> Element.Element Msg
 maybeCommInputElement model =
-    case ( model.userInfo, model.ttsInfo.parameters, model.ttsInfo.state ) of
-        ( Just userInfo, Just parameters, Just state ) ->
-            case getUserRole parameters state userInfo.address of
-                Just _ ->
-                    Element.column [ Element.width Element.fill, Element.spacing 10 ]
-                        [ Element.Input.multiline [ Element.width Element.fill, Element.height (Element.px 100) ]
-                            { onChange = MessageInputChanged
-                            , text = model.messageInput
-                            , placeholder = Nothing
-                            , label = Element.Input.labelHidden "messageInput"
-                            , spellcheck = False
-                            }
-                        , Element.Input.button [ Element.centerX, Element.Font.size 24 ]
-                            { onPress = Just MessageSubmit
-                            , label = Element.text "Submit"
-                            }
-                        ]
-
-                Nothing ->
+    case ( model.userInfo, model.ttsInfo ) of
+        ( Just userInfo, Loaded ttsInfo ) ->
+            case ttsInfo.state.phase of
+                Contracts.Types.Created ->
                     Element.none
+
+                Contracts.Types.Open ->
+                    Element.none
+
+                _ ->
+                    case getUserRole ttsInfo.parameters ttsInfo.state userInfo.address of
+                        Just _ ->
+                            Element.column [ Element.width Element.fill, Element.spacing 10 ]
+                                [ Element.Input.multiline [ Element.width Element.fill, Element.height (Element.px 100) ]
+                                    { onChange = MessageInputChanged
+                                    , text = model.messageInput
+                                    , placeholder = Nothing
+                                    , label = Element.Input.labelHidden "messageInput"
+                                    , spellcheck = False
+                                    }
+                                , Element.Input.button [ Element.centerX, Element.Font.size 24 ]
+                                    { onPress = Just MessageSubmit
+                                    , label = Element.text "Submit"
+                                    }
+                                ]
+
+                        Nothing ->
+                            Element.none
 
         _ ->
             Element.none

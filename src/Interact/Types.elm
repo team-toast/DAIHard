@@ -1,4 +1,4 @@
-module Interact.Types exposing (CommMessage, InitiatorOrResponder(..), Model, Msg(..), TTSInfo(..), getUserRole, partialInfo, updateParameters, updateState)
+module Interact.Types exposing (CommMessage, EncryptedMessage, InitiatorOrResponder(..), Model, Msg(..), TTSFullInfo, TTSInfo(..), TTSPartialInfo, getUserRole, partialInfo, updateParameters, updateState)
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (UserInfo)
@@ -9,6 +9,7 @@ import Eth.Types exposing (Address)
 import EthHelpers
 import EventSentryHack exposing (EventSentry)
 import Http
+import Json.Decode
 import RenderContract.Types
 import Time
 
@@ -89,6 +90,7 @@ type Msg
     | ResponderStatementsFetched (Result Http.Error (List (Eth.Types.Event TTS.ResponderStatementLog)))
     | MessageInputChanged String
     | MessageSubmit
+    | EncryptionFinished Json.Decode.Value
     | InitiatorStatementEventSentryMsg EventSentryHack.Msg
     | ResponderStatementEventSentryMsg EventSentryHack.Msg
 
@@ -128,6 +130,14 @@ type alias CommMessage =
     { who : InitiatorOrResponder
     , message : String
     , blocknum : Int
+    }
+
+
+type alias EncryptedMessage =
+    { encapsulatedKey : String
+    , iv : String
+    , tag : String
+    , message : String
     }
 
 

@@ -26,9 +26,7 @@ init : Flags -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init flags url key =
     let
         _ =
-            ( genPrivkey
-            , encryptToPubkeys
-            )
+            genPrivkey
 
         -- Hack because Elm 0.19 will discard code that isn't used elsewhere in Elm code, event outgoing ports. >:(
     in
@@ -370,7 +368,6 @@ subscriptions maybeValidModel =
                  , walletSentryPort (WalletSentry.decodeToMsg Fail WalletStatus)
                  , TxSentry.listen model.txSentry
                  , userPubkeyResult UserPubkeySet
-                 , encryptResult MessagesEncrypted
                  ]
                     ++ [ submodelSubscriptions model ]
                 )
@@ -408,9 +405,3 @@ port genPrivkey : String -> Cmd msg
 
 
 port userPubkeyResult : (Json.Decode.Value -> msg) -> Sub msg
-
-
-port encryptToPubkeys : Json.Encode.Value -> Cmd msg
-
-
-port encryptResult : (Json.Decode.Value -> msg) -> Sub msg
