@@ -1,6 +1,8 @@
-module Interact.Types exposing (CommMessage, InitiatorOrResponder(..), Model, Msg(..), TTSInfo, getUserRole, updateCreationInfo, updateParameters, updateState)
+module Interact.Types exposing (CommMessage, EncryptedMessage, InitiatorOrResponder(..), MessageContent(..), Model, Msg(..), TTSFullInfo, TTSInfo(..), TTSPartialInfo, getUserRole, partialInfo, updateParameters, updateState)
 
+import Array exposing (Array)
 import BigInt exposing (BigInt)
+import CommonTypes exposing (UserInfo)
 import Contracts.Generated.ToastytradeFactory as TTF
 import Contracts.Generated.ToastytradeSell as TTS
 import Contracts.Types
@@ -8,34 +10,70 @@ import Eth.Types exposing (Address)
 import EthHelpers
 import EventSentryHack exposing (EventSentry)
 import Http
+import Json.Decode
 import RenderContract.Types
 import Time
 
 
-updateCreationInfo : Maybe CreationInfo -> TTSInfo -> TTSInfo
-updateCreationInfo creationInfo ttsInfo =
-    { ttsInfo
-        | creationInfo = creationInfo
-    }
+partialInfo : CreationInfo -> TTSInfo
+partialInfo creationInfo =
+    PartiallyLoaded (TTSPartialInfo creationInfo Nothing Nothing)
 
 
-updateParameters : TTSInfo -> Maybe Contracts.Types.FullParameters -> TTSInfo
-updateParameters ttsInfo parameters =
-    { ttsInfo | parameters = parameters }
+updateParameters : Contracts.Types.FullParameters -> TTSInfo -> TTSInfo
+updateParameters parameters ttsInfo =
+    case ttsInfo of
+        NothingLoaded ->
+            let
+                _ =
+                    Debug.log "Trying to update parameters, but there is no creationInfo! What the heck???" ""
+            in
+            NothingLoaded
+
+        PartiallyLoaded pInfo ->
+            { pInfo | parameters = Just parameters }
+                |> checkIfLoaded
+
+        Loaded info ->
+            Loaded { info | parameters = parameters }
 
 
-updateState : TTSInfo -> Maybe Contracts.Types.State -> TTSInfo
-updateState ttsInfo state =
-    { ttsInfo | state = state }
+updateState : Contracts.Types.State -> TTSInfo -> TTSInfo
+updateState state ttsInfo =
+    case ttsInfo of
+        NothingLoaded ->
+            let
+                _ =
+                    Debug.log "Trying to update state, but there is no creationInfo! What the heck???" ""
+            in
+            NothingLoaded
+
+        PartiallyLoaded pInfo ->
+            { pInfo | state = Just state }
+                |> checkIfLoaded
+
+        Loaded info ->
+            Loaded { info | state = state }
+
+
+checkIfLoaded : TTSPartialInfo -> TTSInfo
+checkIfLoaded pInfo =
+    case ( pInfo.parameters, pInfo.state ) of
+        ( Just parameters, Just state ) ->
+            Loaded (TTSFullInfo pInfo.creationInfo parameters state)
+
+        _ ->
+            PartiallyLoaded pInfo
 
 
 type alias Model =
     { ethNode : EthHelpers.EthNode
-    , userAddress : Maybe Address
+    , userInfo : Maybe UserInfo
     , tokenAddress : Address
     , tokenDecimals : Int
+    , ttsId : BigInt
     , ttsInfo : TTSInfo
-    , messages : List CommMessage
+    , messages : Array CommMessage
     , messageInput : String
     , eventSentries : Maybe ( EventSentry TTS.InitiatorStatementLog Msg, EventSentry TTS.ResponderStatementLog Msg )
     }
@@ -53,13 +91,20 @@ type Msg
     | ResponderStatementsFetched (Result Http.Error (List (Eth.Types.Event TTS.ResponderStatementLog)))
     | MessageInputChanged String
     | MessageSubmit
+    | EncryptionFinished Json.Decode.Value
+    | DecryptionFinished Json.Decode.Value
     | InitiatorStatementEventSentryMsg EventSentryHack.Msg
     | ResponderStatementEventSentryMsg EventSentryHack.Msg
 
 
-type alias TTSInfo =
-    { id : BigInt
-    , creationInfo : Maybe CreationInfo
+type TTSInfo
+    = NothingLoaded
+    | PartiallyLoaded TTSPartialInfo
+    | Loaded TTSFullInfo
+
+
+type alias TTSPartialInfo =
+    { creationInfo : CreationInfo
     , parameters : Maybe Contracts.Types.FullParameters
     , state : Maybe Contracts.Types.State
     }
@@ -71,6 +116,13 @@ type alias CreationInfo =
     }
 
 
+type alias TTSFullInfo =
+    { creationInfo : CreationInfo
+    , parameters : Contracts.Types.FullParameters
+    , state : Contracts.Types.State
+    }
+
+
 type InitiatorOrResponder
     = Initiator
     | Responder
@@ -78,18 +130,33 @@ type InitiatorOrResponder
 
 type alias CommMessage =
     { who : InitiatorOrResponder
-    , message : String
+    , message : MessageContent
     , blocknum : Int
     }
 
 
-getUserRole : Contracts.Types.FullParameters -> Contracts.Types.State -> Address -> Maybe InitiatorOrResponder
-getUserRole parameters state userAddress =
-    if userAddress == parameters.initiatorAddress then
+type MessageContent
+    = FailedDecode
+    | Encrypted ( EncryptedMessage, EncryptedMessage )
+    | FailedDecrypt
+    | Decrypted String
+
+
+type alias EncryptedMessage =
+    { encapsulatedKey : String
+    , iv : String
+    , tag : String
+    , message : String
+    }
+
+
+getUserRole : TTSFullInfo -> Address -> Maybe InitiatorOrResponder
+getUserRole ttsInfo userAddress =
+    if userAddress == ttsInfo.parameters.initiatorAddress then
         Just Initiator
 
     else
-        state.responder
+        ttsInfo.state.responder
             |> Maybe.andThen
                 (\responder ->
                     if userAddress == responder then

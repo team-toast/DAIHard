@@ -2,6 +2,7 @@ module Browse.Types exposing (Model, Msg(..), TTListItem, updateTTAddress, updat
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
+import CommonTypes exposing (UserInfo)
 import Contracts.Generated.ToastytradeFactory as TTF
 import Contracts.Types
 import Eth.Types exposing (Address)
@@ -11,7 +12,7 @@ import Http
 
 type alias Model =
     { ethNode : EthHelpers.EthNode
-    , userAddress : Maybe Address
+    , userInfo : Maybe UserInfo
     , factoryAddress : Address
     , tokenDecimals : Int
     , numTTs : Maybe Int

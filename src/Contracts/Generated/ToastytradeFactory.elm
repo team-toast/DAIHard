@@ -27,16 +27,16 @@ import Json.Decode.Pipeline exposing (custom)
 -}
 
 
-{-| "createToastytradeSell(address,uint256,uint256,uint256,uint256,uint256,uint256,string)" function
+{-| "createToastytradeSell(address,uint256,uint256,uint256,uint256,uint256,uint256,string,string)" function
 -}
-createToastytradeSell : Address -> Address -> BigInt -> BigInt -> BigInt -> BigInt -> BigInt -> BigInt -> String -> Call Address
-createToastytradeSell contractAddress initiator sellAmount price responderDeposit autorecallInterval depositDeadlineInterval autoreleaseInterval logisticsString =
+createToastytradeSell : Address -> Address -> BigInt -> BigInt -> BigInt -> BigInt -> BigInt -> BigInt -> String -> String -> Call Address
+createToastytradeSell contractAddress initiator sellAmount price responderDeposit autorecallInterval depositDeadlineInterval autoreleaseInterval logisticsString initiatorCommPubkey =
     { to = Just contractAddress
     , from = Nothing
     , gas = Nothing
     , gasPrice = Nothing
     , value = Nothing
-    , data = Just <| AbiEncode.functionCall "createToastytradeSell(address,uint256,uint256,uint256,uint256,uint256,uint256,string)" [ AbiEncode.address initiator, AbiEncode.uint sellAmount, AbiEncode.uint price, AbiEncode.uint responderDeposit, AbiEncode.uint autorecallInterval, AbiEncode.uint depositDeadlineInterval, AbiEncode.uint autoreleaseInterval, AbiEncode.string logisticsString ]
+    , data = Just <| AbiEncode.functionCall "createToastytradeSell(address,uint256,uint256,uint256,uint256,uint256,uint256,string,string)" [ AbiEncode.address initiator, AbiEncode.uint sellAmount, AbiEncode.uint price, AbiEncode.uint responderDeposit, AbiEncode.uint autorecallInterval, AbiEncode.uint depositDeadlineInterval, AbiEncode.uint autoreleaseInterval, AbiEncode.string logisticsString, AbiEncode.string initiatorCommPubkey ]
     , nonce = Nothing
     , decoder = toElmDecoder AbiDecode.address
     }

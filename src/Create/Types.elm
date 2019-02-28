@@ -1,6 +1,7 @@
 module Create.Types exposing (ContractParameterInputs, Model, Msg(..), UpdateResult, justModelUpdate)
 
 import ChainCmd exposing (ChainCmd)
+import CommonTypes exposing (UserInfo)
 import Contracts.Types
 import Eth.Types exposing (Address, TxReceipt)
 import Routing
@@ -11,7 +12,7 @@ type alias Model =
     { tokenAddress : Address
     , tokenDecimals : Int
     , factoryAddress : Address
-    , userAddress : Maybe Address
+    , userInfo : Maybe UserInfo
     , parameterInputs : ContractParameterInputs
     , devFee : TokenValue
     , contractParameters : Maybe Contracts.Types.FullParameters

@@ -33,6 +33,7 @@ createSell contractAddress parameters =
          else
             parameters.transferMethods
         )
+        parameters.initiatorCommPubkey
 
 
 getNumTTsCmd : EthHelpers.EthNode -> Address -> (Result Http.Error BigInt -> msg) -> Cmd msg
@@ -86,6 +87,7 @@ decodeParameters numDecimals encodedParameters =
             { uncoiningAmount = TokenValue.tokenValue numDecimals encodedParameters.sellAmount
             , price = TokenValue.tokenValue numDecimals encodedParameters.price
             , transferMethods = encodedParameters.logisticsString
+            , initiatorCommPubkey = encodedParameters.initiatorCommPubkey
             , autorecallInterval = autorecallInterval
             , depositDeadlineInterval = depositDeadlineInterval
             , autoreleaseInterval = autoreleaseInterval
