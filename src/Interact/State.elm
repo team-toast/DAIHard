@@ -19,21 +19,17 @@ import TokenValue
 
 
 init : EthHelpers.EthNode -> Address -> Address -> Int -> Maybe UserInfo -> BigInt -> ( Model, Cmd Msg, ChainCmd Msg )
-init ethNode factoryAddress tokenAddress tokenDecimals userInfo ttId =
+init ethNode factoryAddress tokenAddress tokenDecimals userInfo ttsId =
     let
         cmd =
-            getContractCreationInfoCmd ethNode factoryAddress ttId
+            getContractCreationInfoCmd ethNode factoryAddress ttsId
     in
     ( { ethNode = ethNode
       , userInfo = userInfo
       , tokenAddress = tokenAddress
       , tokenDecimals = tokenDecimals
-      , ttsInfo =
-            { id = ttId
-            , creationInfo = Nothing
-            , parameters = Nothing
-            , state = Nothing
-            }
+      , ttsId = ttsId
+      , ttsInfo = NothingLoaded
       , messages = []
       , messageInput = ""
       , eventSentries = Nothing
@@ -57,17 +53,17 @@ update : Msg -> Model -> ( Model, Cmd Msg, ChainCmd Msg )
 update msg model =
     case msg of
         Refresh time ->
-            case ( model.ttsInfo.creationInfo, model.ttsInfo.parameters, model.eventSentries ) of
-                ( Just creationInfo, Just state, Just sentries ) ->
+            case ( model.ttsInfo, model.eventSentries ) of
+                ( Loaded ttsInfo, Just sentries ) ->
                     ( model
                     , Cmd.batch
-                        [ Contracts.Wrappers.getStateCmd model.ethNode model.tokenDecimals creationInfo.address StateFetched
+                        [ Contracts.Wrappers.getStateCmd model.ethNode model.tokenDecimals ttsInfo.creationInfo.address StateFetched
                         , getSentryPollCmd sentries
                         ]
                     , ChainCmd.none
                     )
 
-                ( _, _, _ ) ->
+                ( _, _ ) ->
                     ( model, Cmd.none, ChainCmd.none )
 
         CreationInfoFetched fetchResult ->
@@ -113,10 +109,7 @@ update msg model =
 
                         newModel =
                             { model
-                                | ttsInfo =
-                                    model.ttsInfo
-                                        |> updateCreationInfo
-                                            (Just newCreationInfo)
+                                | ttsInfo = partialInfo newCreationInfo
                                 , eventSentries = Just sentries
                             }
                     in
@@ -138,7 +131,7 @@ update msg model =
         StateFetched fetchResult ->
             case fetchResult of
                 Ok (Just state) ->
-                    ( { model | ttsInfo = updateState model.ttsInfo (Just state) }, Cmd.none, ChainCmd.none )
+                    ( { model | ttsInfo = model.ttsInfo |> updateState state }, Cmd.none, ChainCmd.none )
 
                 _ ->
                     let
@@ -150,7 +143,7 @@ update msg model =
         ParametersFetched fetchResult ->
             case fetchResult of
                 Ok (Just parameters) ->
-                    ( { model | ttsInfo = updateParameters model.ttsInfo (Just parameters) }, Cmd.none, ChainCmd.none )
+                    ( { model | ttsInfo = model.ttsInfo |> updateParameters parameters }, Cmd.none, ChainCmd.none )
 
                 _ ->
                     let
@@ -226,27 +219,13 @@ update msg model =
         ContractAction actionMsg ->
             let
                 chainCmd =
-                    case ( model.ttsInfo.creationInfo, model.ttsInfo.parameters ) of
-                        ( Nothing, _ ) ->
-                            let
-                                _ =
-                                    Debug.log "Trying to handle ContractAction msg, but can't find the contract creationInfo :/" actionMsg
-                            in
-                            ChainCmd.none
-
-                        ( _, Nothing ) ->
-                            let
-                                _ =
-                                    Debug.log "Trying to handle ContractAction msg, but can't find the contract parameters :/" actionMsg
-                            in
-                            ChainCmd.none
-
-                        ( Just creationInfo, Just parameters ) ->
+                    case model.ttsInfo of
+                        Loaded ttsInfo ->
                             case actionMsg of
                                 RenderContract.Types.Recall ->
                                     let
                                         txParams =
-                                            TTS.recall creationInfo.address
+                                            TTS.recall ttsInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
                                     ChainCmd.custom genericCustomSend txParams
@@ -256,8 +235,8 @@ update msg model =
                                         txParams =
                                             TokenContract.approve
                                                 model.tokenAddress
-                                                creationInfo.address
-                                                (TokenValue.getBigInt parameters.responderDeposit)
+                                                ttsInfo.creationInfo.address
+                                                (TokenValue.getBigInt ttsInfo.parameters.responderDeposit)
                                                 |> Eth.toSend
 
                                         customSend =
@@ -272,7 +251,7 @@ update msg model =
                                 RenderContract.Types.Claim ->
                                     let
                                         txParams =
-                                            TTS.claim creationInfo.address
+                                            TTS.claim ttsInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
                                     ChainCmd.custom genericCustomSend txParams
@@ -280,7 +259,7 @@ update msg model =
                                 RenderContract.Types.Release ->
                                     let
                                         txParams =
-                                            TTS.release creationInfo.address
+                                            TTS.release ttsInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
                                     ChainCmd.custom genericCustomSend txParams
@@ -288,7 +267,7 @@ update msg model =
                                 RenderContract.Types.Burn ->
                                     let
                                         txParams =
-                                            TTS.burn creationInfo.address
+                                            TTS.burn ttsInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
                                     ChainCmd.custom genericCustomSend txParams
@@ -296,10 +275,17 @@ update msg model =
                                 RenderContract.Types.Poke ->
                                     let
                                         txParams =
-                                            TTS.poke creationInfo.address
+                                            TTS.poke ttsInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
                                     ChainCmd.custom genericCustomSend txParams
+
+                        ttsInfoNotYetLoaded ->
+                            let
+                                _ =
+                                    Debug.log "Trying to handle ContractAction msg, but contract info is not yet loaded :/" ttsInfoNotYetLoaded
+                            in
+                            ChainCmd.none
             in
             ( model, Cmd.none, chainCmd )
 
@@ -320,35 +306,21 @@ update msg model =
                     ( model, Cmd.none, ChainCmd.none )
 
                 Ok txReceipt ->
-                    case ( model.ttsInfo.creationInfo, model.ttsInfo.parameters, model.userInfo ) of
-                        ( Nothing, _, _ ) ->
-                            let
-                                _ =
-                                    Debug.log "Trying to handle PreCommitApproveMined, but can't find the contract creationInfo :/" ""
-                            in
-                            ( model, Cmd.none, ChainCmd.none )
-
-                        ( _, Nothing, _ ) ->
-                            let
-                                _ =
-                                    Debug.log "Trying to handle PreCommitApproveMined, but can't find the contract parameters :/" ""
-                            in
-                            ( model, Cmd.none, ChainCmd.none )
-
-                        ( _, _, Nothing ) ->
-                            let
-                                _ =
-                                    Debug.log "Trying to handle PreCommitApproveMined, but can't find userInfo :/" ""
-                            in
-                            ( model, Cmd.none, ChainCmd.none )
-
-                        ( Just creationInfo, Just parameters, Just userInfo ) ->
+                    case ( model.ttsInfo, model.userInfo ) of
+                        ( Loaded ttsInfo, Just userInfo ) ->
                             let
                                 txParams =
-                                    TTS.commit creationInfo.address userInfo.commPubkey
+                                    TTS.commit ttsInfo.creationInfo.address userInfo.commPubkey
                                         |> Eth.toSend
                             in
                             ( model, Cmd.none, ChainCmd.custom genericCustomSend txParams )
+
+                        incomplete ->
+                            let
+                                _ =
+                                    Debug.log "Trying to handle PreCommitApproveMined, but missing crucial info" incomplete
+                            in
+                            ( model, Cmd.none, ChainCmd.none )
 
         MessageInputChanged newMessageStr ->
             ( { model | messageInput = newMessageStr }
@@ -357,39 +329,39 @@ update msg model =
             )
 
         MessageSubmit ->
-            let
-                userAddress =
-                    model.userInfo
-                        |> Maybe.map (\userInfo -> userInfo.address)
+            case ( model.userInfo, model.ttsInfo ) of
+                ( Just userInfo, Loaded ttsInfo ) ->
+                    case getUserRole ttsInfo.parameters ttsInfo.state userInfo.address of
+                        Nothing ->
+                            let
+                                _ =
+                                    Debug.log "How did you click that button? You don't seem to be the Initiator or Responder..."
+                            in
+                            ( model, Cmd.none, ChainCmd.none )
 
-                userRole =
-                    Maybe.map3 getUserRole model.ttsInfo.parameters model.ttsInfo.state userAddress
-                        |> Maybe.Extra.join
-
-                chainCmd =
-                    case ( userRole, model.ttsInfo.creationInfo ) of
-                        ( Just role, Just creationInfo ) ->
+                        Just userRole ->
                             let
                                 txParams =
-                                    case role of
+                                    case userRole of
                                         Initiator ->
-                                            TTS.initiatorStatement creationInfo.address model.messageInput "wait, this should be encrypted!!"
+                                            TTS.initiatorStatement ttsInfo.creationInfo.address model.messageInput "wait, this should be encrypted!!"
                                                 |> Eth.toSend
 
                                         Responder ->
-                                            TTS.responderStatement creationInfo.address model.messageInput "wait, this should be encrypted!!"
+                                            TTS.responderStatement ttsInfo.creationInfo.address model.messageInput "wait, this should be encrypted!!"
                                                 |> Eth.toSend
                             in
-                            ChainCmd.custom genericCustomSend txParams
+                            ( model
+                            , Cmd.none
+                            , ChainCmd.custom genericCustomSend txParams
+                            )
 
-                        _ ->
-                            let
-                                _ =
-                                    Debug.log "MessageSubmit called, but we're missing some crucial info! HOW DID THIS HAPPEN" ( userRole, model.ttsInfo.creationInfo )
-                            in
-                            ChainCmd.none
-            in
-            ( model, Cmd.none, chainCmd )
+                _ ->
+                    let
+                        _ =
+                            Debug.log "MessageSubmit called, but we're missing some crucial info! HOW DID THIS HAPPEN" ( model.userInfo, model.ttsInfo )
+                    in
+                    ( model, Cmd.none, ChainCmd.none )
 
         InitiatorStatementEventSentryMsg eventMsg ->
             case model.eventSentries of

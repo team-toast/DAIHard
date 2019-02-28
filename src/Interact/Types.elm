@@ -1,4 +1,4 @@
-module Interact.Types exposing (CommMessage, InitiatorOrResponder(..), Model, Msg(..), TTSInfo, getUserRole, updateCreationInfo, updateParameters, updateState)
+module Interact.Types exposing (CommMessage, InitiatorOrResponder(..), Model, Msg(..), TTSInfo(..), getUserRole, partialInfo, updateParameters, updateState)
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (UserInfo)
@@ -13,21 +13,55 @@ import RenderContract.Types
 import Time
 
 
-updateCreationInfo : Maybe CreationInfo -> TTSInfo -> TTSInfo
-updateCreationInfo creationInfo ttsInfo =
-    { ttsInfo
-        | creationInfo = creationInfo
-    }
+partialInfo : CreationInfo -> TTSInfo
+partialInfo creationInfo =
+    PartiallyLoaded (TTSPartialInfo creationInfo Nothing Nothing)
 
 
-updateParameters : TTSInfo -> Maybe Contracts.Types.FullParameters -> TTSInfo
-updateParameters ttsInfo parameters =
-    { ttsInfo | parameters = parameters }
+updateParameters : Contracts.Types.FullParameters -> TTSInfo -> TTSInfo
+updateParameters parameters ttsInfo =
+    case ttsInfo of
+        NothingLoaded ->
+            let
+                _ =
+                    Debug.log "Trying to update parameters, but there is no creationInfo! What the heck???" ""
+            in
+            NothingLoaded
+
+        PartiallyLoaded pInfo ->
+            { pInfo | parameters = Just parameters }
+                |> checkIfLoaded
+
+        Loaded info ->
+            Loaded { info | parameters = parameters }
 
 
-updateState : TTSInfo -> Maybe Contracts.Types.State -> TTSInfo
-updateState ttsInfo state =
-    { ttsInfo | state = state }
+updateState : Contracts.Types.State -> TTSInfo -> TTSInfo
+updateState state ttsInfo =
+    case ttsInfo of
+        NothingLoaded ->
+            let
+                _ =
+                    Debug.log "Trying to update state, but there is no creationInfo! What the heck???" ""
+            in
+            NothingLoaded
+
+        PartiallyLoaded pInfo ->
+            { pInfo | state = Just state }
+                |> checkIfLoaded
+
+        Loaded info ->
+            Loaded { info | state = state }
+
+
+checkIfLoaded : TTSPartialInfo -> TTSInfo
+checkIfLoaded pInfo =
+    case ( pInfo.parameters, pInfo.state ) of
+        ( Just parameters, Just state ) ->
+            Loaded (TTSFullInfo pInfo.creationInfo parameters state)
+
+        _ ->
+            PartiallyLoaded pInfo
 
 
 type alias Model =
@@ -35,6 +69,7 @@ type alias Model =
     , userInfo : Maybe UserInfo
     , tokenAddress : Address
     , tokenDecimals : Int
+    , ttsId : BigInt
     , ttsInfo : TTSInfo
     , messages : List CommMessage
     , messageInput : String
@@ -58,9 +93,14 @@ type Msg
     | ResponderStatementEventSentryMsg EventSentryHack.Msg
 
 
-type alias TTSInfo =
-    { id : BigInt
-    , creationInfo : Maybe CreationInfo
+type TTSInfo
+    = NothingLoaded
+    | PartiallyLoaded TTSPartialInfo
+    | Loaded TTSFullInfo
+
+
+type alias TTSPartialInfo =
+    { creationInfo : CreationInfo
     , parameters : Maybe Contracts.Types.FullParameters
     , state : Maybe Contracts.Types.State
     }
@@ -69,6 +109,13 @@ type alias TTSInfo =
 type alias CreationInfo =
     { address : Address
     , blocknum : Int
+    }
+
+
+type alias TTSFullInfo =
+    { creationInfo : CreationInfo
+    , parameters : Contracts.Types.FullParameters
+    , state : Contracts.Types.State
     }
 
 
