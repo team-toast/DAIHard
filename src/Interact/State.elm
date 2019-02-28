@@ -1,5 +1,6 @@
-port module Interact.State exposing (init, subscriptions, update, updateUserInfo)
+port module Interact.State exposing (decodeSizedStringHelper, encodeSizedStrings, init, subscriptions, update, updateUserInfo)
 
+import Array
 import BigInt exposing (BigInt)
 import BigIntHelpers
 import ChainCmd exposing (ChainCmd)
@@ -16,6 +17,7 @@ import Json.Decode
 import Json.Encode
 import Maybe.Extra
 import RenderContract.Types
+import Result.Extra
 import Time
 import TokenValue
 
@@ -32,7 +34,7 @@ init ethNode factoryAddress tokenAddress tokenDecimals userInfo ttsId =
       , tokenDecimals = tokenDecimals
       , ttsId = ttsId
       , ttsInfo = NothingLoaded
-      , messages = []
+      , messages = Array.empty
       , messageInput = ""
       , eventSentries = Nothing
       }
@@ -155,68 +157,146 @@ update msg model =
                     ( model, Cmd.none, ChainCmd.none )
 
         InitiatorStatementsFetched fetchResult ->
-            let
-                newModel =
-                    case fetchResult of
-                        Ok events ->
+            case fetchResult of
+                Ok events ->
+                    let
+                        nextMessageID =
+                            Array.length model.messages
+
+                        newMessages =
+                            events
+                                |> List.map
+                                    (\event ->
+                                        { who = Initiator
+                                        , message =
+                                            case
+                                                ( decodeEncryptedMessage event.returnData.encryptedForInitiator
+                                                , decodeEncryptedMessage event.returnData.encryptedForResponder
+                                                )
+                                            of
+                                                ( Just decodedForInitiator, Just decodedForResponder ) ->
+                                                    Encrypted ( decodedForInitiator, decodedForResponder )
+
+                                                _ ->
+                                                    FailedDecode
+                                        , blocknum = event.blockNumber
+                                        }
+                                    )
+                                |> Array.fromList
+
+                        newModel =
                             { model
                                 | messages =
-                                    addMessages
-                                        (events
-                                            |> List.map
-                                                (\event ->
-                                                    { who = Initiator
-                                                    , message = "showing encrypted for initiator, for now: " ++ event.returnData.encryptedForInitiator
-                                                    , blocknum = event.blockNumber
-                                                    }
-                                                )
-                                        )
-                                        model.messages
+                                    Array.append model.messages newMessages
                             }
 
-                        Err errstr ->
+                        cmd =
                             let
-                                _ =
-                                    Debug.log "error with initiator statement fetch" errstr
+                                userRole =
+                                    Maybe.map2
+                                        getUserRole
+                                        (case model.ttsInfo of
+                                            Loaded ttsInfo ->
+                                                Just ttsInfo
+
+                                            troublesomeGarbage ->
+                                                let
+                                                    _ =
+                                                        Debug.log "Trying to build decryption command, but missing crucial info" troublesomeGarbage
+                                                in
+                                                Nothing
+                                        )
+                                        (model.userInfo
+                                            |> Maybe.map (\i -> i.address)
+                                        )
+                                        |> Maybe.Extra.join
                             in
-                            model
-            in
-            ( newModel
-            , Cmd.none
-            , ChainCmd.none
-            )
+                            case userRole of
+                                Nothing ->
+                                    Cmd.none
+
+                                Just role ->
+                                    decryptNewMessagesCmd newModel role
+                    in
+                    ( newModel, cmd, ChainCmd.none )
+
+                Err errstr ->
+                    let
+                        _ =
+                            Debug.log "error with initiator statement fetch" errstr
+                    in
+                    ( model, Cmd.none, ChainCmd.none )
 
         ResponderStatementsFetched fetchResult ->
-            let
-                newModel =
-                    case fetchResult of
-                        Ok events ->
+            case fetchResult of
+                Ok events ->
+                    let
+                        nextMessageID =
+                            Array.length model.messages
+
+                        newMessages =
+                            events
+                                |> List.map
+                                    (\event ->
+                                        { who = Responder
+                                        , message =
+                                            case
+                                                ( decodeEncryptedMessage event.returnData.encryptedForInitiator
+                                                , decodeEncryptedMessage event.returnData.encryptedForResponder
+                                                )
+                                            of
+                                                ( Just decodedForInitiator, Just decodedForResponder ) ->
+                                                    Encrypted ( decodedForInitiator, decodedForResponder )
+
+                                                _ ->
+                                                    FailedDecode
+                                        , blocknum = event.blockNumber
+                                        }
+                                    )
+                                |> Array.fromList
+
+                        newModel =
                             { model
                                 | messages =
-                                    addMessages
-                                        (events
-                                            |> List.map
-                                                (\event ->
-                                                    { who = Responder
-                                                    , message = "showing encrypted for initiator, for now: " ++ event.returnData.encryptedForInitiator
-                                                    , blocknum = event.blockNumber
-                                                    }
-                                                )
-                                        )
-                                        model.messages
+                                    Array.append model.messages newMessages
                             }
 
-                        Err errstr ->
+                        cmd =
                             let
-                                _ =
-                                    Debug.log "error with initiator statement fetch" errstr
+                                userRole =
+                                    Maybe.map2
+                                        getUserRole
+                                        (case model.ttsInfo of
+                                            Loaded ttsInfo ->
+                                                Just ttsInfo
+
+                                            troublesomeGarbage ->
+                                                let
+                                                    _ =
+                                                        Debug.log "Trying to build decryption command, but missing crucial info" troublesomeGarbage
+                                                in
+                                                Nothing
+                                        )
+                                        (model.userInfo
+                                            |> Maybe.map (\i -> i.address)
+                                        )
+                                        |> Maybe.Extra.join
                             in
-                            model
-            in
-            ( newModel
-            , Cmd.none
-            , ChainCmd.none
-            )
+                            case userRole of
+                                Nothing ->
+                                    Cmd.none
+
+                                Just role ->
+                                    decryptNewMessagesCmd newModel role
+                    in
+                    ( newModel, cmd, ChainCmd.none )
+
+                Err errstr ->
+                    let
+                        _ =
+                            Debug.log "error with initiator statement fetch" errstr
+                    in
+                    ( model, Cmd.none, ChainCmd.none )
 
         ContractAction actionMsg ->
             let
@@ -348,12 +428,18 @@ update msg model =
 
         EncryptionFinished encryptedMessagesValue ->
             let
-                _ =
-                    Debug.log "encryption result" (decodeEncryptionResult encryptedMessagesValue)
+                encodedEncryptionMessages =
+                    decodeEncryptionResult encryptedMessagesValue
+                        |> Result.map
+                            (\( initiatorMessage, responderMessage ) ->
+                                ( encodeEncryptedMessage initiatorMessage
+                                , encodeEncryptedMessage responderMessage
+                                )
+                            )
             in
-            case ( model.userInfo, model.ttsInfo ) of
-                ( Just userInfo, Loaded ttsInfo ) ->
-                    case getUserRole ttsInfo.parameters ttsInfo.state userInfo.address of
+            case ( model.userInfo, model.ttsInfo, encodedEncryptionMessages ) of
+                ( Just userInfo, Loaded ttsInfo, Ok ( Ok initiatorMessage, Ok responderMessage ) ) ->
+                    case getUserRole ttsInfo userInfo.address of
                         Nothing ->
                             let
                                 _ =
@@ -366,11 +452,11 @@ update msg model =
                                 txParams =
                                     case userRole of
                                         Initiator ->
-                                            TTS.initiatorStatement ttsInfo.creationInfo.address model.messageInput "wait, this should be encrypted!!"
+                                            TTS.initiatorStatement ttsInfo.creationInfo.address initiatorMessage responderMessage
                                                 |> Eth.toSend
 
                                         Responder ->
-                                            TTS.responderStatement ttsInfo.creationInfo.address model.messageInput "wait, this should be encrypted!!"
+                                            TTS.responderStatement ttsInfo.creationInfo.address initiatorMessage responderMessage
                                                 |> Eth.toSend
                             in
                             ( model
@@ -378,10 +464,43 @@ update msg model =
                             , ChainCmd.custom genericCustomSend txParams
                             )
 
-                _ ->
+                problematicBullshit ->
                     let
                         _ =
-                            Debug.log "MessageSubmit called, but we're missing some crucial info! HOW DID THIS HAPPEN" ( model.userInfo, model.ttsInfo )
+                            Debug.log "MessageSubmit called, but something has gone terribly wrong" problematicBullshit
+                    in
+                    ( model, Cmd.none, ChainCmd.none )
+
+        DecryptionFinished decryptedMessageValue ->
+            case decodeDecryptionResult decryptedMessageValue of
+                Ok ( id, message ) ->
+                    case Array.get id model.messages of
+                        Just commMessage ->
+                            let
+                                newCommMessage =
+                                    { commMessage
+                                        | message = Decrypted message
+                                    }
+
+                                newMessageArray =
+                                    Array.set id newCommMessage model.messages
+                            in
+                            ( { model | messages = newMessageArray }
+                            , Cmd.none
+                            , ChainCmd.none
+                            )
+
+                        Nothing ->
+                            let
+                                _ =
+                                    Debug.log "got a decryption result, but for an id out of bounds!" ""
+                            in
+                            ( model, Cmd.none, ChainCmd.none )
+
+                Err errstr ->
+                    let
+                        _ =
+                            Debug.log "Error decoding decryption result" errstr
                     in
                     ( model, Cmd.none, ChainCmd.none )
 
@@ -446,7 +565,18 @@ encodeEncryptionArgs message commPubkeys =
         ]
 
 
-decodeEncryptionResult : Json.Decode.Value -> Result Json.Decode.Error (List EncryptedMessage)
+encodeDecryptionArgs : Int -> EncryptedMessage -> Json.Encode.Value
+encodeDecryptionArgs messageID encryptedMessage =
+    Json.Encode.object
+        [ ( "id", Json.Encode.int messageID )
+        , ( "encapsulation", Json.Encode.string encryptedMessage.encapsulatedKey )
+        , ( "iv", Json.Encode.string encryptedMessage.iv )
+        , ( "tag", Json.Encode.string encryptedMessage.tag )
+        , ( "encrypted", Json.Encode.string encryptedMessage.message )
+        ]
+
+
+decodeEncryptionResult : Json.Decode.Value -> Result String ( EncryptedMessage, EncryptedMessage )
 decodeEncryptionResult value =
     let
         encryptedMessageDecoder =
@@ -459,7 +589,127 @@ decodeEncryptionResult value =
         decoder =
             Json.Decode.list encryptedMessageDecoder
     in
+    case Json.Decode.decodeValue decoder value of
+        Err decodeErr ->
+            Err (Json.Decode.errorToString decodeErr)
+
+        Ok list ->
+            list
+                |> Array.fromList
+                |> (\arr ->
+                        case ( Array.get 0 arr, Array.get 1 arr ) of
+                            ( Just initiatorMessage, Just responderMessage ) ->
+                                Ok ( initiatorMessage, responderMessage )
+
+                            _ ->
+                                Err "Decoded list has less than 2 items."
+                   )
+
+
+decodeDecryptionResult : Json.Decode.Value -> Result String ( Int, String )
+decodeDecryptionResult value =
+    let
+        decoder =
+            Json.Decode.map2
+                Tuple.pair
+                (Json.Decode.field "id" Json.Decode.int)
+                (Json.Decode.field "message" Json.Decode.string)
+    in
     Json.Decode.decodeValue decoder value
+        |> Result.mapError Json.Decode.errorToString
+
+
+encodeEncryptedMessage : EncryptedMessage -> Result String String
+encodeEncryptedMessage encryptedMessage =
+    encodeSizedStrings
+        [ encryptedMessage.encapsulatedKey, encryptedMessage.iv, encryptedMessage.tag, encryptedMessage.message ]
+
+
+encodeSizedStrings : List String -> Result String String
+encodeSizedStrings strings =
+    let
+        prependWithLengthAsChar s =
+            let
+                len =
+                    String.length s
+            in
+            if len > 0x0010FFFF then
+                -- Char.fromCode / Char.toCode encoding hack breaks past this limit
+                Err "string is too long"
+
+            else
+                Ok <|
+                    String.cons (Char.fromCode len) s
+    in
+    strings
+        |> List.map prependWithLengthAsChar
+        |> Result.Extra.combine
+        |> Result.map (String.join "")
+
+
+decodeEncryptedMessage : String -> Maybe EncryptedMessage
+decodeEncryptedMessage encoded =
+    let
+        stringArray =
+            decodeSizedStringHelper (String.toList encoded) []
+                |> Array.fromList
+    in
+    Maybe.map4
+        EncryptedMessage
+        (Array.get 0 stringArray)
+        (Array.get 1 stringArray)
+        (Array.get 2 stringArray)
+        (Array.get 3 stringArray)
+
+
+decodeSizedStringHelper : List Char -> List String -> List String
+decodeSizedStringHelper remaining processed =
+    case remaining of
+        [] ->
+            processed
+
+        c :: r ->
+            let
+                len =
+                    Char.toCode c
+
+                str =
+                    List.take len r
+                        |> String.fromList
+
+                newRemaining =
+                    List.drop len r
+
+                newProcessed =
+                    processed ++ [ str ]
+            in
+            decodeSizedStringHelper newRemaining newProcessed
+
+
+decryptNewMessagesCmd : Model -> InitiatorOrResponder -> Cmd Msg
+decryptNewMessagesCmd model userRole =
+    model.messages
+        |> Array.toIndexedList
+        |> List.map
+            (\( id, commMessage ) ->
+                case commMessage.message of
+                    Encrypted messages ->
+                        let
+                            encryptedMessage =
+                                case userRole of
+                                    Initiator ->
+                                        Tuple.first messages
+
+                                    Responder ->
+                                        Tuple.second messages
+                        in
+                        encodeDecryptionArgs id encryptedMessage
+                            |> decryptMessage
+
+                    _ ->
+                        Cmd.none
+            )
+        |> Cmd.batch
 
 
 getCommPubkeys : TTSFullInfo -> List String
@@ -486,12 +736,6 @@ getSentryPollCmd sentries =
         ]
 
 
-addMessages : List CommMessage -> List CommMessage -> List CommMessage
-addMessages newMessages messageList =
-    List.append newMessages messageList
-        |> List.sortBy .blocknum
-
-
 genericCustomSend =
     { onMined = Just ( ContractActionMined, Nothing )
     , onSign = Nothing
@@ -504,6 +748,7 @@ subscriptions model =
     Sub.batch
         [ Time.every 3000 Refresh
         , encryptionFinished EncryptionFinished
+        , decryptionFinished DecryptionFinished
         ]
 
 
@@ -511,3 +756,9 @@ port encryptToPubkeys : Json.Encode.Value -> Cmd msg
 
 
 port encryptionFinished : (Json.Decode.Value -> msg) -> Sub msg
+
+
+port decryptMessage : Json.Encode.Value -> Cmd msg
+
+
+port decryptionFinished : (Json.Decode.Value -> msg) -> Sub msg

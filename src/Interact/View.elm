@@ -1,5 +1,6 @@
 module Interact.View exposing (root)
 
+import Array
 import Contracts.Types
 import Element
 import Element.Background
@@ -54,7 +55,8 @@ commsElement model =
         [ Element.el [ Element.centerX, Element.Font.size 36 ]
             (Element.text "Chat")
         , Element.column [ Element.width Element.fill, Element.spacing 10, Element.Border.width 1, Element.Border.rounded 5, Element.padding 10 ]
-            [ messagesElement model.messages
+            [ messagesElement
+                (model.messages |> Array.toList |> List.sortBy .blocknum)
             , maybeCommInputElement model
             ]
         ]
@@ -106,7 +108,19 @@ renderMessage message =
                     Responder ->
                         "R: "
                  )
-                    ++ message.message
+                    ++ (case message.message of
+                            FailedDecode ->
+                                "DECODE FAILED"
+
+                            Encrypted _ ->
+                                "(encrypted data)"
+
+                            FailedDecrypt ->
+                                "DECRYPT FAILED"
+
+                            Decrypted data ->
+                                data
+                       )
                 )
             ]
         )
@@ -124,7 +138,7 @@ maybeCommInputElement model =
                     Element.none
 
                 _ ->
-                    case getUserRole ttsInfo.parameters ttsInfo.state userInfo.address of
+                    case getUserRole ttsInfo userInfo.address of
                         Just _ ->
                             Element.column [ Element.width Element.fill, Element.spacing 10 ]
                                 [ Element.Input.multiline [ Element.width Element.fill, Element.height (Element.px 100) ]

@@ -1,5 +1,6 @@
-module Interact.Types exposing (CommMessage, EncryptedMessage, InitiatorOrResponder(..), Model, Msg(..), TTSFullInfo, TTSInfo(..), TTSPartialInfo, getUserRole, partialInfo, updateParameters, updateState)
+module Interact.Types exposing (CommMessage, EncryptedMessage, InitiatorOrResponder(..), MessageContent(..), Model, Msg(..), TTSFullInfo, TTSInfo(..), TTSPartialInfo, getUserRole, partialInfo, updateParameters, updateState)
 
+import Array exposing (Array)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (UserInfo)
 import Contracts.Generated.ToastytradeFactory as TTF
@@ -72,7 +73,7 @@ type alias Model =
     , tokenDecimals : Int
     , ttsId : BigInt
     , ttsInfo : TTSInfo
-    , messages : List CommMessage
+    , messages : Array CommMessage
     , messageInput : String
     , eventSentries : Maybe ( EventSentry TTS.InitiatorStatementLog Msg, EventSentry TTS.ResponderStatementLog Msg )
     }
@@ -91,6 +92,7 @@ type Msg
     | MessageInputChanged String
     | MessageSubmit
     | EncryptionFinished Json.Decode.Value
+    | DecryptionFinished Json.Decode.Value
     | InitiatorStatementEventSentryMsg EventSentryHack.Msg
     | ResponderStatementEventSentryMsg EventSentryHack.Msg
 
@@ -128,9 +130,16 @@ type InitiatorOrResponder
 
 type alias CommMessage =
     { who : InitiatorOrResponder
-    , message : String
+    , message : MessageContent
     , blocknum : Int
     }
+
+
+type MessageContent
+    = FailedDecode
+    | Encrypted ( EncryptedMessage, EncryptedMessage )
+    | FailedDecrypt
+    | Decrypted String
 
 
 type alias EncryptedMessage =
@@ -141,13 +150,13 @@ type alias EncryptedMessage =
     }
 
 
-getUserRole : Contracts.Types.FullParameters -> Contracts.Types.State -> Address -> Maybe InitiatorOrResponder
-getUserRole parameters state userAddress =
-    if userAddress == parameters.initiatorAddress then
+getUserRole : TTSFullInfo -> Address -> Maybe InitiatorOrResponder
+getUserRole ttsInfo userAddress =
+    if userAddress == ttsInfo.parameters.initiatorAddress then
         Just Initiator
 
     else
-        state.responder
+        ttsInfo.state.responder
             |> Maybe.andThen
                 (\responder ->
                     if userAddress == responder then

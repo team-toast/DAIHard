@@ -49,7 +49,6 @@ var commonModule = (function () {
             var tag = cipher.mode.tag.getBytes();
 
             var encryptedData = { encrypted: encrypted, iv: iv, tag: tag, encapsulation: result.encapsulation }
-            console.log(encryptedData);
 
             encryptResults.push(encryptedData);
         }
@@ -57,11 +56,10 @@ var commonModule = (function () {
         return encryptResults;
     };
 
-    pub.decryptStuff = function () {
-
+    pub.decryptForUser = function (encapsulation, iv, tag, encrypted) {
         var kdf1 = new forge.kem.kdf1(forge.md.sha1.create());
         var kem = forge.kem.rsa.create(kdf1);
-        var key = kem.decrypt(userKeypair.privateKey, result.encapsulation, 16);
+        var key = kem.decrypt(userKeypair.privateKey, encapsulation, 16);
 
         // decrypt some bytes
         var decipher = forge.cipher.createDecipher('AES-GCM', key);
@@ -70,8 +68,8 @@ var commonModule = (function () {
         var pass = decipher.finish();
 
         if (pass) {
-            console.log("decrypted: ", decipher.output.getBytes());
-        } else console.log("failed decrypt");
+            return decipher.output.getBytes();
+        } else return null;
     };
 
     pub.testStuff = function () {
@@ -91,15 +89,3 @@ function repeatAndTruncateToLength(str, len) {
 }
 
 module.exports = commonModule;
-
-// function testStuff(key) {
-
-//     // Sign the message's hash (input must be an array, or a hex-string)
-//     var msgHash = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-//     var signature = key.sign(msgHash);
-
-//     // Export DER encoded signature in Array
-//     var derSign = signature.toDER();
-
-//     console.log(derSign);
-// }

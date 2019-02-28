@@ -33,6 +33,17 @@ window.addEventListener('load', function () {
 
                 app.ports.encryptionFinished.send(encryptedMessages);
             });
+            app.ports.decryptMessage.subscribe(function (data) {
+                var id = data.id;
+
+                var result = secureComms.decryptForUser(data.encapsulation, data.iv, data.tag, data.encrypted);
+                if (!result) {
+                    console.log("Uh oh! Decryption didn't work...");
+                }
+                console.log("decrypt result: ", result);
+
+                app.ports.decryptionFinished.send({ id: id, message: result })
+            });
         });
     } else {
         window.app = Elm.App.init({
