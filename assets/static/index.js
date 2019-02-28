@@ -31,7 +31,7 @@ window.addEventListener('load', function () {
             app.ports.encryptToPubkeys.subscribe(function (data) {
                 var encryptedMessages = secureComms.encryptToPubkeys(data.message, data.pubkeyHexStrings);
 
-                app.ports.encryptResult.send(encryptedMessages);
+                app.ports.encryptionFinished.send(encryptedMessages);
             });
         });
     } else {

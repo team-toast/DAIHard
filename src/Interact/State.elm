@@ -451,7 +451,7 @@ decodeEncryptionResult value =
     let
         encryptedMessageDecoder =
             Json.Decode.map4 EncryptedMessage
-                (Json.Decode.field "encapsulated" Json.Decode.string)
+                (Json.Decode.field "encapsulation" Json.Decode.string)
                 (Json.Decode.field "iv" Json.Decode.string)
                 (Json.Decode.field "tag" Json.Decode.string)
                 (Json.Decode.field "encrypted" Json.Decode.string)
