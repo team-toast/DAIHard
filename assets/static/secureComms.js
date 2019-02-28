@@ -19,6 +19,8 @@ var commonModule = (function () {
 
             userKeypair = forge.rsa.generateKeyPair({ bits: 1024, prng: prng, algorithm: 'PRIMEINC' });
 
+            console.log("hexed pubkey n", userKeypair.publicKey.n.toString(16));
+
             callback(null, userKeypair.publicKey.n.toString(16));
         });
     };

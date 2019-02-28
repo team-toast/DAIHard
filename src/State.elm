@@ -125,11 +125,10 @@ updateValidModel msg model =
                         Just userAddress ->
                             let
                                 userInfo =
-                                    Debug.log "userInfo" <|
-                                        Just
-                                            { address = userAddress
-                                            , commPubkey = commPubkey
-                                            }
+                                    Just
+                                        { address = userAddress
+                                        , commPubkey = commPubkey
+                                        }
                             in
                             ( Running
                                 { model
