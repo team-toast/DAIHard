@@ -113,7 +113,7 @@ updateValidModel msg model =
                     Cmd.none
 
                 Just _ ->
-                    genPrivkey "Insert scary message here!"
+                    genPrivkey "Deriving keypair for encrypted communication on TOASTYTRADE. Never sign this on any other site!"
             )
 
         UserPubkeySet commPubkeyValue ->
