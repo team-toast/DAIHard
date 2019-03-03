@@ -1,9 +1,10 @@
-module Browse.State exposing (init, subscriptions, update, updateWithUserAddress)
+module Browse.State exposing (init, subscriptions, update, updateUserInfo)
 
 import Array
 import BigInt exposing (BigInt)
 import BigIntHelpers
 import Browse.Types exposing (..)
+import CommonTypes exposing (UserInfo)
 import Contracts.Wrappers
 import Eth.Types exposing (Address)
 import EthHelpers
@@ -11,10 +12,10 @@ import Routing
 import Types as ParentTypes
 
 
-init : EthHelpers.EthNode -> Address -> Int -> Maybe Address -> ( Model, Cmd Msg )
-init ethNode factoryAddress tokenDecimals maybeUserAddress =
+init : EthHelpers.EthNode -> Address -> Int -> Maybe UserInfo -> ( Model, Cmd Msg )
+init ethNode factoryAddress tokenDecimals userInfo =
     ( { ethNode = ethNode
-      , userAddress = maybeUserAddress
+      , userInfo = userInfo
       , factoryAddress = factoryAddress
       , tokenDecimals = tokenDecimals
       , numTTs = Nothing
@@ -129,9 +130,9 @@ update msg model =
             ( model, Cmd.none, Just (Routing.Interact (Just id)) )
 
 
-updateWithUserAddress : Model -> Maybe Address -> Model
-updateWithUserAddress model address =
-    { model | userAddress = address }
+updateUserInfo : Maybe UserInfo -> Model -> Model
+updateUserInfo userInfo model =
+    { model | userInfo = userInfo }
 
 
 subscriptions : Model -> Sub Msg
