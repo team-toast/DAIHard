@@ -123,8 +123,17 @@ update msg model =
             case ( fetchResult, model.userInfo, model.contractParameters ) of
                 ( Ok devFee, Just _, Just parameters ) ->
                     let
-                        fullSendAmount =
-                            TokenValue.getBigInt parameters.tradeAmount
+                        mainDepositAmount =
+                            TokenValue.getBigInt <|
+                                case parameters.openMode of
+                                    Contracts.Types.BuyerOpened ->
+                                        parameters.buyerDeposit
+
+                                    Contracts.Types.SellerOpened ->
+                                        parameters.tradeAmount
+
+                        fullDepositAmount =
+                            mainDepositAmount
                                 |> BigInt.add devFee
                                 |> BigInt.add (TokenValue.getBigInt parameters.pokeReward)
 
@@ -132,7 +141,7 @@ update msg model =
                             TokenContract.approve
                                 model.tokenAddress
                                 model.factoryAddress
-                                fullSendAmount
+                                fullDepositAmount
                                 |> Eth.toSend
 
                         customSend =

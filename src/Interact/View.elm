@@ -28,17 +28,7 @@ maybeContractElement time model =
         ( Just userInfo, Loaded tradeInfo ) ->
             let
                 context =
-                    { state = tradeInfo.state
-                    , currentTime = time
-                    , userIsInitiator = userInfo.address == tradeInfo.parameters.initiatorAddress
-                    , userIsResponder =
-                        case tradeInfo.state.responder of
-                            Just responderAddress ->
-                                userInfo.address == responderAddress
-
-                            Nothing ->
-                                False
-                    }
+                    RenderContract.Types.generateContext tradeInfo.parameters tradeInfo.state userInfo.address time
             in
             Element.map ContractAction (RenderContract.View.render (RenderContract.Types.Active context) tradeInfo.parameters)
 

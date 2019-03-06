@@ -147,18 +147,11 @@ openPhaseElement viewMode parameters =
             Active context ->
                 if context.state.phase == Contracts.Types.Open then
                     Element.row [ Element.spacing 50, Element.padding 20, Element.centerX ]
-                        (Maybe.Extra.values
-                            [ if context.userIsInitiator then
-                                Just <| EH.contractActionButton "Recall" EH.buttonBlue Recall
+                        (if context.userIsInitiator then
+                            [ EH.contractActionButton "Recall" EH.buttonBlue Recall ]
 
-                              else
-                                Nothing
-                            , if not context.userIsInitiator then
-                                Just <| EH.contractActionButton "Commit" EH.buttonBlue Commit
-
-                              else
-                                Nothing
-                            ]
+                         else
+                            [ EH.contractActionButton "Commit" EH.buttonBlue Commit ]
                         )
 
                 else
@@ -252,8 +245,9 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
             Active context ->
                 if context.state.phase == Contracts.Types.Committed then
                     Element.row [ Element.spacing 50, Element.padding 20, Element.centerX ]
-                        (if context.userIsResponder then
+                        (if context.userIsBuyer then
                             [ EH.contractActionButton "Claim" EH.buttonGreen Claim
+                            , EH.contractActionButton "Abort" EH.buttonRed Abort
                             ]
 
                          else
@@ -344,137 +338,13 @@ claimedPhaseElement viewMode parameters postCommitBalance =
             Active context ->
                 if context.state.phase == Contracts.Types.Claimed then
                     Element.row [ Element.spacing 50, Element.padding 20, Element.centerX ]
-                        (Maybe.Extra.values
-                            [ if context.userIsInitiator then
-                                Just <| EH.contractActionButton "Release" EH.buttonGreen Release
-
-                              else
-                                Nothing
-                            , if context.userIsInitiator then
-                                Just <| EH.contractActionButton "Burn" EH.buttonRed Burn
-
-                              else
-                                Nothing
+                        (if context.userIsSeller then
+                            [ EH.contractActionButton "Release" EH.buttonGreen Release
+                            , EH.contractActionButton "Burn" EH.buttonRed Burn
                             ]
-                        )
 
-                else
-                    Element.none
-        ]
-
-
-oldClaimedPhaseElement : ViewMode -> Contracts.Types.CreateParameters -> TokenValue -> Element.Element Msg
-oldClaimedPhaseElement viewMode parameters postCommitBalance =
-    Element.column (phaseStyleWithViewMode Contracts.Types.Claimed viewMode)
-        [ phaseHeading Contracts.Types.Claimed parameters viewMode
-        , indentedElement
-            (Element.column []
-                [ Element.paragraph []
-                    [ Element.text "During the "
-                    , EH.sectionReference "Claimed Phase"
-                    , Element.text ", the "
-                    , EH.initiator []
-                    , Element.text " is expected to "
-                    , EH.methodName "release"
-                    , Element.text " the contract's balance ("
-                    , EH.tokenValue postCommitBalance
-                    , Element.text ") to the "
-                    , EH.responder []
-                    , Element.text ", or if not, burn it. "
-                    , Element.el [ Element.Font.bold ] (Element.text "At this point, in no case does the ")
-                    , EH.initiator [ Element.Font.bold ]
-                    , Element.el [ Element.Font.bold ] (Element.text " get a refund of his original investment. ")
-                    , EH.fakeLink "why?"
-                    ]
-                , Element.paragraph [] [ Element.text "Specifically:" ]
-                , EH.clauseList
-                    [ Element.paragraph []
-                        [ Element.text "The "
-                        , EH.initiator []
-                        , Element.text " is expected to verify with certainty whether the "
-                        , EH.responder []
-                        , Element.text " has irreversibly transferred at least "
-                        , EH.usdValue parameters.tradeAmount
-                        , Element.text " to the "
-                        , EH.initiator []
-                        , Element.text "."
-                        ]
-                    , Element.paragraph []
-                        [ Element.text "If the transfer has taken place for at least "
-                        , EH.usdValue parameters.tradeAmount
-                        , Element.text ", the "
-                        , EH.initiator []
-                        , Element.text " is expected to execute the "
-                        , EH.methodName "release"
-                        , Element.text " method. This releases the entire balance of the contract ("
-                        , EH.tokenValue postCommitBalance
-                        , Element.text ") to the "
-                        , EH.responder []
-                        , Element.text " and closes the contract. Thus, the "
-                        , EH.responder []
-                        , Element.text " will have made a profit of ??? by servicing this Uncoining contract."
-                        ]
-                    , Element.paragraph []
-                        [ Element.text "If the transfer has not taken place, or if the transfer amount was less than "
-                        , EH.usdValue parameters.tradeAmount
-                        , Element.text ", the "
-                        , EH.initiator []
-                        , Element.text " is expected to execute the "
-                        , EH.methodName "burn"
-                        , Element.text " method. This burns the entire balance of the contract ("
-                        , EH.tokenValue postCommitBalance
-                        , Element.text ") and "
-                        , EH.sectionReference "closes the contract"
-                        , Element.text ". Thus, the "
-                        , EH.responder []
-                        , Element.text " will have suffered a loss of "
-                        , EH.tokenValue parameters.buyerDeposit
-                        , Element.text " for failing to make the deposit."
-                        ]
-                    , Element.paragraph []
-                        [ Element.text "If the "
-                        , EH.initiator []
-                        , Element.text " is not sure whether the transfer has taken place, the "
-                        , EH.initiator []
-                        , Element.text " and the "
-                        , EH.responder []
-                        , Element.text " are expected to communicate to resolve any ambiguity."
-                        ]
-                    , Element.paragraph []
-                        [ Element.text "If the "
-                        , EH.initiator []
-                        , Element.text " has not executed a "
-                        , EH.methodName "burn"
-                        , Element.text " or "
-                        , EH.methodName "release"
-                        , Element.text " within "
-                        , EH.timeValue parameters.autoreleaseInterval
-                        , Element.text ", "
-                        , EH.methodName "release"
-                        , Element.text " is triggered automatically."
-                        ]
-                    ]
-                ]
-            )
-        , case viewMode of
-            Draft ->
-                Element.none
-
-            Active context ->
-                if context.state.phase == Contracts.Types.Claimed then
-                    Element.row [ Element.spacing 50, Element.padding 20, Element.centerX ]
-                        (Maybe.Extra.values
-                            [ if context.userIsInitiator then
-                                Just <| EH.contractActionButton "Release" EH.buttonGreen Release
-
-                              else
-                                Nothing
-                            , if context.userIsInitiator then
-                                Just <| EH.contractActionButton "Burn" EH.buttonRed Burn
-
-                              else
-                                Nothing
-                            ]
+                         else
+                            []
                         )
 
                 else

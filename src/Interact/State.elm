@@ -7,6 +7,7 @@ import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (UserInfo)
 import Contracts.Generated.ERC20Token as TokenContract
 import Contracts.Generated.Toastytrade as TT
+import Contracts.Types
 import Contracts.Wrappers
 import Eth
 import Eth.Types exposing (Address)
@@ -314,11 +315,20 @@ update msg model =
 
                                 RenderContract.Types.Commit ->
                                     let
+                                        fullDepositAmount =
+                                            TokenValue.getBigInt <|
+                                                case tradeInfo.parameters.openMode of
+                                                    Contracts.Types.BuyerOpened ->
+                                                        tradeInfo.parameters.tradeAmount
+
+                                                    Contracts.Types.SellerOpened ->
+                                                        tradeInfo.parameters.buyerDeposit
+
                                         txParams =
                                             TokenContract.approve
                                                 model.tokenAddress
                                                 tradeInfo.creationInfo.address
-                                                (TokenValue.getBigInt tradeInfo.parameters.buyerDeposit)
+                                                fullDepositAmount
                                                 |> Eth.toSend
 
                                         customSend =
@@ -334,6 +344,14 @@ update msg model =
                                     let
                                         txParams =
                                             TT.claim tradeInfo.creationInfo.address
+                                                |> Eth.toSend
+                                    in
+                                    ChainCmd.custom genericCustomSend txParams
+
+                                RenderContract.Types.Abort ->
+                                    let
+                                        txParams =
+                                            TT.abort tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
                                     ChainCmd.custom genericCustomSend txParams
