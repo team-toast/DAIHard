@@ -1,14 +1,38 @@
-module Contracts.Types exposing (FullParameters, Phase(..), State, UserParameters, bigIntToPhase, buildFullParameters, decodeState, phaseToString, txReceiptToCreatedToastytradeSellAddress, txReceiptToCreatedToastytradeSellId)
+module Contracts.Types exposing (CreateParameters, OpenMode(..), Phase(..), State, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, initiatorIsBuyerToOpenMode, openModeToInitiatorIsBuyer, phaseToString, txReceiptToCreatedToastytradeSellAddress, txReceiptToCreatedToastytradeSellId)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
 import CommonTypes exposing (UserInfo)
-import Contracts.Generated.ToastytradeSell as TTS
+import Contracts.Generated.Toastytrade as TT
 import Eth.Types exposing (Address)
 import EthHelpers
 import Time
 import TimeHelpers
 import TokenValue exposing (TokenValue)
+
+
+type OpenMode
+    = BuyerOpened
+    | SellerOpened
+
+
+openModeToInitiatorIsBuyer : OpenMode -> Bool
+openModeToInitiatorIsBuyer openMode =
+    case openMode of
+        BuyerOpened ->
+            True
+
+        SellerOpened ->
+            False
+
+
+initiatorIsBuyerToOpenMode : Bool -> OpenMode
+initiatorIsBuyerToOpenMode initiatorIsBuyer =
+    if initiatorIsBuyer then
+        BuyerOpened
+
+    else
+        SellerOpened
 
 
 type Phase
@@ -20,25 +44,29 @@ type Phase
 
 
 type alias UserParameters =
-    { uncoiningAmount : TokenValue
-    , price : TokenValue
+    { openMode : OpenMode
+    , tradeAmount : TokenValue
+    , totalPriceCurrency : String
+    , totalPriceValue : TokenValue
     , transferMethods : String
     , autorecallInterval : Time.Posix
-    , depositDeadlineInterval : Time.Posix
+    , autoabortInterval : Time.Posix
     , autoreleaseInterval : Time.Posix
     }
 
 
-type alias FullParameters =
-    { uncoiningAmount : TokenValue
-    , price : TokenValue
+type alias CreateParameters =
+    { openMode : OpenMode
+    , tradeAmount : TokenValue
+    , totalPriceString : String
     , transferMethods : String
     , initiatorCommPubkey : String
     , autorecallInterval : Time.Posix
-    , depositDeadlineInterval : Time.Posix
+    , autoabortInterval : Time.Posix
     , autoreleaseInterval : Time.Posix
     , initiatorAddress : Address
-    , responderDeposit : TokenValue
+    , buyerDeposit : TokenValue
+    , pokeReward : TokenValue
     }
 
 
@@ -138,25 +166,36 @@ phaseToString phase =
             "Closed"
 
 
-buildFullParameters : UserInfo -> UserParameters -> FullParameters
-buildFullParameters initiatorInfo userParameters =
+buildCreateParameters : UserInfo -> UserParameters -> CreateParameters
+buildCreateParameters initiatorInfo userParameters =
     let
-        responderDeposit =
-            TokenValue.divByInt userParameters.uncoiningAmount 3
+        buyerDeposit =
+            TokenValue.divByInt userParameters.tradeAmount 3
+
+        totalPriceString =
+            userParameters.totalPriceCurrency
+                ++ (userParameters.totalPriceValue |> TokenValue.renderToString Nothing)
+
+        pokeReward =
+            TokenValue.updateValue
+                userParameters.tradeAmount
+                (BigInt.fromInt 2500000000000000)
     in
-    { uncoiningAmount = userParameters.uncoiningAmount
-    , price = userParameters.price
+    { openMode = userParameters.openMode
+    , tradeAmount = userParameters.tradeAmount
+    , totalPriceString = totalPriceString
     , autorecallInterval = userParameters.autorecallInterval
-    , depositDeadlineInterval = userParameters.depositDeadlineInterval
+    , autoabortInterval = userParameters.autoabortInterval
     , autoreleaseInterval = userParameters.autoreleaseInterval
     , transferMethods = userParameters.transferMethods
     , initiatorAddress = initiatorInfo.address
     , initiatorCommPubkey = initiatorInfo.commPubkey
-    , responderDeposit = responderDeposit
+    , buyerDeposit = buyerDeposit
+    , pokeReward = pokeReward
     }
 
 
-decodeState : Int -> TTS.GetState -> Maybe State
+decodeState : Int -> TT.GetState -> Maybe State
 decodeState numDecimals encodedState =
     let
         maybePhase =

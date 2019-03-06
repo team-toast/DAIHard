@@ -1,43 +1,48 @@
 module Create.Types exposing (ContractParameterInputs, Model, Msg(..), UpdateResult, justModelUpdate)
 
+import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (UserInfo)
 import Contracts.Types
 import Eth.Types exposing (Address, TxReceipt)
+import EthHelpers
+import Http
 import Routing
 import TokenValue exposing (TokenValue)
 
 
 type alias Model =
-    { tokenAddress : Address
+    { ethNode : EthHelpers.EthNode
+    , tokenAddress : Address
     , tokenDecimals : Int
     , factoryAddress : Address
     , userInfo : Maybe UserInfo
     , parameterInputs : ContractParameterInputs
-    , devFee : TokenValue
-    , contractParameters : Maybe Contracts.Types.FullParameters
+    , contractParameters : Maybe Contracts.Types.CreateParameters
     , busyWithTxChain : Bool
     }
 
 
 type alias ContractParameterInputs =
-    { uncoiningAmount : String
-    , price : String
+    { openMode : Contracts.Types.OpenMode
+    , tradeAmount : String
+    , totalPrice : String
     , transferMethods : String
     , autorecallInterval : String
-    , depositDeadlineInterval : String
+    , autoabortInterval : String
     , autoreleaseInterval : String
     }
 
 
 type Msg
-    = UncoiningAmountChanged String
+    = TradeAmountChanged String
     | PriceChanged String
     | AutorecallIntervalChanged String
-    | DepositDeadlineIntervalChanged String
+    | AutoabortIntervalChanged String
     | AutoreleaseIntervalChanged String
     | TransferMethodsChanged String
     | BeginCreateProcess
+    | DevFeeFetched (Result Http.Error BigInt)
     | ApproveMined (Result String TxReceipt)
     | CreateMined (Result String TxReceipt)
     | NoOp

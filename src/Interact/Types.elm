@@ -1,10 +1,10 @@
-module Interact.Types exposing (CommMessage, EncryptedMessage, InitiatorOrResponder(..), MessageContent(..), Model, Msg(..), TTSFullInfo, TTSInfo(..), TTSPartialInfo, getUserRole, partialInfo, updateParameters, updateState)
+module Interact.Types exposing (CommMessage, EncryptedMessage, InitiatorOrResponder(..), MessageContent(..), Model, Msg(..), TradeFullInfo, TradeInfo(..), TradePartialInfo, getUserRole, partialInfo, updateParameters, updateState)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (UserInfo)
+import Contracts.Generated.Toastytrade as TT
 import Contracts.Generated.ToastytradeFactory as TTF
-import Contracts.Generated.ToastytradeSell as TTS
 import Contracts.Types
 import Eth.Types exposing (Address)
 import EthHelpers
@@ -15,12 +15,12 @@ import RenderContract.Types
 import Time
 
 
-partialInfo : CreationInfo -> TTSInfo
+partialInfo : CreationInfo -> TradeInfo
 partialInfo creationInfo =
-    PartiallyLoaded (TTSPartialInfo creationInfo Nothing Nothing)
+    PartiallyLoaded (TradePartialInfo creationInfo Nothing Nothing)
 
 
-updateParameters : Contracts.Types.FullParameters -> TTSInfo -> TTSInfo
+updateParameters : Contracts.Types.CreateParameters -> TradeInfo -> TradeInfo
 updateParameters parameters ttsInfo =
     case ttsInfo of
         NothingLoaded ->
@@ -38,7 +38,7 @@ updateParameters parameters ttsInfo =
             Loaded { info | parameters = parameters }
 
 
-updateState : Contracts.Types.State -> TTSInfo -> TTSInfo
+updateState : Contracts.Types.State -> TradeInfo -> TradeInfo
 updateState state ttsInfo =
     case ttsInfo of
         NothingLoaded ->
@@ -56,11 +56,11 @@ updateState state ttsInfo =
             Loaded { info | state = state }
 
 
-checkIfLoaded : TTSPartialInfo -> TTSInfo
+checkIfLoaded : TradePartialInfo -> TradeInfo
 checkIfLoaded pInfo =
     case ( pInfo.parameters, pInfo.state ) of
         ( Just parameters, Just state ) ->
-            Loaded (TTSFullInfo pInfo.creationInfo parameters state)
+            Loaded (TradeFullInfo pInfo.creationInfo parameters state)
 
         _ ->
             PartiallyLoaded pInfo
@@ -71,24 +71,24 @@ type alias Model =
     , userInfo : Maybe UserInfo
     , tokenAddress : Address
     , tokenDecimals : Int
-    , ttsId : BigInt
-    , ttsInfo : TTSInfo
+    , tradeId : BigInt
+    , tradeInfo : TradeInfo
     , messages : Array CommMessage
     , messageInput : String
-    , eventSentries : Maybe ( EventSentry TTS.InitiatorStatementLog Msg, EventSentry TTS.ResponderStatementLog Msg )
+    , eventSentries : Maybe ( EventSentry TT.InitiatorStatementLog Msg, EventSentry TT.ResponderStatementLog Msg )
     }
 
 
 type Msg
-    = CreationInfoFetched (Result Http.Error TTF.CreatedSell)
+    = CreationInfoFetched (Result Http.Error TTF.CreatedTrade)
     | StateFetched (Result Http.Error (Maybe Contracts.Types.State))
-    | ParametersFetched (Result Http.Error (Maybe Contracts.Types.FullParameters))
+    | ParametersFetched (Result Http.Error (Maybe Contracts.Types.CreateParameters))
     | ContractAction RenderContract.Types.Msg
     | PreCommitApproveMined (Result String Eth.Types.TxReceipt)
     | ContractActionMined (Result String Eth.Types.TxReceipt)
     | Refresh Time.Posix
-    | InitiatorStatementsFetched (Result Http.Error (List (Eth.Types.Event TTS.InitiatorStatementLog)))
-    | ResponderStatementsFetched (Result Http.Error (List (Eth.Types.Event TTS.ResponderStatementLog)))
+    | InitiatorStatementsFetched (Result Http.Error (List (Eth.Types.Event TT.InitiatorStatementLog)))
+    | ResponderStatementsFetched (Result Http.Error (List (Eth.Types.Event TT.ResponderStatementLog)))
     | MessageInputChanged String
     | MessageSubmit
     | EncryptionFinished Json.Decode.Value
@@ -97,15 +97,15 @@ type Msg
     | ResponderStatementEventSentryMsg EventSentryHack.Msg
 
 
-type TTSInfo
+type TradeInfo
     = NothingLoaded
-    | PartiallyLoaded TTSPartialInfo
-    | Loaded TTSFullInfo
+    | PartiallyLoaded TradePartialInfo
+    | Loaded TradeFullInfo
 
 
-type alias TTSPartialInfo =
+type alias TradePartialInfo =
     { creationInfo : CreationInfo
-    , parameters : Maybe Contracts.Types.FullParameters
+    , parameters : Maybe Contracts.Types.CreateParameters
     , state : Maybe Contracts.Types.State
     }
 
@@ -116,9 +116,9 @@ type alias CreationInfo =
     }
 
 
-type alias TTSFullInfo =
+type alias TradeFullInfo =
     { creationInfo : CreationInfo
-    , parameters : Contracts.Types.FullParameters
+    , parameters : Contracts.Types.CreateParameters
     , state : Contracts.Types.State
     }
 
@@ -150,7 +150,7 @@ type alias EncryptedMessage =
     }
 
 
-getUserRole : TTSFullInfo -> Address -> Maybe InitiatorOrResponder
+getUserRole : TradeFullInfo -> Address -> Maybe InitiatorOrResponder
 getUserRole ttsInfo userAddress =
     if userAddress == ttsInfo.parameters.initiatorAddress then
         Just Initiator

@@ -1,8 +1,8 @@
-module Contracts.Wrappers exposing (createSell, decodeParameters, getCreationInfoFromIdCmd, getNumTTsCmd, getParametersAndStateCmd, getParametersCmd, getStateCmd)
+module Contracts.Wrappers exposing (createSell, decodeParameters, getCreationInfoFromIdCmd, getDevFeeCmd, getNumTTsCmd, getParametersAndStateCmd, getParametersCmd, getStateCmd)
 
 import BigInt exposing (BigInt)
+import Contracts.Generated.Toastytrade as TT
 import Contracts.Generated.ToastytradeFactory as TTF
-import Contracts.Generated.ToastytradeSell as TTS
 import Contracts.Types exposing (..)
 import Eth
 import Eth.Types exposing (Address, Call)
@@ -16,24 +16,27 @@ import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
-createSell : Address -> FullParameters -> Call Address
+createSell : Address -> CreateParameters -> Call Address
 createSell contractAddress parameters =
-    TTF.createToastytradeSell
+    TTF.openToastytrade
         contractAddress
         parameters.initiatorAddress
-        (TokenValue.getBigInt parameters.uncoiningAmount)
-        (TokenValue.getBigInt parameters.price)
-        (TokenValue.getBigInt parameters.responderDeposit)
+        (openModeToInitiatorIsBuyer parameters.openMode)
+        (TokenValue.getBigInt parameters.tradeAmount)
+        (TokenValue.getBigInt parameters.buyerDeposit)
+        (TokenValue.getBigInt parameters.pokeReward)
         (TimeHelpers.posixToSecondsBigInt parameters.autorecallInterval)
-        (TimeHelpers.posixToSecondsBigInt parameters.depositDeadlineInterval)
+        (TimeHelpers.posixToSecondsBigInt parameters.autoabortInterval)
         (TimeHelpers.posixToSecondsBigInt parameters.autoreleaseInterval)
-        (if parameters.transferMethods == "" then
-            "NODATA"
-
-         else
-            parameters.transferMethods
-        )
+        parameters.totalPriceString
+        parameters.transferMethods
         parameters.initiatorCommPubkey
+
+
+getDevFeeCmd : EthHelpers.EthNode -> Address -> BigInt -> (Result Http.Error BigInt -> msg) -> Cmd msg
+getDevFeeCmd ethNode factoryAddress tradeAmount msgConstructor =
+    Eth.call ethNode.http (TTF.getDevFee factoryAddress tradeAmount)
+        |> Task.attempt msgConstructor
 
 
 getNumTTsCmd : EthHelpers.EthNode -> Address -> (Result Http.Error BigInt -> msg) -> Cmd msg
@@ -42,13 +45,13 @@ getNumTTsCmd ethNode factoryAddress msgConstructor =
         |> Task.attempt msgConstructor
 
 
-getCreationInfoFromIdCmd : EthHelpers.EthNode -> Address -> BigInt -> (Result Http.Error TTF.CreatedSell -> msg) -> Cmd msg
+getCreationInfoFromIdCmd : EthHelpers.EthNode -> Address -> BigInt -> (Result Http.Error TTF.CreatedTrade -> msg) -> Cmd msg
 getCreationInfoFromIdCmd ethNode factoryAddress ttId msgConstructor =
-    Eth.call ethNode.http (TTF.createdSells factoryAddress ttId)
+    Eth.call ethNode.http (TTF.createdTrades factoryAddress ttId)
         |> Task.attempt msgConstructor
 
 
-getParametersAndStateCmd : EthHelpers.EthNode -> Int -> Address -> (Result Http.Error (Maybe FullParameters) -> msg) -> (Result Http.Error (Maybe State) -> msg) -> Cmd msg
+getParametersAndStateCmd : EthHelpers.EthNode -> Int -> Address -> (Result Http.Error (Maybe CreateParameters) -> msg) -> (Result Http.Error (Maybe State) -> msg) -> Cmd msg
 getParametersAndStateCmd ethNode tokenDecimals address parametersMsgConstructor stateMsgConstructor =
     Cmd.batch
         [ getParametersCmd ethNode tokenDecimals address parametersMsgConstructor
@@ -56,43 +59,45 @@ getParametersAndStateCmd ethNode tokenDecimals address parametersMsgConstructor 
         ]
 
 
-getParametersCmd : EthHelpers.EthNode -> Int -> Address -> (Result Http.Error (Maybe FullParameters) -> msg) -> Cmd msg
+getParametersCmd : EthHelpers.EthNode -> Int -> Address -> (Result Http.Error (Maybe CreateParameters) -> msg) -> Cmd msg
 getParametersCmd ethNode numDecimals ttAddress msgConstructor =
-    Eth.call ethNode.http (TTS.getParameters ttAddress)
+    Eth.call ethNode.http (TT.getParameters ttAddress)
         |> Task.map (decodeParameters numDecimals)
         |> Task.attempt msgConstructor
 
 
 getStateCmd : EthHelpers.EthNode -> Int -> Address -> (Result Http.Error (Maybe State) -> msg) -> Cmd msg
 getStateCmd ethNode numDecimals ttAddress msgConstructor =
-    Eth.call ethNode.http (TTS.getState ttAddress)
+    Eth.call ethNode.http (TT.getState ttAddress)
         |> Task.map (decodeState numDecimals)
         |> Task.attempt msgConstructor
 
 
-decodeParameters : Int -> TTS.GetParameters -> Maybe FullParameters
+decodeParameters : Int -> TT.GetParameters -> Maybe CreateParameters
 decodeParameters numDecimals encodedParameters =
     let
         maybeAutorecallInterval =
             TimeHelpers.secondsBigIntToMaybePosix encodedParameters.autorecallInterval
 
         maybeDepositDeadlineInterval =
-            TimeHelpers.secondsBigIntToMaybePosix encodedParameters.depositDeadlineInterval
+            TimeHelpers.secondsBigIntToMaybePosix encodedParameters.autoabortInterval
 
         maybeAutoreleaseInterval =
             TimeHelpers.secondsBigIntToMaybePosix encodedParameters.autoreleaseInterval
     in
     Maybe.map3
         (\autorecallInterval depositDeadlineInterval autoreleaseInterval ->
-            { uncoiningAmount = TokenValue.tokenValue numDecimals encodedParameters.sellAmount
-            , price = TokenValue.tokenValue numDecimals encodedParameters.price
-            , transferMethods = encodedParameters.logisticsString
+            { openMode = initiatorIsBuyerToOpenMode encodedParameters.initiatorIsBuyer
+            , tradeAmount = TokenValue.tokenValue numDecimals encodedParameters.tokenAmount
+            , totalPriceString = encodedParameters.totalPrice
+            , transferMethods = encodedParameters.fiatTransferMethods
             , initiatorCommPubkey = encodedParameters.initiatorCommPubkey
             , autorecallInterval = autorecallInterval
-            , depositDeadlineInterval = depositDeadlineInterval
+            , autoabortInterval = depositDeadlineInterval
             , autoreleaseInterval = autoreleaseInterval
             , initiatorAddress = encodedParameters.initiator
-            , responderDeposit = TokenValue.tokenValue numDecimals encodedParameters.responderDeposit
+            , buyerDeposit = TokenValue.tokenValue numDecimals encodedParameters.buyerDeposit
+            , pokeReward = TokenValue.tokenValue numDecimals encodedParameters.pokeReward
             }
         )
         maybeAutorecallInterval

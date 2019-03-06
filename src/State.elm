@@ -282,7 +282,7 @@ gotoRoute model route =
         Routing.Create ->
             let
                 ( createModel, createCmd, chainCmdOrder ) =
-                    Create.State.init model.tokenContractAddress model.tokenContractDecimals model.factoryAddress model.userInfo
+                    Create.State.init model.node model.tokenContractAddress model.tokenContractDecimals model.factoryAddress model.userInfo
 
                 ( newTxSentry, chainCmd ) =
                     ChainCmd.execute model.txSentry (ChainCmd.map CreateMsg chainCmdOrder)

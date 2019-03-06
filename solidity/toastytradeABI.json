@@ -2,6 +2,34 @@
 	{
 		"constant": true,
 		"inputs": [],
+		"name": "seller",
+		"outputs": [
+			{
+				"name": "",
+				"type": "address"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "pokeRewardSent",
+		"outputs": [
+			{
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
 		"name": "getBalance",
 		"outputs": [
 			{
@@ -14,52 +42,29 @@
 		"type": "function"
 	},
 	{
-		"constant": false,
-		"inputs": [
+		"constant": true,
+		"inputs": [],
+		"name": "initiatorIsBuyer",
+		"outputs": [
 			{
-				"name": "_initiator",
-				"type": "address"
-			},
-			{
-				"name": "_price",
-				"type": "uint256"
-			},
-			{
-				"name": "_responderDeposit",
-				"type": "uint256"
-			},
-			{
-				"name": "_autorecallInterval",
-				"type": "uint256"
-			},
-			{
-				"name": "_depositDeadlineInterval",
-				"type": "uint256"
-			},
-			{
-				"name": "_autoreleaseInterval",
-				"type": "uint256"
-			},
-			{
-				"name": "_logisticsString",
-				"type": "string"
-			},
-			{
-				"name": "_initiatorCommPubkey",
-				"type": "string"
+				"name": "",
+				"type": "bool"
 			}
 		],
-		"name": "open",
-		"outputs": [],
 		"payable": false,
-		"stateMutability": "nonpayable",
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
 		"constant": false,
 		"inputs": [],
 		"name": "poke",
-		"outputs": [],
+		"outputs": [
+			{
+				"name": "moved",
+				"type": "bool"
+			}
+		],
 		"payable": false,
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -128,6 +133,15 @@
 		"type": "function"
 	},
 	{
+		"constant": false,
+		"inputs": [],
+		"name": "abort",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
 		"constant": true,
 		"inputs": [],
 		"name": "autorecallInterval",
@@ -145,20 +159,6 @@
 		"constant": true,
 		"inputs": [],
 		"name": "responderDeposit",
-		"outputs": [
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "sellAmount",
 		"outputs": [
 			{
 				"name": "",
@@ -218,10 +218,66 @@
 	{
 		"constant": true,
 		"inputs": [],
+		"name": "devFee",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "pokeReward",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "buyer",
+		"outputs": [
+			{
+				"name": "",
+				"type": "address"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
 		"name": "autoreleaseAvailable",
 		"outputs": [
 			{
 				"name": "available",
+				"type": "bool"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "pokeNeeded",
+		"outputs": [
+			{
+				"name": "needed",
 				"type": "bool"
 			}
 		],
@@ -236,6 +292,20 @@
 		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "fiatTransferMethods",
+		"outputs": [
+			{
+				"name": "",
+				"type": "string"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
@@ -256,7 +326,7 @@
 		"constant": false,
 		"inputs": [
 			{
-				"name": "_responderCommPubkey",
+				"name": "commPubkey",
 				"type": "string"
 			}
 		],
@@ -287,7 +357,21 @@
 	{
 		"constant": true,
 		"inputs": [],
-		"name": "price",
+		"name": "buyerDeposit",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "autoabortInterval",
 		"outputs": [
 			{
 				"name": "",
@@ -308,15 +392,19 @@
 				"type": "address"
 			},
 			{
-				"name": "sellAmount",
+				"name": "initiatorIsBuyer",
+				"type": "bool"
+			},
+			{
+				"name": "tokenAmount",
 				"type": "uint256"
 			},
 			{
-				"name": "price",
-				"type": "uint256"
+				"name": "totalPrice",
+				"type": "string"
 			},
 			{
-				"name": "responderDeposit",
+				"name": "buyerDeposit",
 				"type": "uint256"
 			},
 			{
@@ -324,7 +412,7 @@
 				"type": "uint256"
 			},
 			{
-				"name": "depositDeadlineInterval",
+				"name": "autoabortInterval",
 				"type": "uint256"
 			},
 			{
@@ -332,12 +420,78 @@
 				"type": "uint256"
 			},
 			{
-				"name": "logisticsString",
+				"name": "fiatTransferMethods",
 				"type": "string"
 			},
 			{
 				"name": "initiatorCommPubkey",
 				"type": "string"
+			},
+			{
+				"name": "pokeReward",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "totalPrice",
+		"outputs": [
+			{
+				"name": "",
+				"type": "string"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "_initiator",
+				"type": "address"
+			},
+			{
+				"name": "_initiatorIsBuyer",
+				"type": "bool"
+			},
+			{
+				"name": "uintArgs",
+				"type": "uint256[6]"
+			},
+			{
+				"name": "_totalPrice",
+				"type": "string"
+			},
+			{
+				"name": "_fiatTransferMethods",
+				"type": "string"
+			},
+			{
+				"name": "commPubkey",
+				"type": "string"
+			}
+		],
+		"name": "open",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "autoabortAvailable",
+		"outputs": [
+			{
+				"name": "passed",
+				"type": "bool"
 			}
 		],
 		"payable": false,
@@ -352,20 +506,6 @@
 			{
 				"name": "",
 				"type": "uint8"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "logisticsString",
-		"outputs": [
-			{
-				"name": "",
-				"type": "string"
 			}
 		],
 		"payable": false,
@@ -396,20 +536,6 @@
 		"type": "function"
 	},
 	{
-		"constant": true,
-		"inputs": [],
-		"name": "depositDeadlinePassed",
-		"outputs": [
-			{
-				"name": "passed",
-				"type": "bool"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
 		"constant": false,
 		"inputs": [
 			{
@@ -430,6 +556,20 @@
 	{
 		"constant": true,
 		"inputs": [],
+		"name": "tokenAmount",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
 		"name": "autorecallAvailable",
 		"outputs": [
 			{
@@ -442,23 +582,13 @@
 		"type": "function"
 	},
 	{
-		"constant": true,
-		"inputs": [],
-		"name": "depositDeadlineInterval",
-		"outputs": [
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
 		"inputs": [
 			{
 				"name": "_tokenContract",
+				"type": "address"
+			},
+			{
+				"name": "_devFeeAddress",
 				"type": "address"
 			}
 		],
@@ -499,7 +629,7 @@
 	{
 		"anonymous": false,
 		"inputs": [],
-		"name": "AbortedFromDepositDeadlinePassed",
+		"name": "Aborted",
 		"type": "event"
 	},
 	{

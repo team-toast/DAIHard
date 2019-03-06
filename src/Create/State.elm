@@ -10,31 +10,33 @@ import Contracts.Wrappers
 import Create.Types exposing (..)
 import Eth
 import Eth.Types exposing (Address)
+import EthHelpers
 import Flip exposing (flip)
 import Routing
 import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
-init : Address -> Int -> Address -> Maybe UserInfo -> ( Model, Cmd Msg, ChainCmd Msg )
-init tokenAddress tokenDecimals factoryAddress userInfo =
+init : EthHelpers.EthNode -> Address -> Int -> Address -> Maybe UserInfo -> ( Model, Cmd Msg, ChainCmd Msg )
+init ethNode tokenAddress tokenDecimals factoryAddress userInfo =
     let
         initialInputs =
-            { uncoiningAmount = "100"
-            , price = "100"
+            { openMode = Contracts.Types.SellerOpened
+            , tradeAmount = "100"
+            , totalPrice = "100"
             , transferMethods = ""
             , autorecallInterval = "3"
-            , depositDeadlineInterval = "3"
+            , autoabortInterval = "3"
             , autoreleaseInterval = "3"
             }
 
         model =
-            { tokenAddress = tokenAddress
+            { ethNode = ethNode
+            , tokenAddress = tokenAddress
             , tokenDecimals = tokenDecimals
             , factoryAddress = factoryAddress
             , userInfo = userInfo
             , parameterInputs = initialInputs
-            , devFee = TokenValue.zero tokenDecimals
             , contractParameters = Nothing
             , busyWithTxChain = False
             }
@@ -54,19 +56,19 @@ updateUserInfo userInfo model =
 update : Msg -> Model -> UpdateResult
 update msg model =
     case msg of
-        UncoiningAmountChanged newAmountStr ->
+        TradeAmountChanged newAmountStr ->
             let
                 oldInputs =
                     model.parameterInputs
             in
-            justModelUpdate (model |> udpateParameterInputs { oldInputs | uncoiningAmount = newAmountStr })
+            justModelUpdate (model |> udpateParameterInputs { oldInputs | tradeAmount = newAmountStr })
 
         PriceChanged newAmountStr ->
             let
                 oldInputs =
                     model.parameterInputs
             in
-            justModelUpdate (model |> udpateParameterInputs { oldInputs | price = newAmountStr })
+            justModelUpdate (model |> udpateParameterInputs { oldInputs | totalPrice = newAmountStr })
 
         TransferMethodsChanged newStr ->
             let
@@ -82,12 +84,12 @@ update msg model =
             in
             justModelUpdate (model |> udpateParameterInputs { oldInputs | autorecallInterval = newTimeStr })
 
-        DepositDeadlineIntervalChanged newTimeStr ->
+        AutoabortIntervalChanged newTimeStr ->
             let
                 oldInputs =
                     model.parameterInputs
             in
-            justModelUpdate (model |> udpateParameterInputs { oldInputs | depositDeadlineInterval = newTimeStr })
+            justModelUpdate (model |> udpateParameterInputs { oldInputs | autoabortInterval = newTimeStr })
 
         AutoreleaseIntervalChanged newTimeStr ->
             let
@@ -97,17 +99,49 @@ update msg model =
             justModelUpdate (model |> udpateParameterInputs { oldInputs | autoreleaseInterval = newTimeStr })
 
         BeginCreateProcess ->
-            case ( model.userInfo, model.contractParameters ) of
-                ( Just _, Just parameters ) ->
+            case model.contractParameters of
+                Just parameters ->
+                    { model = model
+                    , cmd =
+                        Contracts.Wrappers.getDevFeeCmd
+                            model.ethNode
+                            model.factoryAddress
+                            (TokenValue.getBigInt parameters.tradeAmount)
+                            DevFeeFetched
+                    , chainCmd = ChainCmd.none
+                    , newRoute = Nothing
+                    }
+
+                Nothing ->
                     let
-                        fullSendAmount =
-                            TokenValue.add parameters.uncoiningAmount model.devFee
+                        _ =
+                            Debug.log "Trying to form fetchDevFee cmd, but can't find the contract parameters!" ""
+                    in
+                    justModelUpdate model
+
+        DevFeeFetched fetchResult ->
+            case ( fetchResult, model.userInfo, model.contractParameters ) of
+                ( Ok devFee, Just _, Just parameters ) ->
+                    let
+                        mainDepositAmount =
+                            TokenValue.getBigInt <|
+                                case parameters.openMode of
+                                    Contracts.Types.BuyerOpened ->
+                                        parameters.buyerDeposit
+
+                                    Contracts.Types.SellerOpened ->
+                                        parameters.tradeAmount
+
+                        fullDepositAmount =
+                            mainDepositAmount
+                                |> BigInt.add devFee
+                                |> BigInt.add (TokenValue.getBigInt parameters.pokeReward)
 
                         txParams =
                             TokenContract.approve
                                 model.tokenAddress
                                 model.factoryAddress
-                                (TokenValue.getBigInt fullSendAmount)
+                                fullDepositAmount
                                 |> Eth.toSend
 
                         customSend =
@@ -125,14 +159,21 @@ update msg model =
                     , newRoute = Nothing
                     }
 
-                ( Nothing, _ ) ->
+                ( Err fetchErrStr, _, _ ) ->
                     let
                         _ =
-                            Debug.log "Metamask seems to be locked! I can't find the user address."
+                            Debug.log "Error fetching devFee: " fetchErrStr
                     in
                     justModelUpdate model
 
-                ( _, Nothing ) ->
+                ( _, Nothing, _ ) ->
+                    let
+                        _ =
+                            Debug.log "Metamask seems to be locked! I can't find the user address." ""
+                    in
+                    justModelUpdate model
+
+                ( _, _, Nothing ) ->
                     let
                         _ =
                             Debug.log "Can't create without a valid contract!" ""
@@ -142,8 +183,7 @@ update msg model =
         ApproveMined (Err errstr) ->
             let
                 _ =
-                    Debug.log "'approve' call mining error"
-                        errstr
+                    Debug.log "'approve' call mining error" errstr
             in
             justModelUpdate model
 
@@ -228,7 +268,7 @@ updateParameters model =
     { model
         | contractParameters =
             Maybe.map2
-                Contracts.Types.buildFullParameters
+                Contracts.Types.buildCreateParameters
                 model.userInfo
                 (validateInputs model.tokenDecimals model.parameterInputs)
     }
@@ -237,19 +277,21 @@ updateParameters model =
 validateInputs : Int -> ContractParameterInputs -> Maybe Contracts.Types.UserParameters
 validateInputs numDecimals inputs =
     Maybe.map5
-        (\uncoiningAmount price autorecallInterval depositDeadlineInterval autoreleaseInterval ->
-            { uncoiningAmount = uncoiningAmount
-            , price = price
+        (\tradeAmount totalPriceString autorecallInterval autoabortInterval autoreleaseInterval ->
+            { openMode = inputs.openMode
+            , tradeAmount = tradeAmount
+            , totalPriceCurrency = "??"
+            , totalPriceValue = totalPriceString
             , autorecallInterval = autorecallInterval
-            , depositDeadlineInterval = depositDeadlineInterval
+            , autoabortInterval = autoabortInterval
             , autoreleaseInterval = autoreleaseInterval
             , transferMethods = inputs.transferMethods
             }
         )
-        (TokenValue.fromString numDecimals inputs.uncoiningAmount)
-        (TokenValue.fromString numDecimals inputs.price)
+        (TokenValue.fromString numDecimals inputs.tradeAmount)
+        (TokenValue.fromString numDecimals inputs.totalPrice)
         (TimeHelpers.daysStrToMaybePosix inputs.autorecallInterval)
-        (TimeHelpers.daysStrToMaybePosix inputs.depositDeadlineInterval)
+        (TimeHelpers.daysStrToMaybePosix inputs.autoabortInterval)
         (TimeHelpers.daysStrToMaybePosix inputs.autoreleaseInterval)
 
 
