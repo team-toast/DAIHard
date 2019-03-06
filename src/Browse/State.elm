@@ -18,33 +18,33 @@ init ethNode factoryAddress tokenDecimals userInfo =
       , userInfo = userInfo
       , factoryAddress = factoryAddress
       , tokenDecimals = tokenDecimals
-      , numTTs = Nothing
-      , ttArray = Array.empty
+      , numTrades = Nothing
+      , trades = Array.empty
       }
-    , Contracts.Wrappers.getNumTTsCmd ethNode factoryAddress NumTTsFetched
+    , Contracts.Wrappers.getNumTTsCmd ethNode factoryAddress NumTradesFetched
     )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, Maybe Routing.Route )
 update msg model =
     case msg of
-        NumTTsFetched fetchResult ->
+        NumTradesFetched fetchResult ->
             case fetchResult of
                 Ok bigInt ->
                     case BigIntHelpers.toInt bigInt of
-                        Just numTTs ->
+                        Just numTrades ->
                             let
                                 fetchCreationInfoCmd =
                                     Cmd.batch
-                                        (List.range 0 (numTTs - 1)
+                                        (List.range 0 (numTrades - 1)
                                             |> List.map
                                                 (\id ->
                                                     Contracts.Wrappers.getCreationInfoFromIdCmd model.ethNode model.factoryAddress (BigInt.fromInt id) (CreationInfoFetched id)
                                                 )
                                         )
 
-                                ttArray =
-                                    List.range 0 (numTTs - 1)
+                                trades =
+                                    List.range 0 (numTrades - 1)
                                         |> List.map
                                             (\id ->
                                                 { id = id
@@ -56,8 +56,8 @@ update msg model =
                                         |> Array.fromList
                             in
                             ( { model
-                                | numTTs = Just numTTs
-                                , ttArray = ttArray
+                                | numTrades = Just numTrades
+                                , trades = trades
                               }
                             , fetchCreationInfoCmd
                             , Nothing
@@ -66,14 +66,14 @@ update msg model =
                         Nothing ->
                             let
                                 _ =
-                                    Debug.log "can't convert the numTTs bigInt value to an int"
+                                    Debug.log "can't convert the numTrades bigInt value to an int"
                             in
                             ( model, Cmd.none, Nothing )
 
                 Err errstr ->
                     let
                         _ =
-                            Debug.log "can't fetch numTTs:" errstr
+                            Debug.log "can't fetch numTrades:" errstr
                     in
                     ( model, Cmd.none, Nothing )
 
@@ -84,7 +84,7 @@ update msg model =
                         _ =
                             Debug.log "creationinfo" creationInfo
                     in
-                    ( model |> updateTTAddress id (Just creationInfo.address_)
+                    ( model |> updateTradeAddress id creationInfo.address_
                     , Contracts.Wrappers.getParametersAndStateCmd model.ethNode model.tokenDecimals creationInfo.address_ (ParametersFetched id) (StateFetched id)
                     , Nothing
                     )
@@ -99,7 +99,7 @@ update msg model =
         ParametersFetched id fetchResult ->
             case fetchResult of
                 Ok (Just parameters) ->
-                    ( model |> updateTTParameters id (Just parameters)
+                    ( model |> updateTradeParameters id parameters
                     , Cmd.none
                     , Nothing
                     )
@@ -114,7 +114,7 @@ update msg model =
         StateFetched id fetchResult ->
             case fetchResult of
                 Ok (Just state) ->
-                    ( model |> updateTTState id (Just state)
+                    ( model |> updateTradeState id state
                     , Cmd.none
                     , Nothing
                     )

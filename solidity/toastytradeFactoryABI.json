@@ -1,6 +1,25 @@
 [
     {
         "constant": true,
+        "inputs": [
+            {
+                "name": "tradeAmount",
+                "type": "uint256"
+            }
+        ],
+        "name": "getDevFee",
+        "outputs": [
+            {
+                "name": "devFee",
+                "type": "uint256"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "pure",
+        "type": "function"
+    },
+    {
+        "constant": true,
         "inputs": [],
         "name": "tokenContract",
         "outputs": [
@@ -15,21 +34,12 @@
     },
     {
         "constant": true,
-        "inputs": [
-            {
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "name": "createdSells",
+        "inputs": [],
+        "name": "devFeeAddress",
         "outputs": [
             {
-                "name": "address_",
+                "name": "",
                 "type": "address"
-            },
-            {
-                "name": "blocknum",
-                "type": "uint256"
             }
         ],
         "payable": false,
@@ -44,39 +54,27 @@
                 "type": "address"
             },
             {
-                "name": "sellAmount",
-                "type": "uint256"
+                "name": "initiatorIsBuyer",
+                "type": "bool"
             },
             {
-                "name": "price",
-                "type": "uint256"
+                "name": "uintArgs",
+                "type": "uint256[6]"
             },
             {
-                "name": "_responderDeposit",
-                "type": "uint256"
-            },
-            {
-                "name": "_autorecallInterval",
-                "type": "uint256"
-            },
-            {
-                "name": "_depositDeadlineInterval",
-                "type": "uint256"
-            },
-            {
-                "name": "_autoreleaseInterval",
-                "type": "uint256"
-            },
-            {
-                "name": "_logisticsString",
+                "name": "_totalPrice",
                 "type": "string"
             },
             {
-                "name": "_initiatorCommPubkey",
+                "name": "_fiatTransferMethods",
+                "type": "string"
+            },
+            {
+                "name": "_commPubkey",
                 "type": "string"
             }
         ],
-        "name": "createToastytradeSell",
+        "name": "openToastytrade",
         "outputs": [
             {
                 "name": "",
@@ -85,6 +83,29 @@
         ],
         "payable": false,
         "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [
+            {
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "name": "createdTrades",
+        "outputs": [
+            {
+                "name": "address_",
+                "type": "address"
+            },
+            {
+                "name": "blocknum",
+                "type": "uint256"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "view",
         "type": "function"
     },
     {
@@ -106,6 +127,10 @@
             {
                 "name": "_tokenContract",
                 "type": "address"
+            },
+            {
+                "name": "_devFeeAddress",
+                "type": "address"
             }
         ],
         "payable": false,
@@ -122,11 +147,16 @@
             },
             {
                 "indexed": false,
-                "name": "toastytradeSellAddress",
+                "name": "toastytradeAddress",
                 "type": "address"
+            },
+            {
+                "indexed": true,
+                "name": "initiatorIsPayer",
+                "type": "bool"
             }
         ],
-        "name": "NewToastytradeSell",
+        "name": "NewToastytrade",
         "type": "event"
     }
 ]

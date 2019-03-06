@@ -1,4 +1,4 @@
-module Browse.Types exposing (Model, Msg(..), TTListItem, updateTTAddress, updateTTParameters, updateTTState)
+module Browse.Types exposing (Model, Msg(..), TTListItem, updateTradeAddress, updateTradeParameters, updateTradeState)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
@@ -15,15 +15,15 @@ type alias Model =
     , userInfo : Maybe UserInfo
     , factoryAddress : Address
     , tokenDecimals : Int
-    , numTTs : Maybe Int
-    , ttArray : Array TTListItem
+    , numTrades : Maybe Int
+    , trades : Array TTListItem
     }
 
 
 type Msg
-    = NumTTsFetched (Result Http.Error BigInt)
-    | CreationInfoFetched Int (Result Http.Error TTF.CreatedSell)
-    | ParametersFetched Int (Result Http.Error (Maybe Contracts.Types.FullParameters))
+    = NumTradesFetched (Result Http.Error BigInt)
+    | CreationInfoFetched Int (Result Http.Error TTF.CreatedTrade)
+    | ParametersFetched Int (Result Http.Error (Maybe Contracts.Types.CreateParameters))
     | StateFetched Int (Result Http.Error (Maybe Contracts.Types.State))
     | ItemClicked Int
 
@@ -31,22 +31,22 @@ type Msg
 type alias TTListItem =
     { id : Int
     , address : Maybe Address
-    , parameters : Maybe Contracts.Types.FullParameters
+    , parameters : Maybe Contracts.Types.CreateParameters
     , state : Maybe Contracts.Types.State
     }
 
 
-updateTTAddress : Int -> Maybe Address -> Model -> Model
-updateTTAddress id address model =
-    case Array.get id model.ttArray of
-        Just oldTTItem ->
+updateTradeAddress : Int -> Address -> Model -> Model
+updateTradeAddress id address model =
+    case Array.get id model.trades of
+        Just oldTradeItem ->
             let
-                newTTArray =
+                newTradeArray =
                     Array.set id
-                        { oldTTItem | address = address }
-                        model.ttArray
+                        { oldTradeItem | address = Just address }
+                        model.trades
             in
-            { model | ttArray = newTTArray }
+            { model | trades = newTradeArray }
 
         Nothing ->
             let
@@ -56,17 +56,17 @@ updateTTAddress id address model =
             model
 
 
-updateTTParameters : Int -> Maybe Contracts.Types.FullParameters -> Model -> Model
-updateTTParameters id parameters model =
-    case Array.get id model.ttArray of
-        Just oldTTItem ->
+updateTradeParameters : Int -> Contracts.Types.CreateParameters -> Model -> Model
+updateTradeParameters id parameters model =
+    case Array.get id model.trades of
+        Just oldTradeItem ->
             let
-                newTTArray =
+                newTradeArray =
                     Array.set id
-                        { oldTTItem | parameters = parameters }
-                        model.ttArray
+                        { oldTradeItem | parameters = Just parameters }
+                        model.trades
             in
-            { model | ttArray = newTTArray }
+            { model | trades = newTradeArray }
 
         Nothing ->
             let
@@ -76,17 +76,17 @@ updateTTParameters id parameters model =
             model
 
 
-updateTTState : Int -> Maybe Contracts.Types.State -> Model -> Model
-updateTTState id state model =
-    case Array.get id model.ttArray of
-        Just oldTTItem ->
+updateTradeState : Int -> Contracts.Types.State -> Model -> Model
+updateTradeState id state model =
+    case Array.get id model.trades of
+        Just oldTradeItem ->
             let
-                newTTArray =
+                newTradeArray =
                     Array.set id
-                        { oldTTItem | state = state }
-                        model.ttArray
+                        { oldTradeItem | state = Just state }
+                        model.trades
             in
-            { model | ttArray = newTTArray }
+            { model | trades = newTradeArray }
 
         Nothing ->
             let

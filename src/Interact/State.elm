@@ -6,7 +6,7 @@ import BigIntHelpers
 import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (UserInfo)
 import Contracts.Generated.ERC20Token as TokenContract
-import Contracts.Generated.ToastytradeSell as TTS
+import Contracts.Generated.Toastytrade as TT
 import Contracts.Wrappers
 import Eth
 import Eth.Types exposing (Address)
@@ -23,17 +23,17 @@ import TokenValue
 
 
 init : EthHelpers.EthNode -> Address -> Address -> Int -> Maybe UserInfo -> BigInt -> ( Model, Cmd Msg, ChainCmd Msg )
-init ethNode factoryAddress tokenAddress tokenDecimals userInfo ttsId =
+init ethNode factoryAddress tokenAddress tokenDecimals userInfo tradeId =
     let
         cmd =
-            getContractCreationInfoCmd ethNode factoryAddress ttsId
+            getContractCreationInfoCmd ethNode factoryAddress tradeId
     in
     ( { ethNode = ethNode
       , userInfo = userInfo
       , tokenAddress = tokenAddress
       , tokenDecimals = tokenDecimals
-      , ttsId = ttsId
-      , ttsInfo = NothingLoaded
+      , tradeId = tradeId
+      , tradeInfo = NothingLoaded
       , messages = Array.empty
       , messageInput = ""
       , eventSentries = Nothing
@@ -57,11 +57,11 @@ update : Msg -> Model -> ( Model, Cmd Msg, ChainCmd Msg )
 update msg model =
     case msg of
         Refresh time ->
-            case ( model.ttsInfo, model.eventSentries ) of
-                ( Loaded ttsInfo, Just sentries ) ->
+            case ( model.tradeInfo, model.eventSentries ) of
+                ( Loaded tradeInfo, Just sentries ) ->
                     ( model
                     , Cmd.batch
-                        [ Contracts.Wrappers.getStateCmd model.ethNode model.tokenDecimals ttsInfo.creationInfo.address StateFetched
+                        [ Contracts.Wrappers.getStateCmd model.ethNode model.tokenDecimals tradeInfo.creationInfo.address StateFetched
                         , getSentryPollCmd sentries
                         ]
                     , ChainCmd.none
@@ -93,16 +93,16 @@ update msg model =
                             ( EventSentryHack.init
                                 model.ethNode.http
                                 newCreationInfo.address
-                                TTS.initiatorStatementLogEvent
-                                TTS.initiatorStatementLogDecoder
+                                TT.initiatorStatementLogEvent
+                                TT.initiatorStatementLogDecoder
                                 InitiatorStatementsFetched
                                 newCreationInfo.blocknum
                                 InitiatorStatementEventSentryMsg
                             , EventSentryHack.init
                                 model.ethNode.http
                                 newCreationInfo.address
-                                TTS.responderStatementLogEvent
-                                TTS.responderStatementLogDecoder
+                                TT.responderStatementLogEvent
+                                TT.responderStatementLogDecoder
                                 ResponderStatementsFetched
                                 newCreationInfo.blocknum
                                 ResponderStatementEventSentryMsg
@@ -113,7 +113,7 @@ update msg model =
 
                         newModel =
                             { model
-                                | ttsInfo = partialInfo newCreationInfo
+                                | tradeInfo = partialInfo newCreationInfo
                                 , eventSentries = Just sentries
                             }
                     in
@@ -135,7 +135,7 @@ update msg model =
         StateFetched fetchResult ->
             case fetchResult of
                 Ok (Just state) ->
-                    ( { model | ttsInfo = model.ttsInfo |> updateState state }, Cmd.none, ChainCmd.none )
+                    ( { model | tradeInfo = model.tradeInfo |> updateState state }, Cmd.none, ChainCmd.none )
 
                 _ ->
                     let
@@ -147,7 +147,7 @@ update msg model =
         ParametersFetched fetchResult ->
             case fetchResult of
                 Ok (Just parameters) ->
-                    ( { model | ttsInfo = model.ttsInfo |> updateParameters parameters }, Cmd.none, ChainCmd.none )
+                    ( { model | tradeInfo = model.tradeInfo |> updateParameters parameters }, Cmd.none, ChainCmd.none )
 
                 _ ->
                     let
@@ -195,9 +195,9 @@ update msg model =
                                 userRole =
                                     Maybe.map2
                                         getUserRole
-                                        (case model.ttsInfo of
-                                            Loaded ttsInfo ->
-                                                Just ttsInfo
+                                        (case model.tradeInfo of
+                                            Loaded tradeInfo ->
+                                                Just tradeInfo
 
                                             troublesomeGarbage ->
                                                 let
@@ -266,9 +266,9 @@ update msg model =
                                 userRole =
                                     Maybe.map2
                                         getUserRole
-                                        (case model.ttsInfo of
-                                            Loaded ttsInfo ->
-                                                Just ttsInfo
+                                        (case model.tradeInfo of
+                                            Loaded tradeInfo ->
+                                                Just tradeInfo
 
                                             troublesomeGarbage ->
                                                 let
@@ -301,13 +301,13 @@ update msg model =
         ContractAction actionMsg ->
             let
                 chainCmd =
-                    case model.ttsInfo of
-                        Loaded ttsInfo ->
+                    case model.tradeInfo of
+                        Loaded tradeInfo ->
                             case actionMsg of
                                 RenderContract.Types.Recall ->
                                     let
                                         txParams =
-                                            TTS.recall ttsInfo.creationInfo.address
+                                            TT.recall tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
                                     ChainCmd.custom genericCustomSend txParams
@@ -317,8 +317,8 @@ update msg model =
                                         txParams =
                                             TokenContract.approve
                                                 model.tokenAddress
-                                                ttsInfo.creationInfo.address
-                                                (TokenValue.getBigInt ttsInfo.parameters.responderDeposit)
+                                                tradeInfo.creationInfo.address
+                                                (TokenValue.getBigInt tradeInfo.parameters.buyerDeposit)
                                                 |> Eth.toSend
 
                                         customSend =
@@ -333,7 +333,7 @@ update msg model =
                                 RenderContract.Types.Claim ->
                                     let
                                         txParams =
-                                            TTS.claim ttsInfo.creationInfo.address
+                                            TT.claim tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
                                     ChainCmd.custom genericCustomSend txParams
@@ -341,7 +341,7 @@ update msg model =
                                 RenderContract.Types.Release ->
                                     let
                                         txParams =
-                                            TTS.release ttsInfo.creationInfo.address
+                                            TT.release tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
                                     ChainCmd.custom genericCustomSend txParams
@@ -349,7 +349,7 @@ update msg model =
                                 RenderContract.Types.Burn ->
                                     let
                                         txParams =
-                                            TTS.burn ttsInfo.creationInfo.address
+                                            TT.burn tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
                                     ChainCmd.custom genericCustomSend txParams
@@ -357,15 +357,15 @@ update msg model =
                                 RenderContract.Types.Poke ->
                                     let
                                         txParams =
-                                            TTS.poke ttsInfo.creationInfo.address
+                                            TT.poke tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
                                     ChainCmd.custom genericCustomSend txParams
 
-                        ttsInfoNotYetLoaded ->
+                        tradeInfoNotYetLoaded ->
                             let
                                 _ =
-                                    Debug.log "Trying to handle ContractAction msg, but contract info is not yet loaded :/" ttsInfoNotYetLoaded
+                                    Debug.log "Trying to handle ContractAction msg, but contract info is not yet loaded :/" tradeInfoNotYetLoaded
                             in
                             ChainCmd.none
             in
@@ -388,11 +388,11 @@ update msg model =
                     ( model, Cmd.none, ChainCmd.none )
 
                 Ok txReceipt ->
-                    case ( model.ttsInfo, model.userInfo ) of
-                        ( Loaded ttsInfo, Just userInfo ) ->
+                    case ( model.tradeInfo, model.userInfo ) of
+                        ( Loaded tradeInfo, Just userInfo ) ->
                             let
                                 txParams =
-                                    TTS.commit ttsInfo.creationInfo.address userInfo.commPubkey
+                                    TT.commit tradeInfo.creationInfo.address userInfo.commPubkey
                                         |> Eth.toSend
                             in
                             ( model, Cmd.none, ChainCmd.custom genericCustomSend txParams )
@@ -411,11 +411,11 @@ update msg model =
             )
 
         MessageSubmit ->
-            case ( model.userInfo, model.ttsInfo ) of
-                ( Just userInfo, Loaded ttsInfo ) ->
+            case ( model.userInfo, model.tradeInfo ) of
+                ( Just userInfo, Loaded tradeInfo ) ->
                     let
                         cmd =
-                            encryptToPubkeys (encodeEncryptionArgs model.messageInput (getCommPubkeys ttsInfo))
+                            encryptToPubkeys (encodeEncryptionArgs model.messageInput (getCommPubkeys tradeInfo))
                     in
                     ( model, cmd, ChainCmd.none )
 
@@ -437,9 +437,9 @@ update msg model =
                                 )
                             )
             in
-            case ( model.userInfo, model.ttsInfo, encodedEncryptionMessages ) of
-                ( Just userInfo, Loaded ttsInfo, Ok ( Ok initiatorMessage, Ok responderMessage ) ) ->
-                    case getUserRole ttsInfo userInfo.address of
+            case ( model.userInfo, model.tradeInfo, encodedEncryptionMessages ) of
+                ( Just userInfo, Loaded tradeInfo, Ok ( Ok initiatorMessage, Ok responderMessage ) ) ->
+                    case getUserRole tradeInfo userInfo.address of
                         Nothing ->
                             let
                                 _ =
@@ -452,11 +452,11 @@ update msg model =
                                 txParams =
                                     case userRole of
                                         Initiator ->
-                                            TTS.initiatorStatement ttsInfo.creationInfo.address initiatorMessage responderMessage
+                                            TT.initiatorStatement tradeInfo.creationInfo.address initiatorMessage responderMessage
                                                 |> Eth.toSend
 
                                         Responder ->
-                                            TTS.responderStatement ttsInfo.creationInfo.address initiatorMessage responderMessage
+                                            TT.responderStatement tradeInfo.creationInfo.address initiatorMessage responderMessage
                                                 |> Eth.toSend
                             in
                             ( model
@@ -712,11 +712,11 @@ decryptNewMessagesCmd model userRole =
         |> Cmd.batch
 
 
-getCommPubkeys : TTSFullInfo -> List String
-getCommPubkeys ttsInfo =
-    case ttsInfo.state.responderCommPubkey of
+getCommPubkeys : TradeFullInfo -> List String
+getCommPubkeys tradeInfo =
+    case tradeInfo.state.responderCommPubkey of
         Just responderCommPubkey ->
-            [ ttsInfo.parameters.initiatorCommPubkey
+            [ tradeInfo.parameters.initiatorCommPubkey
             , responderCommPubkey
             ]
 
@@ -728,7 +728,7 @@ getCommPubkeys ttsInfo =
             []
 
 
-getSentryPollCmd : ( EventSentry TTS.InitiatorStatementLog Msg, EventSentry TTS.ResponderStatementLog Msg ) -> Cmd Msg
+getSentryPollCmd : ( EventSentry TT.InitiatorStatementLog Msg, EventSentry TT.ResponderStatementLog Msg ) -> Cmd Msg
 getSentryPollCmd sentries =
     Cmd.batch
         [ EventSentryHack.pollForChanges (Tuple.first sentries)

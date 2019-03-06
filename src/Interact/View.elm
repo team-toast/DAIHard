@@ -24,15 +24,15 @@ root time model =
 
 maybeContractElement : Time.Posix -> Model -> Element.Element Msg
 maybeContractElement time model =
-    case ( model.userInfo, model.ttsInfo ) of
-        ( Just userInfo, Loaded ttsInfo ) ->
+    case ( model.userInfo, model.tradeInfo ) of
+        ( Just userInfo, Loaded tradeInfo ) ->
             let
                 context =
-                    { state = ttsInfo.state
+                    { state = tradeInfo.state
                     , currentTime = time
-                    , userIsInitiator = userInfo.address == ttsInfo.parameters.initiatorAddress
+                    , userIsInitiator = userInfo.address == tradeInfo.parameters.initiatorAddress
                     , userIsResponder =
-                        case ttsInfo.state.responder of
+                        case tradeInfo.state.responder of
                             Just responderAddress ->
                                 userInfo.address == responderAddress
 
@@ -40,7 +40,7 @@ maybeContractElement time model =
                                 False
                     }
             in
-            Element.map ContractAction (RenderContract.View.render (RenderContract.Types.Active context) ttsInfo.parameters)
+            Element.map ContractAction (RenderContract.View.render (RenderContract.Types.Active context) tradeInfo.parameters)
 
         ( Nothing, _ ) ->
             Element.text "Can't find user address. Is Metamask unlocked?"
@@ -128,9 +128,9 @@ renderMessage message =
 
 maybeCommInputElement : Model -> Element.Element Msg
 maybeCommInputElement model =
-    case ( model.userInfo, model.ttsInfo ) of
-        ( Just userInfo, Loaded ttsInfo ) ->
-            case ttsInfo.state.phase of
+    case ( model.userInfo, model.tradeInfo ) of
+        ( Just userInfo, Loaded tradeInfo ) ->
+            case tradeInfo.state.phase of
                 Contracts.Types.Created ->
                     Element.none
 
@@ -138,7 +138,7 @@ maybeCommInputElement model =
                     Element.none
 
                 _ ->
-                    case getUserRole ttsInfo userInfo.address of
+                    case getUserRole tradeInfo userInfo.address of
                         Just _ ->
                             Element.column [ Element.width Element.fill, Element.spacing 10 ]
                                 [ Element.Input.multiline [ Element.width Element.fill, Element.height (Element.px 100) ]

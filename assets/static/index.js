@@ -4,7 +4,7 @@ window.forge = require('node-forge');
 
 import { Elm } from '../../src/App'
 
-window.factoryAddress = "0x9acEC8566208c6118780abE3E2086097875662e4";
+window.factoryAddress = "0xb1c25d39EfA2d5105f9CBdc83Dc3CB49C9F2203a";
 window.tokenContractAddress = "0xC4375B7De8af5a38a93548eb8453a498222C4fF2";
 
 window.testStuff = secureComms.testStuff;

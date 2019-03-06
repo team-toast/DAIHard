@@ -57,8 +57,8 @@ contractParametersForm model =
             in
             Element.column [ Element.width (Element.fillPortion 1), Element.spacing 8, Element.alignTop ]
                 (columnHeader "Dai Amounts"
-                    :: ([ ( "Uncoining Amount", EH.smallInput "uncoiningAmount" model.parameterInputs.uncoiningAmount UncoiningAmountChanged )
-                        , ( "Total Fiat Price", EH.smallInput "summonfee" model.parameterInputs.price PriceChanged )
+                    :: ([ ( "Trade Amount", EH.smallInput "tradeAmount" model.parameterInputs.tradeAmount TradeAmountChanged )
+                        , ( "Total Fiat Price", EH.smallInput "summonfee" model.parameterInputs.totalPrice PriceChanged )
                         ]
                             |> List.map nameAndElementToRow
                        )
@@ -89,7 +89,7 @@ contractParametersForm model =
                 [ columnHeader "Phase Time Limits"
                 , Element.column [ Element.spacing 8 ]
                     ([ ( "Autorecall", EH.timeInput "autorecall interval" model.parameterInputs.autorecallInterval AutorecallIntervalChanged )
-                     , ( "Deposit Deadline", EH.timeInput "deposit deadline interval" model.parameterInputs.depositDeadlineInterval DepositDeadlineIntervalChanged )
+                     , ( "Autoabort", EH.timeInput "autoabort interval" model.parameterInputs.autoabortInterval AutoabortIntervalChanged )
                      , ( "Autorelease", EH.timeInput "autorelease interval" model.parameterInputs.autoreleaseInterval AutoreleaseIntervalChanged )
                      ]
                         |> List.map nameAndElementToReversedRow

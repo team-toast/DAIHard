@@ -15,17 +15,17 @@ import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
-render : ViewMode -> Contracts.Types.FullParameters -> Element.Element Msg
+render : ViewMode -> Contracts.Types.CreateParameters -> Element.Element Msg
 render viewMode parameters =
     let
         postCommitBalance =
-            TokenValue.add parameters.uncoiningAmount parameters.responderDeposit
+            TokenValue.add parameters.tradeAmount parameters.buyerDeposit
 
-        claimFailBurnAmount =
-            TokenValue.divByInt parameters.responderDeposit 2
+        abortBurnAmount =
+            TokenValue.divByInt parameters.buyerDeposit 2
 
         totalTime =
-            TimeHelpers.add parameters.autorecallInterval parameters.depositDeadlineInterval
+            TimeHelpers.add parameters.autorecallInterval parameters.autoabortInterval
                 |> TimeHelpers.add parameters.autoreleaseInterval
 
         titleElement =
@@ -56,9 +56,9 @@ render viewMode parameters =
                     ]
                 , Element.paragraph []
                     [ Element.text "Trading "
-                    , EH.tokenValue parameters.uncoiningAmount
+                    , EH.tokenValue parameters.tradeAmount
                     , Element.text " for "
-                    , EH.usdValue parameters.price
+                    , Element.text parameters.totalPriceString
                     ]
                 , Element.paragraph []
                     [ Element.text "to be finalized within "
@@ -84,13 +84,13 @@ render viewMode parameters =
             [ titleElement
             , mainParametersElement
             , openPhaseElement viewMode parameters
-            , committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount
+            , committedPhaseElement viewMode parameters postCommitBalance abortBurnAmount
             , claimedPhaseElement viewMode parameters postCommitBalance
             ]
         )
 
 
-openPhaseElement : ViewMode -> Contracts.Types.FullParameters -> Element.Element Msg
+openPhaseElement : ViewMode -> Contracts.Types.CreateParameters -> Element.Element Msg
 openPhaseElement viewMode parameters =
     Element.column (phaseStyleWithViewMode Contracts.Types.Open viewMode)
         [ phaseHeading Contracts.Types.Open parameters viewMode
@@ -104,7 +104,7 @@ openPhaseElement viewMode parameters =
                 [ Element.text "Any other Ethereum user may become the "
                 , EH.responder []
                 , Element.text " by depositing "
-                , EH.tokenValue parameters.responderDeposit
+                , EH.tokenValue parameters.buyerDeposit
                 , Element.text " into this contract. This immediately moves the contract to the "
                 , EH.sectionReference "Committed Phase"
                 , Element.text ". Thenceforth, the identity of the "
@@ -127,7 +127,7 @@ openPhaseElement viewMode parameters =
                 , Element.text " and refunds the "
                 , EH.initiator []
                 , Element.text "'s "
-                , EH.tokenValue parameters.uncoiningAmount
+                , EH.tokenValue parameters.tradeAmount
                 , Element.text ". "
                 ]
             , Element.paragraph []
@@ -166,7 +166,7 @@ openPhaseElement viewMode parameters =
         ]
 
 
-committedPhaseElement : ViewMode -> Contracts.Types.FullParameters -> TokenValue -> TokenValue -> Element.Element Msg
+committedPhaseElement : ViewMode -> Contracts.Types.CreateParameters -> TokenValue -> TokenValue -> Element.Element Msg
 committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount =
     Element.column (phaseStyleWithViewMode Contracts.Types.Committed viewMode)
         [ phaseHeading Contracts.Types.Committed parameters viewMode
@@ -184,7 +184,7 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
                 [ Element.text "The "
                 , EH.responder []
                 , Element.text " is expected to transfer "
-                , EH.usdValue parameters.price
+                , Element.text parameters.totalPriceString
                 , Element.text " to the "
                 , EH.initiator []
                 , Element.text " according to the following "
@@ -215,7 +215,7 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
                 , Element.text " does not "
                 , EH.methodName "claim"
                 , Element.text " within "
-                , EH.timeValue parameters.depositDeadlineInterval
+                , EH.timeValue parameters.autoabortInterval
                 , Element.text ", "
                 , EH.sectionReference "the contract is closed"
                 , Element.text ", and the balance of "
@@ -239,7 +239,7 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
                         , Element.text " faces the same punishment ("
                         , EH.tokenValue claimFailBurnAmount
                         , Element.text " burned), and the rest of his deposit ("
-                        , EH.tokenValue (TokenValue.sub parameters.uncoiningAmount claimFailBurnAmount)
+                        , EH.tokenValue (TokenValue.sub parameters.tradeAmount claimFailBurnAmount)
                         , Element.text ") is refunded."
                         ]
                     ]
@@ -281,7 +281,7 @@ fiatTransferMethodsElement transferMethodsString =
         ]
 
 
-claimedPhaseElement : ViewMode -> Contracts.Types.FullParameters -> TokenValue -> Element.Element Msg
+claimedPhaseElement : ViewMode -> Contracts.Types.CreateParameters -> TokenValue -> Element.Element Msg
 claimedPhaseElement viewMode parameters postCommitBalance =
     Element.column (phaseStyleWithViewMode Contracts.Types.Claimed viewMode)
         [ phaseHeading Contracts.Types.Claimed parameters viewMode
@@ -291,7 +291,7 @@ claimedPhaseElement viewMode parameters postCommitBalance =
                     [ Element.text "The "
                     , EH.initiator []
                     , Element.text " is expected to verify with certainty whether he has received at least "
-                    , EH.usdValue parameters.uncoiningAmount
+                    , EH.usdValue parameters.tradeAmount
                     , Element.text " from the "
                     , EH.responder []
                     , Element.text "."
@@ -309,7 +309,7 @@ claimedPhaseElement viewMode parameters postCommitBalance =
                             ]
                         , Element.paragraph []
                             [ Element.text "If the transfer has not taken place, or if the transfer amount was less than "
-                            , EH.usdValue parameters.uncoiningAmount
+                            , EH.usdValue parameters.tradeAmount
                             , Element.text ", the "
                             , EH.initiator []
                             , Element.text " is expected to execute the "
@@ -363,7 +363,7 @@ claimedPhaseElement viewMode parameters postCommitBalance =
         ]
 
 
-oldClaimedPhaseElement : ViewMode -> Contracts.Types.FullParameters -> TokenValue -> Element.Element Msg
+oldClaimedPhaseElement : ViewMode -> Contracts.Types.CreateParameters -> TokenValue -> Element.Element Msg
 oldClaimedPhaseElement viewMode parameters postCommitBalance =
     Element.column (phaseStyleWithViewMode Contracts.Types.Claimed viewMode)
         [ phaseHeading Contracts.Types.Claimed parameters viewMode
@@ -394,14 +394,14 @@ oldClaimedPhaseElement viewMode parameters postCommitBalance =
                         , Element.text " is expected to verify with certainty whether the "
                         , EH.responder []
                         , Element.text " has irreversibly transferred at least "
-                        , EH.usdValue parameters.uncoiningAmount
+                        , EH.usdValue parameters.tradeAmount
                         , Element.text " to the "
                         , EH.initiator []
                         , Element.text "."
                         ]
                     , Element.paragraph []
                         [ Element.text "If the transfer has taken place for at least "
-                        , EH.usdValue parameters.uncoiningAmount
+                        , EH.usdValue parameters.tradeAmount
                         , Element.text ", the "
                         , EH.initiator []
                         , Element.text " is expected to execute the "
@@ -416,7 +416,7 @@ oldClaimedPhaseElement viewMode parameters postCommitBalance =
                         ]
                     , Element.paragraph []
                         [ Element.text "If the transfer has not taken place, or if the transfer amount was less than "
-                        , EH.usdValue parameters.uncoiningAmount
+                        , EH.usdValue parameters.tradeAmount
                         , Element.text ", the "
                         , EH.initiator []
                         , Element.text " is expected to execute the "
@@ -428,7 +428,7 @@ oldClaimedPhaseElement viewMode parameters postCommitBalance =
                         , Element.text ". Thus, the "
                         , EH.responder []
                         , Element.text " will have suffered a loss of "
-                        , EH.tokenValue parameters.responderDeposit
+                        , EH.tokenValue parameters.buyerDeposit
                         , Element.text " for failing to make the deposit."
                         ]
                     , Element.paragraph []
@@ -503,7 +503,7 @@ phaseStyleWithViewMode phase viewMode =
                 ]
 
 
-phaseHeading : Contracts.Types.Phase -> Contracts.Types.FullParameters -> ViewMode -> Element.Element msg
+phaseHeading : Contracts.Types.Phase -> Contracts.Types.CreateParameters -> ViewMode -> Element.Element msg
 phaseHeading phase parameters viewMode =
     let
         textElement =
@@ -526,7 +526,7 @@ phaseHeading phase parameters viewMode =
         ]
 
 
-phaseCountdownString : Contracts.Types.Phase -> Contracts.Types.FullParameters -> ViewContext -> String
+phaseCountdownString : Contracts.Types.Phase -> Contracts.Types.CreateParameters -> ViewContext -> String
 phaseCountdownString phase parameters context =
     if phase == context.state.phase then
         "("
@@ -542,7 +542,7 @@ phaseCountdownString phase parameters context =
         ""
 
 
-phaseInterval : Contracts.Types.Phase -> Contracts.Types.FullParameters -> Time.Posix
+phaseInterval : Contracts.Types.Phase -> Contracts.Types.CreateParameters -> Time.Posix
 phaseInterval phase parameters =
     case phase of
         Contracts.Types.Created ->
@@ -552,7 +552,7 @@ phaseInterval phase parameters =
             parameters.autorecallInterval
 
         Contracts.Types.Committed ->
-            parameters.depositDeadlineInterval
+            parameters.autoabortInterval
 
         Contracts.Types.Claimed ->
             parameters.autoreleaseInterval

@@ -16,16 +16,16 @@ import TokenValue
 
 root : Time.Posix -> Model -> Element.Element Msg
 root time model =
-    viewList time model.ttArray
+    viewList time model.trades
 
 
 viewList : Time.Posix -> Array TTListItem -> Element.Element Msg
-viewList time ttArray =
+viewList time trades =
     Element.column
         [ Element.width Element.fill
         , Element.spacing 10
         ]
-        (ttArray
+        (trades
             |> Array.toList
             |> List.filter
                 (\listItem ->
@@ -64,17 +64,9 @@ viewListItem time info =
                         , Element.Border.width 1
                         , Element.spacing 3
                         ]
-                        [ Element.el [ Element.centerX, Element.Font.size 24 ] (Element.text ((parameters.uncoiningAmount |> TokenValue.renderToString (Just 2)) ++ " Dai"))
+                        [ Element.el [ Element.centerX, Element.Font.size 24 ] (Element.text ((parameters.tradeAmount |> TokenValue.renderToString (Just 2)) ++ " Dai"))
                         , Element.el [ Element.centerX, Element.Font.size 16, Element.Font.italic ] (Element.text "for")
-                        , Element.el [ Element.centerX, Element.Font.size 24 ]
-                            (Element.text
-                                (if TokenValue.isZero parameters.price then
-                                    "???"
-
-                                 else
-                                    "$" ++ (parameters.price |> TokenValue.renderToString (Just 2))
-                                )
-                            )
+                        , Element.el [ Element.centerX, Element.Font.size 24 ] (Element.text parameters.totalPriceString)
                         ]
                     , Element.column
                         [ Element.width (Element.fillPortion 1)
@@ -105,7 +97,7 @@ viewListItem time info =
                         [ Element.el [ Element.centerX, Element.Font.size 18 ]
                             (Element.text
                                 ("Auto-abort time: "
-                                    ++ TimeHelpers.toString parameters.depositDeadlineInterval
+                                    ++ TimeHelpers.toString parameters.autoabortInterval
                                 )
                             )
                         , Element.el [ Element.centerX, Element.Font.size 18 ]
