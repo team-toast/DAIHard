@@ -7,23 +7,47 @@ var commonModule = (function () {
 
     var pub = {};
 
-    pub.genKeypair = function (signSeedMsg, web3Account, callback) {
-        web3.personal.sign(web3.fromUtf8(signSeedMsg), web3Account, function (err, sigString) {
-            if (err) {
-                return callback("error signing signSeedMsg: " + toString(err), null);
-            }
-            var prng = forge.random.createInstance();
-            prng.seedFileSync = function (needed) {
-                return repeatAndTruncateToLength(sigString, needed);
-            }
-
-            userKeypair = forge.rsa.generateKeyPair({ bits: 1024, prng: prng, algorithm: 'PRIMEINC' });
-
-            console.log("hexed pubkey n", userKeypair.publicKey.n.toString(16));
-
-            callback(null, userKeypair.publicKey.n.toString(16));
+    var genCommKeySeedWithWeb3 = function (signSeedMsg, web3Account, seedCallback) {
+        web3.personal.sign(web3.fromUtf8(signSeedMsg), web3Account, function (err, sig) {
+            seedCallback(err, sig);
         });
+    }
+
+    var genKeypairFromSeed = function (seed) {
+        var prng = forge.random.createInstance();
+        prng.seedFileSync = function (needed) {
+            return repeatAndTruncateToLength(seed, needed);
+        }
+
+        return forge.rsa.generateKeyPair({ bits: 1024, prng: prng, algorithm: 'PRIMEINC' });
     };
+
+    pub.prepareKeypair = function (signSeedMsg, web3Account, pubkeyCallback) {
+        //first try loading seed for the web3Account
+        var storageKey = "commKeySeed:" + web3Account;
+
+        if (typeof (Storage) !== "undefined") {
+            var loadedSeed = localStorage.getItem(storageKey);
+            if (loadedSeed != null) {
+                userKeypair = genKeypairFromSeed(loadedSeed);
+                console.log("generated comm key from saved seed.");
+
+                return pubkeyCallback(null, userKeypair.publicKey.n.toString(16));
+            }
+        }
+
+        //If we couldn't load it, generate and store it.
+        genCommKeySeedWithWeb3(signSeedMsg, web3Account, function (err, generatedSeed) {
+            if (err || generatedSeed == null) { // TFW you don't trust your JS function's error reporting
+                return pubkeyCallback("error generating comm key seed: " + err, null);
+            }
+            localStorage.setItem(storageKey, generatedSeed);
+            userKeypair = genKeypairFromSeed(generatedSeed);
+            console.log("generated comm key from new seed.");
+
+            return pubkeyCallback(null, userKeypair.publicKey.n.toString(16));
+        });
+    }
 
     pub.encryptToPubkeys = function (message, pubkeyStrings) {
         var encryptResults = [];

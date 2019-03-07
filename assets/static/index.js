@@ -21,29 +21,8 @@ window.addEventListener('load', function () {
                     factoryAddressString: factoryAddress
                 }
             });
-            elm_ethereum_ports.txSentry(app.ports.txOut, app.ports.txIn, web3);
-            elm_ethereum_ports.walletSentry(app.ports.walletSentryPort, web3);
-            app.ports.genPrivkey.subscribe(function (signSeedMsg) {
-                secureComms.genKeypair(signSeedMsg, web3.eth.accounts[0], function (err, res) {
-                    app.ports.userPubkeyResult.send(res);
-                })
-            });
-            app.ports.encryptToPubkeys.subscribe(function (data) {
-                var encryptedMessages = secureComms.encryptToPubkeys(data.message, data.pubkeyHexStrings);
+            portStuff(app);
 
-                app.ports.encryptionFinished.send(encryptedMessages);
-            });
-            app.ports.decryptMessage.subscribe(function (data) {
-                var id = data.id;
-
-                var result = secureComms.decryptForUser(data.encapsulation, data.iv, data.tag, data.encrypted);
-                if (!result) {
-                    console.log("Uh oh! Decryption didn't work...");
-                }
-                console.log("decrypt result: ", result);
-
-                app.ports.decryptionFinished.send({ id: id, message: result })
-            });
         });
     } else {
         window.app = Elm.App.init({
@@ -58,3 +37,29 @@ window.addEventListener('load', function () {
         console.log("Metamask not detected.");
     }
 });
+
+function portStuff(app) {
+    elm_ethereum_ports.txSentry(app.ports.txOut, app.ports.txIn, web3);
+    elm_ethereum_ports.walletSentry(app.ports.walletSentryPort, web3);
+    app.ports.genPrivkey.subscribe(function (signSeedMsg) {
+        secureComms.prepareKeypair(signSeedMsg, web3.eth.accounts[0], function (err, res) {
+            app.ports.userPubkeyResult.send(res);
+        })
+    });
+    app.ports.encryptToPubkeys.subscribe(function (data) {
+        var encryptedMessages = secureComms.encryptToPubkeys(data.message, data.pubkeyHexStrings);
+
+        app.ports.encryptionFinished.send(encryptedMessages);
+    });
+    app.ports.decryptMessage.subscribe(function (data) {
+        var id = data.id;
+
+        var result = secureComms.decryptForUser(data.encapsulation, data.iv, data.tag, data.encrypted);
+        if (!result) {
+            console.log("Uh oh! Decryption didn't work...");
+        }
+        console.log("decrypt result: ", result);
+
+        app.ports.decryptionFinished.send({ id: id, message: result })
+    });
+}
