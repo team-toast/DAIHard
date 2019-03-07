@@ -198,7 +198,13 @@ buildCreateParameters initiatorInfo userParameters =
 
 testTransferMethodList : List TransferMethod
 testTransferMethodList =
-    [ TransferMethods.CashDrop
+    [ TransferMethods.Custom "custom type! These are a bunch of dummy transfer methods!"
+    , TransferMethods.CashDrop
+        { location = TransferMethods.Location 10 20
+        , radius = 5
+        , description = Just "hi"
+        }
+    , TransferMethods.CashHandoff
         { location = TransferMethods.Location 10 20
         , radius = 5
         , description = Just "hi"
