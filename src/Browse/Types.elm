@@ -23,7 +23,7 @@ type alias Model =
 type Msg
     = NumTradesFetched (Result Http.Error BigInt)
     | CreationInfoFetched Int (Result Http.Error TTF.CreatedTrade)
-    | ParametersFetched Int (Result Http.Error (Maybe Contracts.Types.CreateParameters))
+    | ParametersFetched Int (Result Http.Error (Result String Contracts.Types.CreateParameters))
     | StateFetched Int (Result Http.Error (Maybe Contracts.Types.State))
     | ItemClicked Int
 

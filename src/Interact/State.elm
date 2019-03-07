@@ -147,13 +147,17 @@ update msg model =
 
         ParametersFetched fetchResult ->
             case fetchResult of
-                Ok (Just parameters) ->
-                    ( { model | tradeInfo = model.tradeInfo |> updateParameters parameters }, Cmd.none, ChainCmd.none )
-
-                _ ->
+                Ok (Ok parameters) ->
                     let
                         _ =
-                            EthHelpers.logBadFetchResultMaybe fetchResult
+                            Debug.log "transferMethods" parameters.transferMethods
+                    in
+                    ( { model | tradeInfo = model.tradeInfo |> updateParameters parameters }, Cmd.none, ChainCmd.none )
+
+                badResult ->
+                    let
+                        _ =
+                            Debug.log "bad parametersFetched result" badResult
                     in
                     ( model, Cmd.none, ChainCmd.none )
 

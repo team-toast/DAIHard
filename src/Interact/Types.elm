@@ -82,7 +82,7 @@ type alias Model =
 type Msg
     = CreationInfoFetched (Result Http.Error TTF.CreatedTrade)
     | StateFetched (Result Http.Error (Maybe Contracts.Types.State))
-    | ParametersFetched (Result Http.Error (Maybe Contracts.Types.CreateParameters))
+    | ParametersFetched (Result Http.Error (Result String Contracts.Types.CreateParameters))
     | ContractAction RenderContract.Types.Msg
     | PreCommitApproveMined (Result String Eth.Types.TxReceipt)
     | ContractActionMined (Result String Eth.Types.TxReceipt)

@@ -188,7 +188,9 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
                 , EH.sectionReference "Claimed Phase"
                 , Element.text "."
                 ]
-            , fiatTransferMethodsElement parameters.transferMethods
+
+            -- , fiatTransferMethodsElement parameters.transferMethods
+            , Element.text "transfer methods display broken :("
             , Element.paragraph []
                 [ Element.text "The "
                 , EH.initiator []

@@ -98,16 +98,16 @@ update msg model =
 
         ParametersFetched id fetchResult ->
             case fetchResult of
-                Ok (Just parameters) ->
+                Ok (Ok parameters) ->
                     ( model |> updateTradeParameters id parameters
                     , Cmd.none
                     , Nothing
                     )
 
-                _ ->
+                badResult ->
                     let
                         _ =
-                            EthHelpers.logBadFetchResultMaybe fetchResult
+                            Debug.log "bad parametersFetched result" badResult
                     in
                     ( model, Cmd.none, Nothing )
 

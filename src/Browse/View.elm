@@ -88,7 +88,7 @@ viewListItem time info =
                         , Element.height Element.fill
                         , Element.Border.width 1
                         ]
-                        (Element.paragraph [] [ Element.text parameters.transferMethods ])
+                        (Element.paragraph [] [ Element.text "displaying transerMethods currently broken" ])
                     , Element.column
                         [ Element.width (Element.fillPortion 2)
                         , Element.centerY
