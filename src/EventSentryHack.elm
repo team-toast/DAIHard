@@ -11,7 +11,6 @@ import Task
 type alias EventSentry eventType msg =
     { httpProvider : Eth.Types.HttpProvider
     , contractAddress : Address
-    , logFilterMethod : Address -> Eth.Types.LogFilter
     , eventDecoder : Decoder eventType
     , msgConstructor : Result Http.Error (List (Eth.Types.Event eventType)) -> msg
     , nextBlockToScan : Int
@@ -27,16 +26,14 @@ type Msg
 init :
     Eth.Types.HttpProvider
     -> Address
-    -> (Address -> Eth.Types.LogFilter)
     -> Decoder eventType
     -> (Result Http.Error (List (Eth.Types.Event eventType)) -> msg)
     -> Int
     -> (Msg -> msg)
     -> EventSentry eventType msg
-init httpProvider contractAddress logFilterMethod eventDecoder msgConstructor startBlock tagger =
+init httpProvider contractAddress eventDecoder msgConstructor startBlock tagger =
     { httpProvider = httpProvider
     , contractAddress = contractAddress
-    , logFilterMethod = logFilterMethod
     , eventDecoder = eventDecoder
     , msgConstructor = msgConstructor
     , nextBlockToScan = startBlock
@@ -59,7 +56,6 @@ update msg model =
                                 fetchEventsCmd
                                     model.httpProvider
                                     model.contractAddress
-                                    model.logFilterMethod
                                     ( Eth.Types.BlockNum model.nextBlockToScan, Eth.Types.BlockNum latestBlocknum )
                                     model.eventDecoder
                                     model.msgConstructor
@@ -95,27 +91,21 @@ fetchLatestBlockCmd httpProvider msgConstructor =
 fetchEventsCmd :
     Eth.Types.HttpProvider
     -> Address
-    -> (Address -> Eth.Types.LogFilter)
     -> ( Eth.Types.BlockId, Eth.Types.BlockId )
     -> Decoder eventType
     -> (Result Http.Error (List (Eth.Types.Event eventType)) -> msg)
     -> Cmd msg
-fetchEventsCmd httpProvider contractAddress lfMaker blockrange eventDecoder msgConstructor =
+fetchEventsCmd httpProvider contractAddress ( fromBlock, toBlock ) eventDecoder msgConstructor =
     let
         logFilter =
-            lfMaker contractAddress
-                |> withBlockrange blockrange
+            { address = contractAddress
+            , fromBlock = fromBlock
+            , toBlock = toBlock
+            , topics = []
+            }
     in
     Eth.getDecodedLogs
         httpProvider
         logFilter
         (Eth.Decode.event eventDecoder)
         |> Task.attempt msgConstructor
-
-
-withBlockrange : ( Eth.Types.BlockId, Eth.Types.BlockId ) -> Eth.Types.LogFilter -> Eth.Types.LogFilter
-withBlockrange ( fromBlock, toBlock ) lf =
-    { lf
-        | fromBlock = fromBlock
-        , toBlock = toBlock
-    }

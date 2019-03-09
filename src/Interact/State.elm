@@ -36,7 +36,7 @@ init ethNode factoryAddress tokenAddress tokenDecimals userInfo tradeId =
       , tokenDecimals = tokenDecimals
       , tradeId = tradeId
       , tradeInfo = NothingLoaded
-      , messages = Array.empty
+      , history = Array.empty
       , messageInput = ""
       , eventSentry = Nothing
       }
@@ -95,13 +95,6 @@ update msg model =
                             EventSentryHack.init
                                 model.ethNode.http
                                 newCreationInfo.address
-                                (\address ->
-                                    { fromBlock = Eth.Types.LatestBlock
-                                    , toBlock = Eth.Types.LatestBlock
-                                    , address = address
-                                    , topics = []
-                                    }
-                                )
                                 Contracts.Types.eventDecoder
                                 ToastytradeEventsFetched
                                 newCreationInfo.blocknum
@@ -159,161 +152,15 @@ update msg model =
             case fetchResult of
                 Ok events ->
                     let
-                        _ =
-                            events
-                                |> List.map
-                                    (\event ->
-                                        Debug.log "return data" event.returnData
-                                    )
-                    in
-                    ( model, Cmd.none, ChainCmd.none )
-
-                Err errstr ->
-                    let
-                        _ =
-                            Debug.log "err with events fetch" errstr
-                    in
-                    ( model, Cmd.none, ChainCmd.none )
-
-        InitiatorStatementsFetched fetchResult ->
-            case fetchResult of
-                Ok events ->
-                    let
-                        nextMessageID =
-                            Array.length model.messages
-
-                        newMessages =
-                            events
-                                |> List.map
-                                    (\event ->
-                                        { who = Initiator
-                                        , message =
-                                            case
-                                                ( decodeEncryptedMessage event.returnData.encryptedForInitiator
-                                                , decodeEncryptedMessage event.returnData.encryptedForResponder
-                                                )
-                                            of
-                                                ( Just decodedForInitiator, Just decodedForResponder ) ->
-                                                    Encrypted ( decodedForInitiator, decodedForResponder )
-
-                                                _ ->
-                                                    FailedDecode
-                                        , blocknum = event.blockNumber
-                                        }
-                                    )
-                                |> Array.fromList
-
-                        newModel =
-                            { model
-                                | messages =
-                                    Array.append model.messages newMessages
-                            }
-
-                        cmd =
-                            let
-                                userRole =
-                                    Maybe.map2
-                                        getUserRole
-                                        (case model.tradeInfo of
-                                            Loaded tradeInfo ->
-                                                Just tradeInfo
-
-                                            troublesomeGarbage ->
-                                                let
-                                                    _ =
-                                                        Debug.log "Trying to build decryption command, but missing crucial info" troublesomeGarbage
-                                                in
-                                                Nothing
-                                        )
-                                        (model.userInfo
-                                            |> Maybe.map (\i -> i.address)
-                                        )
-                                        |> Maybe.Extra.join
-                            in
-                            case userRole of
-                                Nothing ->
-                                    Cmd.none
-
-                                Just role ->
-                                    decryptNewMessagesCmd newModel role
+                        ( newModel, cmd ) =
+                            handleNewEvents events model
                     in
                     ( newModel, cmd, ChainCmd.none )
 
                 Err errstr ->
                     let
                         _ =
-                            Debug.log "error with initiator statement fetch" errstr
-                    in
-                    ( model, Cmd.none, ChainCmd.none )
-
-        ResponderStatementsFetched fetchResult ->
-            case fetchResult of
-                Ok events ->
-                    let
-                        nextMessageID =
-                            Array.length model.messages
-
-                        newMessages =
-                            events
-                                |> List.map
-                                    (\event ->
-                                        { who = Responder
-                                        , message =
-                                            case
-                                                ( decodeEncryptedMessage event.returnData.encryptedForInitiator
-                                                , decodeEncryptedMessage event.returnData.encryptedForResponder
-                                                )
-                                            of
-                                                ( Just decodedForInitiator, Just decodedForResponder ) ->
-                                                    Encrypted ( decodedForInitiator, decodedForResponder )
-
-                                                _ ->
-                                                    FailedDecode
-                                        , blocknum = event.blockNumber
-                                        }
-                                    )
-                                |> Array.fromList
-
-                        newModel =
-                            { model
-                                | messages =
-                                    Array.append model.messages newMessages
-                            }
-
-                        cmd =
-                            let
-                                userRole =
-                                    Maybe.map2
-                                        getUserRole
-                                        (case model.tradeInfo of
-                                            Loaded tradeInfo ->
-                                                Just tradeInfo
-
-                                            troublesomeGarbage ->
-                                                let
-                                                    _ =
-                                                        Debug.log "Trying to build decryption command, but missing crucial info" troublesomeGarbage
-                                                in
-                                                Nothing
-                                        )
-                                        (model.userInfo
-                                            |> Maybe.map (\i -> i.address)
-                                        )
-                                        |> Maybe.Extra.join
-                            in
-                            case userRole of
-                                Nothing ->
-                                    Cmd.none
-
-                                Just role ->
-                                    decryptNewMessagesCmd newModel role
-                    in
-                    ( newModel, cmd, ChainCmd.none )
-
-                Err errstr ->
-                    let
-                        _ =
-                            Debug.log "error with initiator statement fetch" errstr
+                            Debug.log "Error with ToastytradeEventsFetched" errstr
                     in
                     ( model, Cmd.none, ChainCmd.none )
 
@@ -510,21 +357,35 @@ update msg model =
         DecryptionFinished decryptedMessageValue ->
             case decodeDecryptionResult decryptedMessageValue of
                 Ok ( id, message ) ->
-                    case Array.get id model.messages of
-                        Just commMessage ->
-                            let
-                                newCommMessage =
-                                    { commMessage
-                                        | message = Decrypted message
-                                    }
+                    case Array.get id model.history of
+                        Just historyEvent ->
+                            case historyEvent.eventInfo of
+                                Statement commMessage ->
+                                    let
+                                        newCommMessage =
+                                            { commMessage
+                                                | message = Decrypted message
+                                            }
 
-                                newMessageArray =
-                                    Array.set id newCommMessage model.messages
-                            in
-                            ( { model | messages = newMessageArray }
-                            , Cmd.none
-                            , ChainCmd.none
-                            )
+                                        newHistoryEvent =
+                                            { historyEvent
+                                                | eventInfo = Statement newCommMessage
+                                            }
+
+                                        newHistory =
+                                            Array.set id newHistoryEvent model.history
+                                    in
+                                    ( { model | history = newHistory }
+                                    , Cmd.none
+                                    , ChainCmd.none
+                                    )
+
+                                _ ->
+                                    let
+                                        _ =
+                                            Debug.log "got a decryption result, but for an event that is not a message!" ""
+                                    in
+                                    ( model, Cmd.none, ChainCmd.none )
 
                         Nothing ->
                             let
@@ -563,6 +424,117 @@ update msg model =
                             Debug.log "get an eventSentry msg, but there aren't any eventSentries..!?" eventMsg
                     in
                     ( model, Cmd.none, ChainCmd.none )
+
+
+handleNewEvents : List (Eth.Types.Event Contracts.Types.ToastytradeEvent) -> Model -> ( Model, Cmd Msg )
+handleNewEvents toastytradeEvents model =
+    let
+        newEvents =
+            toastytradeEvents
+                |> List.map
+                    (\ttEvent ->
+                        let
+                            eventInfo =
+                                case ttEvent.returnData of
+                                    Contracts.Types.InitiatorStatementLogEvent data ->
+                                        Statement <|
+                                            { who = Initiator
+                                            , message =
+                                                case
+                                                    ( decodeEncryptedMessage data.encryptedForInitiator
+                                                    , decodeEncryptedMessage data.encryptedForResponder
+                                                    )
+                                                of
+                                                    ( Just decodedForInitiator, Just decodedForResponder ) ->
+                                                        Encrypted ( decodedForInitiator, decodedForResponder )
+
+                                                    _ ->
+                                                        FailedDecode
+                                            , blocknum = ttEvent.blockNumber
+                                            }
+
+                                    Contracts.Types.ResponderStatementLogEvent data ->
+                                        Statement <|
+                                            { who = Responder
+                                            , message =
+                                                case
+                                                    ( decodeEncryptedMessage data.encryptedForInitiator
+                                                    , decodeEncryptedMessage data.encryptedForResponder
+                                                    )
+                                                of
+                                                    ( Just decodedForInitiator, Just decodedForResponder ) ->
+                                                        Encrypted ( decodedForInitiator, decodedForResponder )
+
+                                                    _ ->
+                                                        FailedDecode
+                                            , blocknum = ttEvent.blockNumber
+                                            }
+
+                                    Contracts.Types.CommittedEvent data ->
+                                        StateChange (Committed data.responder)
+
+                                    Contracts.Types.RecalledEvent ->
+                                        StateChange Recalled
+
+                                    Contracts.Types.AbortedEvent ->
+                                        StateChange Aborted
+
+                                    Contracts.Types.ReleasedEvent ->
+                                        StateChange Released
+
+                                    Contracts.Types.BurnedEvent ->
+                                        StateChange Burned
+
+                                    Contracts.Types.PhaseChangeEvent data ->
+                                        if data.newPhase == BigInt.fromInt 1 then
+                                            StateChange Opened
+
+                                        else if data.newPhase == BigInt.fromInt 3 then
+                                            StateChange Claimed
+
+                                        else
+                                            StateChange RedundantEvent
+                        in
+                        { eventInfo = eventInfo
+                        , blocknum = ttEvent.blockNumber
+                        , time = Nothing
+                        }
+                    )
+                |> Array.fromList
+
+        userRole =
+            Maybe.map2
+                getUserRole
+                (case model.tradeInfo of
+                    Loaded tradeInfo ->
+                        Just tradeInfo
+
+                    troublesomeGarbage ->
+                        let
+                            _ =
+                                Debug.log "Trying to build decryption command, but missing crucial info" troublesomeGarbage
+                        in
+                        Nothing
+                )
+                (model.userInfo
+                    |> Maybe.map (\i -> i.address)
+                )
+                |> Maybe.Extra.join
+
+        cmd =
+            case userRole of
+                Just role ->
+                    decryptNewMessagesCmd model role
+
+                Nothing ->
+                    Cmd.none
+    in
+    ( { model
+        | history =
+            Array.append model.history newEvents
+      }
+    , cmd
+    )
 
 
 encodeEncryptionArgs : String -> List String -> Json.Encode.Value
@@ -698,23 +670,28 @@ decodeSizedStringHelper remaining processed =
 
 decryptNewMessagesCmd : Model -> InitiatorOrResponder -> Cmd Msg
 decryptNewMessagesCmd model userRole =
-    model.messages
+    model.history
         |> Array.toIndexedList
         |> List.map
-            (\( id, commMessage ) ->
-                case commMessage.message of
-                    Encrypted messages ->
-                        let
-                            encryptedMessage =
-                                case userRole of
-                                    Initiator ->
-                                        Tuple.first messages
+            (\( id, historyEvent ) ->
+                case historyEvent.eventInfo of
+                    Statement commMessage ->
+                        case commMessage.message of
+                            Encrypted messages ->
+                                let
+                                    encryptedMessage =
+                                        case userRole of
+                                            Initiator ->
+                                                Tuple.first messages
 
-                                    Responder ->
-                                        Tuple.second messages
-                        in
-                        encodeDecryptionArgs id encryptedMessage
-                            |> decryptMessage
+                                            Responder ->
+                                                Tuple.second messages
+                                in
+                                encodeDecryptionArgs id encryptedMessage
+                                    |> decryptMessage
+
+                            _ ->
+                                Cmd.none
 
                     _ ->
                         Cmd.none
