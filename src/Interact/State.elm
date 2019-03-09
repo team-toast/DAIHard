@@ -11,6 +11,7 @@ import Contracts.Types
 import Contracts.Wrappers
 import Eth
 import Eth.Types exposing (Address)
+import Eth.Utils
 import EthHelpers
 import EventSentryHack exposing (EventSentry)
 import Interact.Types exposing (..)
@@ -37,7 +38,7 @@ init ethNode factoryAddress tokenAddress tokenDecimals userInfo tradeId =
       , tradeInfo = NothingLoaded
       , messages = Array.empty
       , messageInput = ""
-      , eventSentries = Nothing
+      , eventSentry = Nothing
       }
     , cmd
     , ChainCmd.none
@@ -58,12 +59,12 @@ update : Msg -> Model -> ( Model, Cmd Msg, ChainCmd Msg )
 update msg model =
     case msg of
         Refresh time ->
-            case ( model.tradeInfo, model.eventSentries ) of
-                ( Loaded tradeInfo, Just sentries ) ->
+            case ( model.tradeInfo, model.eventSentry ) of
+                ( Loaded tradeInfo, Just sentry ) ->
                     ( model
                     , Cmd.batch
                         [ Contracts.Wrappers.getStateCmd model.ethNode model.tokenDecimals tradeInfo.creationInfo.address StateFetched
-                        , getSentryPollCmd sentries
+                        , EventSentryHack.pollForChanges sentry
                         ]
                     , ChainCmd.none
                     )
@@ -90,32 +91,29 @@ update msg model =
                                         0
                             }
 
-                        sentries =
-                            ( EventSentryHack.init
+                        sentry =
+                            EventSentryHack.init
                                 model.ethNode.http
                                 newCreationInfo.address
-                                TT.initiatorStatementLogEvent
-                                TT.initiatorStatementLogDecoder
-                                InitiatorStatementsFetched
+                                (\address ->
+                                    { fromBlock = Eth.Types.LatestBlock
+                                    , toBlock = Eth.Types.LatestBlock
+                                    , address = address
+                                    , topics = []
+                                    }
+                                )
+                                Contracts.Types.eventDecoder
+                                ToastytradeEventsFetched
                                 newCreationInfo.blocknum
-                                InitiatorStatementEventSentryMsg
-                            , EventSentryHack.init
-                                model.ethNode.http
-                                newCreationInfo.address
-                                TT.responderStatementLogEvent
-                                TT.responderStatementLogDecoder
-                                ResponderStatementsFetched
-                                newCreationInfo.blocknum
-                                ResponderStatementEventSentryMsg
-                            )
+                                EventSentryMsg
 
                         pollCmd =
-                            getSentryPollCmd sentries
+                            EventSentryHack.pollForChanges sentry
 
                         newModel =
                             { model
                                 | tradeInfo = partialInfo newCreationInfo
-                                , eventSentries = Just sentries
+                                , eventSentry = Just sentry
                             }
                     in
                     ( newModel
@@ -154,6 +152,26 @@ update msg model =
                     let
                         _ =
                             EthHelpers.logBadFetchResultMaybe fetchResult
+                    in
+                    ( model, Cmd.none, ChainCmd.none )
+
+        ToastytradeEventsFetched fetchResult ->
+            case fetchResult of
+                Ok events ->
+                    let
+                        _ =
+                            events
+                                |> List.map
+                                    (\event ->
+                                        Debug.log "return data" event.returnData
+                                    )
+                    in
+                    ( model, Cmd.none, ChainCmd.none )
+
+                Err errstr ->
+                    let
+                        _ =
+                            Debug.log "err with events fetch" errstr
                     in
                     ( model, Cmd.none, ChainCmd.none )
 
@@ -522,44 +540,18 @@ update msg model =
                     in
                     ( model, Cmd.none, ChainCmd.none )
 
-        InitiatorStatementEventSentryMsg eventMsg ->
-            case model.eventSentries of
-                Just eventSentries ->
+        EventSentryMsg eventMsg ->
+            case model.eventSentry of
+                Just eventSentry ->
                     let
                         ( newEventSentry, cmd ) =
                             EventSentryHack.update
                                 eventMsg
-                                (Tuple.first eventSentries)
+                                eventSentry
                     in
                     ( { model
-                        | eventSentries =
-                            Just
-                                ( newEventSentry, Tuple.second eventSentries )
-                      }
-                    , cmd
-                    , ChainCmd.none
-                    )
-
-                Nothing ->
-                    let
-                        _ =
-                            Debug.log "get an eventSentry msg, but there aren't any eventSentries..!?" eventMsg
-                    in
-                    ( model, Cmd.none, ChainCmd.none )
-
-        ResponderStatementEventSentryMsg eventMsg ->
-            case model.eventSentries of
-                Just eventSentries ->
-                    let
-                        ( newEventSentry, cmd ) =
-                            EventSentryHack.update
-                                eventMsg
-                                (Tuple.second eventSentries)
-                    in
-                    ( { model
-                        | eventSentries =
-                            Just
-                                ( Tuple.first eventSentries, newEventSentry )
+                        | eventSentry =
+                            Just newEventSentry
                       }
                     , cmd
                     , ChainCmd.none
@@ -744,14 +736,6 @@ getCommPubkeys tradeInfo =
                     Debug.log "Trying to encrypt a message, but can't find the responderCommPubkey! Is the contract still in the Open phase?" ""
             in
             []
-
-
-getSentryPollCmd : ( EventSentry TT.InitiatorStatementLog Msg, EventSentry TT.ResponderStatementLog Msg ) -> Cmd Msg
-getSentryPollCmd sentries =
-    Cmd.batch
-        [ EventSentryHack.pollForChanges (Tuple.first sentries)
-        , EventSentryHack.pollForChanges (Tuple.second sentries)
-        ]
 
 
 genericCustomSend =

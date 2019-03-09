@@ -75,7 +75,7 @@ type alias Model =
     , tradeInfo : TradeInfo
     , messages : Array CommMessage
     , messageInput : String
-    , eventSentries : Maybe ( EventSentry TT.InitiatorStatementLog Msg, EventSentry TT.ResponderStatementLog Msg )
+    , eventSentry : Maybe (EventSentry Contracts.Types.ToastytradeEvent Msg)
     }
 
 
@@ -89,12 +89,12 @@ type Msg
     | Refresh Time.Posix
     | InitiatorStatementsFetched (Result Http.Error (List (Eth.Types.Event TT.InitiatorStatementLog)))
     | ResponderStatementsFetched (Result Http.Error (List (Eth.Types.Event TT.ResponderStatementLog)))
+    | ToastytradeEventsFetched (Result Http.Error (List (Eth.Types.Event Contracts.Types.ToastytradeEvent)))
     | MessageInputChanged String
     | MessageSubmit
     | EncryptionFinished Json.Decode.Value
     | DecryptionFinished Json.Decode.Value
-    | InitiatorStatementEventSentryMsg EventSentryHack.Msg
-    | ResponderStatementEventSentryMsg EventSentryHack.Msg
+    | EventSentryMsg EventSentryHack.Msg
 
 
 type TradeInfo

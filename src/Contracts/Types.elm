@@ -1,11 +1,14 @@
-module Contracts.Types exposing (CreateParameters, OpenMode(..), Phase(..), State, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, initiatorIsBuyerToOpenMode, openModeToInitiatorIsBuyer, phaseToString, txReceiptToCreatedToastytradeSellAddress, txReceiptToCreatedToastytradeSellId)
+module Contracts.Types exposing (CreateParameters, OpenMode(..), Phase(..), State, ToastytradeEvent(..), UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, initiatorIsBuyerToOpenMode, openModeToInitiatorIsBuyer, phaseToString, txReceiptToCreatedToastytradeSellAddress, txReceiptToCreatedToastytradeSellId)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
 import CommonTypes exposing (UserInfo)
 import Contracts.Generated.Toastytrade as TT
 import Eth.Types exposing (Address)
+import Eth.Utils
 import EthHelpers
+import Internal.Decode as EthInternalDecode
+import Json.Decode
 import Time
 import TimeHelpers
 import TokenValue exposing (TokenValue)
@@ -77,6 +80,56 @@ type alias State =
     , responder : Maybe Address
     , responderCommPubkey : Maybe String
     }
+
+
+type ToastytradeEvent
+    = CommittedEvent TT.Committed
+    | InitiatorStatementLogEvent TT.InitiatorStatementLog
+    | ResponderStatementLogEvent TT.ResponderStatementLog
+    | PhaseChangeEvent TT.PhaseChange
+    | RecalledEvent
+    | AbortedEvent
+    | ReleasedEvent
+    | BurnedEvent
+
+
+eventDecoder : Json.Decode.Decoder ToastytradeEvent
+eventDecoder =
+    topicDecoder 0
+        |> Json.Decode.andThen
+            (\hashedSig ->
+                if hashedSig == Eth.Utils.keccak256 "Committed(address)" then
+                    Json.Decode.map CommittedEvent TT.committedDecoder
+
+                else if hashedSig == Eth.Utils.keccak256 "InitiatorStatementLog(string,string)" then
+                    Json.Decode.map InitiatorStatementLogEvent TT.initiatorStatementLogDecoder
+
+                else if hashedSig == Eth.Utils.keccak256 "ResponderStatementLog(string,string)" then
+                    Json.Decode.map ResponderStatementLogEvent TT.responderStatementLogDecoder
+
+                else if hashedSig == Eth.Utils.keccak256 "PhaseChange(uint8)" then
+                    Json.Decode.map PhaseChangeEvent TT.phaseChangeDecoder
+
+                else if hashedSig == Eth.Utils.keccak256 "Recalled()" then
+                    Json.Decode.succeed RecalledEvent
+
+                else if hashedSig == Eth.Utils.keccak256 "Aborted()" then
+                    Json.Decode.succeed AbortedEvent
+
+                else if hashedSig == Eth.Utils.keccak256 "Released()" then
+                    Json.Decode.succeed ReleasedEvent
+
+                else if hashedSig == Eth.Utils.keccak256 "Burned" then
+                    Json.Decode.succeed BurnedEvent
+
+                else
+                    Json.Decode.fail "Unrecognized topic hash"
+            )
+
+
+topicDecoder : Int -> Json.Decode.Decoder Eth.Types.Hex
+topicDecoder index =
+    Json.Decode.field "topics" (Json.Decode.index 0 EthInternalDecode.hex)
 
 
 txReceiptToCreatedToastytradeSellAddress : Address -> Eth.Types.TxReceipt -> Result String Address
