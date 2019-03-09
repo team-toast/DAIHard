@@ -1,4 +1,4 @@
-module Interact.Types exposing (CommMessage, EncryptedMessage, InitiatorOrResponder(..), MessageContent(..), Model, Msg(..), TradeFullInfo, TradeInfo(..), TradePartialInfo, getUserRole, partialInfo, updateParameters, updateState)
+module Interact.Types exposing (CommMessage, EncryptedMessage, Event, EventInfo(..), InitiatorOrResponder(..), MessageContent(..), Model, Msg(..), StateChangeInfo(..), TradeFullInfo, TradeInfo(..), TradePartialInfo, getUserRole, partialInfo, updateParameters, updateState)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
@@ -73,9 +73,9 @@ type alias Model =
     , tokenDecimals : Int
     , tradeId : BigInt
     , tradeInfo : TradeInfo
-    , messages : Array CommMessage
+    , history : Array Event
     , messageInput : String
-    , eventSentries : Maybe ( EventSentry TT.InitiatorStatementLog Msg, EventSentry TT.ResponderStatementLog Msg )
+    , eventSentry : Maybe (EventSentry Contracts.Types.ToastytradeEvent Msg)
     }
 
 
@@ -87,14 +87,12 @@ type Msg
     | PreCommitApproveMined (Result String Eth.Types.TxReceipt)
     | ContractActionMined (Result String Eth.Types.TxReceipt)
     | Refresh Time.Posix
-    | InitiatorStatementsFetched (Result Http.Error (List (Eth.Types.Event TT.InitiatorStatementLog)))
-    | ResponderStatementsFetched (Result Http.Error (List (Eth.Types.Event TT.ResponderStatementLog)))
+    | ToastytradeEventsFetched (Result Http.Error (List (Eth.Types.Event Contracts.Types.ToastytradeEvent)))
     | MessageInputChanged String
     | MessageSubmit
     | EncryptionFinished Json.Decode.Value
     | DecryptionFinished Json.Decode.Value
-    | InitiatorStatementEventSentryMsg EventSentryHack.Msg
-    | ResponderStatementEventSentryMsg EventSentryHack.Msg
+    | EventSentryMsg EventSentryHack.Msg
 
 
 type TradeInfo
@@ -128,6 +126,18 @@ type InitiatorOrResponder
     | Responder
 
 
+type alias Event =
+    { eventInfo : EventInfo
+    , blocknum : Int
+    , time : Maybe Time.Posix
+    }
+
+
+type EventInfo
+    = Statement CommMessage
+    | StateChange StateChangeInfo
+
+
 type alias CommMessage =
     { who : InitiatorOrResponder
     , message : MessageContent
@@ -148,6 +158,17 @@ type alias EncryptedMessage =
     , tag : String
     , message : String
     }
+
+
+type StateChangeInfo
+    = Opened
+    | Recalled
+    | Committed Address
+    | Aborted
+    | Claimed
+    | Released
+    | Burned
+    | RedundantEvent
 
 
 getUserRole : TradeFullInfo -> Address -> Maybe InitiatorOrResponder
