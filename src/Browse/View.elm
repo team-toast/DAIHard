@@ -27,17 +27,40 @@ viewList time trades =
         ]
         (trades
             |> Array.toList
-            |> List.filter
-                (\listItem ->
-                    case listItem.state of
-                        Nothing ->
-                            False
-
-                        Just state ->
-                            state.phase == Contracts.Types.Open
-                )
+            |> List.filter (itemFilter time)
             |> List.map (viewListItem time)
         )
+
+
+itemFilter : Time.Posix -> TTListItem -> Bool
+itemFilter time item =
+    case ( item.parameters, item.state ) of
+        ( Nothing, _ ) ->
+            False
+
+        ( _, Nothing ) ->
+            False
+
+        ( Just parameters, Just state ) ->
+            state.phase
+                == Contracts.Types.Open
+                && (not <| isAutorecallLocked time parameters state)
+
+
+isAutorecallLocked : Time.Posix -> Contracts.Types.CreateParameters -> Contracts.Types.State -> Bool
+isAutorecallLocked currentTime parameters state =
+    let
+        lockTime =
+            TimeHelpers.add
+                state.phaseStartTime
+                parameters.autorecallInterval
+
+        timeLeft =
+            TimeHelpers.sub
+                lockTime
+                currentTime
+    in
+    TimeHelpers.isNegative timeLeft
 
 
 viewListItem : Time.Posix -> TTListItem -> Element.Element Msg

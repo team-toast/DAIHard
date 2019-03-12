@@ -1,6 +1,6 @@
 module RenderContract.View exposing (render)
 
-import Contracts.Types
+import Contracts.Types exposing (OpenMode(..))
 import Element
 import Element.Background
 import Element.Border
@@ -34,7 +34,7 @@ render viewMode parameters =
                     [ Element.Font.size 42
                     , Element.centerX
                     ]
-                    (Element.text "Uncoining Contract")
+                    (Element.text "Trade Contract")
                 , case viewMode of
                     Draft ->
                         Element.el [ Element.Font.size 36, Element.Font.light, Element.Font.italic, Element.centerX ]
@@ -51,11 +51,23 @@ render viewMode parameters =
                 , Element.Font.italic
                 ]
                 [ Element.paragraph []
-                    [ EH.initiator []
+                    [ case parameters.openMode of
+                        BuyerOpened ->
+                            Element.text "Buyer"
+
+                        SellerOpened ->
+                            Element.text "Seller"
                     , Element.text (": " ++ Eth.Utils.addressToString parameters.initiatorAddress)
                     ]
                 , Element.paragraph []
-                    [ Element.text "Trading "
+                    [ Element.text
+                        (case parameters.openMode of
+                            BuyerOpened ->
+                                "Buying "
+
+                            SellerOpened ->
+                                "Selling "
+                        )
                     , EH.tokenValue parameters.tradeAmount
                     , Element.text " for "
                     , Element.text parameters.totalPriceString
@@ -92,6 +104,23 @@ render viewMode parameters =
 
 openPhaseElement : ViewMode -> Contracts.Types.CreateParameters -> Element.Element Msg
 openPhaseElement viewMode parameters =
+    let
+        ( initiator, responder ) =
+            case parameters.openMode of
+                BuyerOpened ->
+                    ( EH.buyer, EH.seller )
+
+                SellerOpened ->
+                    ( EH.seller, EH.buyer )
+
+        responderDeposit =
+            case parameters.openMode of
+                BuyerOpened ->
+                    parameters.tradeAmount
+
+                SellerOpened ->
+                    parameters.buyerDeposit
+    in
     Element.column (phaseStyleWithViewMode Contracts.Types.Open viewMode)
         [ phaseHeading Contracts.Types.Open parameters viewMode
         , EH.clauseList
@@ -102,15 +131,15 @@ openPhaseElement viewMode parameters =
                 ]
             , Element.paragraph []
                 [ Element.text "Any other Ethereum user may become the "
-                , EH.responder []
+                , responder []
                 , Element.text " by depositing "
-                , EH.tokenValue parameters.buyerDeposit
+                , EH.tokenValue responderDeposit
                 , Element.text " into this contract. This immediately moves the contract to the "
                 , EH.sectionReference "Committed Phase"
                 , Element.text ". Thenceforth, the identity of the "
-                , EH.responder []
+                , responder []
                 , Element.text " will never change, and the "
-                , EH.initiator []
+                , initiator []
                 , Element.text " will be unable to "
                 , EH.methodName "recall"
                 , Element.text " the trade."
@@ -119,13 +148,13 @@ openPhaseElement viewMode parameters =
                 [ Element.text "Until and unless an Ethereum user "
                 , EH.methodName "commit"
                 , Element.text "s, the "
-                , EH.initiator []
+                , initiator []
                 , Element.text " may execute the "
                 , EH.methodName "recall"
                 , Element.text " method. This "
                 , EH.sectionReference "cancels the contract"
                 , Element.text " and refunds the "
-                , EH.initiator []
+                , initiator []
                 , Element.text "'s "
                 , EH.tokenValue parameters.tradeAmount
                 , Element.text ". "
@@ -166,20 +195,20 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
         , EH.clauseList
             [ Element.paragraph []
                 [ Element.text "The contract has two parties ("
-                , EH.initiator []
+                , EH.seller []
                 , Element.text " and "
-                , EH.responder []
+                , EH.buyer []
                 , Element.text "), and a total balance of "
                 , EH.tokenValue postCommitBalance
                 , Element.text "."
                 ]
             , Element.paragraph []
                 [ Element.text "The "
-                , EH.responder []
+                , EH.buyer []
                 , Element.text " is expected to transfer "
                 , Element.text parameters.totalPriceString
                 , Element.text " to the "
-                , EH.initiator []
+                , EH.seller []
                 , Element.text " according to the following "
                 , EH.sectionReference "Fiat Transfer Methods"
                 , Element.text ", then mark the deposit as complete by calling "
@@ -193,20 +222,20 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
             , Element.text "transfer methods display broken :("
             , Element.paragraph []
                 [ Element.text "The "
-                , EH.initiator []
+                , EH.seller []
                 , Element.text " and "
-                , EH.responder []
+                , EH.buyer []
                 , Element.text " are expected to work together to resolve any ambiguity or difficulty regarding the fiat transfer "
                 , Element.el [ Element.Font.bold ] (Element.text "before")
                 , Element.text " the "
-                , EH.responder []
+                , EH.buyer []
                 , Element.text " calls "
                 , EH.methodName "claim"
                 , Element.text "."
                 ]
             , Element.paragraph []
                 [ Element.text "If the "
-                , EH.responder []
+                , EH.buyer []
                 , Element.text " does not "
                 , EH.methodName "claim"
                 , Element.text " within "
@@ -219,18 +248,18 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
                 , EH.clauseList
                     [ Element.paragraph []
                         [ Element.text "Half of the "
-                        , EH.responder []
+                        , EH.buyer []
                         , Element.text "’s deposit ("
                         , EH.tokenValue claimFailBurnAmount
                         , Element.text ") is burned and half ("
                         , EH.tokenValue claimFailBurnAmount
                         , Element.text ") is returned to the "
-                        , EH.responder []
+                        , EH.buyer []
                         , Element.text "."
                         ]
                     , Element.paragraph []
                         [ Element.text "The "
-                        , EH.initiator []
+                        , EH.seller []
                         , Element.text " faces the same punishment ("
                         , EH.tokenValue claimFailBurnAmount
                         , Element.text " burned), and the rest of his deposit ("
@@ -285,29 +314,29 @@ claimedPhaseElement viewMode parameters postCommitBalance =
             [ EH.clauseList
                 [ Element.paragraph []
                     [ Element.text "The "
-                    , EH.initiator []
+                    , EH.seller []
                     , Element.text " is expected to verify with certainty whether he has received at least "
                     , EH.usdValue parameters.tradeAmount
                     , Element.text " from the "
-                    , EH.responder []
+                    , EH.buyer []
                     , Element.text "."
                     , EH.clauseList
                         [ Element.paragraph []
                             [ Element.text "If the transfer has taken place, the "
-                            , EH.initiator []
+                            , EH.seller []
                             , Element.text " is expected to execute the "
                             , EH.methodName "release"
                             , Element.text " method. This releases the entire balance of the contract ("
                             , EH.tokenValue postCommitBalance
                             , Element.text ") to the "
-                            , EH.responder []
+                            , EH.buyer []
                             , Element.text " and closes the contract."
                             ]
                         , Element.paragraph []
                             [ Element.text "If the transfer has not taken place, or if the transfer amount was less than "
                             , EH.usdValue parameters.tradeAmount
                             , Element.text ", the "
-                            , EH.initiator []
+                            , EH.seller []
                             , Element.text " is expected to execute the "
                             , EH.methodName "burn"
                             , Element.text " method. This burns the entire balance of the contract ("
@@ -320,7 +349,7 @@ claimedPhaseElement viewMode parameters postCommitBalance =
                     ]
                 , Element.paragraph []
                     [ Element.text "If the "
-                    , EH.initiator []
+                    , EH.seller []
                     , Element.text " has not executed a "
                     , EH.methodName "burn"
                     , Element.text " or "
