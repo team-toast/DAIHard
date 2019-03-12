@@ -1,4 +1,4 @@
-module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonGreen, buttonRed, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, fakeLink, fillWidthBlock, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, methodName, pageBackgroundColor, pageTitle, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, timeValue, tokenValue, usdValue, white)
+module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, fakeLink, fillWidthBlock, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, methodName, pageBackgroundColor, pageTitle, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, timeValue, tokenValue, usdValue, white)
 
 import Element
 import Element.Background
@@ -29,6 +29,14 @@ initiatorColor =
 
 responderColor =
     Element.rgb 1 0.55 0
+
+
+buyerColor =
+    initiatorColor
+
+
+sellerColor =
+    responderColor
 
 
 initiatorBackgroundColor =
@@ -161,6 +169,16 @@ initiator attributes =
 responder : List (Element.Attribute a) -> Element.Element a
 responder attributes =
     Element.el (attributes ++ [ Element.Font.color responderColor ]) (Element.text "Responder")
+
+
+buyer : List (Element.Attribute a) -> Element.Element a
+buyer attributes =
+    Element.el (attributes ++ [ Element.Font.color buyerColor ]) (Element.text "Buyer")
+
+
+seller : List (Element.Attribute a) -> Element.Element a
+seller attributes =
+    Element.el (attributes ++ [ Element.Font.color sellerColor ]) (Element.text "Seller")
 
 
 

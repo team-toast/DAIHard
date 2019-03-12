@@ -1,7 +1,9 @@
 module Create.View exposing (root)
 
+import Contracts.Types
 import Create.Types exposing (..)
 import Element
+import Element.Events
 import Element.Font
 import Element.Input
 import ElementHelpers as EH
@@ -28,11 +30,31 @@ root model =
                 }
     in
     Element.column [ Element.spacing 20, Element.width Element.fill ]
-        [ contractParametersFormElement model
+        [ titleElement model
+        , contractParametersFormElement model
         , createButton
         , Element.el [ Element.paddingXY 150 0 ] contractRendered
         , createButton
         ]
+
+
+titleElement : Model -> Element.Element Msg
+titleElement model =
+    Element.el
+        [ Element.centerX
+        , Element.Font.size 36
+        , Element.Events.onClick SwitchInitiatorRole
+        , Element.pointer
+        ]
+        (Element.text
+            (case model.parameterInputs.openMode of
+                Contracts.Types.BuyerOpened ->
+                    "Opening as Buyer"
+
+                Contracts.Types.SellerOpened ->
+                    "Opening as Seller"
+            )
+        )
 
 
 contractParametersFormElement : Model -> Element.Element Msg

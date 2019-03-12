@@ -41,6 +41,7 @@ type Msg
     | AutoabortIntervalChanged String
     | AutoreleaseIntervalChanged String
     | TransferMethodsChanged String
+    | SwitchInitiatorRole
     | BeginCreateProcess
     | DevFeeFetched (Result Http.Error BigInt)
     | ApproveMined (Result String TxReceipt)

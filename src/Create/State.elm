@@ -98,6 +98,25 @@ update msg model =
             in
             justModelUpdate (model |> udpateParameterInputs { oldInputs | autoreleaseInterval = newTimeStr })
 
+        SwitchInitiatorRole ->
+            let
+                oldInputs =
+                    model.parameterInputs
+            in
+            justModelUpdate
+                (model
+                    |> udpateParameterInputs
+                        { oldInputs
+                            | openMode =
+                                case oldInputs.openMode of
+                                    Contracts.Types.BuyerOpened ->
+                                        Contracts.Types.SellerOpened
+
+                                    Contracts.Types.SellerOpened ->
+                                        Contracts.Types.BuyerOpened
+                        }
+                )
+
         BeginCreateProcess ->
             case model.contractParameters of
                 Just parameters ->
