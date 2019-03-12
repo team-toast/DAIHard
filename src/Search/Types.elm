@@ -1,13 +1,14 @@
-module Search.Types exposing (Model, Msg(..), Trade, updateTradeAddress, updateTradeParameters, updateTradeState)
+module Search.Types exposing (AmountRange, LocationQuery(..), Model, Msg(..), PaymentMethodQuery(..), SearchInputs, Trade, updateTradeAddress, updateTradeParameters, updateTradeState)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
-import CommonTypes exposing (UserInfo)
+import CommonTypes exposing (..)
 import Contracts.Generated.ToastytradeFactory as TTF
 import Contracts.Types
 import Eth.Types exposing (Address)
 import EthHelpers
 import Http
+import TokenValue exposing (TokenValue)
 
 
 type alias Model =
@@ -16,6 +17,7 @@ type alias Model =
     , factoryAddress : Address
     , tokenDecimals : Int
     , numTrades : Maybe Int
+    , inputs : SearchInputs
     , trades : Array Trade
     }
 
@@ -26,6 +28,30 @@ type Msg
     | ParametersFetched Int (Result Http.Error (Result String Contracts.Types.CreateParameters))
     | StateFetched Int (Result Http.Error (Maybe Contracts.Types.State))
     | TradeClicked Int
+    | NoOp
+
+
+type alias SearchInputs =
+    { daiRange : AmountRange
+    , fiatType : Maybe FiatType
+    , fiatRange : AmountRange
+    , paymentMethod : Maybe PaymentMethodQuery
+    , location : Maybe LocationQuery
+    }
+
+
+type alias AmountRange =
+    { min : Maybe TokenValue
+    , max : Maybe TokenValue
+    }
+
+
+type PaymentMethodQuery
+    = TODO
+
+
+type LocationQuery
+    = TODOL
 
 
 type alias Trade =

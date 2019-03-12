@@ -84,7 +84,7 @@ logoElement =
         , Element.pointer
         , Element.Events.onClick <| GotoRoute Routing.Home
         ]
-        (Element.text "BURN | ME")
+        (Element.text "RussianRelay")
 
 
 buyDaiElement : Element Msg

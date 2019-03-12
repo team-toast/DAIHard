@@ -19,9 +19,20 @@ init ethNode factoryAddress tokenDecimals userInfo =
       , tokenDecimals = tokenDecimals
       , numTrades = Nothing
       , trades = Array.empty
+      , inputs = startingInputs
       }
     , Contracts.Wrappers.getNumTradesCmd ethNode factoryAddress NumTradesFetched
     )
+
+
+startingInputs : SearchInputs
+startingInputs =
+    { daiRange = AmountRange Nothing Nothing
+    , fiatType = Nothing
+    , fiatRange = AmountRange Nothing Nothing
+    , paymentMethod = Nothing
+    , location = Nothing
+    }
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, Maybe Routing.Route )
@@ -123,6 +134,9 @@ update msg model =
 
         TradeClicked id ->
             ( model, Cmd.none, Just (Routing.Interact (Just id)) )
+
+        NoOp ->
+            ( model, Cmd.none, Nothing )
 
 
 updateUserInfo : Maybe UserInfo -> Model -> Model
