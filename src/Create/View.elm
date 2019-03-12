@@ -9,6 +9,7 @@ import Element.Input
 import ElementHelpers as EH
 import RenderContract.Types
 import RenderContract.View
+import TransferMethods
 
 
 root : Model -> Element.Element Msg
@@ -89,13 +90,47 @@ contractParametersForm model =
         transferMethodsInput =
             Element.column [ Element.width (Element.fillPortion 3), Element.spacing 8, Element.alignTop ]
                 [ columnHeader "Fiat Transfer Methods"
-                , Element.Input.multiline [ Element.width Element.fill, Element.height (Element.px 150) ]
-                    { onChange = TransferMethodsChanged
-                    , text = model.parameterInputs.transferMethods
-                    , placeholder = Just (Element.Input.placeholder [] (Element.paragraph [] [ Element.text "Be specific, and consider listing multiple options. Keep in mind that many Responders find offers via keyword searches." ]))
-                    , label = Element.Input.labelHidden "transferMethods"
-                    , spellcheck = False
-                    }
+                , Element.column [ Element.width Element.fill, Element.spacing 8 ]
+                    [ Element.Input.button [ Element.centerX ]
+                        { onPress =
+                            Just <|
+                                AddTransferMethod <|
+                                    TransferMethods.CashDrop
+                                        { location = TransferMethods.Location 10 10
+                                        , radius = 10
+                                        , description = Nothing
+                                        }
+                        , label = Element.text "Cash Drop"
+                        }
+                    , Element.Input.button [ Element.centerX ]
+                        { onPress =
+                            Just <|
+                                AddTransferMethod <|
+                                    TransferMethods.CashHandoff
+                                        { location = TransferMethods.Location 10 10
+                                        , radius = 10
+                                        , description = Just "I can meet you at Central Square."
+                                        }
+                        , label = Element.text "Cash handoff"
+                        }
+                    , Element.Input.button [ Element.centerX ]
+                        { onPress =
+                            Just <|
+                                AddTransferMethod <|
+                                    TransferMethods.BankTransfer
+                                        { identifierType = TransferMethods.Name
+                                        , info = "National Bank of America"
+                                        }
+                        , label = Element.text "Bank transfer"
+                        }
+                    , Element.Input.button [ Element.centerX ]
+                        { onPress =
+                            Just <|
+                                AddTransferMethod <|
+                                    TransferMethods.Custom "wire it to me"
+                        , label = Element.text "Custom 'wire it to me'"
+                        }
+                    ]
                 ]
 
         intervalInputs =

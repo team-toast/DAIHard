@@ -24,7 +24,7 @@ init ethNode tokenAddress tokenDecimals factoryAddress userInfo =
             { openMode = Contracts.Types.SellerOpened
             , tradeAmount = "100"
             , totalPrice = "100"
-            , transferMethods = ""
+            , transferMethods = []
             , autorecallInterval = "3"
             , autoabortInterval = "3"
             , autoreleaseInterval = "3"
@@ -70,13 +70,6 @@ update msg model =
             in
             justModelUpdate (model |> udpateParameterInputs { oldInputs | totalPrice = newAmountStr })
 
-        TransferMethodsChanged newStr ->
-            let
-                oldInputs =
-                    model.parameterInputs
-            in
-            justModelUpdate (model |> udpateParameterInputs { oldInputs | transferMethods = newStr })
-
         AutorecallIntervalChanged newTimeStr ->
             let
                 oldInputs =
@@ -115,6 +108,17 @@ update msg model =
                                     Contracts.Types.SellerOpened ->
                                         Contracts.Types.BuyerOpened
                         }
+                )
+
+        AddTransferMethod transferMethod ->
+            let
+                oldInputs =
+                    model.parameterInputs
+            in
+            justModelUpdate
+                (model
+                    |> udpateParameterInputs
+                        { oldInputs | transferMethods = List.append oldInputs.transferMethods [ transferMethod ] }
                 )
 
         BeginCreateProcess ->

@@ -52,7 +52,7 @@ type alias UserParameters =
     , tradeAmount : TokenValue
     , totalPriceCurrency : String
     , totalPriceValue : TokenValue
-    , transferMethods : String
+    , transferMethods : List TransferMethod
     , autorecallInterval : Time.Posix
     , autoabortInterval : Time.Posix
     , autoreleaseInterval : Time.Posix
@@ -241,32 +241,12 @@ buildCreateParameters initiatorInfo userParameters =
     , autorecallInterval = userParameters.autorecallInterval
     , autoabortInterval = userParameters.autoabortInterval
     , autoreleaseInterval = userParameters.autoreleaseInterval
-    , transferMethods = testTransferMethodList
+    , transferMethods = userParameters.transferMethods
     , initiatorAddress = initiatorInfo.address
     , initiatorCommPubkey = initiatorInfo.commPubkey
     , buyerDeposit = buyerDeposit
     , pokeReward = pokeReward
     }
-
-
-testTransferMethodList : List TransferMethod
-testTransferMethodList =
-    [ TransferMethods.Custom "custom type! These are a bunch of dummy transfer methods!"
-    , TransferMethods.CashDrop
-        { location = TransferMethods.Location 10 20
-        , radius = 5
-        , description = Just "hi"
-        }
-    , TransferMethods.CashHandoff
-        { location = TransferMethods.Location 10 20
-        , radius = 5
-        , description = Just "hi"
-        }
-    , TransferMethods.BankTransfer
-        { identifierType = TransferMethods.ABA
-        , info = "5433ab"
-        }
-    ]
 
 
 decodeState : Int -> TT.GetState -> Maybe State

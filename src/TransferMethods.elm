@@ -1,8 +1,11 @@
-module TransferMethods exposing (BankIdentifier, BankIdentifierType(..), CashDropInfo, CashHandoffInfo, Location, TransferMethod(..), bankIdentifierDecoder, bankIdentifierTypeDecoder, cashDropInfoDecoder, cashHandoffInfoDecoder, encodeBankIdentifier, encodeBankIdentifierType, encodeCashDropInfo, encodeCashHandoffInfo, encodeLocation, encodeTransferMethod, locationDecoder, transferMethodDecoder)
+module TransferMethods exposing (BankIdentifier, BankIdentifierType(..), CashDropInfo, CashHandoffInfo, Location, TransferMethod(..), bankIdentifierDecoder, bankIdentifierTypeDecoder, cashDropInfoDecoder, cashHandoffInfoDecoder, demoView, encodeBankIdentifier, encodeBankIdentifierType, encodeCashDropInfo, encodeCashHandoffInfo, encodeLocation, encodeTransferMethod, locationDecoder, transferMethodDecoder)
 
+import Element
+import Element.Border
 import Json.Decode
 import Json.Encode
 import Json.Encode.Extra
+import Maybe.Extra as Maybe
 
 
 type TransferMethod
@@ -224,3 +227,79 @@ bankIdentifierTypeDecoder =
                             "unrecognized transfer type: "
                                 ++ unrecognizedType
             )
+
+
+demoView : TransferMethod -> Element.Element msg
+demoView transferMethod =
+    Element.column [ Element.padding 5, Element.spacing 5, Element.Border.width 1, Element.Border.rounded 5 ] <|
+        Maybe.values <|
+            case transferMethod of
+                CashDrop info ->
+                    [ Just <|
+                        Element.text <|
+                            "cash drop within "
+                                ++ String.fromFloat info.radius
+                                ++ " km of "
+                                ++ locationToString info.location
+                    , info.description
+                        |> Maybe.map
+                            (\desc ->
+                                Element.text <| "description: " ++ desc
+                            )
+                    ]
+
+                CashHandoff info ->
+                    [ Just <|
+                        Element.text <|
+                            "cash handoff within "
+                                ++ String.fromFloat info.radius
+                                ++ " km of "
+                                ++ locationToString info.location
+                    , info.description
+                        |> Maybe.map
+                            (\desc ->
+                                Element.text <| "description: " ++ desc
+                            )
+                    ]
+
+                BankTransfer bankIdentifier ->
+                    let
+                        typeString =
+                            case bankIdentifier.identifierType of
+                                ABA ->
+                                    "ABA"
+
+                                SORT ->
+                                    "SORT"
+
+                                IBAN ->
+                                    "IBAN"
+
+                                SWIFT ->
+                                    "SWIFT"
+
+                                Name ->
+                                    "name"
+                    in
+                    [ Just <|
+                        Element.text <|
+                            "Bank transfer ("
+                                ++ bankIdentifier.info
+                                ++ ")"
+                    ]
+
+                Custom s ->
+                    [ Just <|
+                        Element.text <|
+                            "Custom: "
+                                ++ s
+                    ]
+
+
+locationToString : Location -> String
+locationToString location =
+    "(lat:"
+        ++ String.fromFloat location.lat
+        ++ ",long:"
+        ++ String.fromFloat location.long
+        ++ ")"

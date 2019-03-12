@@ -12,6 +12,7 @@ import List
 import Time
 import TimeHelpers
 import TokenValue
+import TransferMethods exposing (TransferMethod)
 
 
 root : Time.Posix -> Model -> Element.Element Msg
@@ -111,7 +112,14 @@ viewListItem time info =
                         , Element.height Element.fill
                         , Element.Border.width 1
                         ]
-                        (Element.paragraph [] [ Element.text "displaying transerMethods currently broken" ])
+                        (Element.column
+                            [ Element.spacing 5
+                            , Element.padding 5
+                            ]
+                            (parameters.transferMethods
+                                |> List.map TransferMethods.demoView
+                            )
+                        )
                     , Element.column
                         [ Element.width (Element.fillPortion 2)
                         , Element.centerY

@@ -13,6 +13,7 @@ import RenderContract.Types exposing (..)
 import Time
 import TimeHelpers
 import TokenValue exposing (TokenValue)
+import TransferMethods exposing (TransferMethod)
 
 
 render : ViewMode -> Contracts.Types.CreateParameters -> Element.Element Msg
@@ -217,9 +218,7 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
                 , EH.sectionReference "Claimed Phase"
                 , Element.text "."
                 ]
-
-            -- , fiatTransferMethodsElement parameters.transferMethods
-            , Element.text "transfer methods display broken :("
+            , fiatTransferMethodsElement parameters.transferMethods
             , Element.paragraph []
                 [ Element.text "The "
                 , EH.seller []
@@ -290,19 +289,22 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
         ]
 
 
-fiatTransferMethodsElement : String -> Element.Element Msg
-fiatTransferMethodsElement transferMethodsString =
+fiatTransferMethodsElement : List TransferMethod -> Element.Element Msg
+fiatTransferMethodsElement transferMethods =
     Element.column [ Element.width Element.fill, Element.spacing 5 ]
         [ Element.el [ Element.Font.size 24, Element.Font.italic, Element.Font.bold ]
             (Element.text "Transfer Methods")
-        , Element.el
+        , Element.column
             [ Element.Border.width 1
             , Element.Border.color EH.contractBorderColor
             , Element.Border.rounded 6
             , Element.Background.color EH.contractInsetBackgroundColor
             , Element.padding 10
+            , Element.spacing 5
             ]
-            (Element.text transferMethodsString)
+            (transferMethods
+                |> List.map TransferMethods.demoView
+            )
         ]
 
 

@@ -9,6 +9,7 @@ import EthHelpers
 import Http
 import Routing
 import TokenValue exposing (TokenValue)
+import TransferMethods exposing (TransferMethod)
 
 
 type alias Model =
@@ -27,7 +28,7 @@ type alias ContractParameterInputs =
     { openMode : Contracts.Types.OpenMode
     , tradeAmount : String
     , totalPrice : String
-    , transferMethods : String
+    , transferMethods : List TransferMethod
     , autorecallInterval : String
     , autoabortInterval : String
     , autoreleaseInterval : String
@@ -40,8 +41,8 @@ type Msg
     | AutorecallIntervalChanged String
     | AutoabortIntervalChanged String
     | AutoreleaseIntervalChanged String
-    | TransferMethodsChanged String
     | SwitchInitiatorRole
+    | AddTransferMethod TransferMethod
     | BeginCreateProcess
     | DevFeeFetched (Result Http.Error BigInt)
     | ApproveMined (Result String TxReceipt)
