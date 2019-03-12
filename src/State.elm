@@ -17,6 +17,7 @@ import Interact.State
 import Json.Decode
 import Json.Encode
 import Routing
+import Search.State
 import Time
 import Types exposing (..)
 import Url exposing (Url)
@@ -150,32 +151,6 @@ updateValidModel msg model =
                     in
                     ( Running model, Cmd.none )
 
-        -- ( Running model
-        -- , encryptToPubkeys
-        --     (Json.Encode.object
-        --         [ ( "message", Json.Encode.string "hiiii" )
-        --         , ( "pubkeyHexStrings", Json.Encode.list Json.Encode.string [ pubkeyHexString ] )
-        --         ]
-        --     )
-        -- )
-        MessagesEncrypted encryptedMessages ->
-            let
-                objectDecoder =
-                    Json.Decode.map4 EncryptedMessage
-                        (Json.Decode.field "encapsulated" Json.Decode.string)
-                        (Json.Decode.field "iv" Json.Decode.string)
-                        (Json.Decode.field "tag" Json.Decode.string)
-                        (Json.Decode.field "encrypted" Json.Decode.string)
-
-                decoder =
-                    Json.Decode.list objectDecoder
-
-                _ =
-                    Debug.log "decoded"
-                        (Json.Decode.decodeValue decoder encryptedMessages)
-            in
-            ( Running model, Cmd.none )
-
         CreateMsg createMsg ->
             case model.submodel of
                 CreateModel createModel ->
@@ -240,6 +215,25 @@ updateValidModel msg model =
                         Nothing ->
                             ( Running { model | submodel = BrowseModel newBrowseModel }
                             , Cmd.map BrowseMsg browseCmd
+                            )
+
+                        Just route ->
+                            gotoRoute model route
+
+                _ ->
+                    ( Running model, Cmd.none )
+
+        SearchMsg searchMsg ->
+            case model.submodel of
+                SearchModel searchModel ->
+                    let
+                        ( newSearchModel, searchCmd, newRoute ) =
+                            Search.State.update searchMsg searchModel
+                    in
+                    case newRoute of
+                        Nothing ->
+                            ( Running { model | submodel = SearchModel newSearchModel }
+                            , Cmd.map SearchMsg searchCmd
                             )
 
                         Just route ->
@@ -339,6 +333,21 @@ gotoRoute model route =
                 ]
             )
 
+        Routing.Search ->
+            let
+                ( searchModel, searchCmd ) =
+                    Search.State.init model.node model.factoryAddress model.tokenContractDecimals model.userInfo
+            in
+            ( Running
+                { model
+                    | submodel = SearchModel searchModel
+                }
+            , Cmd.batch
+                [ Cmd.map SearchMsg searchCmd
+                , Browser.Navigation.pushUrl model.key newUrlString
+                ]
+            )
+
         Routing.NotFound ->
             ( Failed "Don't understand that url...", Browser.Navigation.pushUrl model.key newUrlString )
 
@@ -357,6 +366,9 @@ updateSubmodelUserInfo userInfo submodel =
 
         BrowseModel browseModel ->
             BrowseModel (browseModel |> Browse.State.updateUserInfo userInfo)
+
+        SearchModel searchModel ->
+            SearchModel (searchModel |> Search.State.updateUserInfo userInfo)
 
 
 subscriptions : Model -> Sub Msg
@@ -390,6 +402,9 @@ submodelSubscriptions model =
 
         BrowseModel browseModel ->
             Sub.map BrowseMsg <| Browse.State.subscriptions browseModel
+
+        SearchModel searchModel ->
+            Sub.map SearchMsg <| Search.State.subscriptions searchModel
 
 
 port walletSentryPort : (Json.Decode.Value -> msg) -> Sub msg

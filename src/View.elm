@@ -3,14 +3,16 @@ module View exposing (root)
 import Browse.View
 import Browser
 import Create.View
-import Element
+import Element exposing (Attribute, Element)
 import Element.Background
 import Element.Border
+import Element.Events
 import Element.Font
 import Element.Input
 import ElementHelpers as EH
 import Interact.View
 import Routing
+import Search.View
 import Types exposing (..)
 
 
@@ -23,19 +25,12 @@ root maybeValidModel =
                 let
                     mainElementAttributes =
                         [ Element.width Element.fill
-                        , Element.Background.color EH.pageBackgroundColor
-                        ]
-
-                    mainColumnAttributes =
-                        [ Element.width Element.fill
+                        , Element.height Element.fill
                         ]
                 in
-                Element.layout mainElementAttributes
-                    (Element.column mainColumnAttributes
-                        [ headerElement
-                        , bodyElement model
-                        ]
-                    )
+                Element.layout
+                    mainElementAttributes
+                    (pageElement model)
 
             Failed str ->
                 Element.layout []
@@ -44,64 +39,101 @@ root maybeValidModel =
     }
 
 
-headerElement : Element.Element Msg
-headerElement =
-    Element.row
-        [ Element.Background.color EH.headerBackgroundColor
+pageElement : ValidModel -> Element Msg
+pageElement model =
+    Element.column
+        [ Element.behindContent headerElement
         , Element.width Element.fill
-        , Element.padding 15
-        , Element.spacing 30
-        , Element.Font.size 24
+        , Element.height Element.fill
+        , Element.Background.color EH.pageBackgroundColor
+        , Element.padding 30
         ]
-        [ Element.Input.button [ Element.centerX ]
-            { onPress = Just (GotoRoute Routing.Create)
-            , label = Element.text "Create"
-            }
-        , Element.Input.button [ Element.centerX ]
-            { onPress = Just (GotoRoute Routing.Browse)
-            , label = Element.text "Browse"
-            }
+        [ Element.el
+            [ Element.height (Element.px 50) ]
+            Element.none
+        , subModelElement model
         ]
 
 
-bodyElement : ValidModel -> Element.Element Msg
-bodyElement model =
-    Element.el [ Element.paddingXY 100 25, Element.width Element.fill ]
-        (subModelElement model)
+headerElement : Element Msg
+headerElement =
+    Element.el
+        [ Element.width Element.fill
+        , Element.height <| Element.px 150
+        , Element.padding 25
+        , Element.Background.color EH.headerBackgroundColor
+        ]
+        (Element.row
+            [ Element.width Element.fill
+            , Element.spacing 60
+            ]
+            [ logoElement
+            , buyDaiElement
+            , sellDaiElement
+            , myOffersElement
+            ]
+        )
+
+
+logoElement : Element Msg
+logoElement =
+    Element.el
+        [ Element.Font.size 20
+        , Element.Font.color EH.white
+        , Element.Font.bold
+        , Element.pointer
+        , Element.Events.onClick <| GotoRoute Routing.Home
+        ]
+        (Element.text "BURN | ME")
+
+
+buyDaiElement : Element Msg
+buyDaiElement =
+    Element.el
+        headerMenuAttributes
+        (Element.text "Buy Dai")
+
+
+sellDaiElement =
+    Element.el
+        headerMenuAttributes
+        (Element.text "Sell Dai")
+
+
+myOffersElement =
+    Element.el
+        headerMenuAttributes
+        (Element.text "My Trades")
+
+
+headerMenuAttributes : List (Attribute Msg)
+headerMenuAttributes =
+    [ Element.Font.size 20
+    , Element.Font.color EH.white
+    , Element.Font.bold
+    ]
 
 
 subModelElement : ValidModel -> Element.Element Msg
 subModelElement model =
-    let
-        subModelStyles =
-            [ Element.width Element.fill
-            , Element.spacing 20
-            ]
-
-        bodyStyles =
-            [ Element.Border.rounded 15
-            , Element.Background.color EH.subpageBackgroundColor
-            , Element.padding 20
-            , Element.spacing 50
-            , Element.width Element.fill
-            ]
-    in
-    (\( title, element ) ->
-        Element.column subModelStyles
-            [ EH.pageTitle title
-            , Element.el bodyStyles element
-            ]
-    )
+    Element.el
+        [ Element.width Element.fill
+        , Element.height Element.fill
+        , Element.Border.rounded 10
+        ]
         (case model.submodel of
             HomeModel ->
-                ( "Home", Element.none )
+                Element.none
 
             CreateModel createModel ->
-                ( "Create", Element.map CreateMsg (Create.View.root createModel) )
+                Element.map CreateMsg (Create.View.root createModel)
 
             InteractModel interactModel ->
-                ( "Interact", Element.map InteractMsg (Interact.View.root model.time interactModel) )
+                Element.map InteractMsg (Interact.View.root model.time interactModel)
 
             BrowseModel browseModel ->
-                ( "Browse", Element.map BrowseMsg (Browse.View.root model.time browseModel) )
+                Element.map BrowseMsg (Browse.View.root model.time browseModel)
+
+            SearchModel searchModel ->
+                Element.map SearchMsg (Search.View.root model.time searchModel)
         )

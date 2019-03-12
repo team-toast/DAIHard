@@ -1,4 +1,4 @@
-module Contracts.Wrappers exposing (createSell, decodeParameters, getCreationInfoFromIdCmd, getDevFeeCmd, getNumTTsCmd, getParametersAndStateCmd, getParametersCmd, getStateCmd)
+module Contracts.Wrappers exposing (createSell, decodeParameters, getCreationInfoFromIdCmd, getDevFeeCmd, getNumTradesCmd, getParametersAndStateCmd, getParametersCmd, getStateCmd)
 
 import BigInt exposing (BigInt)
 import Contracts.Generated.Toastytrade as TT
@@ -47,8 +47,8 @@ getDevFeeCmd ethNode factoryAddress tradeAmount msgConstructor =
         |> Task.attempt msgConstructor
 
 
-getNumTTsCmd : EthHelpers.EthNode -> Address -> (Result Http.Error BigInt -> msg) -> Cmd msg
-getNumTTsCmd ethNode factoryAddress msgConstructor =
+getNumTradesCmd : EthHelpers.EthNode -> Address -> (Result Http.Error BigInt -> msg) -> Cmd msg
+getNumTradesCmd ethNode factoryAddress msgConstructor =
     Eth.call ethNode.http (TTF.getNumToastytradeSells factoryAddress)
         |> Task.attempt msgConstructor
 

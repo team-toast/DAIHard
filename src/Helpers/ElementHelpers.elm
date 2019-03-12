@@ -1,4 +1,4 @@
-module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, fakeLink, fillWidthBlock, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, methodName, pageBackgroundColor, pageTitle, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, timeValue, tokenValue, usdValue, white)
+module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, fakeLink, fillWidthBlock, hbreak, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, methodName, pageBackgroundColor, pageTitle, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, timeValue, tokenValue, usdValue, white)
 
 import Element
 import Element.Background
@@ -60,11 +60,11 @@ buttonRed =
 
 
 headerBackgroundColor =
-    Element.rgb 0 0.3 0.6
+    Element.rgb 0 0.2 0.4
 
 
 pageBackgroundColor =
-    Element.rgb 0 0.2 0.4
+    Element.rgb 0.9 0.9 0.9
 
 
 subpageBackgroundColor =
@@ -89,6 +89,10 @@ contractInsetBackgroundColor =
 
 contractBorderColor =
     Element.rgb 0.5 0.5 0.1
+
+
+defaultHbreakColor =
+    Element.rgb 0.8 0.8 0.8
 
 
 
@@ -315,6 +319,16 @@ contractActionButton name color msgConstructor =
 
 
 -- STYLE HELPERS
+
+
+hbreak : Element.Element msg
+hbreak =
+    Element.el
+        [ Element.width Element.fill
+        , Element.height (Element.px 1)
+        , Element.Background.color defaultHbreakColor
+        ]
+        Element.none
 
 
 roundBottomCorners : Int -> Element.Attribute msg

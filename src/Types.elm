@@ -13,6 +13,7 @@ import EthHelpers
 import Interact.Types
 import Json.Decode
 import Routing
+import Search.Types
 import Time
 import Url exposing (Url)
 
@@ -49,6 +50,7 @@ type Submodel
     | CreateModel Create.Types.Model
     | InteractModel Interact.Types.Model
     | BrowseModel Browse.Types.Model
+    | SearchModel Search.Types.Model
 
 
 type Msg
@@ -59,8 +61,8 @@ type Msg
     | WalletStatus WalletSentry
     | TxSentryMsg TxSentry.Msg
     | UserPubkeySet Json.Decode.Value
-    | MessagesEncrypted Json.Decode.Value
     | CreateMsg Create.Types.Msg
     | InteractMsg Interact.Types.Msg
     | BrowseMsg Browse.Types.Msg
+    | SearchMsg Search.Types.Msg
     | Fail String

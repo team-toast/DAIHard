@@ -1,15 +1,14 @@
-module Browse.State exposing (init, subscriptions, update, updateUserInfo)
+module Search.State exposing (init, subscriptions, update, updateUserInfo)
 
-import Array
+import Array exposing (Array)
 import BigInt exposing (BigInt)
 import BigIntHelpers
-import Browse.Types exposing (..)
 import CommonTypes exposing (UserInfo)
 import Contracts.Wrappers
 import Eth.Types exposing (Address)
 import EthHelpers
 import Routing
-import Types as ParentTypes
+import Search.Types exposing (..)
 
 
 init : EthHelpers.EthNode -> Address -> Int -> Maybe UserInfo -> ( Model, Cmd Msg )
@@ -80,10 +79,6 @@ update msg model =
         CreationInfoFetched id fetchResult ->
             case fetchResult of
                 Ok creationInfo ->
-                    let
-                        _ =
-                            Debug.log "creationinfo" creationInfo
-                    in
                     ( model |> updateTradeAddress id creationInfo.address_
                     , Contracts.Wrappers.getParametersAndStateCmd model.ethNode model.tokenDecimals creationInfo.address_ (ParametersFetched id) (StateFetched id)
                     , Nothing
@@ -126,7 +121,7 @@ update msg model =
                     in
                     ( model, Cmd.none, Nothing )
 
-        ItemClicked id ->
+        TradeClicked id ->
             ( model, Cmd.none, Just (Routing.Interact (Just id)) )
 
 

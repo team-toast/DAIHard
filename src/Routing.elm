@@ -12,6 +12,7 @@ type Route
     | Create
     | Interact (Maybe Int)
     | Browse
+    | Search
     | NotFound
 
 
@@ -22,6 +23,7 @@ routeParser =
         , Url.Parser.map Create (Url.Parser.s "create")
         , Url.Parser.map Interact (Url.Parser.s "interact" <?> Url.Parser.Query.int "id")
         , Url.Parser.map Browse (Url.Parser.s "browse")
+        , Url.Parser.map Search (Url.Parser.s "search")
         ]
 
 
@@ -51,6 +53,9 @@ routeToString route =
 
         Browse ->
             Url.Builder.absolute [ "browse" ] []
+
+        Search ->
+            Url.Builder.absolute [ "search" ] []
 
         NotFound ->
             Url.Builder.absolute [] []
