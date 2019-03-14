@@ -1,4 +1,4 @@
-module TimeHelpers exposing (add, daysStrToMaybePosix, isNegative, posixToMillisBigInt, posixToSeconds, posixToSecondsBigInt, secondsBigIntToMaybePosix, sub, toString)
+module TimeHelpers exposing (add, compare, daysStrToMaybePosix, isNegative, posixToMillisBigInt, posixToSeconds, posixToSecondsBigInt, secondsBigIntToMaybePosix, sub, toString)
 
 import BigInt exposing (BigInt)
 import Time
@@ -67,3 +67,10 @@ toString t =
         |> String.fromInt
     )
         ++ " seconds"
+
+
+compare : Time.Posix -> Time.Posix -> Order
+compare t1 t2 =
+    Basics.compare
+        (Time.posixToMillis t1)
+        (Time.posixToMillis t2)

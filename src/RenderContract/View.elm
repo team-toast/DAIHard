@@ -71,7 +71,7 @@ render viewMode parameters =
                         )
                     , EH.tokenValue parameters.tradeAmount
                     , Element.text " for "
-                    , Element.text parameters.totalPriceString
+                    , EH.fiat parameters.fiatType parameters.fiatPrice
                     ]
                 , Element.paragraph []
                     [ Element.text "to be finalized within "
@@ -207,7 +207,7 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
                 [ Element.text "The "
                 , EH.buyer []
                 , Element.text " is expected to transfer "
-                , Element.text parameters.totalPriceString
+                , EH.fiat parameters.fiatType parameters.fiatPrice
                 , Element.text " to the "
                 , EH.seller []
                 , Element.text " according to the following "

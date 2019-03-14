@@ -1,7 +1,6 @@
 port module State exposing (init, subscriptions, update)
 
 import BigInt
-import Browse.State
 import Browser
 import Browser.Navigation
 import ChainCmd exposing (ChainCmd)
@@ -204,25 +203,6 @@ updateValidModel msg model =
                 _ ->
                     ( Running model, Cmd.none )
 
-        BrowseMsg browseMsg ->
-            case model.submodel of
-                BrowseModel browseModel ->
-                    let
-                        ( newBrowseModel, browseCmd, newRoute ) =
-                            Browse.State.update browseMsg browseModel
-                    in
-                    case newRoute of
-                        Nothing ->
-                            ( Running { model | submodel = BrowseModel newBrowseModel }
-                            , Cmd.map BrowseMsg browseCmd
-                            )
-
-                        Just route ->
-                            gotoRoute model route
-
-                _ ->
-                    ( Running model, Cmd.none )
-
         SearchMsg searchMsg ->
             case model.submodel of
                 SearchModel searchModel ->
@@ -293,15 +273,15 @@ gotoRoute model route =
                 ]
             )
 
-        Routing.Interact id ->
-            case Maybe.map BigInt.fromInt id of
+        Routing.Interact maybeID ->
+            case maybeID of
                 Nothing ->
                     ( Failed "Error interpreting url", Browser.Navigation.pushUrl model.key newUrlString )
 
-                Just bigIntId ->
+                Just id ->
                     let
                         ( interactModel, interactCmd, chainCmdOrder ) =
-                            Interact.State.init model.node model.factoryAddress model.tokenContractAddress model.tokenContractDecimals model.userInfo bigIntId
+                            Interact.State.init model.node model.factoryAddress model.tokenContractAddress model.tokenContractDecimals model.userInfo id
 
                         ( newTxSentry, chainCmd ) =
                             ChainCmd.execute model.txSentry (ChainCmd.map InteractMsg chainCmdOrder)
@@ -317,21 +297,6 @@ gotoRoute model route =
                         , Browser.Navigation.pushUrl model.key newUrlString
                         ]
                     )
-
-        Routing.Browse ->
-            let
-                ( browseModel, browseCmd ) =
-                    Browse.State.init model.node model.factoryAddress model.tokenContractDecimals model.userInfo
-            in
-            ( Running
-                { model
-                    | submodel = BrowseModel browseModel
-                }
-            , Cmd.batch
-                [ Cmd.map BrowseMsg browseCmd
-                , Browser.Navigation.pushUrl model.key newUrlString
-                ]
-            )
 
         Routing.Search ->
             let
@@ -363,9 +328,6 @@ updateSubmodelUserInfo userInfo submodel =
 
         InteractModel interactModel ->
             InteractModel (interactModel |> Interact.State.updateUserInfo userInfo)
-
-        BrowseModel browseModel ->
-            BrowseModel (browseModel |> Browse.State.updateUserInfo userInfo)
 
         SearchModel searchModel ->
             SearchModel (searchModel |> Search.State.updateUserInfo userInfo)
@@ -399,9 +361,6 @@ submodelSubscriptions model =
 
         InteractModel interactModel ->
             Sub.map InteractMsg <| Interact.State.subscriptions interactModel
-
-        BrowseModel browseModel ->
-            Sub.map BrowseMsg <| Browse.State.subscriptions browseModel
 
         SearchModel searchModel ->
             Sub.map SearchMsg <| Search.State.subscriptions searchModel

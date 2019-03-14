@@ -1,4 +1,4 @@
-module Search.Types exposing (AmountRange, LocationQuery(..), Model, Msg(..), PaymentMethodQuery(..), SearchInputs, Trade, updateTradeAddress, updateTradeParameters, updateTradeState)
+module Search.Types exposing (AmountRange, FullTradeInfo, LocationQuery(..), Model, Msg(..), PartialTradeInfo, PaymentMethodQuery(..), ResultColumnType(..), SearchInputs, Trade(..), checkIfLoaded, updateTradeCreationInfo, updateTradeParameters, updateTradeState)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
@@ -8,6 +8,7 @@ import Contracts.Types
 import Eth.Types exposing (Address)
 import EthHelpers
 import Http
+import Time
 import TokenValue exposing (TokenValue)
 
 
@@ -18,7 +19,9 @@ type alias Model =
     , tokenDecimals : Int
     , numTrades : Maybe Int
     , inputs : SearchInputs
-    , trades : Array Trade
+    , trades : Array Contracts.Types.Trade
+    , filterFunc : Time.Posix -> Contracts.Types.FullTradeInfo -> Bool
+    , sortFunc : Contracts.Types.FullTradeInfo -> Contracts.Types.FullTradeInfo -> Order
     }
 
 
@@ -28,6 +31,7 @@ type Msg
     | ParametersFetched Int (Result Http.Error (Result String Contracts.Types.CreateParameters))
     | StateFetched Int (Result Http.Error (Maybe Contracts.Types.State))
     | TradeClicked Int
+    | SortBy ResultColumnType Bool
     | NoOp
 
 
@@ -54,22 +58,48 @@ type LocationQuery
     = TODOL
 
 
-type alias Trade =
-    { id : Int
+type Trade
+    = Loading PartialTradeInfo
+    | Loaded FullTradeInfo
+
+
+type alias PartialTradeInfo =
+    { factoryID : Int
     , address : Maybe Address
     , parameters : Maybe Contracts.Types.CreateParameters
     , state : Maybe Contracts.Types.State
     }
 
 
-updateTradeAddress : Int -> Address -> Model -> Model
-updateTradeAddress id address model =
+type alias FullTradeInfo =
+    { factoryID : Int
+    , address : Address
+    , parameters : Contracts.Types.CreateParameters
+    , state : Contracts.Types.State
+    }
+
+
+type ResultColumnType
+    = Expiring
+    | TradeAmount
+    | Fiat
+    | Margin
+    | PaymentMethods
+    | AutoabortWindow
+    | AutoreleaseWindow
+
+
+updateTradeCreationInfo : Int -> Contracts.Types.TradeCreationInfo -> Model -> Model
+updateTradeCreationInfo id creationInfo model =
     case Array.get id model.trades of
         Just trade ->
             let
+                newTrade =
+                    Contracts.Types.updateCreationInfo creationInfo trade
+
                 newTradeArray =
                     Array.set id
-                        { trade | address = Just address }
+                        newTrade
                         model.trades
             in
             { model | trades = newTradeArray }
@@ -77,7 +107,7 @@ updateTradeAddress id address model =
         Nothing ->
             let
                 _ =
-                    Debug.log "updateTTAddress ran into an out-of-range error" ""
+                    Debug.log "updateTradeAddress ran into an out-of-range error" ""
             in
             model
 
@@ -87,9 +117,12 @@ updateTradeParameters id parameters model =
     case Array.get id model.trades of
         Just trade ->
             let
+                newTrade =
+                    Contracts.Types.updateParameters parameters trade
+
                 newTradeArray =
                     Array.set id
-                        { trade | parameters = Just parameters }
+                        newTrade
                         model.trades
             in
             { model | trades = newTradeArray }
@@ -107,9 +140,12 @@ updateTradeState id state model =
     case Array.get id model.trades of
         Just trade ->
             let
+                newTrade =
+                    Contracts.Types.updateState state trade
+
                 newTradeArray =
                     Array.set id
-                        { trade | state = Just state }
+                        newTrade
                         model.trades
             in
             { model | trades = newTradeArray }
@@ -120,3 +156,13 @@ updateTradeState id state model =
                     Debug.log "updateTTState ran into an out-of-range error" ""
             in
             model
+
+
+checkIfLoaded : PartialTradeInfo -> Trade
+checkIfLoaded tradeInfo =
+    case ( tradeInfo.address, tradeInfo.parameters, tradeInfo.state ) of
+        ( Just address, Just parameters, Just state ) ->
+            Loaded <| FullTradeInfo tradeInfo.factoryID address parameters state
+
+        _ ->
+            Loading tradeInfo

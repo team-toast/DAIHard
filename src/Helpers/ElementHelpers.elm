@@ -1,5 +1,6 @@
-module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonDeepBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, fakeLink, fillWidthBlock, hbreak, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, methodName, pageBackgroundColor, pageTitle, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, timeValue, tokenValue, usdValue, white)
+module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonDeepBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, fakeLink, fiat, fillWidthBlock, hbreak, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, lightGray, methodName, pageBackgroundColor, pageTitle, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, timeValue, tokenValue, usdValue, white)
 
+import CommonTypes exposing (..)
 import Element
 import Element.Background
 import Element.Border
@@ -21,6 +22,10 @@ black =
 
 white =
     Element.rgb 1 1 1
+
+
+lightGray =
+    Element.rgb255 233 237 242
 
 
 initiatorColor =
@@ -60,7 +65,7 @@ buttonRed =
 
 
 headerBackgroundColor =
-    Element.rgb 0 0.2 0.4
+    Element.rgb255 10 33 108
 
 
 pageBackgroundColor =
@@ -234,6 +239,13 @@ usdValue tv =
             "US$" ++ TokenValue.renderToString (Just 2) tv
     in
     Element.el [ Element.Font.color (Element.rgb 0 0 1) ] (Element.text s)
+
+
+fiat : FiatType -> TokenValue -> Element.Element a
+fiat fiatType amount =
+    case fiatType of
+        USD ->
+            usdValue amount
 
 
 timeValue : Time.Posix -> Element.Element a

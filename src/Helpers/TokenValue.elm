@@ -1,6 +1,8 @@
-module TokenValue exposing (TokenValue, add, div, divByInt, fromString, getBigInt, isZero, mul, numDecimals, renderToString, sub, tokenValue, updateValue, updateViaString, zero)
+module TokenValue exposing (TokenValue, add, decoder, div, divByInt, encode, fromString, getBigInt, isZero, mul, numDecimals, renderToString, sub, tokenValue, updateValue, updateViaString, zero)
 
 import BigInt exposing (BigInt)
+import Json.Decode
+import Json.Encode
 
 
 type TokenValue
@@ -111,6 +113,28 @@ divByInt t i =
         (getBigInt t)
         (BigInt.fromInt i)
         |> updateValue t
+
+
+encode : TokenValue -> Json.Encode.Value
+encode tv =
+    tv
+        |> getBigInt
+        |> BigInt.toString
+        |> Json.Encode.string
+
+
+decoder : Int -> Json.Decode.Decoder TokenValue
+decoder decimals =
+    Json.Decode.string
+        |> Json.Decode.andThen
+            (\string ->
+                case BigInt.fromString string of
+                    Just val ->
+                        Json.Decode.succeed (tokenValue decimals val)
+
+                    Nothing ->
+                        Json.Decode.fail "Can't convert that to a BigInt"
+            )
 
 
 

@@ -1,6 +1,5 @@
 module View exposing (root)
 
-import Browse.View
 import Browser
 import Create.View
 import Element exposing (Attribute, Element)
@@ -26,6 +25,10 @@ root maybeValidModel =
                     mainElementAttributes =
                         [ Element.width Element.fill
                         , Element.height Element.fill
+                        , Element.Font.family
+                            [ Element.Font.typeface "Soleil"
+                            , Element.Font.sansSerif
+                            ]
                         ]
                 in
                 Element.layout
@@ -65,7 +68,7 @@ headerElement =
         ]
         (Element.row
             [ Element.width Element.fill
-            , Element.spacing 60
+            , Element.spacing 75
             ]
             [ logoElement
             , buyDaiElement
@@ -78,13 +81,13 @@ headerElement =
 logoElement : Element Msg
 logoElement =
     Element.el
-        [ Element.Font.size 20
+        [ Element.Font.size 22
         , Element.Font.color EH.white
         , Element.Font.bold
         , Element.pointer
         , Element.Events.onClick <| GotoRoute Routing.Home
         ]
-        (Element.text "RussianRelay")
+        (Element.text "BURN | ME")
 
 
 buyDaiElement : Element Msg
@@ -108,9 +111,9 @@ myOffersElement =
 
 headerMenuAttributes : List (Attribute Msg)
 headerMenuAttributes =
-    [ Element.Font.size 20
+    [ Element.Font.size 19
     , Element.Font.color EH.white
-    , Element.Font.bold
+    , Element.Font.semiBold
     ]
 
 
@@ -130,9 +133,6 @@ subModelElement model =
 
             InteractModel interactModel ->
                 Element.map InteractMsg (Interact.View.root model.time interactModel)
-
-            BrowseModel browseModel ->
-                Element.map BrowseMsg (Browse.View.root model.time browseModel)
 
             SearchModel searchModel ->
                 Element.map SearchMsg (Search.View.root model.time searchModel)

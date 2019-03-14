@@ -1,7 +1,6 @@
 module Types exposing (Flags, Model(..), Msg(..), Submodel(..), ValidModel)
 
 import BigInt exposing (BigInt)
-import Browse.Types
 import Browser
 import Browser.Navigation
 import CommonTypes exposing (UserInfo)
@@ -49,7 +48,6 @@ type Submodel
     = HomeModel
     | CreateModel Create.Types.Model
     | InteractModel Interact.Types.Model
-    | BrowseModel Browse.Types.Model
     | SearchModel Search.Types.Model
 
 
@@ -63,6 +61,5 @@ type Msg
     | UserPubkeySet Json.Decode.Value
     | CreateMsg Create.Types.Msg
     | InteractMsg Interact.Types.Msg
-    | BrowseMsg Browse.Types.Msg
     | SearchMsg Search.Types.Msg
     | Fail String

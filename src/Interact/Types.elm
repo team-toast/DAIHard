@@ -1,8 +1,8 @@
-module Interact.Types exposing (CommMessage, EncryptedMessage, Event, EventInfo(..), InitiatorOrResponder(..), MessageContent(..), Model, Msg(..), StateChangeInfo(..), TradeFullInfo, TradeInfo(..), TradePartialInfo, getUserRole, partialInfo, updateParameters, updateState)
+module Interact.Types exposing (CommMessage, EncryptedMessage, Event, EventInfo(..), InitiatorOrResponder(..), MessageContent(..), Model, Msg(..), StateChangeInfo(..), getUserRole)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
-import CommonTypes exposing (UserInfo)
+import CommonTypes exposing (..)
 import Contracts.Generated.Toastytrade as TT
 import Contracts.Generated.ToastytradeFactory as TTF
 import Contracts.Types
@@ -15,64 +15,12 @@ import RenderContract.Types
 import Time
 
 
-partialInfo : CreationInfo -> TradeInfo
-partialInfo creationInfo =
-    PartiallyLoaded (TradePartialInfo creationInfo Nothing Nothing)
-
-
-updateParameters : Contracts.Types.CreateParameters -> TradeInfo -> TradeInfo
-updateParameters parameters ttsInfo =
-    case ttsInfo of
-        NothingLoaded ->
-            let
-                _ =
-                    Debug.log "Trying to update parameters, but there is no creationInfo! What the heck???" ""
-            in
-            NothingLoaded
-
-        PartiallyLoaded pInfo ->
-            { pInfo | parameters = Just parameters }
-                |> checkIfLoaded
-
-        Loaded info ->
-            Loaded { info | parameters = parameters }
-
-
-updateState : Contracts.Types.State -> TradeInfo -> TradeInfo
-updateState state ttsInfo =
-    case ttsInfo of
-        NothingLoaded ->
-            let
-                _ =
-                    Debug.log "Trying to update state, but there is no creationInfo! What the heck???" ""
-            in
-            NothingLoaded
-
-        PartiallyLoaded pInfo ->
-            { pInfo | state = Just state }
-                |> checkIfLoaded
-
-        Loaded info ->
-            Loaded { info | state = state }
-
-
-checkIfLoaded : TradePartialInfo -> TradeInfo
-checkIfLoaded pInfo =
-    case ( pInfo.parameters, pInfo.state ) of
-        ( Just parameters, Just state ) ->
-            Loaded (TradeFullInfo pInfo.creationInfo parameters state)
-
-        _ ->
-            PartiallyLoaded pInfo
-
-
 type alias Model =
     { ethNode : EthHelpers.EthNode
     , userInfo : Maybe UserInfo
     , tokenAddress : Address
     , tokenDecimals : Int
-    , tradeId : BigInt
-    , tradeInfo : TradeInfo
+    , trade : Contracts.Types.Trade
     , history : Array Event
     , messageInput : String
     , eventSentry : Maybe (EventSentry Contracts.Types.ToastytradeEvent Msg)
@@ -93,32 +41,6 @@ type Msg
     | EncryptionFinished Json.Decode.Value
     | DecryptionFinished Json.Decode.Value
     | EventSentryMsg EventSentryHack.Msg
-
-
-type TradeInfo
-    = NothingLoaded
-    | PartiallyLoaded TradePartialInfo
-    | Loaded TradeFullInfo
-
-
-type alias TradePartialInfo =
-    { creationInfo : CreationInfo
-    , parameters : Maybe Contracts.Types.CreateParameters
-    , state : Maybe Contracts.Types.State
-    }
-
-
-type alias CreationInfo =
-    { address : Address
-    , blocknum : Int
-    }
-
-
-type alias TradeFullInfo =
-    { creationInfo : CreationInfo
-    , parameters : Contracts.Types.CreateParameters
-    , state : Contracts.Types.State
-    }
 
 
 type InitiatorOrResponder
@@ -171,13 +93,13 @@ type StateChangeInfo
     | RedundantEvent
 
 
-getUserRole : TradeFullInfo -> Address -> Maybe InitiatorOrResponder
-getUserRole ttsInfo userAddress =
-    if userAddress == ttsInfo.parameters.initiatorAddress then
+getUserRole : Contracts.Types.FullTradeInfo -> Address -> Maybe InitiatorOrResponder
+getUserRole tradeInfo userAddress =
+    if userAddress == tradeInfo.parameters.initiatorAddress then
         Just Initiator
 
     else
-        ttsInfo.state.responder
+        tradeInfo.state.responder
             |> Maybe.andThen
                 (\responder ->
                     if userAddress == responder then

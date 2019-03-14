@@ -1,6 +1,7 @@
 module Contracts.Wrappers exposing (createSell, decodeParameters, getCreationInfoFromIdCmd, getDevFeeCmd, getNumTradesCmd, getParametersAndStateCmd, getParametersCmd, getStateCmd)
 
 import BigInt exposing (BigInt)
+import CommonTypes exposing (..)
 import Contracts.Generated.Toastytrade as TT
 import Contracts.Generated.ToastytradeFactory as TTF
 import Contracts.Types exposing (..)
@@ -25,6 +26,10 @@ createSell contractAddress parameters =
             Json.Encode.list TransferMethods.encodeTransferMethod
                 parameters.transferMethods
                 |> Json.Encode.encode 0
+
+        encodedFiatData =
+            encodeFiatData parameters.fiatType parameters.fiatPrice
+                |> Json.Encode.encode 0
     in
     TTF.openToastytrade
         contractAddress
@@ -36,7 +41,7 @@ createSell contractAddress parameters =
         (TimeHelpers.posixToSecondsBigInt parameters.autorecallInterval)
         (TimeHelpers.posixToSecondsBigInt parameters.autoabortInterval)
         (TimeHelpers.posixToSecondsBigInt parameters.autoreleaseInterval)
-        parameters.totalPriceString
+        encodedFiatData
         encodedTransferMethods
         parameters.initiatorCommPubkey
 
@@ -101,12 +106,19 @@ decodeParameters numDecimals encodedParameters =
                 (Json.Decode.list TransferMethods.transferMethodDecoder)
                 encodedParameters.fiatTransferMethods
                 |> Result.mapError Json.Decode.errorToString
+
+        decodedFiatData =
+            Json.Decode.decodeString
+                CommonTypes.fiatDataDecoder
+                encodedParameters.totalPrice
+                |> Result.mapError Json.Decode.errorToString
     in
-    Result.map4
-        (\autorecallInterval depositDeadlineInterval autoreleaseInterval decodedTransferMethods ->
+    Result.map5
+        (\autorecallInterval depositDeadlineInterval autoreleaseInterval decodedTransferMethods fiatData ->
             { openMode = initiatorIsBuyerToOpenMode encodedParameters.initiatorIsBuyer
             , tradeAmount = TokenValue.tokenValue numDecimals encodedParameters.tokenAmount
-            , totalPriceString = encodedParameters.totalPrice
+            , fiatType = Tuple.first fiatData
+            , fiatPrice = Tuple.second fiatData
             , transferMethods = decodedTransferMethods
             , initiatorCommPubkey = encodedParameters.initiatorCommPubkey
             , autorecallInterval = autorecallInterval
@@ -121,3 +133,4 @@ decodeParameters numDecimals encodedParameters =
         depositDeadlineIntervalResult
         autoreleaseIntervalResult
         decodedTransferMethodsResult
+        decodedFiatData

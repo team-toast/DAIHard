@@ -25,8 +25,8 @@ root time model =
 
 maybeContractElement : Time.Posix -> Model -> Element.Element Msg
 maybeContractElement time model =
-    case ( model.userInfo, model.tradeInfo ) of
-        ( Just userInfo, Loaded tradeInfo ) ->
+    case ( model.userInfo, model.trade ) of
+        ( Just userInfo, Contracts.Types.Loaded tradeInfo ) ->
             let
                 context =
                     RenderContract.Types.generateContext tradeInfo.parameters tradeInfo.state userInfo.address time
@@ -173,8 +173,8 @@ renderEvent event =
 
 maybeCommInputElement : Model -> Element.Element Msg
 maybeCommInputElement model =
-    case ( model.userInfo, model.tradeInfo ) of
-        ( Just userInfo, Loaded tradeInfo ) ->
+    case ( model.userInfo, model.trade ) of
+        ( Just userInfo, Contracts.Types.Loaded tradeInfo ) ->
             case tradeInfo.state.phase of
                 Contracts.Types.Created ->
                     Element.none

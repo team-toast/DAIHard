@@ -1,8 +1,8 @@
-module Contracts.Types exposing (CreateParameters, OpenMode(..), Phase(..), State, ToastytradeEvent(..), UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, initiatorIsBuyerToOpenMode, openModeToInitiatorIsBuyer, phaseToString, txReceiptToCreatedToastytradeSellAddress, txReceiptToCreatedToastytradeSellId)
+module Contracts.Types exposing (CreateParameters, FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), State, ToastytradeEvent(..), Trade(..), TradeCreationInfo, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, initiatorIsBuyerToOpenMode, openModeToInitiatorIsBuyer, partialTradeInfo, phaseToString, txReceiptToCreatedToastytradeSellAddress, txReceiptToCreatedToastytradeSellId, updateCreationInfo, updateParameters, updateState)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
-import CommonTypes exposing (UserInfo)
+import CommonTypes exposing (..)
 import Contracts.Generated.Toastytrade as TT
 import Eth.Types exposing (Address)
 import Eth.Utils
@@ -50,8 +50,8 @@ type Phase
 type alias UserParameters =
     { openMode : OpenMode
     , tradeAmount : TokenValue
-    , totalPriceCurrency : String
-    , totalPriceValue : TokenValue
+    , fiatType : FiatType
+    , fiatPrice : TokenValue
     , transferMethods : List TransferMethod
     , autorecallInterval : Time.Posix
     , autoabortInterval : Time.Posix
@@ -62,7 +62,8 @@ type alias UserParameters =
 type alias CreateParameters =
     { openMode : OpenMode
     , tradeAmount : TokenValue
-    , totalPriceString : String
+    , fiatType : FiatType
+    , fiatPrice : TokenValue
     , transferMethods : List TransferMethod
     , initiatorCommPubkey : String
     , autorecallInterval : Time.Posix
@@ -83,6 +84,11 @@ type alias State =
     }
 
 
+type alias DerivedValues =
+    { phaseEndTime : Time.Posix
+    }
+
+
 type ToastytradeEvent
     = CommittedEvent TT.Committed
     | InitiatorStatementLogEvent TT.InitiatorStatementLog
@@ -92,6 +98,124 @@ type ToastytradeEvent
     | AbortedEvent
     | ReleasedEvent
     | BurnedEvent
+
+
+type Trade
+    = PartiallyLoaded PartialTradeInfo
+    | Loaded FullTradeInfo
+
+
+type alias PartialTradeInfo =
+    { factoryID : Int
+    , creationInfo : Maybe TradeCreationInfo
+    , parameters : Maybe CreateParameters
+    , state : Maybe State
+    }
+
+
+type alias TradeCreationInfo =
+    { address : Address
+    , blocknum : Int
+    }
+
+
+type alias FullTradeInfo =
+    { factoryID : Int
+    , creationInfo : TradeCreationInfo
+    , parameters : CreateParameters
+    , state : State
+    , derived : DerivedValues
+    }
+
+
+partialTradeInfo : Int -> Trade
+partialTradeInfo factoryID =
+    PartiallyLoaded (PartialTradeInfo factoryID Nothing Nothing Nothing)
+
+
+updateCreationInfo : TradeCreationInfo -> Trade -> Trade
+updateCreationInfo creationInfo trade =
+    case trade of
+        PartiallyLoaded pInfo ->
+            { pInfo | creationInfo = Just creationInfo }
+                |> checkIfLoaded
+
+        Loaded _ ->
+            let
+                _ =
+                    Debug.log "Trying to update creation info on a trade that's already been loaded!" ""
+            in
+            trade
+
+
+updateParameters : CreateParameters -> Trade -> Trade
+updateParameters parameters trade =
+    case trade of
+        PartiallyLoaded pInfo ->
+            { pInfo | parameters = Just parameters }
+                |> checkIfLoaded
+
+        Loaded info ->
+            let
+                _ =
+                    Debug.log "Trying to update parameters on a trade that's already been loaded!" ""
+            in
+            trade
+
+
+updateState : State -> Trade -> Trade
+updateState state trade =
+    case trade of
+        PartiallyLoaded pInfo ->
+            { pInfo | state = Just state }
+                |> checkIfLoaded
+
+        Loaded info ->
+            Loaded { info | state = state }
+
+
+checkIfLoaded : PartialTradeInfo -> Trade
+checkIfLoaded pInfo =
+    case ( pInfo.creationInfo, pInfo.parameters, pInfo.state ) of
+        ( Just creationInfo, Just parameters, Just state ) ->
+            Loaded
+                (FullTradeInfo
+                    pInfo.factoryID
+                    creationInfo
+                    parameters
+                    state
+                    (deriveValues parameters state)
+                )
+
+        _ ->
+            PartiallyLoaded pInfo
+
+
+deriveValues : CreateParameters -> State -> DerivedValues
+deriveValues parameters state =
+    let
+        currentPhaseInterval =
+            case state.phase of
+                Created ->
+                    Time.millisToPosix 0
+
+                Open ->
+                    parameters.autorecallInterval
+
+                Committed ->
+                    parameters.autoabortInterval
+
+                Claimed ->
+                    parameters.autoreleaseInterval
+
+                Closed ->
+                    Time.millisToPosix 0
+    in
+    { phaseEndTime =
+        TimeHelpers.add
+            state.phaseStartTime
+            currentPhaseInterval
+    }
 
 
 eventDecoder : Json.Decode.Decoder ToastytradeEvent
@@ -226,10 +350,6 @@ buildCreateParameters initiatorInfo userParameters =
         buyerDeposit =
             TokenValue.divByInt userParameters.tradeAmount 3
 
-        totalPriceString =
-            userParameters.totalPriceCurrency
-                ++ (userParameters.totalPriceValue |> TokenValue.renderToString Nothing)
-
         pokeReward =
             TokenValue.updateValue
                 userParameters.tradeAmount
@@ -237,7 +357,8 @@ buildCreateParameters initiatorInfo userParameters =
     in
     { openMode = userParameters.openMode
     , tradeAmount = userParameters.tradeAmount
-    , totalPriceString = totalPriceString
+    , fiatType = userParameters.fiatType
+    , fiatPrice = userParameters.fiatPrice
     , autorecallInterval = userParameters.autorecallInterval
     , autoabortInterval = userParameters.autoabortInterval
     , autoreleaseInterval = userParameters.autoreleaseInterval

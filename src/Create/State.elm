@@ -3,7 +3,7 @@ module Create.State exposing (init, subscriptions, udpateParameterInputs, update
 import BigInt
 import BigIntHelpers
 import ChainCmd exposing (ChainCmd)
-import CommonTypes exposing (UserInfo)
+import CommonTypes exposing (..)
 import Contracts.Generated.ERC20Token as TokenContract
 import Contracts.Types
 import Contracts.Wrappers
@@ -300,11 +300,11 @@ updateParameters model =
 validateInputs : Int -> ContractParameterInputs -> Maybe Contracts.Types.UserParameters
 validateInputs numDecimals inputs =
     Maybe.map5
-        (\tradeAmount totalPriceString autorecallInterval autoabortInterval autoreleaseInterval ->
+        (\tradeAmount fiatPrice autorecallInterval autoabortInterval autoreleaseInterval ->
             { openMode = inputs.openMode
             , tradeAmount = tradeAmount
-            , totalPriceCurrency = "??"
-            , totalPriceValue = totalPriceString
+            , fiatType = USD
+            , fiatPrice = fiatPrice
             , autorecallInterval = autorecallInterval
             , autoabortInterval = autoabortInterval
             , autoreleaseInterval = autoreleaseInterval
@@ -312,7 +312,7 @@ validateInputs numDecimals inputs =
             }
         )
         (TokenValue.fromString numDecimals inputs.tradeAmount)
-        (TokenValue.fromString numDecimals inputs.totalPrice)
+        (TokenValue.fromString 2 inputs.totalPrice)
         (TimeHelpers.daysStrToMaybePosix inputs.autorecallInterval)
         (TimeHelpers.daysStrToMaybePosix inputs.autoabortInterval)
         (TimeHelpers.daysStrToMaybePosix inputs.autoreleaseInterval)

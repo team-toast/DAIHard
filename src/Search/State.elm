@@ -4,11 +4,14 @@ import Array exposing (Array)
 import BigInt exposing (BigInt)
 import BigIntHelpers
 import CommonTypes exposing (UserInfo)
+import Contracts.Types
 import Contracts.Wrappers
 import Eth.Types exposing (Address)
 import EthHelpers
 import Routing
 import Search.Types exposing (..)
+import Time
+import TimeHelpers
 
 
 init : EthHelpers.EthNode -> Address -> Int -> Maybe UserInfo -> ( Model, Cmd Msg )
@@ -20,9 +23,22 @@ init ethNode factoryAddress tokenDecimals userInfo =
       , numTrades = Nothing
       , trades = Array.empty
       , inputs = startingInputs
+      , filterFunc = initialFilterFunc
+      , sortFunc = initialSortFunc
       }
     , Contracts.Wrappers.getNumTradesCmd ethNode factoryAddress NumTradesFetched
     )
+
+
+initialFilterFunc : Time.Posix -> Contracts.Types.FullTradeInfo -> Bool
+initialFilterFunc time trade =
+    (trade.state.phase == Contracts.Types.Open)
+        && (TimeHelpers.compare trade.derived.phaseEndTime time == GT)
+
+
+initialSortFunc : Contracts.Types.FullTradeInfo -> Contracts.Types.FullTradeInfo -> Order
+initialSortFunc a b =
+    compare a.creationInfo.blocknum b.creationInfo.blocknum
 
 
 startingInputs : SearchInputs
@@ -55,14 +71,7 @@ update msg model =
 
                                 trades =
                                     List.range 0 (numTrades - 1)
-                                        |> List.map
-                                            (\id ->
-                                                { id = id
-                                                , address = Nothing
-                                                , parameters = Nothing
-                                                , state = Nothing
-                                                }
-                                            )
+                                        |> List.map Contracts.Types.partialTradeInfo
                                         |> Array.fromList
                             in
                             ( { model
@@ -90,7 +99,13 @@ update msg model =
         CreationInfoFetched id fetchResult ->
             case fetchResult of
                 Ok creationInfo ->
-                    ( model |> updateTradeAddress id creationInfo.address_
+                    ( model
+                        |> updateTradeCreationInfo
+                            id
+                            (Contracts.Types.TradeCreationInfo
+                                creationInfo.address_
+                                (BigIntHelpers.toIntWithWarning creationInfo.blocknum)
+                            )
                     , Contracts.Wrappers.getParametersAndStateCmd model.ethNode model.tokenDecimals creationInfo.address_ (ParametersFetched id) (StateFetched id)
                     , Nothing
                     )
@@ -134,6 +149,13 @@ update msg model =
 
         TradeClicked id ->
             ( model, Cmd.none, Just (Routing.Interact (Just id)) )
+
+        SortBy colType ascending ->
+            let
+                _ =
+                    Debug.log "order by" ( colType, ascending )
+            in
+            ( model, Cmd.none, Nothing )
 
         NoOp ->
             ( model, Cmd.none, Nothing )
