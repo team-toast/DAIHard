@@ -71,7 +71,7 @@ render viewMode parameters =
                         )
                     , EH.tokenValue parameters.tradeAmount
                     , Element.text " for "
-                    , EH.fiat parameters.fiatType parameters.fiatPrice
+                    , EH.fiatValue parameters.fiatPrice
                     ]
                 , Element.paragraph []
                     [ Element.text "to be finalized within "
@@ -207,7 +207,7 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
                 [ Element.text "The "
                 , EH.buyer []
                 , Element.text " is expected to transfer "
-                , EH.fiat parameters.fiatType parameters.fiatPrice
+                , EH.fiatValue parameters.fiatPrice
                 , Element.text " to the "
                 , EH.seller []
                 , Element.text " according to the following "
@@ -318,7 +318,7 @@ claimedPhaseElement viewMode parameters postCommitBalance =
                     [ Element.text "The "
                     , EH.seller []
                     , Element.text " is expected to verify with certainty whether he has received at least "
-                    , EH.usdValue parameters.tradeAmount
+                    , EH.fiatValue parameters.fiatPrice
                     , Element.text " from the "
                     , EH.buyer []
                     , Element.text "."
@@ -336,7 +336,7 @@ claimedPhaseElement viewMode parameters postCommitBalance =
                             ]
                         , Element.paragraph []
                             [ Element.text "If the transfer has not taken place, or if the transfer amount was less than "
-                            , EH.usdValue parameters.tradeAmount
+                            , EH.fiatValue parameters.fiatPrice
                             , Element.text ", the "
                             , EH.seller []
                             , Element.text " is expected to execute the "

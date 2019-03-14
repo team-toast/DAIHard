@@ -1,6 +1,7 @@
-module TokenValue exposing (TokenValue, add, decoder, div, divByInt, encode, fromString, getBigInt, isZero, mul, numDecimals, renderToString, sub, tokenValue, updateValue, updateViaString, zero)
+module TokenValue exposing (TokenValue, add, decoder, div, divByInt, encode, fromString, getBigInt, getFloatValueWithWarning, isZero, mul, numDecimals, renderToString, sub, tokenValue, updateValue, updateViaString, zero)
 
 import BigInt exposing (BigInt)
+import BigIntHelpers
 import Json.Decode
 import Json.Encode
 
@@ -65,6 +66,26 @@ getBigInt (TokenValue tokens) =
     tokens.value
 
 
+getFloatValueWithWarning : TokenValue -> Float
+getFloatValueWithWarning tokens =
+    let
+        toFloat =
+            tokens
+                |> renderToString Nothing
+                |> String.toFloat
+    in
+    case toFloat of
+        Just f ->
+            f
+
+        Nothing ->
+            let
+                _ =
+                    Debug.log "Error converting tokenValue to float--string -> float failed!" tokens
+            in
+            0
+
+
 renderToString : Maybe Int -> TokenValue -> String
 renderToString maxDigitsAfterDecimal tokens =
     case maxDigitsAfterDecimal of
@@ -119,22 +140,12 @@ encode : TokenValue -> Json.Encode.Value
 encode tv =
     tv
         |> getBigInt
-        |> BigInt.toString
-        |> Json.Encode.string
+        |> BigIntHelpers.encode
 
 
 decoder : Int -> Json.Decode.Decoder TokenValue
 decoder decimals =
-    Json.Decode.string
-        |> Json.Decode.andThen
-            (\string ->
-                case BigInt.fromString string of
-                    Just val ->
-                        Json.Decode.succeed (tokenValue decimals val)
-
-                    Nothing ->
-                        Json.Decode.fail "Can't convert that to a BigInt"
-            )
+    Json.Decode.map (tokenValue decimals) BigIntHelpers.decoder
 
 
 

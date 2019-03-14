@@ -11,6 +11,7 @@ import Create.Types exposing (..)
 import Eth
 import Eth.Types exposing (Address)
 import EthHelpers
+import FiatValue exposing (FiatValue)
 import Flip exposing (flip)
 import Routing
 import TimeHelpers
@@ -300,11 +301,10 @@ updateParameters model =
 validateInputs : Int -> ContractParameterInputs -> Maybe Contracts.Types.UserParameters
 validateInputs numDecimals inputs =
     Maybe.map5
-        (\tradeAmount fiatPrice autorecallInterval autoabortInterval autoreleaseInterval ->
+        (\tradeAmount fiatAmount autorecallInterval autoabortInterval autoreleaseInterval ->
             { openMode = inputs.openMode
             , tradeAmount = tradeAmount
-            , fiatType = USD
-            , fiatPrice = fiatPrice
+            , fiatPrice = { fiatType = FiatValue.USD, amount = fiatAmount }
             , autorecallInterval = autorecallInterval
             , autoabortInterval = autoabortInterval
             , autoreleaseInterval = autoreleaseInterval
@@ -312,7 +312,7 @@ validateInputs numDecimals inputs =
             }
         )
         (TokenValue.fromString numDecimals inputs.tradeAmount)
-        (TokenValue.fromString 2 inputs.totalPrice)
+        (BigInt.fromString inputs.totalPrice)
         (TimeHelpers.daysStrToMaybePosix inputs.autorecallInterval)
         (TimeHelpers.daysStrToMaybePosix inputs.autoabortInterval)
         (TimeHelpers.daysStrToMaybePosix inputs.autoreleaseInterval)

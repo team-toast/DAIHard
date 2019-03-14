@@ -7,6 +7,7 @@ import Contracts.Generated.Toastytrade as TT
 import Eth.Types exposing (Address)
 import Eth.Utils
 import EthHelpers
+import FiatValue exposing (FiatValue)
 import Internal.Decode as EthInternalDecode
 import Json.Decode
 import Time
@@ -50,8 +51,7 @@ type Phase
 type alias UserParameters =
     { openMode : OpenMode
     , tradeAmount : TokenValue
-    , fiatType : FiatType
-    , fiatPrice : TokenValue
+    , fiatPrice : FiatValue
     , transferMethods : List TransferMethod
     , autorecallInterval : Time.Posix
     , autoabortInterval : Time.Posix
@@ -62,8 +62,7 @@ type alias UserParameters =
 type alias CreateParameters =
     { openMode : OpenMode
     , tradeAmount : TokenValue
-    , fiatType : FiatType
-    , fiatPrice : TokenValue
+    , fiatPrice : FiatValue
     , transferMethods : List TransferMethod
     , initiatorCommPubkey : String
     , autorecallInterval : Time.Posix
@@ -357,7 +356,6 @@ buildCreateParameters initiatorInfo userParameters =
     in
     { openMode = userParameters.openMode
     , tradeAmount = userParameters.tradeAmount
-    , fiatType = userParameters.fiatType
     , fiatPrice = userParameters.fiatPrice
     , autorecallInterval = userParameters.autorecallInterval
     , autoabortInterval = userParameters.autoabortInterval

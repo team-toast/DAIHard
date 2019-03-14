@@ -7,6 +7,7 @@ import Contracts.Generated.ToastytradeFactory as TTF
 import Contracts.Types
 import Eth.Types exposing (Address)
 import EthHelpers
+import FiatValue exposing (FiatValue)
 import Http
 import Time
 import TokenValue exposing (TokenValue)
@@ -37,7 +38,7 @@ type Msg
 
 type alias SearchInputs =
     { daiRange : AmountRange
-    , fiatType : Maybe FiatType
+    , fiatType : Maybe FiatValue
     , fiatRange : AmountRange
     , paymentMethod : Maybe PaymentMethodQuery
     , location : Maybe LocationQuery

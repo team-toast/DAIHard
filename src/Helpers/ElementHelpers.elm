@@ -1,4 +1,4 @@
-module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonDeepBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, fakeLink, fiat, fillWidthBlock, hbreak, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, lightGray, methodName, pageBackgroundColor, pageTitle, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, timeValue, tokenValue, usdValue, white)
+module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonDeepBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, fakeLink, fiatValue, fillWidthBlock, hbreak, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, lightGray, methodName, pageBackgroundColor, pageTitle, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, timeValue, tokenValue, white)
 
 import CommonTypes exposing (..)
 import Element
@@ -6,6 +6,7 @@ import Element.Background
 import Element.Border
 import Element.Font
 import Element.Input
+import FiatValue exposing (FiatValue)
 import List
 import Time
 import TimeHelpers
@@ -232,20 +233,9 @@ tokenValue tv =
     Element.el [ Element.Font.color (Element.rgb 0 0 1) ] (Element.text s)
 
 
-usdValue : TokenValue -> Element.Element a
-usdValue tv =
-    let
-        s =
-            "US$" ++ TokenValue.renderToString (Just 2) tv
-    in
-    Element.el [ Element.Font.color (Element.rgb 0 0 1) ] (Element.text s)
-
-
-fiat : FiatType -> TokenValue -> Element.Element a
-fiat fiatType amount =
-    case fiatType of
-        USD ->
-            usdValue amount
+fiatValue : FiatValue -> Element.Element a
+fiatValue fv =
+    Element.el [ Element.Font.color (Element.rgb 0 0 1) ] (Element.text <| FiatValue.renderToString fv)
 
 
 timeValue : Time.Posix -> Element.Element a

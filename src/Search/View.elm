@@ -10,9 +10,11 @@ import Element.Events
 import Element.Font
 import Element.Input
 import ElementHelpers as EH
+import FiatValue exposing (FiatValue)
 import Search.Types exposing (..)
 import Time
 import TimeHelpers
+import Utils
 
 
 root : Time.Posix -> Model -> Element Msg
@@ -65,7 +67,7 @@ resultsElement time model =
         [ Element.width Element.fill
         , Element.height Element.fill
         , Element.padding 30
-        , Element.spacing 20
+        , Element.spacing 5
         ]
         [ Element.row
             [ Element.width Element.fill ]
@@ -100,7 +102,7 @@ daiRangeInput range =
         |> withInputHeader "Dai Amount"
 
 
-fiatTypeInput : Maybe FiatType -> Element Msg
+fiatTypeInput : Maybe FiatValue -> Element Msg
 fiatTypeInput fiatType =
     dummyTextInput
         |> withInputHeader "Fiat Type"
@@ -221,12 +223,17 @@ viewTradeAmount trade =
 
 viewFiat : Contracts.Types.FullTradeInfo -> Element Msg
 viewFiat trade =
-    EH.fiat trade.parameters.fiatType trade.parameters.fiatPrice
+    EH.fiatValue trade.parameters.fiatPrice
 
 
 viewMargin : Contracts.Types.FullTradeInfo -> Element Msg
 viewMargin trade =
-    Element.text "??"
+    Utils.marginForBuyer
+        trade.parameters.tradeAmount
+        trade.parameters.fiatPrice
+        |> Maybe.map
+            (Utils.marginToString >> Element.text)
+        |> Maybe.withDefault Element.none
 
 
 viewPaymentMethods : Contracts.Types.FullTradeInfo -> Element Msg

@@ -8,6 +8,7 @@ import Contracts.Types exposing (..)
 import Eth
 import Eth.Types exposing (Address, Call)
 import EthHelpers
+import FiatValue exposing (FiatValue)
 import Flip exposing (flip)
 import Http
 import Json.Decode
@@ -28,7 +29,7 @@ createSell contractAddress parameters =
                 |> Json.Encode.encode 0
 
         encodedFiatData =
-            encodeFiatData parameters.fiatType parameters.fiatPrice
+            FiatValue.encode parameters.fiatPrice
                 |> Json.Encode.encode 0
     in
     TTF.openToastytrade
@@ -107,18 +108,17 @@ decodeParameters numDecimals encodedParameters =
                 encodedParameters.fiatTransferMethods
                 |> Result.mapError Json.Decode.errorToString
 
-        decodedFiatData =
+        decodedFiatPrice =
             Json.Decode.decodeString
-                CommonTypes.fiatDataDecoder
+                FiatValue.decoder
                 encodedParameters.totalPrice
                 |> Result.mapError Json.Decode.errorToString
     in
     Result.map5
-        (\autorecallInterval depositDeadlineInterval autoreleaseInterval decodedTransferMethods fiatData ->
+        (\autorecallInterval depositDeadlineInterval autoreleaseInterval decodedTransferMethods fiatPrice ->
             { openMode = initiatorIsBuyerToOpenMode encodedParameters.initiatorIsBuyer
             , tradeAmount = TokenValue.tokenValue numDecimals encodedParameters.tokenAmount
-            , fiatType = Tuple.first fiatData
-            , fiatPrice = Tuple.second fiatData
+            , fiatPrice = fiatPrice
             , transferMethods = decodedTransferMethods
             , initiatorCommPubkey = encodedParameters.initiatorCommPubkey
             , autorecallInterval = autorecallInterval
@@ -133,4 +133,4 @@ decodeParameters numDecimals encodedParameters =
         depositDeadlineIntervalResult
         autoreleaseIntervalResult
         decodedTransferMethodsResult
-        decodedFiatData
+        decodedFiatPrice
