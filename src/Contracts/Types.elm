@@ -10,10 +10,10 @@ import EthHelpers
 import FiatValue exposing (FiatValue)
 import Internal.Decode as EthInternalDecode
 import Json.Decode
+import PaymentMethods exposing (PaymentMethod)
 import Time
 import TimeHelpers
 import TokenValue exposing (TokenValue)
-import TransferMethods exposing (TransferMethod)
 
 
 type OpenMode
@@ -52,7 +52,7 @@ type alias UserParameters =
     { openMode : OpenMode
     , tradeAmount : TokenValue
     , fiatPrice : FiatValue
-    , transferMethods : List TransferMethod
+    , paymentMethods : List PaymentMethod
     , autorecallInterval : Time.Posix
     , autoabortInterval : Time.Posix
     , autoreleaseInterval : Time.Posix
@@ -63,7 +63,7 @@ type alias CreateParameters =
     { openMode : OpenMode
     , tradeAmount : TokenValue
     , fiatPrice : FiatValue
-    , transferMethods : List TransferMethod
+    , paymentMethods : List PaymentMethod
     , initiatorCommPubkey : String
     , autorecallInterval : Time.Posix
     , autoabortInterval : Time.Posix
@@ -360,7 +360,7 @@ buildCreateParameters initiatorInfo userParameters =
     , autorecallInterval = userParameters.autorecallInterval
     , autoabortInterval = userParameters.autoabortInterval
     , autoreleaseInterval = userParameters.autoreleaseInterval
-    , transferMethods = userParameters.transferMethods
+    , paymentMethods = userParameters.paymentMethods
     , initiatorAddress = initiatorInfo.address
     , initiatorCommPubkey = initiatorInfo.commPubkey
     , buyerDeposit = buyerDeposit

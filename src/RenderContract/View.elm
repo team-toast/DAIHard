@@ -9,11 +9,11 @@ import ElementHelpers as EH
 import Eth.Utils
 import Flip exposing (flip)
 import Maybe.Extra
+import PaymentMethods exposing (PaymentMethod)
 import RenderContract.Types exposing (..)
 import Time
 import TimeHelpers
 import TokenValue exposing (TokenValue)
-import TransferMethods exposing (TransferMethod)
 
 
 render : ViewMode -> Contracts.Types.CreateParameters -> Element.Element Msg
@@ -218,7 +218,7 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
                 , EH.sectionReference "Claimed Phase"
                 , Element.text "."
                 ]
-            , fiatTransferMethodsElement parameters.transferMethods
+            , fiatPaymentMethodsElement parameters.paymentMethods
             , Element.paragraph []
                 [ Element.text "The "
                 , EH.seller []
@@ -289,8 +289,8 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
         ]
 
 
-fiatTransferMethodsElement : List TransferMethod -> Element.Element Msg
-fiatTransferMethodsElement transferMethods =
+fiatPaymentMethodsElement : List PaymentMethod -> Element.Element Msg
+fiatPaymentMethodsElement paymentMethods =
     Element.column [ Element.width Element.fill, Element.spacing 5 ]
         [ Element.el [ Element.Font.size 24, Element.Font.italic, Element.Font.bold ]
             (Element.text "Transfer Methods")
@@ -302,8 +302,8 @@ fiatTransferMethodsElement transferMethods =
             , Element.padding 10
             , Element.spacing 5
             ]
-            (transferMethods
-                |> List.map TransferMethods.demoView
+            (paymentMethods
+                |> List.map PaymentMethods.demoView
             )
         ]
 

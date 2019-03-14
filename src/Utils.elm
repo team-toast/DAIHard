@@ -1,11 +1,11 @@
-module Utils exposing (marginForBuyer, marginToString)
+module Utils exposing (margin, marginToString)
 
 import FiatValue exposing (FiatValue)
 import TokenValue exposing (TokenValue)
 
 
-marginForBuyer : TokenValue -> FiatValue -> Maybe Float
-marginForBuyer tokens fiat =
+margin : TokenValue -> FiatValue -> Maybe Float
+margin tokens fiat =
     let
         tokenFloat =
             TokenValue.getFloatValueWithWarning tokens
@@ -23,8 +23,8 @@ marginForBuyer tokens fiat =
 
 
 marginToString : Float -> String
-marginToString margin =
-    (margin
+marginToString margin_ =
+    (margin_
         * 100
         |> String.fromFloat
     )

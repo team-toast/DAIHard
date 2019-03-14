@@ -1,4 +1,4 @@
-module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonDeepBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, fakeLink, fiatValue, fillWidthBlock, hbreak, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, lightGray, methodName, pageBackgroundColor, pageTitle, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, timeValue, tokenValue, white)
+module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonDeepBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, fakeLink, fiatValue, fillWidthBlock, hbreak, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, interval, lightGray, methodName, pageBackgroundColor, pageTitle, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, timeValue, tokenValue, white)
 
 import CommonTypes exposing (..)
 import Element
@@ -261,6 +261,17 @@ secondsRemainingString end now =
                 |> String.fromInt
     in
     secondsLeftString ++ " seconds"
+
+
+interval : Time.Posix -> Element.Element a
+interval i =
+    Element.text <|
+        (i
+            |> Time.posixToMillis
+            |> (\millis -> millis // 1000)
+            |> String.fromInt
+        )
+            ++ " seconds"
 
 
 

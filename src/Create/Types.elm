@@ -7,9 +7,9 @@ import Contracts.Types
 import Eth.Types exposing (Address, TxReceipt)
 import EthHelpers
 import Http
+import PaymentMethods exposing (PaymentMethod)
 import Routing
 import TokenValue exposing (TokenValue)
-import TransferMethods exposing (TransferMethod)
 
 
 type alias Model =
@@ -28,7 +28,7 @@ type alias ContractParameterInputs =
     { openMode : Contracts.Types.OpenMode
     , tradeAmount : String
     , totalPrice : String
-    , transferMethods : List TransferMethod
+    , paymentMethods : List PaymentMethod
     , autorecallInterval : String
     , autoabortInterval : String
     , autoreleaseInterval : String
@@ -42,7 +42,7 @@ type Msg
     | AutoabortIntervalChanged String
     | AutoreleaseIntervalChanged String
     | SwitchInitiatorRole
-    | AddTransferMethod TransferMethod
+    | AddPaymentMethod PaymentMethod
     | BeginCreateProcess
     | DevFeeFetched (Result Http.Error BigInt)
     | ApproveMined (Result String TxReceipt)

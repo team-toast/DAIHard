@@ -11,6 +11,7 @@ import Element.Font
 import Element.Input
 import ElementHelpers as EH
 import FiatValue exposing (FiatValue)
+import PaymentMethods exposing (PaymentMethod)
 import Search.Types exposing (..)
 import Time
 import TimeHelpers
@@ -78,7 +79,7 @@ resultsElement time model =
             , cellMaker ( 6, sortableColumnHeader PaymentMethods "Accepted Payment Methods" Nothing )
             , cellMaker ( 2, sortableColumnHeader AutoabortWindow "Payment Window" Nothing )
             , cellMaker ( 2, sortableColumnHeader AutoreleaseWindow "Auto-Release" Nothing )
-            , cellMaker ( 1, Element.none )
+            , cellMaker ( 2, Element.none )
             ]
         , Element.column
             [ Element.width Element.fill
@@ -189,7 +190,7 @@ viewTradeRow time trade =
             , ( 6, viewPaymentMethods trade )
             , ( 2, viewAutoabortWindow trade )
             , ( 2, viewAutoreleaseWindow trade )
-            , ( 1, viewTradeButton trade.factoryID )
+            , ( 2, viewTradeButton trade.factoryID )
             ]
         )
 
@@ -198,12 +199,16 @@ cellMaker : ( Int, Element Msg ) -> Element Msg
 cellMaker ( portion, cellElement ) =
     Element.el
         [ Element.width <| Element.fillPortion portion
+        , Element.height <| Element.px 70
         , Element.clip
         , Element.Background.color EH.white
         ]
     <|
         Element.el
-            [ Element.padding 12 ]
+            [ Element.padding 12
+            , Element.centerY
+            , Element.width Element.fill
+            ]
             cellElement
 
 
@@ -228,7 +233,7 @@ viewFiat trade =
 
 viewMargin : Contracts.Types.FullTradeInfo -> Element Msg
 viewMargin trade =
-    Utils.marginForBuyer
+    Utils.margin
         trade.parameters.tradeAmount
         trade.parameters.fiatPrice
         |> Maybe.map
@@ -238,22 +243,34 @@ viewMargin trade =
 
 viewPaymentMethods : Contracts.Types.FullTradeInfo -> Element Msg
 viewPaymentMethods trade =
-    Element.text "??"
+    Element.row [ Element.padding 3 ]
+        (trade.parameters.paymentMethods
+            |> List.map PaymentMethods.demoView
+        )
 
 
 viewAutoabortWindow : Contracts.Types.FullTradeInfo -> Element Msg
 viewAutoabortWindow trade =
-    Element.text "??"
+    EH.interval trade.parameters.autoabortInterval
 
 
 viewAutoreleaseWindow : Contracts.Types.FullTradeInfo -> Element Msg
 viewAutoreleaseWindow trade =
-    Element.text "??"
+    EH.interval trade.parameters.autoreleaseInterval
 
 
 viewTradeButton : Int -> Element Msg
 viewTradeButton factoryID =
-    Element.text "??"
+    Element.Input.button
+        [ Element.Background.color <| Element.rgba255 16 7 234 0.2
+        , Element.padding 11
+        , Element.Border.rounded 4
+        , Element.width Element.fill
+        ]
+        { onPress = Just <| TradeClicked factoryID
+        , label =
+            Element.el [ Element.centerX, Element.Font.color <| Element.rgb255 16 7 234 ] <| Element.text "View Offer"
+        }
 
 
 getLoadedTrades : List Contracts.Types.Trade -> List Contracts.Types.FullTradeInfo

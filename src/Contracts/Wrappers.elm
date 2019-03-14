@@ -13,19 +13,19 @@ import Flip exposing (flip)
 import Http
 import Json.Decode
 import Json.Encode
+import PaymentMethods
 import Task
 import Time
 import TimeHelpers
 import TokenValue exposing (TokenValue)
-import TransferMethods
 
 
 createSell : Address -> CreateParameters -> Call Address
 createSell contractAddress parameters =
     let
-        encodedTransferMethods =
-            Json.Encode.list TransferMethods.encodeTransferMethod
-                parameters.transferMethods
+        encodedPaymentMethods =
+            Json.Encode.list PaymentMethods.encodePaymentMethod
+                parameters.paymentMethods
                 |> Json.Encode.encode 0
 
         encodedFiatData =
@@ -43,7 +43,7 @@ createSell contractAddress parameters =
         (TimeHelpers.posixToSecondsBigInt parameters.autoabortInterval)
         (TimeHelpers.posixToSecondsBigInt parameters.autoreleaseInterval)
         encodedFiatData
-        encodedTransferMethods
+        encodedPaymentMethods
         parameters.initiatorCommPubkey
 
 
@@ -102,9 +102,9 @@ decodeParameters numDecimals encodedParameters =
             TimeHelpers.secondsBigIntToMaybePosix encodedParameters.autoreleaseInterval
                 |> Result.fromMaybe "error converting BigInt to Time.Posix"
 
-        decodedTransferMethodsResult =
+        decodedPaymentMethodsResult =
             Json.Decode.decodeString
-                (Json.Decode.list TransferMethods.transferMethodDecoder)
+                (Json.Decode.list PaymentMethods.paymentMethodDecoder)
                 encodedParameters.fiatTransferMethods
                 |> Result.mapError Json.Decode.errorToString
 
@@ -115,11 +115,11 @@ decodeParameters numDecimals encodedParameters =
                 |> Result.mapError Json.Decode.errorToString
     in
     Result.map5
-        (\autorecallInterval depositDeadlineInterval autoreleaseInterval decodedTransferMethods fiatPrice ->
+        (\autorecallInterval depositDeadlineInterval autoreleaseInterval decodedPaymentMethods fiatPrice ->
             { openMode = initiatorIsBuyerToOpenMode encodedParameters.initiatorIsBuyer
             , tradeAmount = TokenValue.tokenValue numDecimals encodedParameters.tokenAmount
             , fiatPrice = fiatPrice
-            , transferMethods = decodedTransferMethods
+            , paymentMethods = decodedPaymentMethods
             , initiatorCommPubkey = encodedParameters.initiatorCommPubkey
             , autorecallInterval = autorecallInterval
             , autoabortInterval = depositDeadlineInterval
@@ -132,5 +132,5 @@ decodeParameters numDecimals encodedParameters =
         autorecallIntervalResult
         depositDeadlineIntervalResult
         autoreleaseIntervalResult
-        decodedTransferMethodsResult
+        decodedPaymentMethodsResult
         decodedFiatPrice

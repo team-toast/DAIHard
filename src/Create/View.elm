@@ -7,9 +7,9 @@ import Element.Events
 import Element.Font
 import Element.Input
 import ElementHelpers as EH
+import PaymentMethods
 import RenderContract.Types
 import RenderContract.View
-import TransferMethods
 
 
 root : Model -> Element.Element Msg
@@ -87,16 +87,16 @@ contractParametersForm model =
                        )
                 )
 
-        transferMethodsInput =
+        paymentMethodsInput =
             Element.column [ Element.width (Element.fillPortion 3), Element.spacing 8, Element.alignTop ]
                 [ columnHeader "Fiat Transfer Methods"
                 , Element.column [ Element.width Element.fill, Element.spacing 8 ]
                     [ Element.Input.button [ Element.centerX ]
                         { onPress =
                             Just <|
-                                AddTransferMethod <|
-                                    TransferMethods.CashDrop
-                                        { location = TransferMethods.Location 10 10
+                                AddPaymentMethod <|
+                                    PaymentMethods.CashDrop
+                                        { location = PaymentMethods.Location 10 10
                                         , radius = 10
                                         , description = Nothing
                                         }
@@ -105,9 +105,9 @@ contractParametersForm model =
                     , Element.Input.button [ Element.centerX ]
                         { onPress =
                             Just <|
-                                AddTransferMethod <|
-                                    TransferMethods.CashHandoff
-                                        { location = TransferMethods.Location 10 10
+                                AddPaymentMethod <|
+                                    PaymentMethods.CashHandoff
+                                        { location = PaymentMethods.Location 10 10
                                         , radius = 10
                                         , description = Just "I can meet you at Central Square."
                                         }
@@ -116,9 +116,9 @@ contractParametersForm model =
                     , Element.Input.button [ Element.centerX ]
                         { onPress =
                             Just <|
-                                AddTransferMethod <|
-                                    TransferMethods.BankTransfer
-                                        { identifierType = TransferMethods.Name
+                                AddPaymentMethod <|
+                                    PaymentMethods.BankTransfer
+                                        { identifierType = PaymentMethods.Name
                                         , info = "National Bank of America"
                                         }
                         , label = Element.text "Bank transfer"
@@ -126,8 +126,8 @@ contractParametersForm model =
                     , Element.Input.button [ Element.centerX ]
                         { onPress =
                             Just <|
-                                AddTransferMethod <|
-                                    TransferMethods.Custom "wire it to me"
+                                AddPaymentMethod <|
+                                    PaymentMethods.Custom "wire it to me"
                         , label = Element.text "Custom 'wire it to me'"
                         }
                     ]
@@ -155,6 +155,6 @@ contractParametersForm model =
     in
     Element.row [ Element.width Element.fill, Element.spacing 20 ]
         [ daiAmountInputs
-        , transferMethodsInput
+        , paymentMethodsInput
         , intervalInputs
         ]

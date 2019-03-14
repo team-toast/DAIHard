@@ -1,4 +1,4 @@
-module TransferMethods exposing (BankIdentifier, BankIdentifierType(..), CashDropInfo, CashHandoffInfo, Location, TransferMethod(..), bankIdentifierDecoder, bankIdentifierTypeDecoder, cashDropInfoDecoder, cashHandoffInfoDecoder, demoView, encodeBankIdentifier, encodeBankIdentifierType, encodeCashDropInfo, encodeCashHandoffInfo, encodeLocation, encodeTransferMethod, locationDecoder, transferMethodDecoder)
+module PaymentMethods exposing (BankIdentifier, BankIdentifierType(..), CashDropInfo, CashHandoffInfo, Location, PaymentMethod(..), bankIdentifierDecoder, bankIdentifierTypeDecoder, cashDropInfoDecoder, cashHandoffInfoDecoder, demoView, encodeBankIdentifier, encodeBankIdentifierType, encodeCashDropInfo, encodeCashHandoffInfo, encodeLocation, encodePaymentMethod, locationDecoder, paymentMethodDecoder)
 
 import Element
 import Element.Border
@@ -8,18 +8,18 @@ import Json.Encode.Extra
 import Maybe.Extra as Maybe
 
 
-type TransferMethod
+type PaymentMethod
     = Custom String
     | CashDrop CashDropInfo
     | CashHandoff CashHandoffInfo
     | BankTransfer BankIdentifier
 
 
-encodeTransferMethod : TransferMethod -> Json.Encode.Value
-encodeTransferMethod transferMethod =
+encodePaymentMethod : PaymentMethod -> Json.Encode.Value
+encodePaymentMethod paymentMethod =
     let
         ( transferTypeString, transferInfo ) =
-            case transferMethod of
+            case paymentMethod of
                 Custom s ->
                     ( "custom"
                     , Json.Encode.string s
@@ -46,8 +46,8 @@ encodeTransferMethod transferMethod =
         ]
 
 
-transferMethodDecoder : Json.Decode.Decoder TransferMethod
-transferMethodDecoder =
+paymentMethodDecoder : Json.Decode.Decoder PaymentMethod
+paymentMethodDecoder =
     Json.Decode.field "type" Json.Decode.string
         |> Json.Decode.andThen
             (\typeStr ->
@@ -229,11 +229,11 @@ bankIdentifierTypeDecoder =
             )
 
 
-demoView : TransferMethod -> Element.Element msg
-demoView transferMethod =
+demoView : PaymentMethod -> Element.Element msg
+demoView paymentMethod =
     Element.column [ Element.padding 5, Element.spacing 5, Element.Border.width 1, Element.Border.rounded 5 ] <|
         Maybe.values <|
-            case transferMethod of
+            case paymentMethod of
                 CashDrop info ->
                     [ Just <|
                         Element.text <|
