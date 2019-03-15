@@ -1,4 +1,4 @@
-module FiatValue exposing (FiatType(..), FiatValue, decoder, encode, encodeFiatType, fiatTypeDecoder, getFloatValueWithWarning, renderToString)
+module FiatValue exposing (FiatType(..), FiatValue, compare, decoder, encode, encodeFiatType, fiatTypeDecoder, getFloatValueWithWarning, renderToString)
 
 import BigInt exposing (BigInt)
 import BigIntHelpers
@@ -41,6 +41,11 @@ renderToString fv =
     case fv.fiatType of
         USD ->
             "$" ++ BigInt.toString fv.amount
+
+
+compare : FiatValue -> FiatValue -> Order
+compare f1 f2 =
+    BigInt.compare f1.amount f2.amount
 
 
 encode : FiatValue -> Json.Encode.Value

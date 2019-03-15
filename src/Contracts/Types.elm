@@ -14,6 +14,7 @@ import PaymentMethods exposing (PaymentMethod)
 import Time
 import TimeHelpers
 import TokenValue exposing (TokenValue)
+import Utils
 
 
 type OpenMode
@@ -85,6 +86,7 @@ type alias State =
 
 type alias DerivedValues =
     { phaseEndTime : Time.Posix
+    , margin : Maybe Float
     }
 
 
@@ -214,6 +216,8 @@ deriveValues parameters state =
         TimeHelpers.add
             state.phaseStartTime
             currentPhaseInterval
+    , margin =
+        Utils.margin parameters.tradeAmount parameters.fiatPrice
     }
 
 

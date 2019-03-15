@@ -8,34 +8,44 @@ import Contracts.Types
 import Contracts.Wrappers
 import Eth.Types exposing (Address)
 import EthHelpers
+import FiatValue exposing (FiatValue)
+import Flip exposing (flip)
 import PaymentMethods exposing (PaymentMethod)
 import Routing
 import Search.Types exposing (..)
 import Time
 import TimeHelpers
+import TokenValue exposing (TokenValue)
 
 
-init : EthHelpers.EthNode -> Address -> Int -> Maybe UserInfo -> ( Model, Cmd Msg )
-init ethNode factoryAddress tokenDecimals userInfo =
+init : EthHelpers.EthNode -> Address -> Int -> Maybe Contracts.Types.OpenMode -> Maybe UserInfo -> ( Model, Cmd Msg )
+init ethNode factoryAddress tokenDecimals maybeOpenMode userInfo =
+    let
+        openMode =
+            maybeOpenMode |> Maybe.withDefault Contracts.Types.SellerOpened
+    in
     ( { ethNode = ethNode
       , userInfo = userInfo
       , factoryAddress = factoryAddress
       , tokenDecimals = tokenDecimals
       , numTrades = Nothing
+      , openMode = openMode
       , trades = Array.empty
-      , inputs = startingInputs
+      , inputs = initialInputs
       , searchTerms = []
-      , filterFunc = initialFilterFunc
+      , filterFunc = initialFilterFunc openMode
       , sortFunc = initialSortFunc
       }
     , Contracts.Wrappers.getNumTradesCmd ethNode factoryAddress NumTradesFetched
     )
 
 
-initialFilterFunc : Time.Posix -> Contracts.Types.FullTradeInfo -> Bool
-initialFilterFunc time trade =
-    (trade.state.phase == Contracts.Types.Open)
-        && (TimeHelpers.compare trade.derived.phaseEndTime time == GT)
+initialFilterFunc : Contracts.Types.OpenMode -> (Time.Posix -> Contracts.Types.FullTradeInfo -> Bool)
+initialFilterFunc openMode =
+    \time trade ->
+        (trade.state.phase == Contracts.Types.Open)
+            && (trade.parameters.openMode == openMode)
+            && (TimeHelpers.compare trade.derived.phaseEndTime time == GT)
 
 
 initialSortFunc : Contracts.Types.FullTradeInfo -> Contracts.Types.FullTradeInfo -> Order
@@ -43,8 +53,8 @@ initialSortFunc a b =
     compare a.creationInfo.blocknum b.creationInfo.blocknum
 
 
-startingInputs : SearchInputs
-startingInputs =
+initialInputs : SearchInputs
+initialInputs =
     { paymentMethod = ""
     }
 
@@ -176,15 +186,66 @@ update msg model =
                 , Nothing
                 )
 
+        ResetSearch ->
+            let
+                newModel =
+                    { model
+                        | searchTerms = []
+                        , sortFunc = initialSortFunc
+                        , filterFunc = initialFilterFunc model.openMode
+                        , inputs = initialInputs
+                    }
+            in
+            ( newModel, Cmd.none, Nothing )
+
         TradeClicked id ->
             ( model, Cmd.none, Just (Routing.Interact (Just id)) )
 
         SortBy colType ascending ->
             let
-                _ =
-                    Debug.log "order by" ( colType, ascending )
+                newSortFunc =
+                    (\a b ->
+                        case colType of
+                            Expiring ->
+                                TimeHelpers.compare a.derived.phaseEndTime b.derived.phaseEndTime
+
+                            TradeAmount ->
+                                TokenValue.compare a.parameters.tradeAmount b.parameters.tradeAmount
+
+                            Fiat ->
+                                FiatValue.compare a.parameters.fiatPrice b.parameters.fiatPrice
+
+                            Margin ->
+                                Maybe.map2
+                                    (\marginA marginB -> compare marginA marginB)
+                                    a.derived.margin
+                                    b.derived.margin
+                                    |> Maybe.withDefault EQ
+
+                            PaymentMethods ->
+                                let
+                                    _ =
+                                        Debug.log "Can't sort by payment methods. What does that even mean??" ""
+                                in
+                                initialSortFunc a b
+
+                            AutoabortWindow ->
+                                TimeHelpers.compare a.parameters.autoabortInterval b.parameters.autoabortInterval
+
+                            AutoreleaseWindow ->
+                                TimeHelpers.compare a.parameters.autoreleaseInterval b.parameters.autoreleaseInterval
+                    )
+                        |> (if ascending then
+                                flip
+
+                            else
+                                identity
+                           )
             in
-            noUpdate model
+            ( { model | sortFunc = newSortFunc }
+            , Cmd.none
+            , Nothing
+            )
 
         NoOp ->
             noUpdate model
@@ -196,11 +257,13 @@ updateFilterFunc model =
         newFilterFunc =
             case model.searchTerms of
                 [] ->
-                    initialFilterFunc
+                    initialFilterFunc model.openMode
 
                 terms ->
                     \time trade ->
-                        initialFilterFunc time trade
+                        initialFilterFunc model.openMode
+                            time
+                            trade
                             && testTextMatch terms trade.parameters.paymentMethods
     in
     { model | filterFunc = newFilterFunc }

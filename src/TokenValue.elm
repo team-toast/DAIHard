@@ -1,4 +1,4 @@
-module TokenValue exposing (TokenValue, add, decoder, div, divByInt, encode, fromString, getBigInt, getFloatValueWithWarning, isZero, mul, numDecimals, renderToString, sub, tokenValue, updateValue, updateViaString, zero)
+module TokenValue exposing (TokenValue, add, compare, decoder, div, divByInt, encode, fromString, getBigInt, getFloatValueWithWarning, isZero, mul, numDecimals, renderToString, sub, tokenValue, updateValue, updateViaString, zero)
 
 import BigInt exposing (BigInt)
 import BigIntHelpers
@@ -134,6 +134,13 @@ divByInt t i =
         (getBigInt t)
         (BigInt.fromInt i)
         |> updateValue t
+
+
+compare : TokenValue -> TokenValue -> Order
+compare t1 t2 =
+    BigInt.compare
+        (getBigInt t1)
+        (getBigInt t2)
 
 
 encode : TokenValue -> Json.Encode.Value

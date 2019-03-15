@@ -1,6 +1,7 @@
 module Routing exposing (Route(..), routeToString, urlToRoute)
 
 import BigInt exposing (BigInt)
+import Contracts.Types
 import Url exposing (Url)
 import Url.Builder
 import Url.Parser exposing ((</>), (<?>), Parser)
@@ -11,7 +12,7 @@ type Route
     = Home
     | Create
     | Interact (Maybe Int)
-    | Search
+    | Search (Maybe Contracts.Types.OpenMode)
     | NotFound
 
 
@@ -21,8 +22,31 @@ routeParser =
         [ Url.Parser.map Home Url.Parser.top
         , Url.Parser.map Create (Url.Parser.s "create")
         , Url.Parser.map Interact (Url.Parser.s "interact" <?> Url.Parser.Query.int "id")
-        , Url.Parser.map Search (Url.Parser.s "search")
+        , Url.Parser.map Search (Url.Parser.s "search" <?> typeParser)
         ]
+
+
+typeParser : Url.Parser.Query.Parser (Maybe Contracts.Types.OpenMode)
+typeParser =
+    Url.Parser.Query.custom "type"
+        (\l ->
+            case l of
+                [] ->
+                    Nothing
+
+                s :: [] ->
+                    if Debug.log "s" s == "buys" then
+                        Just Contracts.Types.BuyerOpened
+
+                    else if s == "sells" then
+                        Just Contracts.Types.SellerOpened
+
+                    else
+                        Nothing
+
+                multiple ->
+                    Nothing
+        )
 
 
 urlToRoute : Url -> Route
@@ -49,8 +73,20 @@ routeToString route =
                         [ Url.Builder.string "id" <| String.fromInt id ]
                 )
 
-        Search ->
-            Url.Builder.absolute [ "search" ] []
+        Search maybeOpenMode ->
+            let
+                queryParameters =
+                    case maybeOpenMode of
+                        Just Contracts.Types.BuyerOpened ->
+                            [ Url.Builder.string "type" "buys" ]
+
+                        Just Contracts.Types.SellerOpened ->
+                            [ Url.Builder.string "type" "sells" ]
+
+                        Nothing ->
+                            []
+            in
+            Url.Builder.absolute [ "search" ] queryParameters
 
         NotFound ->
             Url.Builder.absolute [] []

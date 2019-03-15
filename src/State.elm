@@ -298,10 +298,10 @@ gotoRoute model route =
                         ]
                     )
 
-        Routing.Search ->
+        Routing.Search openMode ->
             let
                 ( searchModel, searchCmd ) =
-                    Search.State.init model.node model.factoryAddress model.tokenContractDecimals model.userInfo
+                    Search.State.init model.node model.factoryAddress model.tokenContractDecimals openMode model.userInfo
             in
             ( Running
                 { model

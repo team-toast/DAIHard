@@ -27,29 +27,58 @@ root time model =
         , Element.width Element.fill
         , Element.height Element.fill
         ]
-        [ searchInputElement model.inputs
+        [ searchInputElement model.inputs model.searchTerms
         , EH.hbreak
         , resultsElement time model
         ]
 
 
-searchInputElement : SearchInputs -> Element Msg
-searchInputElement inputs =
-    Element.row
-        [ Element.width Element.fill
-        , Element.height <| Element.px 100
-        , Element.spacing 10
-        , Element.padding 30
+searchInputElement : SearchInputs -> List String -> Element Msg
+searchInputElement inputs searchTerms =
+    Element.column [ Element.spacing 10, Element.width Element.fill, Element.padding 30 ]
+        [ Element.row
+            [ Element.width Element.fill
+            , Element.height <| Element.px 100
+            , Element.spacing 10
+            ]
+            [ Element.el [ Element.width <| Element.fillPortion 3 ] <|
+                daiRangeInput (AmountRange Nothing Nothing)
+            , Element.el [ Element.width <| Element.fillPortion 3 ] <|
+                fiatRangeInput (AmountRange Nothing Nothing)
+            , Element.el [ Element.width <| Element.fillPortion 6 ] <|
+                paymentMethodsInput inputs.paymentMethod
+            , Element.el [] <|
+                resetButton
+            ]
+        , Element.row
+            [ Element.width Element.fill
+            , Element.spacing 10
+            ]
+            [ Element.el [ Element.width <| Element.fillPortion 6 ] Element.none
+            , Element.el [ Element.width <| Element.fillPortion 6 ] <| searchTermsDisplayElement searchTerms
+            ]
         ]
-        [ Element.el [ Element.width <| Element.fillPortion 3 ] <|
-            daiRangeInput (AmountRange Nothing Nothing)
-        , Element.el [ Element.width <| Element.fillPortion 3 ] <|
-            fiatRangeInput (AmountRange Nothing Nothing)
-        , Element.el [ Element.width <| Element.fillPortion 6 ] <|
-            paymentMethodsInput inputs.paymentMethod
-        , Element.el [] <|
-            resetButton
-        ]
+
+
+searchTermsDisplayElement : List String -> Element Msg
+searchTermsDisplayElement searchTerms =
+    case searchTerms of
+        [] ->
+            Element.none
+
+        terms ->
+            Element.row [ Element.width Element.fill, Element.padding 10, Element.spacing 10 ]
+                (terms
+                    |> List.map
+                        (\term ->
+                            Element.el
+                                [ Element.Background.color <| Element.rgba255 16 7 234 0.2
+                                , Element.Border.rounded 5
+                                , Element.padding 4
+                                ]
+                                (Element.text term)
+                        )
+                )
 
 
 resultsElement : Time.Posix -> Model -> Element Msg
@@ -60,6 +89,14 @@ resultsElement time model =
                 |> Array.toList
                 |> getLoadedTrades
                 |> filterAndSortTrades time model.filterFunc model.sortFunc
+
+        buyingOrSellingString =
+            case model.openMode of
+                Contracts.Types.BuyerOpened ->
+                    "Buying"
+
+                Contracts.Types.SellerOpened ->
+                    "Selling"
     in
     Element.column
         [ Element.width Element.fill
@@ -69,13 +106,13 @@ resultsElement time model =
         ]
         [ Element.row
             [ Element.width Element.fill ]
-            [ cellMaker ( 2, sortableColumnHeader Expiring "Offer Expires" Nothing )
-            , cellMaker ( 2, sortableColumnHeader TradeAmount "Trading" Nothing )
-            , cellMaker ( 2, sortableColumnHeader Fiat "For Fiat" Nothing )
-            , cellMaker ( 1, sortableColumnHeader Margin "Margin" Nothing )
-            , cellMaker ( 6, sortableColumnHeader PaymentMethods "Accepted Payment Methods" Nothing )
-            , cellMaker ( 2, sortableColumnHeader AutoabortWindow "Payment Window" Nothing )
-            , cellMaker ( 2, sortableColumnHeader AutoreleaseWindow "Auto-Release" Nothing )
+            [ cellMaker ( 2, sortableColumnHeader "Offer Expires" Expiring Nothing )
+            , cellMaker ( 2, sortableColumnHeader buyingOrSellingString TradeAmount Nothing )
+            , cellMaker ( 2, sortableColumnHeader "For Fiat" Fiat Nothing )
+            , cellMaker ( 1, sortableColumnHeader "Margin" Margin Nothing )
+            , cellMaker ( 6, columnHeader "Accepted Payment Methods" )
+            , cellMaker ( 2, sortableColumnHeader "Payment Window" AutoabortWindow Nothing )
+            , cellMaker ( 2, sortableColumnHeader "Auto-Release" AutoreleaseWindow Nothing )
             , cellMaker ( 2, Element.none )
             ]
         , Element.column
@@ -160,7 +197,7 @@ resetButton =
         , Element.padding 10
         , Element.Border.rounded 5
         ]
-        { onPress = Just NoOp
+        { onPress = Just ResetSearch
         , label =
             Element.el
                 [ Element.Font.color EH.white
@@ -240,9 +277,7 @@ viewFiat trade =
 
 viewMargin : Contracts.Types.FullTradeInfo -> Element Msg
 viewMargin trade =
-    Utils.margin
-        trade.parameters.tradeAmount
-        trade.parameters.fiatPrice
+    trade.derived.margin
         |> Maybe.map
             (Utils.marginToString >> Element.text)
         |> Maybe.withDefault Element.none
@@ -304,10 +339,10 @@ filterAndSortTrades time filterFunc sortFunc =
         >> List.sortWith sortFunc
 
 
-sortableColumnHeader : ResultColumnType -> String -> Maybe Bool -> Element Msg
-sortableColumnHeader colType title sorting =
+sortableColumnHeader : String -> ResultColumnType -> Maybe Bool -> Element Msg
+sortableColumnHeader title colType sorting =
     Element.row [ Element.spacing 8 ]
-        [ Element.el [ Element.Font.semiBold, Element.Font.size 17 ] <| Element.text title
+        [ columnHeader title
         , Element.column
             [ Element.spacing 2 ]
             [ Element.el
@@ -342,3 +377,8 @@ sortableColumnHeader colType title sorting =
                 )
             ]
         ]
+
+
+columnHeader : String -> Element Msg
+columnHeader title =
+    Element.el [ Element.Font.semiBold, Element.Font.size 17 ] <| Element.text title

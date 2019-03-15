@@ -1,4 +1,4 @@
-module Search.Types exposing (AmountRange, FullTradeInfo, Model, Msg(..), PartialTradeInfo, ResultColumnType(..), SearchInputs, Trade(..), checkIfLoaded, updateTradeCreationInfo, updateTradeParameters, updateTradeState)
+module Search.Types exposing (AmountRange, Model, Msg(..), ResultColumnType(..), SearchInputs, updateTradeCreationInfo, updateTradeParameters, updateTradeState)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
@@ -19,6 +19,7 @@ type alias Model =
     , factoryAddress : Address
     , tokenDecimals : Int
     , numTrades : Maybe Int
+    , openMode : Contracts.Types.OpenMode
     , inputs : SearchInputs
     , searchTerms : List String
     , trades : Array Contracts.Types.Trade
@@ -34,6 +35,7 @@ type Msg
     | StateFetched Int (Result Http.Error (Maybe Contracts.Types.State))
     | SearchInputChanged String
     | AddSearchTerm
+    | ResetSearch
     | TradeClicked Int
     | SortBy ResultColumnType Bool
     | NoOp
@@ -47,27 +49,6 @@ type alias SearchInputs =
 type alias AmountRange =
     { min : Maybe TokenValue
     , max : Maybe TokenValue
-    }
-
-
-type Trade
-    = Loading PartialTradeInfo
-    | Loaded FullTradeInfo
-
-
-type alias PartialTradeInfo =
-    { factoryID : Int
-    , address : Maybe Address
-    , parameters : Maybe Contracts.Types.CreateParameters
-    , state : Maybe Contracts.Types.State
-    }
-
-
-type alias FullTradeInfo =
-    { factoryID : Int
-    , address : Address
-    , parameters : Contracts.Types.CreateParameters
-    , state : Contracts.Types.State
     }
 
 
@@ -148,13 +129,3 @@ updateTradeState id state model =
                     Debug.log "updateTTState ran into an out-of-range error" ""
             in
             model
-
-
-checkIfLoaded : PartialTradeInfo -> Trade
-checkIfLoaded tradeInfo =
-    case ( tradeInfo.address, tradeInfo.parameters, tradeInfo.state ) of
-        ( Just address, Just parameters, Just state ) ->
-            Loaded <| FullTradeInfo tradeInfo.factoryID address parameters state
-
-        _ ->
-            Loading tradeInfo
