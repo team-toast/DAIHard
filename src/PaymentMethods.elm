@@ -1,4 +1,4 @@
-module PaymentMethods exposing (BankIdentifier, BankIdentifierType(..), CashDropInfo, CashHandoffInfo, Location, PaymentMethod(..), bankIdentifierDecoder, bankIdentifierTypeDecoder, cashDropInfoDecoder, cashHandoffInfoDecoder, demoView, encodeBankIdentifier, encodeBankIdentifierType, encodeCashDropInfo, encodeCashHandoffInfo, encodeLocation, encodePaymentMethod, locationDecoder, paymentMethodDecoder)
+module PaymentMethods exposing (BankIdentifier, BankIdentifierType(..), PaymentMethod(..), bankIdentifierDecoder, bankIdentifierTypeDecoder, demoView, encodeBankIdentifier, encodeBankIdentifierType, encodePaymentMethod, paymentMethodDecoder)
 
 import Element
 import Element.Border
@@ -10,8 +10,8 @@ import Maybe.Extra as Maybe
 
 type PaymentMethod
     = Custom String
-    | CashDrop CashDropInfo
-    | CashHandoff CashHandoffInfo
+    | CashDrop String
+    | CashHandoff String
     | BankTransfer BankIdentifier
 
 
@@ -25,14 +25,14 @@ encodePaymentMethod paymentMethod =
                     , Json.Encode.string s
                     )
 
-                CashDrop info ->
+                CashDrop s ->
                     ( "cashdrop"
-                    , encodeCashDropInfo info
+                    , Json.Encode.string s
                     )
 
-                CashHandoff info ->
+                CashHandoff s ->
                     ( "handoff"
-                    , encodeCashHandoffInfo info
+                    , Json.Encode.string s
                     )
 
                 BankTransfer identifier ->
@@ -58,11 +58,11 @@ paymentMethodDecoder =
 
                     "cashdrop" ->
                         Json.Decode.map CashDrop <|
-                            Json.Decode.field "info" cashDropInfoDecoder
+                            Json.Decode.field "info" Json.Decode.string
 
                     "handoff" ->
                         Json.Decode.map CashHandoff <|
-                            Json.Decode.field "info" cashHandoffInfoDecoder
+                            Json.Decode.field "info" Json.Decode.string
 
                     "banktx" ->
                         Json.Decode.map BankTransfer <|
@@ -73,78 +73,6 @@ paymentMethodDecoder =
                             "unrecognized transfer type: "
                                 ++ unrecognizedType
             )
-
-
-type alias CashDropInfo =
-    { location : Location
-    , radius : Float
-    , description : Maybe String
-    }
-
-
-encodeCashDropInfo : CashDropInfo -> Json.Encode.Value
-encodeCashDropInfo info =
-    Json.Encode.object
-        [ ( "location", encodeLocation info.location )
-        , ( "radius", Json.Encode.float info.radius )
-        , ( "description", Json.Encode.Extra.maybe Json.Encode.string info.description )
-        ]
-
-
-cashDropInfoDecoder : Json.Decode.Decoder CashDropInfo
-cashDropInfoDecoder =
-    Json.Decode.map3
-        CashDropInfo
-        (Json.Decode.field "location" locationDecoder)
-        (Json.Decode.field "radius" Json.Decode.float)
-        (Json.Decode.field "description" (Json.Decode.nullable Json.Decode.string))
-
-
-type alias CashHandoffInfo =
-    { location : Location
-    , radius : Float
-    , description : Maybe String
-    }
-
-
-encodeCashHandoffInfo : CashHandoffInfo -> Json.Encode.Value
-encodeCashHandoffInfo info =
-    Json.Encode.object
-        [ ( "location", encodeLocation info.location )
-        , ( "radius", Json.Encode.float info.radius )
-        , ( "description", Json.Encode.Extra.maybe Json.Encode.string info.description )
-        ]
-
-
-cashHandoffInfoDecoder : Json.Decode.Decoder CashHandoffInfo
-cashHandoffInfoDecoder =
-    Json.Decode.map3
-        CashDropInfo
-        (Json.Decode.field "location" locationDecoder)
-        (Json.Decode.field "radius" Json.Decode.float)
-        (Json.Decode.field "description" (Json.Decode.nullable Json.Decode.string))
-
-
-type alias Location =
-    { lat : Float
-    , long : Float
-    }
-
-
-encodeLocation : Location -> Json.Encode.Value
-encodeLocation location =
-    Json.Encode.list Json.Encode.float
-        [ location.lat
-        , location.long
-        ]
-
-
-locationDecoder : Json.Decode.Decoder Location
-locationDecoder =
-    Json.Decode.map2
-        Location
-        (Json.Decode.index 0 Json.Decode.float)
-        (Json.Decode.index 1 Json.Decode.float)
 
 
 type alias BankIdentifier =
@@ -234,32 +162,18 @@ demoView paymentMethod =
     Element.column [ Element.padding 5, Element.spacing 5, Element.Border.width 1, Element.Border.rounded 5 ] <|
         Maybe.values <|
             case paymentMethod of
-                CashDrop info ->
+                CashDrop s ->
                     [ Just <|
                         Element.text <|
-                            "cash drop within "
-                                ++ String.fromFloat info.radius
-                                ++ " km of "
-                                ++ locationToString info.location
-                    , info.description
-                        |> Maybe.map
-                            (\desc ->
-                                Element.text <| "description: " ++ desc
-                            )
+                            "Cash Drop: "
+                                ++ s
                     ]
 
-                CashHandoff info ->
+                CashHandoff s ->
                     [ Just <|
                         Element.text <|
-                            "cash handoff within "
-                                ++ String.fromFloat info.radius
-                                ++ " km of "
-                                ++ locationToString info.location
-                    , info.description
-                        |> Maybe.map
-                            (\desc ->
-                                Element.text <| "description: " ++ desc
-                            )
+                            "Cash Handoff: "
+                                ++ s
                     ]
 
                 BankTransfer bankIdentifier ->
@@ -294,12 +208,3 @@ demoView paymentMethod =
                             "Custom: "
                                 ++ s
                     ]
-
-
-locationToString : Location -> String
-locationToString location =
-    "(lat:"
-        ++ String.fromFloat location.lat
-        ++ ",long:"
-        ++ String.fromFloat location.long
-        ++ ")"

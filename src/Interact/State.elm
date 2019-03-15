@@ -138,10 +138,6 @@ update msg model =
         ParametersFetched fetchResult ->
             case fetchResult of
                 Ok (Ok parameters) ->
-                    let
-                        _ =
-                            Debug.log "transferMethods" parameters.transferMethods
-                    in
                     ( { model | trade = model.trade |> Contracts.Types.updateParameters parameters }, Cmd.none, ChainCmd.none )
 
                 badResult ->

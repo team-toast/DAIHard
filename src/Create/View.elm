@@ -96,10 +96,7 @@ contractParametersForm model =
                             Just <|
                                 AddPaymentMethod <|
                                     PaymentMethods.CashDrop
-                                        { location = PaymentMethods.Location 10 10
-                                        , radius = 10
-                                        , description = Nothing
-                                        }
+                                        "Fairbanks, AK. Within 10 min walk from the 'Justastore' gas station."
                         , label = Element.text "Cash Drop"
                         }
                     , Element.Input.button [ Element.centerX ]
@@ -107,10 +104,7 @@ contractParametersForm model =
                             Just <|
                                 AddPaymentMethod <|
                                     PaymentMethods.CashHandoff
-                                        { location = PaymentMethods.Location 10 10
-                                        , radius = 10
-                                        , description = Just "I can meet you at Central Square."
-                                        }
+                                        "Hoi An, Vietnam. Old town."
                         , label = Element.text "Cash handoff"
                         }
                     , Element.Input.button [ Element.centerX ]

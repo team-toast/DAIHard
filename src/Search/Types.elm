@@ -1,4 +1,4 @@
-module Search.Types exposing (AmountRange, FullTradeInfo, LocationQuery(..), Model, Msg(..), PartialTradeInfo, PaymentMethodQuery(..), ResultColumnType(..), SearchInputs, Trade(..), checkIfLoaded, updateTradeCreationInfo, updateTradeParameters, updateTradeState)
+module Search.Types exposing (AmountRange, FullTradeInfo, Model, Msg(..), PartialTradeInfo, ResultColumnType(..), SearchInputs, Trade(..), checkIfLoaded, updateTradeCreationInfo, updateTradeParameters, updateTradeState)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
@@ -20,6 +20,7 @@ type alias Model =
     , tokenDecimals : Int
     , numTrades : Maybe Int
     , inputs : SearchInputs
+    , searchTerms : List String
     , trades : Array Contracts.Types.Trade
     , filterFunc : Time.Posix -> Contracts.Types.FullTradeInfo -> Bool
     , sortFunc : Contracts.Types.FullTradeInfo -> Contracts.Types.FullTradeInfo -> Order
@@ -31,17 +32,15 @@ type Msg
     | CreationInfoFetched Int (Result Http.Error TTF.CreatedTrade)
     | ParametersFetched Int (Result Http.Error (Result String Contracts.Types.CreateParameters))
     | StateFetched Int (Result Http.Error (Maybe Contracts.Types.State))
+    | SearchInputChanged String
+    | AddSearchTerm
     | TradeClicked Int
     | SortBy ResultColumnType Bool
     | NoOp
 
 
 type alias SearchInputs =
-    { daiRange : AmountRange
-    , fiatType : Maybe FiatValue
-    , fiatRange : AmountRange
-    , paymentMethod : Maybe PaymentMethodQuery
-    , location : Maybe LocationQuery
+    { paymentMethod : String
     }
 
 
@@ -49,14 +48,6 @@ type alias AmountRange =
     { min : Maybe TokenValue
     , max : Maybe TokenValue
     }
-
-
-type PaymentMethodQuery
-    = TODO
-
-
-type LocationQuery
-    = TODOL
 
 
 type Trade

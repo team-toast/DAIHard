@@ -8,6 +8,7 @@ import Contracts.Types
 import Contracts.Wrappers
 import Eth.Types exposing (Address)
 import EthHelpers
+import PaymentMethods exposing (PaymentMethod)
 import Routing
 import Search.Types exposing (..)
 import Time
@@ -23,6 +24,7 @@ init ethNode factoryAddress tokenDecimals userInfo =
       , numTrades = Nothing
       , trades = Array.empty
       , inputs = startingInputs
+      , searchTerms = []
       , filterFunc = initialFilterFunc
       , sortFunc = initialSortFunc
       }
@@ -43,11 +45,7 @@ initialSortFunc a b =
 
 startingInputs : SearchInputs
 startingInputs =
-    { daiRange = AmountRange Nothing Nothing
-    , fiatType = Nothing
-    , fiatRange = AmountRange Nothing Nothing
-    , paymentMethod = Nothing
-    , location = Nothing
+    { paymentMethod = ""
     }
 
 
@@ -147,6 +145,37 @@ update msg model =
                     in
                     ( model, Cmd.none, Nothing )
 
+        SearchInputChanged input ->
+            ( { model | inputs = { paymentMethod = input } }
+            , Cmd.none
+            , Nothing
+            )
+
+        AddSearchTerm ->
+            if model.inputs.paymentMethod == "" then
+                noUpdate model
+
+            else
+                let
+                    searchTerm =
+                        model.inputs.paymentMethod
+
+                    newSearchTerms =
+                        List.append
+                            model.searchTerms
+                            [ searchTerm ]
+
+                    newModel =
+                        { model
+                            | inputs = { paymentMethod = "" }
+                            , searchTerms = newSearchTerms
+                        }
+                in
+                ( newModel |> updateFilterFunc
+                , Cmd.none
+                , Nothing
+                )
+
         TradeClicked id ->
             ( model, Cmd.none, Just (Routing.Interact (Just id)) )
 
@@ -155,10 +184,59 @@ update msg model =
                 _ =
                     Debug.log "order by" ( colType, ascending )
             in
-            ( model, Cmd.none, Nothing )
+            noUpdate model
 
         NoOp ->
-            ( model, Cmd.none, Nothing )
+            noUpdate model
+
+
+updateFilterFunc : Model -> Model
+updateFilterFunc model =
+    let
+        newFilterFunc =
+            case model.searchTerms of
+                [] ->
+                    initialFilterFunc
+
+                terms ->
+                    \time trade ->
+                        initialFilterFunc time trade
+                            && testTextMatch terms trade.parameters.paymentMethods
+    in
+    { model | filterFunc = newFilterFunc }
+
+
+testTextMatch : List String -> List PaymentMethod -> Bool
+testTextMatch terms paymentMethods =
+    paymentMethods
+        |> List.any
+            (\pm ->
+                let
+                    searchable =
+                        case pm of
+                            PaymentMethods.CashDrop s ->
+                                s
+
+                            PaymentMethods.CashHandoff s ->
+                                s
+
+                            PaymentMethods.BankTransfer identifier ->
+                                identifier.info
+
+                            PaymentMethods.Custom s ->
+                                s
+                in
+                terms
+                    |> List.all
+                        (\term ->
+                            String.contains term searchable
+                        )
+            )
+
+
+noUpdate : Model -> ( Model, Cmd Msg, Maybe Routing.Route )
+noUpdate model =
+    ( model, Cmd.none, Nothing )
 
 
 updateUserInfo : Maybe UserInfo -> Model -> Model

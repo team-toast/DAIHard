@@ -11,6 +11,7 @@ import Element.Font
 import Element.Input
 import ElementHelpers as EH
 import FiatValue exposing (FiatValue)
+import Html.Events.Extra
 import PaymentMethods exposing (PaymentMethod)
 import Search.Types exposing (..)
 import Time
@@ -41,15 +42,11 @@ searchInputElement inputs =
         , Element.padding 30
         ]
         [ Element.el [ Element.width <| Element.fillPortion 3 ] <|
-            daiRangeInput inputs.daiRange
-        , Element.el [ Element.width <| Element.fillPortion 2 ] <|
-            fiatTypeInput inputs.fiatType
+            daiRangeInput (AmountRange Nothing Nothing)
         , Element.el [ Element.width <| Element.fillPortion 3 ] <|
-            fiatRangeInput inputs.fiatRange
+            fiatRangeInput (AmountRange Nothing Nothing)
         , Element.el [ Element.width <| Element.fillPortion 6 ] <|
             paymentMethodsInput inputs.paymentMethod
-        , Element.el [ Element.width <| Element.fillPortion 6 ] <|
-            locationInput inputs.location
         , Element.el [] <|
             resetButton
         ]
@@ -115,16 +112,26 @@ fiatRangeInput range =
         |> withInputHeader "Fiat Amount"
 
 
-paymentMethodsInput : Maybe PaymentMethodQuery -> Element Msg
-paymentMethodsInput pmQuery =
-    dummyTextInput
+paymentMethodsInput : String -> Element Msg
+paymentMethodsInput searchString =
+    Element.Input.text
+        [ Element.width Element.fill
+        , Element.height <| Element.px 40
+        , Element.Border.color EH.lightGray
+        , Element.Border.shadow
+            { offset = ( 0, 3 )
+            , size = 0
+            , blur = 20
+            , color = Element.rgba255 233 237 242 0.05
+            }
+        , Element.htmlAttribute <| Html.Events.Extra.onEnter AddSearchTerm
+        ]
+        { onChange = SearchInputChanged
+        , text = searchString
+        , placeholder = Nothing
+        , label = Element.Input.labelHidden "payment methods search"
+        }
         |> withInputHeader "Payment Methods"
-
-
-locationInput : Maybe LocationQuery -> Element Msg
-locationInput lQuery =
-    dummyTextInput
-        |> withInputHeader "Location"
 
 
 dummyTextInput =
