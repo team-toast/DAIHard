@@ -10,7 +10,7 @@ import Url.Parser.Query
 
 type Route
     = Home
-    | Create
+    | Create (Maybe Contracts.Types.OpenMode)
     | Interact (Maybe Int)
     | Search (Maybe Contracts.Types.OpenMode)
     | NotFound
@@ -20,7 +20,7 @@ routeParser : Parser (Route -> a) a
 routeParser =
     Url.Parser.oneOf
         [ Url.Parser.map Home Url.Parser.top
-        , Url.Parser.map Create (Url.Parser.s "create")
+        , Url.Parser.map Create (Url.Parser.s "create" <?> typeParser)
         , Url.Parser.map Interact (Url.Parser.s "interact" <?> Url.Parser.Query.int "id")
         , Url.Parser.map Search (Url.Parser.s "search" <?> typeParser)
         ]
@@ -35,7 +35,7 @@ typeParser =
                     Nothing
 
                 s :: [] ->
-                    if Debug.log "s" s == "buys" then
+                    if s == "buys" then
                         Just Contracts.Types.BuyerOpened
 
                     else if s == "sells" then
@@ -60,8 +60,8 @@ routeToString route =
         Home ->
             Url.Builder.absolute [] []
 
-        Create ->
-            Url.Builder.absolute [ "create" ] []
+        Create maybeOpenMode ->
+            Url.Builder.absolute [ "create" ] <| buildMaybeOpenModeQueryParameters maybeOpenMode
 
         Interact maybeId ->
             Url.Builder.absolute [ "interact" ]
@@ -74,19 +74,20 @@ routeToString route =
                 )
 
         Search maybeOpenMode ->
-            let
-                queryParameters =
-                    case maybeOpenMode of
-                        Just Contracts.Types.BuyerOpened ->
-                            [ Url.Builder.string "type" "buys" ]
-
-                        Just Contracts.Types.SellerOpened ->
-                            [ Url.Builder.string "type" "sells" ]
-
-                        Nothing ->
-                            []
-            in
-            Url.Builder.absolute [ "search" ] queryParameters
+            Url.Builder.absolute [ "search" ] <| buildMaybeOpenModeQueryParameters maybeOpenMode
 
         NotFound ->
             Url.Builder.absolute [] []
+
+
+buildMaybeOpenModeQueryParameters : Maybe Contracts.Types.OpenMode -> List Url.Builder.QueryParameter
+buildMaybeOpenModeQueryParameters maybeOpenMode =
+    case maybeOpenMode of
+        Just Contracts.Types.BuyerOpened ->
+            [ Url.Builder.string "type" "buys" ]
+
+        Just Contracts.Types.SellerOpened ->
+            [ Url.Builder.string "type" "sells" ]
+
+        Nothing ->
+            []

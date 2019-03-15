@@ -18,11 +18,14 @@ import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
-init : EthHelpers.EthNode -> Address -> Int -> Address -> Maybe UserInfo -> ( Model, Cmd Msg, ChainCmd Msg )
-init ethNode tokenAddress tokenDecimals factoryAddress userInfo =
+init : EthHelpers.EthNode -> Address -> Int -> Address -> Maybe Contracts.Types.OpenMode -> Maybe UserInfo -> ( Model, Cmd Msg, ChainCmd Msg )
+init ethNode tokenAddress tokenDecimals factoryAddress maybeOpenMode userInfo =
     let
+        openMode =
+            maybeOpenMode |> Maybe.withDefault Contracts.Types.SellerOpened
+
         initialInputs =
-            { openMode = Contracts.Types.SellerOpened
+            { openMode = openMode
             , tradeAmount = "100"
             , totalPrice = "100"
             , paymentMethods = []
@@ -37,6 +40,7 @@ init ethNode tokenAddress tokenDecimals factoryAddress userInfo =
             , tokenDecimals = tokenDecimals
             , factoryAddress = factoryAddress
             , userInfo = userInfo
+            , openMode = openMode
             , parameterInputs = initialInputs
             , contractParameters = Nothing
             , busyWithTxChain = False
@@ -91,25 +95,6 @@ update msg model =
                     model.parameterInputs
             in
             justModelUpdate (model |> udpateParameterInputs { oldInputs | autoreleaseInterval = newTimeStr })
-
-        SwitchInitiatorRole ->
-            let
-                oldInputs =
-                    model.parameterInputs
-            in
-            justModelUpdate
-                (model
-                    |> udpateParameterInputs
-                        { oldInputs
-                            | openMode =
-                                case oldInputs.openMode of
-                                    Contracts.Types.BuyerOpened ->
-                                        Contracts.Types.SellerOpened
-
-                                    Contracts.Types.SellerOpened ->
-                                        Contracts.Types.BuyerOpened
-                        }
-                )
 
         AddPaymentMethod paymentMethod ->
             let

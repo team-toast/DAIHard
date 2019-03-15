@@ -50,6 +50,8 @@ init flags url key =
                 , userAddress = Nothing
                 , userInfo = Nothing
                 , tokenContractDecimals = flags.tokenContractDecimals
+                , showBuyDaiDropdown = False
+                , showSellDaiDropdown = False
                 , submodel = HomeModel
                 }
                 url
@@ -229,8 +231,53 @@ updateValidModel msg model =
             in
             ( Running { model | txSentry = submodel }, subCmd )
 
+        BuyDaiDropdownToggle ->
+            let
+                newModel =
+                    if model.showBuyDaiDropdown then
+                        { model
+                            | showBuyDaiDropdown = False
+                        }
+
+                    else
+                        { model
+                            | showBuyDaiDropdown = True
+                            , showSellDaiDropdown = False
+                        }
+            in
+            ( Running newModel, Cmd.none )
+
+        SellDaiDropdownToggle ->
+            let
+                newModel =
+                    if model.showSellDaiDropdown then
+                        { model
+                            | showSellDaiDropdown = False
+                        }
+
+                    else
+                        { model
+                            | showSellDaiDropdown = True
+                            , showBuyDaiDropdown = False
+                        }
+            in
+            ( Running newModel, Cmd.none )
+
+        CloseDropdowns ->
+            let
+                newModel =
+                    { model
+                        | showBuyDaiDropdown = False
+                        , showSellDaiDropdown = False
+                    }
+            in
+            ( Running newModel, Cmd.none )
+
         Fail str ->
             ( Failed str, Cmd.none )
+
+        NoOp ->
+            ( Running model, Cmd.none )
 
 
 updateFromUrl : ValidModel -> Url -> ( Model, Cmd Msg )
@@ -253,10 +300,10 @@ gotoRoute model route =
             , Browser.Navigation.pushUrl model.key newUrlString
             )
 
-        Routing.Create ->
+        Routing.Create maybeOpenMode ->
             let
                 ( createModel, createCmd, chainCmdOrder ) =
-                    Create.State.init model.node model.tokenContractAddress model.tokenContractDecimals model.factoryAddress model.userInfo
+                    Create.State.init model.node model.tokenContractAddress model.tokenContractDecimals model.factoryAddress maybeOpenMode model.userInfo
 
                 ( newTxSentry, chainCmd ) =
                     ChainCmd.execute model.txSentry (ChainCmd.map CreateMsg chainCmdOrder)

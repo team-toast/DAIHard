@@ -44,8 +44,6 @@ titleElement model =
     Element.el
         [ Element.centerX
         , Element.Font.size 36
-        , Element.Events.onClick SwitchInitiatorRole
-        , Element.pointer
         ]
         (Element.text
             (case model.parameterInputs.openMode of

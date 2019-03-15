@@ -40,6 +40,8 @@ type alias ValidModel =
     , userAddress : Maybe Address
     , userInfo : Maybe UserInfo
     , tokenContractDecimals : Int
+    , showBuyDaiDropdown : Bool
+    , showSellDaiDropdown : Bool
     , submodel : Submodel
     }
 
@@ -62,4 +64,8 @@ type Msg
     | CreateMsg Create.Types.Msg
     | InteractMsg Interact.Types.Msg
     | SearchMsg Search.Types.Msg
+    | BuyDaiDropdownToggle
+    | SellDaiDropdownToggle
+    | CloseDropdowns
     | Fail String
+    | NoOp

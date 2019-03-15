@@ -18,6 +18,7 @@ type alias Model =
     , tokenDecimals : Int
     , factoryAddress : Address
     , userInfo : Maybe UserInfo
+    , openMode : Contracts.Types.OpenMode
     , parameterInputs : ContractParameterInputs
     , contractParameters : Maybe Contracts.Types.CreateParameters
     , busyWithTxChain : Bool
@@ -41,7 +42,6 @@ type Msg
     | AutorecallIntervalChanged String
     | AutoabortIntervalChanged String
     | AutoreleaseIntervalChanged String
-    | SwitchInitiatorRole
     | AddPaymentMethod PaymentMethod
     | BeginCreateProcess
     | DevFeeFetched (Result Http.Error BigInt)
