@@ -105,7 +105,7 @@ buyDaiElement showDropdown =
     let
         dropdownAttributes =
             if showDropdown then
-                [ Element.below sellDaiDropdown ]
+                [ Element.below buyDaiDropdown ]
 
             else
                 []
