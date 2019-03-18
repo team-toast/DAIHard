@@ -1,6 +1,7 @@
-module TimeHelpers exposing (add, compare, daysStrToMaybePosix, isNegative, posixToMillisBigInt, posixToSeconds, posixToSecondsBigInt, secondsBigIntToMaybePosix, sub, toString)
+module TimeHelpers exposing (HumanReadableInterval, add, compare, daysStrToMaybePosix, getRatio, isNegative, posixToMillisBigInt, posixToSeconds, posixToSecondsBigInt, secondsBigIntToMaybePosix, sub, toHumanReadableInterval, toString)
 
 import BigInt exposing (BigInt)
+import BigIntHelpers
 import Time
 
 
@@ -18,6 +19,11 @@ sub t1 t2 =
         |> Time.posixToMillis
         |> (-) (Time.posixToMillis t1)
         |> Time.millisToPosix
+
+
+getRatio : Time.Posix -> Time.Posix -> Float
+getRatio t1 t2 =
+    toFloat (Time.posixToMillis t1) / toFloat (Time.posixToMillis t2)
 
 
 isNegative : Time.Posix -> Bool
@@ -74,3 +80,41 @@ compare t1 t2 =
     Basics.compare
         (Time.posixToMillis t1)
         (Time.posixToMillis t2)
+
+
+type alias HumanReadableInterval =
+    { days : Int
+    , hours : Int
+    , min : Int
+    , sec : Int
+    }
+
+
+
+--ignores some maybes, because we never divmod by zero.
+
+
+toHumanReadableInterval : Time.Posix -> Maybe HumanReadableInterval
+toHumanReadableInterval t =
+    let
+        secsInDays =
+            posixToSecondsBigInt t
+    in
+    BigInt.divmod secsInDays (BigInt.fromInt <| 60 * 60 * 24)
+        |> Maybe.withDefault ( BigInt.fromInt 0, BigInt.fromInt 0 )
+        |> (\( days, secsInHours ) ->
+                BigInt.divmod secsInHours (BigInt.fromInt <| 60 * 60)
+                    |> Maybe.withDefault ( BigInt.fromInt 0, BigInt.fromInt 0 )
+                    |> (\( hours, secsInMin ) ->
+                            BigInt.divmod secsInMin (BigInt.fromInt 60)
+                                |> Maybe.withDefault ( BigInt.fromInt 0, BigInt.fromInt 0 )
+                                |> (\( min, sec ) ->
+                                        Maybe.map4
+                                            HumanReadableInterval
+                                            (BigIntHelpers.toInt days)
+                                            (BigIntHelpers.toInt hours)
+                                            (BigIntHelpers.toInt min)
+                                            (BigIntHelpers.toInt sec)
+                                   )
+                       )
+           )

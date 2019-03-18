@@ -133,7 +133,7 @@ resultsElement time model =
 
 daiRangeInput : AmountRange -> Element Msg
 daiRangeInput range =
-    dummyTextInput
+    EH.textInputWithElement [] (Element.text "hi") "dairange" "" Nothing (\_ -> NoOp)
         |> withInputHeader "Dai Amount"
 
 
@@ -258,11 +258,13 @@ cellMaker ( portion, cellElement ) =
 
 viewExpiring : Time.Posix -> Contracts.Types.FullTradeInfo -> Element Msg
 viewExpiring time trade =
-    Element.text
-        (EH.secondsRemainingString
-            (TimeHelpers.add trade.state.phaseStartTime trade.parameters.autorecallInterval)
-            time
-        )
+    let
+        interval =
+            TimeHelpers.sub
+                (TimeHelpers.add trade.state.phaseStartTime trade.parameters.autorecallInterval)
+                time
+    in
+    EH.intervalWithElapsedBar interval trade.parameters.autorecallInterval Element.fill
 
 
 viewTradeAmount : Contracts.Types.FullTradeInfo -> Element Msg
