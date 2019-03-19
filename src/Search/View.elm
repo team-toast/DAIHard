@@ -240,7 +240,7 @@ withInputHeader title element =
         [ Element.width Element.fill
         , Element.spacing 8
         ]
-        [ Element.el [ Element.Font.size 17, Element.Font.semiBold ] <| Element.text title
+        [ Element.el [ Element.Font.size 17, Element.Font.medium ] <| Element.text title
         , element
         ]
 
@@ -337,7 +337,7 @@ viewTradeButton factoryID =
         ]
         { onPress = Just <| TradeClicked factoryID
         , label =
-            Element.el [ Element.centerX, Element.Font.color <| Element.rgb255 16 7 234 ] <| Element.text "View Offer"
+            Element.el [ Element.centerX, Element.Font.color <| Element.rgb255 16 7 234, Element.Font.medium ] <| Element.text "View Offer"
         }
 
 
@@ -407,4 +407,4 @@ sortableColumnHeader title colType sorting =
 
 columnHeader : String -> Element Msg
 columnHeader title =
-    Element.el [ Element.Font.semiBold, Element.Font.size 17 ] <| Element.text title
+    Element.el [ Element.Font.medium, Element.Font.size 17 ] <| Element.text title

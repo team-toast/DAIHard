@@ -113,7 +113,7 @@ buyDaiElement showDropdown =
     Element.Input.button
         (headerMenuAttributes ++ dropdownAttributes ++ [ Element.Events.onLoseFocus CloseDropdowns ])
         { onPress = Just BuyDaiDropdownToggle
-        , label = Element.text "Buy Dai"
+        , label = Element.el [ Element.Font.semiBold ] <| Element.text "Buy Dai"
         }
 
 

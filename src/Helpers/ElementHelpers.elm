@@ -347,7 +347,7 @@ timeUnitElement num unitChar active =
             String.fromInt num
                 |> String.padLeft 2 '0'
     in
-    Element.el [ Element.Font.size 16, Element.Font.color color ]
+    Element.el [ Element.Font.size 16, Element.Font.color color, Element.Font.medium ]
         (Element.text <| numStr ++ String.fromChar unitChar)
 
 
