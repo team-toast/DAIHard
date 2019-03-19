@@ -1,4 +1,4 @@
-module Search.Types exposing (AmountRange, Model, Msg(..), ResultColumnType(..), SearchInputs, updateTradeCreationInfo, updateTradeParameters, updateTradeState)
+module Search.Types exposing (FiatTypeAndRange, Model, Msg(..), ResultColumnType(..), SearchInputs, TokenRange, updateTradeCreationInfo, updateTradeParameters, updateTradeState)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
@@ -46,9 +46,16 @@ type alias SearchInputs =
     }
 
 
-type alias AmountRange =
+type alias TokenRange =
     { min : Maybe TokenValue
     , max : Maybe TokenValue
+    }
+
+
+type alias FiatTypeAndRange =
+    { type_ : Maybe FiatValue.FiatType
+    , min : Maybe BigInt
+    , max : Maybe BigInt
     }
 
 

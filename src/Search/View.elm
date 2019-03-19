@@ -42,9 +42,9 @@ searchInputElement inputs searchTerms =
             , Element.spacing 10
             ]
             [ Element.el [ Element.width <| Element.fillPortion 3 ] <|
-                daiRangeInput (AmountRange Nothing Nothing)
+                daiRangeInput (TokenRange Nothing Nothing)
             , Element.el [ Element.width <| Element.fillPortion 3 ] <|
-                fiatRangeInput (AmountRange Nothing Nothing)
+                fiatInput (FiatTypeAndRange Nothing Nothing Nothing)
             , Element.el [ Element.width <| Element.fillPortion 6 ] <|
                 paymentMethodsInput inputs.paymentMethod
             , Element.el [] <|
@@ -131,19 +131,44 @@ resultsElement time model =
         ]
 
 
-daiRangeInput : AmountRange -> Element Msg
+daiRangeInput : TokenRange -> Element Msg
 daiRangeInput range =
-    EH.textInputWithElement [] (Element.text "hi") "dairange" "" Nothing (\_ -> NoOp)
-        |> withInputHeader "Dai Amount"
+    let
+        daiLabelElement =
+            EH.smallDaiSymbol [ Element.centerY ]
+
+        minElement =
+            Element.row [ Element.spacing 8, Element.centerY, Element.width <| Element.px 60 ]
+                [ daiLabelElement
+                , Element.el [ Element.Font.size 16, Element.centerY ] (Element.text "min")
+                ]
+
+        maxElement =
+            Element.row [ Element.spacing 8, Element.centerY, Element.width <| Element.px 60 ]
+                [ daiLabelElement
+                , Element.el [ Element.Font.size 16, Element.centerY ] (Element.text "max")
+                ]
+    in
+    Element.column [ Element.spacing 5 ]
+        [ EH.textInputWithElement [] minElement "min dai" "" Nothing (\_ -> NoOp)
+        , EH.textInputWithElement [] maxElement "max dai" "" Nothing (\_ -> NoOp)
+        ]
+        |> withInputHeader "Dai Range"
 
 
-fiatTypeInput : Maybe FiatValue -> Element Msg
-fiatTypeInput fiatType =
+
+-- Element.column [ Element.spacing 5 ]
+-- EH.textInputWithElement [] daiLabelElement "dairange" "" Nothing (\_ -> NoOp)
+--     |> withInputHeader "Dai Amount"
+
+
+fiatInput : FiatTypeAndRange -> Element Msg
+fiatInput fiatType =
     dummyTextInput
         |> withInputHeader "Fiat Type"
 
 
-fiatRangeInput : AmountRange -> Element Msg
+fiatRangeInput : FiatTypeAndRange -> Element Msg
 fiatRangeInput range =
     dummyTextInput
         |> withInputHeader "Fiat Amount"
@@ -269,7 +294,7 @@ viewExpiring time trade =
 
 viewTradeAmount : Contracts.Types.FullTradeInfo -> Element Msg
 viewTradeAmount trade =
-    EH.tokenValue trade.parameters.tradeAmount
+    EH.daiValue trade.parameters.tradeAmount
 
 
 viewFiat : Contracts.Types.FullTradeInfo -> Element Msg

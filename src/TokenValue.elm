@@ -1,4 +1,4 @@
-module TokenValue exposing (TokenValue, add, compare, decoder, div, divByInt, encode, fromString, getBigInt, getFloatValueWithWarning, isZero, mul, numDecimals, renderToString, sub, tokenValue, updateValue, updateViaString, zero)
+module TokenValue exposing (TokenValue, add, compare, decoder, div, divByInt, encode, fromString, getBigInt, getFloatValueWithWarning, isZero, mul, numDecimals, renderToString, sub, toConciseString, tokenValue, updateValue, updateViaString, zero)
 
 import BigInt exposing (BigInt)
 import BigIntHelpers
@@ -94,6 +94,43 @@ renderToString maxDigitsAfterDecimal tokens =
 
         Just maxDigits ->
             evmValueToTruncatedString (numDecimals tokens) maxDigits (getBigInt tokens)
+
+
+toConciseString : TokenValue -> String
+toConciseString tv =
+    let
+        s =
+            evmValueToString (numDecimals tv) (getBigInt tv)
+    in
+    case String.indexes "." s of
+        [] ->
+            s
+
+        [ 0 ] ->
+            "0" ++ String.left 2 s
+
+        [ 1 ] ->
+            String.toFloat s
+                |> Maybe.map ((*) 10.0)
+                |> Maybe.map round
+                |> Maybe.map toFloat
+                |> Maybe.map (\f -> f / 10.0)
+                |> Maybe.map String.fromFloat
+                |> Maybe.withDefault s
+                |> String.left 3
+
+        [ i ] ->
+            String.toFloat s
+                |> Maybe.map round
+                |> Maybe.map String.fromInt
+                |> Maybe.withDefault (String.left i s)
+
+        _ ->
+            let
+                _ =
+                    Debug.log "Error interpreting evmValueToString result. More than one decimal??"
+            in
+            "???"
 
 
 add : TokenValue -> TokenValue -> TokenValue

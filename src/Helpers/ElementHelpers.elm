@@ -1,4 +1,4 @@
-module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonDeepBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, errorMessage, fakeLink, fiatValue, fillWidthBlock, hbreak, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, interval, intervalWithElapsedBar, lightGray, methodName, pageBackgroundColor, pageTitle, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallInput, subpageBackgroundColor, testBorderStyles, textInputWithElement, timeInput, timeValue, tokenValue, white)
+module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonDeepBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, daiSymbol, daiValue, errorMessage, fakeLink, fiatValue, fillWidthBlock, hbreak, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, interval, intervalWithElapsedBar, lightGray, methodName, pageBackgroundColor, pageTitle, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallDaiSymbol, smallInput, subpageBackgroundColor, testBorderStyles, textInputWithElement, timeInput, timeValue, tokenValue, white)
 
 import CommonTypes exposing (..)
 import Element exposing (Attribute, Element)
@@ -249,6 +249,18 @@ tokenValue tv =
     Element.el [ Element.Font.color (Element.rgb 0 0 1) ] (Element.text s)
 
 
+daiValue : TokenValue -> Element msg
+daiValue tv =
+    let
+        numStr =
+            TokenValue.toConciseString tv
+    in
+    Element.row [ Element.spacing 4 ]
+        [ smallDaiSymbol []
+        , Element.el [ Element.Font.size 16 ] <| Element.text numStr
+        ]
+
+
 fiatValue : FiatValue -> Element msg
 fiatValue fv =
     Element.el [ Element.Font.color (Element.rgb 0 0 1) ] (Element.text <| FiatValue.renderToString fv)
@@ -445,7 +457,7 @@ textInputWithElement attributes addedElement labelStr value placeholder msgConst
                 , bottomRight = 0
                 }
             ]
-            (Element.el [ Element.centerY ] addedElement)
+            (Element.el [ Element.centerY, Element.paddingXY 10 0 ] addedElement)
         , Element.Input.text
             [ Element.width Element.fill
             , Element.height <| Element.px 40
@@ -539,6 +551,24 @@ bulletPointString : String
 bulletPointString =
     Char.fromCode 8226
         |> String.fromChar
+
+
+
+-- IMAGES
+
+
+daiSymbol : List (Attribute msg) -> Element msg
+daiSymbol attributes =
+    Element.image attributes
+        { src = "static/img/dai-symbol.png"
+        , description = "dai"
+        }
+
+
+smallDaiSymbol : List (Attribute msg) -> Element msg
+smallDaiSymbol attributes =
+    daiSymbol
+        ((Element.height <| Element.px 22) :: attributes)
 
 
 
