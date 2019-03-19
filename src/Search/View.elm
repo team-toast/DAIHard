@@ -106,9 +106,9 @@ resultsElement time model =
         ]
         [ Element.row
             [ Element.width Element.fill ]
-            [ cellMaker ( 2, sortableColumnHeader "Offer Expires" Expiring Nothing )
-            , cellMaker ( 2, sortableColumnHeader buyingOrSellingString TradeAmount Nothing )
-            , cellMaker ( 2, sortableColumnHeader "For Fiat" Fiat Nothing )
+            [ cellMaker ( 1, sortableColumnHeader "Expires" Expiring Nothing )
+            , cellMaker ( 1, sortableColumnHeader buyingOrSellingString TradeAmount Nothing )
+            , cellMaker ( 1, sortableColumnHeader "For Fiat" Fiat Nothing )
             , cellMaker ( 1, sortableColumnHeader "Margin" Margin Nothing )
             , cellMaker ( 6, columnHeader "Accepted Payment Methods" )
             , cellMaker ( 2, sortableColumnHeader "Payment Window" AutoabortWindow Nothing )
@@ -126,7 +126,7 @@ resultsElement time model =
             ]
             (visibleTrades
                 |> List.map
-                    (viewTradeRow time)
+                    (viewTradeRow time (model.openMode == Contracts.Types.SellerOpened))
             )
         ]
 
@@ -245,17 +245,17 @@ withInputHeader title element =
         ]
 
 
-viewTradeRow : Time.Posix -> Contracts.Types.FullTradeInfo -> Element Msg
-viewTradeRow time trade =
+viewTradeRow : Time.Posix -> Bool -> Contracts.Types.FullTradeInfo -> Element Msg
+viewTradeRow time asBuyer trade =
     Element.row
         [ Element.width Element.fill
         , Element.spacing 1
         ]
         (List.map cellMaker
-            [ ( 2, viewExpiring time trade )
-            , ( 2, viewTradeAmount trade )
-            , ( 2, viewFiat trade )
-            , ( 1, viewMargin trade )
+            [ ( 1, viewExpiring time trade )
+            , ( 1, viewTradeAmount trade )
+            , ( 1, viewFiat trade )
+            , ( 1, viewMargin trade (not asBuyer) )
             , ( 6, viewPaymentMethods trade )
             , ( 2, viewAutoabortWindow trade )
             , ( 2, viewAutoreleaseWindow trade )
@@ -268,7 +268,7 @@ cellMaker : ( Int, Element Msg ) -> Element Msg
 cellMaker ( portion, cellElement ) =
     Element.el
         [ Element.width <| Element.fillPortion portion
-        , Element.height <| Element.px 70
+        , Element.height <| Element.px 60
         , Element.clip
         , Element.Background.color EH.white
         ]
@@ -302,11 +302,10 @@ viewFiat trade =
     EH.fiatValue trade.parameters.fiatPrice
 
 
-viewMargin : Contracts.Types.FullTradeInfo -> Element Msg
-viewMargin trade =
+viewMargin : Contracts.Types.FullTradeInfo -> Bool -> Element Msg
+viewMargin trade upIsGreen =
     trade.derived.margin
-        |> Maybe.map
-            (Utils.marginToString >> Element.text)
+        |> Maybe.map (EH.margin upIsGreen)
         |> Maybe.withDefault Element.none
 
 

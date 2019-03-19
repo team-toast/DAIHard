@@ -1,4 +1,4 @@
-module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonDeepBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, daiSymbol, daiValue, errorMessage, fakeLink, fiatValue, fillWidthBlock, hbreak, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, interval, intervalWithElapsedBar, lightGray, methodName, pageBackgroundColor, pageTitle, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallDaiSymbol, smallInput, subpageBackgroundColor, testBorderStyles, textInputWithElement, timeInput, timeValue, tokenValue, white)
+module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonDeepBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, daiSymbol, daiValue, errorMessage, fakeLink, fiatValue, fillWidthBlock, hbreak, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, interval, intervalWithElapsedBar, lightGray, margin, methodName, pageBackgroundColor, pageTitle, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallDaiSymbol, smallInput, subpageBackgroundColor, testBorderStyles, textInputWithElement, timeInput, timeValue, tokenValue, white)
 
 import CommonTypes exposing (..)
 import Element exposing (Attribute, Element)
@@ -26,11 +26,11 @@ white =
 
 
 red =
-    Element.rgb 1 0 0
+    Element.rgb255 244 0 103
 
 
 green =
-    Element.rgb 0 1 0
+    Element.rgb255 51 183 2
 
 
 blue =
@@ -264,6 +264,34 @@ daiValue tv =
 fiatValue : FiatValue -> Element msg
 fiatValue fv =
     Element.el [ Element.Font.color (Element.rgb 0 0 1) ] (Element.text <| FiatValue.renderToString fv)
+
+
+margin : Bool -> Float -> Element msg
+margin upIsGreen marginFloat =
+    case marginFloatToConciseUnsignedString marginFloat of
+        "0%" ->
+            Element.el [ Element.Font.size 16 ] (Element.text "0%")
+
+        unsignedPercentString ->
+            let
+                isUp =
+                    marginFloat >= 0
+
+                isGreen =
+                    not <| xor isUp upIsGreen
+
+                textColor =
+                    if isGreen then
+                        green
+
+                    else
+                        red
+            in
+            Element.row [ Element.spacing 4 ]
+                [ marginSymbol [ Element.height <| Element.px 22 ] isUp isGreen
+                , Element.el [ Element.Font.color textColor, Element.Font.size 16 ]
+                    (Element.text unsignedPercentString)
+                ]
 
 
 timeValue : Time.Posix -> Element msg
@@ -557,6 +585,29 @@ bulletPointString =
 -- IMAGES
 
 
+marginSymbol : List (Attribute msg) -> Bool -> Bool -> Element msg
+marginSymbol attributes isUp isGreen =
+    let
+        src =
+            case ( isUp, isGreen ) of
+                ( True, True ) ->
+                    "static/img/margin-up-green.svg"
+
+                ( True, False ) ->
+                    "static/img/margin-up-red.svg"
+
+                ( False, True ) ->
+                    "static/img/margin-down-green.svg"
+
+                ( False, False ) ->
+                    "static/img/margin-down-red.svg"
+    in
+    Element.image (attributes ++ [ Element.height <| Element.px 28 ])
+        { src = src
+        , description = ""
+        }
+
+
 daiSymbol : List (Attribute msg) -> Element msg
 daiSymbol attributes =
     Element.image attributes
@@ -594,3 +645,36 @@ errorMessage str debugObj =
         , Element.Font.color white
         ]
         (Element.text str)
+
+
+
+-- ETC
+
+
+marginFloatToConciseUnsignedString : Float -> String
+marginFloatToConciseUnsignedString f =
+    let
+        absPercentNumber =
+            abs <| f * 100.0
+
+        preDecimalString =
+            floor absPercentNumber
+                |> String.fromInt
+
+        decimalRemainder =
+            absPercentNumber - toFloat (floor absPercentNumber)
+
+        extraDigitsNeeded =
+            max 0 (3 - String.length preDecimalString)
+
+        decimalString =
+            case extraDigitsNeeded of
+                0 ->
+                    ""
+
+                n ->
+                    String.fromFloat decimalRemainder
+                        |> String.dropLeft 1
+                        |> String.left extraDigitsNeeded
+    in
+    preDecimalString ++ decimalString ++ "%"
