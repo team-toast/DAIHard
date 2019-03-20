@@ -257,8 +257,8 @@ viewTradeRow time asBuyer trade =
             , ( 2, viewFiat trade )
             , ( 1, viewMargin trade (not asBuyer) )
             , ( 6, viewPaymentMethods trade )
-            , ( 2, viewAutoabortWindow trade )
-            , ( 2, viewAutoreleaseWindow trade )
+            , ( 2, viewAutoabortWindow asBuyer trade )
+            , ( 2, viewAutoreleaseWindow asBuyer trade )
             , ( 2, viewTradeButton trade.factoryID )
             ]
         )
@@ -317,14 +317,30 @@ viewPaymentMethods trade =
         )
 
 
-viewAutoabortWindow : Contracts.Types.FullTradeInfo -> Element Msg
-viewAutoabortWindow trade =
-    EH.interval trade.parameters.autoabortInterval
+viewAutoabortWindow : Bool -> Contracts.Types.FullTradeInfo -> Element Msg
+viewAutoabortWindow viewAsBuyer trade =
+    let
+        color =
+            if viewAsBuyer then
+                Just EH.red
+
+            else
+                Just EH.green
+    in
+    EH.interval color trade.parameters.autoabortInterval
 
 
-viewAutoreleaseWindow : Contracts.Types.FullTradeInfo -> Element Msg
-viewAutoreleaseWindow trade =
-    EH.interval trade.parameters.autoreleaseInterval
+viewAutoreleaseWindow : Bool -> Contracts.Types.FullTradeInfo -> Element Msg
+viewAutoreleaseWindow viewAsBuyer trade =
+    let
+        color =
+            if viewAsBuyer then
+                Just EH.green
+
+            else
+                Just EH.red
+    in
+    EH.interval color trade.parameters.autoreleaseInterval
 
 
 viewTradeButton : Int -> Element Msg
@@ -334,6 +350,7 @@ viewTradeButton factoryID =
         , Element.padding 11
         , Element.Border.rounded 4
         , Element.width Element.fill
+        , Element.mouseOver [ Element.Background.color <| Element.rgba255 16 7 234 0.4 ]
         ]
         { onPress = Just <| TradeClicked factoryID
         , label =

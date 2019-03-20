@@ -1,4 +1,4 @@
-module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonDeepBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, daiSymbol, daiValue, errorMessage, fakeLink, fiatValue, fillWidthBlock, hbreak, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, interval, intervalWithElapsedBar, lightGray, margin, methodName, pageBackgroundColor, pageTitle, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallInput, subpageBackgroundColor, testBorderStyles, textInputWithElement, timeInput, timeValue, tokenValue, white)
+module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonDeepBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, daiSymbol, daiValue, errorMessage, fakeLink, fiatValue, fillWidthBlock, green, hbreak, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, interval, intervalWithElapsedBar, lightGray, margin, methodName, pageBackgroundColor, pageTitle, red, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallInput, subpageBackgroundColor, testBorderStyles, textInputWithElement, timeInput, timeValue, tokenValue, white)
 
 import CommonTypes exposing (..)
 import Dict
@@ -342,30 +342,42 @@ secondsRemainingString end now =
     secondsLeftString ++ " seconds"
 
 
-interval : Time.Posix -> Element msg
-interval i =
+interval : Maybe Element.Color -> Time.Posix -> Element msg
+interval maybeLowValColor i =
     case TimeHelpers.toHumanReadableInterval i of
         Nothing ->
             errorMessage "Interval display failed! Is it too big?" i
 
         Just hrInterval ->
+            let
+                lowValColor =
+                    maybeLowValColor
+                        |> Maybe.withDefault black
+
+                hc =
+                    if hrInterval.days == 0 then
+                        lightGray
+
+                    else
+                        black
+
+                ( mc, sc ) =
+                    if hrInterval.days == 0 && hrInterval.hours == 0 then
+                        ( lightGray, lowValColor )
+
+                    else
+                        ( black, black )
+            in
             Element.row [ Element.spacing 5 ]
-                [ timeUnitElement hrInterval.days 'd' (hrInterval.days /= 0)
-                , timeUnitElement hrInterval.hours 'h' (hrInterval.days /= 0 || hrInterval.hours /= 0)
-                , timeUnitElement hrInterval.min 'm' True
+                [ timeUnitElement hrInterval.days 'd' hc
+                , timeUnitElement hrInterval.hours 'h' mc
+                , timeUnitElement hrInterval.min 'm' sc
                 ]
 
 
-timeUnitElement : Int -> Char -> Bool -> Element msg
-timeUnitElement num unitChar active =
+timeUnitElement : Int -> Char -> Element.Color -> Element msg
+timeUnitElement num unitChar color =
     let
-        color =
-            if active then
-                black
-
-            else
-                lightGray
-
         numStr =
             String.fromInt num
                 |> String.padLeft 2 '0'
@@ -397,7 +409,7 @@ intervalWithElapsedBar i total width =
                 total
     in
     Element.column [ Element.spacing 5, Element.width width ]
-        [ Element.el [ Element.centerX ] (interval i)
+        [ Element.el [ Element.centerX ] (interval Nothing i)
         , elapsedBar ratio color
         ]
 
