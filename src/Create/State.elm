@@ -289,7 +289,7 @@ validateInputs numDecimals inputs =
         (\tradeAmount fiatAmount autorecallInterval autoabortInterval autoreleaseInterval ->
             { openMode = inputs.openMode
             , tradeAmount = tradeAmount
-            , fiatPrice = { fiatType = FiatValue.USD, amount = fiatAmount }
+            , fiatPrice = { fiatType = "USD", amount = fiatAmount }
             , autorecallInterval = autorecallInterval
             , autoabortInterval = autoabortInterval
             , autoreleaseInterval = autoreleaseInterval

@@ -1,4 +1,4 @@
-module BigIntHelpers exposing (decoder, encode, toInt, toIntWithWarning)
+module BigIntHelpers exposing (decoder, encode, toInt, toIntWithWarning, toStringWithCommas)
 
 import BigInt exposing (BigInt)
 import Json.Decode
@@ -24,6 +24,20 @@ toIntWithWarning val =
                     Debug.log "Warning! BigInt to Int conversion failed!" <| BigInt.toString val
             in
             0
+
+
+toStringWithCommas : BigInt -> String
+toStringWithCommas val =
+    addCommasToNumstr (BigInt.toString val)
+
+
+addCommasToNumstr : String -> String
+addCommasToNumstr s =
+    if String.length s <= 3 then
+        s
+
+    else
+        addCommasToNumstr (String.dropRight 3 s) ++ "," ++ String.right 3 s
 
 
 encode : BigInt -> Json.Encode.Value

@@ -1,12 +1,14 @@
-module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonDeepBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, daiSymbol, daiValue, errorMessage, fakeLink, fiatValue, fillWidthBlock, hbreak, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, interval, intervalWithElapsedBar, lightGray, margin, methodName, pageBackgroundColor, pageTitle, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallDaiSymbol, smallInput, subpageBackgroundColor, testBorderStyles, textInputWithElement, timeInput, timeValue, tokenValue, white)
+module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonDeepBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, daiSymbol, daiValue, errorMessage, fakeLink, fiatValue, fillWidthBlock, hbreak, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, interval, intervalWithElapsedBar, lightGray, margin, methodName, pageBackgroundColor, pageTitle, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallInput, subpageBackgroundColor, testBorderStyles, textInputWithElement, timeInput, timeValue, tokenValue, white)
 
 import CommonTypes exposing (..)
+import Dict
 import Element exposing (Attribute, Element)
 import Element.Background
 import Element.Border
 import Element.Font
 import Element.Input
 import FiatValue exposing (FiatValue)
+import Images
 import List
 import Time
 import TimeHelpers
@@ -256,14 +258,35 @@ daiValue tv =
             TokenValue.toConciseString tv
     in
     Element.row [ Element.spacing 4 ]
-        [ smallDaiSymbol []
+        [ daiSymbol []
         , Element.el [ Element.Font.size 16 ] <| Element.text numStr
         ]
 
 
 fiatValue : FiatValue -> Element msg
 fiatValue fv =
-    Element.el [ Element.Font.color (Element.rgb 0 0 1) ] (Element.text <| FiatValue.renderToString fv)
+    let
+        currencyElement =
+            case Dict.get fv.fiatType FiatValue.currencyTypes of
+                Nothing ->
+                    Element.el [ Element.Font.color red ] (Element.text "!")
+
+                Just ( typeChar, image ) ->
+                    Element.image
+                        [ Element.height <| Element.px 26 ]
+                        image
+    in
+    Element.row [ Element.spacing 4 ]
+        [ currencyElement
+        , Element.el
+            [ Element.Font.color <| Element.rgba 0 0 0 0.5
+            , Element.Font.medium
+            , Element.width <| Element.px 50
+            , Element.clip
+            ]
+            (Element.text fv.fiatType)
+        , Element.text <| FiatValue.renderToString fv
+        ]
 
 
 margin : Bool -> Float -> Element msg
@@ -288,7 +311,7 @@ margin upIsGreen marginFloat =
                         red
             in
             Element.row [ Element.spacing 4 ]
-                [ marginSymbol [ Element.height <| Element.px 22 ] isUp isGreen
+                [ marginSymbol [] isUp isGreen
                 , Element.el [ Element.Font.color textColor, Element.Font.size 16 ]
                     (Element.text unsignedPercentString)
                 ]
@@ -585,41 +608,18 @@ bulletPointString =
 -- IMAGES
 
 
-marginSymbol : List (Attribute msg) -> Bool -> Bool -> Element msg
-marginSymbol attributes isUp isGreen =
-    let
-        src =
-            case ( isUp, isGreen ) of
-                ( True, True ) ->
-                    "static/img/margin-up-green.svg"
-
-                ( True, False ) ->
-                    "static/img/margin-up-red.svg"
-
-                ( False, True ) ->
-                    "static/img/margin-down-green.svg"
-
-                ( False, False ) ->
-                    "static/img/margin-down-red.svg"
-    in
-    Element.image (attributes ++ [ Element.height <| Element.px 28 ])
-        { src = src
-        , description = ""
-        }
-
-
 daiSymbol : List (Attribute msg) -> Element msg
 daiSymbol attributes =
-    Element.image attributes
-        { src = "static/img/dai-symbol.png"
-        , description = "dai"
-        }
+    Element.image
+        ((Element.height <| Element.px 26) :: attributes)
+        Images.daiSymbol
 
 
-smallDaiSymbol : List (Attribute msg) -> Element msg
-smallDaiSymbol attributes =
-    daiSymbol
-        ((Element.height <| Element.px 22) :: attributes)
+marginSymbol : List (Attribute msg) -> Bool -> Bool -> Element msg
+marginSymbol attributes isUp isGreen =
+    Element.image
+        ((Element.height <| Element.px 34) :: attributes)
+        (Images.marginSymbol isUp isGreen)
 
 
 

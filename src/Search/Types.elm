@@ -53,7 +53,7 @@ type alias TokenRange =
 
 
 type alias FiatTypeAndRange =
-    { type_ : Maybe FiatValue.FiatType
+    { type_ : Maybe String
     , min : Maybe BigInt
     , max : Maybe BigInt
     }

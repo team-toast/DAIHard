@@ -14,12 +14,15 @@ margin tokens fiat =
             FiatValue.getFloatValueWithWarning fiat
     in
     case fiat.fiatType of
-        FiatValue.USD ->
+        "USD" ->
             let
                 difference =
                     fiatFloat - tokenFloat
             in
             Just <| difference / tokenFloat
+
+        _ ->
+            Nothing
 
 
 marginToString : Float -> String

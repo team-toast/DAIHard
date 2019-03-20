@@ -108,7 +108,7 @@ resultsElement time model =
             [ Element.width Element.fill ]
             [ cellMaker ( 1, sortableColumnHeader "Expires" Expiring Nothing )
             , cellMaker ( 1, sortableColumnHeader buyingOrSellingString TradeAmount Nothing )
-            , cellMaker ( 1, sortableColumnHeader "For Fiat" Fiat Nothing )
+            , cellMaker ( 2, sortableColumnHeader "For Fiat" Fiat Nothing )
             , cellMaker ( 1, sortableColumnHeader "Margin" Margin Nothing )
             , cellMaker ( 6, columnHeader "Accepted Payment Methods" )
             , cellMaker ( 2, sortableColumnHeader "Payment Window" AutoabortWindow Nothing )
@@ -135,7 +135,7 @@ daiRangeInput : TokenRange -> Element Msg
 daiRangeInput range =
     let
         daiLabelElement =
-            EH.smallDaiSymbol [ Element.centerY ]
+            EH.daiSymbol [ Element.centerY ]
 
         minElement =
             Element.row [ Element.spacing 8, Element.centerY, Element.width <| Element.px 60 ]
@@ -254,7 +254,7 @@ viewTradeRow time asBuyer trade =
         (List.map cellMaker
             [ ( 1, viewExpiring time trade )
             , ( 1, viewTradeAmount trade )
-            , ( 1, viewFiat trade )
+            , ( 2, viewFiat trade )
             , ( 1, viewMargin trade (not asBuyer) )
             , ( 6, viewPaymentMethods trade )
             , ( 2, viewAutoabortWindow trade )
