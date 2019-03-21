@@ -1,4 +1,4 @@
-module Search.Types exposing (FiatTypeAndRange, Model, Msg(..), ResultColumnType(..), SearchInputs, TokenRange, updateCurrencyTypeInput, updatePaymentMethodInput, updateShowCurrencyDropdown, updateTradeCreationInfo, updateTradeParameters, updateTradeState)
+module Search.Types exposing (FiatTypeAndRange, Model, Msg(..), ResultColumnType(..), SearchInputs, SearchQuery, TokenRange, inputsToQuery, updateFiatTypeInput, updateMaxDaiInput, updateMaxFiatInput, updateMinDaiInput, updateMinFiatInput, updatePaymentMethodInput, updatePaymentMethodTerms, updateShowCurrencyDropdown, updateTradeCreationInfo, updateTradeParameters, updateTradeState)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
@@ -9,6 +9,7 @@ import Eth.Types exposing (Address)
 import EthHelpers
 import FiatValue exposing (FiatValue)
 import Http
+import String.Extra
 import Time
 import TokenValue exposing (TokenValue)
 
@@ -21,7 +22,7 @@ type alias Model =
     , numTrades : Maybe Int
     , openMode : Contracts.Types.OpenMode
     , inputs : SearchInputs
-    , searchTerms : List String
+    , query : SearchQuery
     , trades : Array Contracts.Types.Trade
     , filterFunc : Time.Posix -> Contracts.Types.FullTradeInfo -> Bool
     , sortFunc : Contracts.Types.FullTradeInfo -> Contracts.Types.FullTradeInfo -> Order
@@ -33,10 +34,15 @@ type Msg
     | CreationInfoFetched Int (Result Http.Error TTF.CreatedTrade)
     | ParametersFetched Int (Result Http.Error (Result String Contracts.Types.CreateParameters))
     | StateFetched Int (Result Http.Error (Maybe Contracts.Types.State))
+    | MinDaiChanged String
+    | MaxDaiChanged String
+    | FiatTypeInputChanged String
+    | MinFiatChanged String
+    | MaxFiatChanged String
     | PaymentMethodInputChanged String
-    | CurrencyInputChanged String
     | ShowCurrencyDropdown Bool
     | AddSearchTerm
+    | ApplyInputs
     | ResetSearch
     | ResolveDropdowns
     | TradeClicked Int
@@ -45,8 +51,13 @@ type Msg
 
 
 type alias SearchInputs =
-    { paymentMethod : String
-    , currencyType : String
+    { minDai : String
+    , maxDai : String
+    , fiatType : String
+    , minFiat : String
+    , maxFiat : String
+    , paymentMethod : String
+    , paymentMethodTerms : List String
     , showCurrencyDropdown : Bool
     }
 
@@ -56,14 +67,62 @@ updatePaymentMethodInput input inputs =
     { inputs | paymentMethod = input }
 
 
-updateCurrencyTypeInput : String -> SearchInputs -> SearchInputs
-updateCurrencyTypeInput input inputs =
-    { inputs | currencyType = input }
+updateFiatTypeInput : String -> SearchInputs -> SearchInputs
+updateFiatTypeInput input inputs =
+    { inputs | fiatType = input }
 
 
 updateShowCurrencyDropdown : Bool -> SearchInputs -> SearchInputs
 updateShowCurrencyDropdown flag inputs =
     { inputs | showCurrencyDropdown = flag }
+
+
+updateMinDaiInput : String -> SearchInputs -> SearchInputs
+updateMinDaiInput input inputs =
+    { inputs | minDai = input }
+
+
+updateMaxDaiInput : String -> SearchInputs -> SearchInputs
+updateMaxDaiInput input inputs =
+    { inputs | maxDai = input }
+
+
+updateMinFiatInput : String -> SearchInputs -> SearchInputs
+updateMinFiatInput input inputs =
+    { inputs | minFiat = input }
+
+
+updateMaxFiatInput : String -> SearchInputs -> SearchInputs
+updateMaxFiatInput input inputs =
+    { inputs | maxFiat = input }
+
+
+updatePaymentMethodTerms : List String -> SearchInputs -> SearchInputs
+updatePaymentMethodTerms terms inputs =
+    { inputs | paymentMethodTerms = terms }
+
+
+type alias SearchQuery =
+    { dai : TokenRange
+    , fiat : FiatTypeAndRange
+    , paymentMethodTerms : List String
+    }
+
+
+inputsToQuery : SearchInputs -> SearchQuery
+inputsToQuery inputs =
+    { dai =
+        { min = TokenValue.fromString 18 inputs.minDai
+        , max = TokenValue.fromString 18 inputs.maxDai
+        }
+    , fiat =
+        { type_ = String.Extra.nonEmpty inputs.fiatType
+        , min = BigInt.fromString inputs.minFiat
+        , max = BigInt.fromString inputs.maxFiat
+        }
+    , paymentMethodTerms =
+        inputs.paymentMethodTerms
+    }
 
 
 type alias TokenRange =

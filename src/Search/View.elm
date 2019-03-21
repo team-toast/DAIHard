@@ -28,36 +28,30 @@ root time model =
         , Element.height Element.fill
         , Element.Events.onClick ResolveDropdowns
         ]
-        [ searchInputElement model.inputs model.searchTerms
+        [ searchInputElement model.inputs
         , EH.hbreak
         , resultsElement time model
         ]
 
 
-searchInputElement : SearchInputs -> List String -> Element Msg
-searchInputElement inputs searchTerms =
+searchInputElement : SearchInputs -> Element Msg
+searchInputElement inputs =
     Element.column [ Element.spacing 10, Element.width Element.fill, Element.padding 30 ]
         [ Element.row
             [ Element.width Element.fill
             , Element.height <| Element.px 100
             , Element.spacing 10
             ]
-            [ Element.el [ Element.width <| Element.fillPortion 3 ] <|
-                daiRangeInput (TokenRange Nothing Nothing)
-            , EH.currencySelector inputs.showCurrencyDropdown inputs.currencyType ShowCurrencyDropdown CurrencyInputChanged
-            , Element.el [ Element.width <| Element.fillPortion 3 ] <|
-                fiatInput (FiatTypeAndRange Nothing Nothing Nothing)
-            , Element.el [ Element.width <| Element.fillPortion 6 ] <|
-                paymentMethodsInput inputs.paymentMethod
-            , Element.el [] <|
-                resetButton
-            ]
-        , Element.row
-            [ Element.width Element.fill
-            , Element.spacing 10
-            ]
-            [ Element.el [ Element.width <| Element.fillPortion 6 ] Element.none
-            , Element.el [ Element.width <| Element.fillPortion 6 ] <| searchTermsDisplayElement searchTerms
+            [ Element.el [ Element.width <| Element.fillPortion 1 ] <|
+                daiRangeInput inputs.minDai inputs.maxDai
+            , Element.el [ Element.width <| Element.fillPortion 2 ] <|
+                fiatInput inputs.showCurrencyDropdown inputs.fiatType inputs.minFiat inputs.maxFiat
+            , Element.column [ Element.width <| Element.fillPortion 6, Element.alignTop ]
+                [ paymentMethodsInput inputs.paymentMethod
+                , searchTermsDisplayElement inputs.paymentMethodTerms
+                ]
+            , Element.column [ Element.spacing 5 ]
+                [ applyButton, resetButton ]
             ]
         ]
 
@@ -133,8 +127,8 @@ resultsElement time model =
         ]
 
 
-daiRangeInput : TokenRange -> Element Msg
-daiRangeInput range =
+daiRangeInput : String -> String -> Element Msg
+daiRangeInput minDai maxDai =
     let
         daiLabelElement =
             EH.daiSymbol [ Element.centerY ]
@@ -152,21 +146,38 @@ daiRangeInput range =
                 ]
     in
     Element.column [ Element.spacing 5 ]
-        [ EH.textInputWithElement [] minElement "min dai" "" Nothing Nothing (\_ -> NoOp)
-        , EH.textInputWithElement [] maxElement "max dai" "" Nothing Nothing (\_ -> NoOp)
+        [ EH.textInputWithElement [] minElement "min dai" minDai Nothing Nothing MinDaiChanged
+        , EH.textInputWithElement [] maxElement "max dai" maxDai Nothing Nothing MaxDaiChanged
         ]
         |> withInputHeader "Dai Range"
 
 
+fiatInput : Bool -> String -> String -> String -> Element Msg
+fiatInput showTypeDropdown fiatType minFiat maxFiat =
+    let
+        fiatLabelElement =
+            EH.fiatSymbolElementFromFiatType fiatType
 
--- Element.column [ Element.spacing 5 ]
--- EH.textInputWithElement [] daiLabelElement "dairange" "" Nothing (\_ -> NoOp)
---     |> withInputHeader "Dai Amount"
+        minElement =
+            Element.row [ Element.spacing 8, Element.centerY, Element.width <| Element.px 60 ]
+                [ fiatLabelElement
+                , Element.el [ Element.Font.size 16, Element.centerY ] (Element.text "min")
+                ]
 
-
-fiatInput : FiatTypeAndRange -> Element Msg
-fiatInput fiatType =
-    dummyTextInput
+        maxElement =
+            Element.row [ Element.spacing 8, Element.centerY, Element.width <| Element.px 60 ]
+                [ fiatLabelElement
+                , Element.el [ Element.Font.size 16, Element.centerY ] (Element.text "max")
+                ]
+    in
+    Element.row [ Element.spacing 5, Element.width Element.fill ]
+        [ Element.el [ Element.alignTop, Element.width <| Element.fillPortion 1 ] <|
+            EH.currencySelector showTypeDropdown fiatType ShowCurrencyDropdown FiatTypeInputChanged
+        , Element.column [ Element.spacing 5, Element.alignTop, Element.width <| Element.fillPortion 2 ]
+            [ EH.textInputWithElement [] minElement "min" minFiat Nothing Nothing MinFiatChanged
+            , EH.textInputWithElement [] maxElement "max" maxFiat Nothing Nothing MaxFiatChanged
+            ]
+        ]
         |> withInputHeader "Fiat Type"
 
 
@@ -179,7 +190,8 @@ fiatRangeInput range =
 paymentMethodsInput : String -> Element Msg
 paymentMethodsInput searchString =
     Element.Input.text
-        [ Element.width Element.fill
+        [ Element.alignTop
+        , Element.width Element.fill
         , Element.height <| Element.px 40
         , Element.Border.color EH.lightGray
         , Element.Border.shadow
@@ -217,6 +229,24 @@ dummyTextInput =
         }
 
 
+applyButton : Element Msg
+applyButton =
+    Element.Input.button
+        [ Element.Background.color EH.buttonDeepBlue
+        , Element.padding 10
+        , Element.Border.rounded 5
+        ]
+        { onPress = Just ApplyInputs
+        , label =
+            Element.el
+                [ Element.Font.color EH.white
+                , Element.centerX
+                , Element.centerY
+                ]
+                (Element.text "Apply")
+        }
+
+
 resetButton : Element Msg
 resetButton =
     Element.Input.button
@@ -233,7 +263,6 @@ resetButton =
                 ]
                 (Element.text "Reset")
         }
-        |> withInputHeader " "
 
 
 withInputHeader : String -> Element Msg -> Element Msg

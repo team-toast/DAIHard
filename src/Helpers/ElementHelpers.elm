@@ -1,4 +1,4 @@
-module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonDeepBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, currencySelector, daiSymbol, daiValue, errorMessage, fakeLink, fiatValue, fillWidthBlock, green, hbreak, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, interval, intervalWithElapsedBar, lightGray, margin, methodName, pageBackgroundColor, pageTitle, red, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallInput, subpageBackgroundColor, testBorderStyles, textInputWithElement, timeInput, timeValue, tokenValue, white)
+module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonDeepBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, currencySelector, daiSymbol, daiValue, errorMessage, fakeLink, fiatSymbolElementFromFiatType, fiatValue, fillWidthBlock, green, hbreak, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, interval, intervalWithElapsedBar, lightGray, margin, methodName, pageBackgroundColor, pageTitle, red, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallInput, subpageBackgroundColor, testBorderStyles, textInputWithElement, timeInput, timeValue, tokenValue, white)
 
 import CommonTypes exposing (..)
 import Dict
@@ -563,21 +563,10 @@ textInputWithElement attributes addedElement labelStr value placeholder maybeSho
 
 
 currencySelector : Bool -> String -> (Bool -> msg) -> (String -> msg) -> Element msg
-currencySelector showDropdown value showHideMsgConstructor msgConstructor =
+currencySelector showDropdown typeInput showHideMsgConstructor msgConstructor =
     let
-        placeholder =
-            Just <| Element.Input.placeholder [ Element.Font.italic ] <| Element.text "e.g. USD"
-
         gotCurrency =
-            Dict.get value FiatValue.currencyTypes
-
-        selectedCurrencySymbolEl =
-            case gotCurrency of
-                Nothing ->
-                    Element.text "*"
-
-                Just ( _, image ) ->
-                    Element.image [ Element.height <| Element.px 26 ] image
+            Dict.get typeInput FiatValue.currencyTypes
 
         dropdownEl =
             case ( showDropdown, gotCurrency ) of
@@ -589,7 +578,7 @@ currencySelector showDropdown value showHideMsgConstructor msgConstructor =
 
                 ( True, Nothing ) ->
                     Element.column [ Element.width <| Element.px 100, Element.spacing 7 ]
-                        (FiatValue.searchTypes value
+                        (FiatValue.searchTypes typeInput
                             |> Dict.toList
                             |> List.map
                                 (\( typeString, ( _, image ) ) ->
@@ -603,12 +592,22 @@ currencySelector showDropdown value showHideMsgConstructor msgConstructor =
     textInputWithElement
         [ Element.below dropdownEl
         ]
-        selectedCurrencySymbolEl
+        (fiatSymbolElementFromFiatType typeInput)
         "select currency"
-        value
-        placeholder
+        typeInput
+        Nothing
         (Just showHideMsgConstructor)
         (String.toUpper >> msgConstructor)
+
+
+fiatSymbolElementFromFiatType : String -> Element msg
+fiatSymbolElementFromFiatType fiatType =
+    case Dict.get fiatType FiatValue.currencyTypes of
+        Nothing ->
+            Element.text "*"
+
+        Just ( _, image ) ->
+            Element.image [ Element.height <| Element.px 26 ] image
 
 
 onClickNoPropagation : msg -> Attribute msg

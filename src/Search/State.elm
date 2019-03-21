@@ -32,7 +32,7 @@ init ethNode factoryAddress tokenDecimals maybeOpenMode userInfo =
       , openMode = openMode
       , trades = Array.empty
       , inputs = initialInputs
-      , searchTerms = []
+      , query = initialQuery
       , filterFunc = initialFilterFunc openMode
       , sortFunc = initialSortFunc
       }
@@ -55,10 +55,23 @@ initialSortFunc a b =
 
 initialInputs : SearchInputs
 initialInputs =
-    { paymentMethod = ""
-    , currencyType = ""
+    { minDai = ""
+    , maxDai = ""
+    , fiatType = ""
+    , minFiat = ""
+    , maxFiat = ""
+    , paymentMethod = ""
+    , paymentMethodTerms = []
     , showCurrencyDropdown = False
     }
+
+
+initialQuery : SearchQuery
+initialQuery =
+    SearchQuery
+        (TokenRange Nothing Nothing)
+        (FiatTypeAndRange Nothing Nothing Nothing)
+        []
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, Maybe Routing.Route )
@@ -157,14 +170,32 @@ update msg model =
                     in
                     ( model, Cmd.none, Nothing )
 
-        PaymentMethodInputChanged input ->
-            ( { model | inputs = model.inputs |> updatePaymentMethodInput input }
+        MinDaiChanged input ->
+            ( { model | inputs = model.inputs |> updateMinDaiInput input }
             , Cmd.none
             , Nothing
             )
 
-        CurrencyInputChanged input ->
-            ( { model | inputs = model.inputs |> updateCurrencyTypeInput input }
+        MaxDaiChanged input ->
+            ( { model | inputs = model.inputs |> updateMaxDaiInput input }
+            , Cmd.none
+            , Nothing
+            )
+
+        MinFiatChanged input ->
+            ( { model | inputs = model.inputs |> updateMinFiatInput input }
+            , Cmd.none
+            , Nothing
+            )
+
+        MaxFiatChanged input ->
+            ( { model | inputs = model.inputs |> updateMaxFiatInput input }
+            , Cmd.none
+            , Nothing
+            )
+
+        FiatTypeInputChanged input ->
+            ( { model | inputs = model.inputs |> updateFiatTypeInput input }
             , Cmd.none
             , Nothing
             )
@@ -175,42 +206,29 @@ update msg model =
             , Nothing
             )
 
+        PaymentMethodInputChanged input ->
+            ( { model | inputs = model.inputs |> updatePaymentMethodInput input }
+            , Cmd.none
+            , Nothing
+            )
+
         AddSearchTerm ->
-            if model.inputs.paymentMethod == "" then
-                noUpdate model
+            ( model |> addPaymentInputTerm
+            , Cmd.none
+            , Nothing
+            )
 
-            else
-                let
-                    searchTerm =
-                        model.inputs.paymentMethod
-
-                    newSearchTerms =
-                        List.append
-                            model.searchTerms
-                            [ searchTerm ]
-
-                    newModel =
-                        { model
-                            | inputs = model.inputs |> updatePaymentMethodInput ""
-                            , searchTerms = newSearchTerms
-                        }
-                in
-                ( newModel |> updateFilterFunc
-                , Cmd.none
-                , Nothing
-                )
+        ApplyInputs ->
+            ( model |> applyInputs
+            , Cmd.none
+            , Nothing
+            )
 
         ResetSearch ->
-            let
-                newModel =
-                    { model
-                        | searchTerms = []
-                        , sortFunc = initialSortFunc
-                        , filterFunc = initialFilterFunc model.openMode
-                        , inputs = initialInputs
-                    }
-            in
-            ( newModel, Cmd.none, Nothing )
+            ( model |> resetSearch
+            , Cmd.none
+            , Nothing
+            )
 
         TradeClicked id ->
             ( model, Cmd.none, Just (Routing.Interact (Just id)) )
@@ -271,22 +289,105 @@ update msg model =
             noUpdate model
 
 
-updateFilterFunc : Model -> Model
-updateFilterFunc model =
+addPaymentInputTerm : Model -> Model
+addPaymentInputTerm model =
+    if model.inputs.paymentMethod == "" then
+        model
+
+    else
+        let
+            searchTerm =
+                model.inputs.paymentMethod
+
+            newSearchTerms =
+                List.append
+                    model.inputs.paymentMethodTerms
+                    [ searchTerm ]
+        in
+        { model
+            | inputs =
+                model.inputs
+                    |> updatePaymentMethodInput ""
+                    |> updatePaymentMethodTerms newSearchTerms
+        }
+
+
+applyInputs : Model -> Model
+applyInputs model =
     let
-        newFilterFunc =
-            case model.searchTerms of
+        newModel =
+            model |> addPaymentInputTerm
+
+        query =
+            inputsToQuery newModel.inputs
+
+        searchTest time trade =
+            case query.paymentMethodTerms of
                 [] ->
-                    initialFilterFunc model.openMode
+                    True
 
                 terms ->
-                    \time trade ->
-                        initialFilterFunc model.openMode
-                            time
-                            trade
-                            && testTextMatch terms trade.parameters.paymentMethods
+                    testTextMatch terms trade.parameters.paymentMethods
+
+        daiTest trade =
+            (case query.dai.min of
+                Nothing ->
+                    True
+
+                Just min ->
+                    TokenValue.compare trade.parameters.tradeAmount min /= LT
+            )
+                && (case query.dai.max of
+                        Nothing ->
+                            True
+
+                        Just max ->
+                            TokenValue.compare trade.parameters.tradeAmount max /= GT
+                   )
+
+        fiatTest trade =
+            (case query.fiat.type_ of
+                Nothing ->
+                    True
+
+                Just fiatType ->
+                    trade.parameters.fiatPrice.fiatType == fiatType
+            )
+                && (case query.fiat.min of
+                        Nothing ->
+                            True
+
+                        Just min ->
+                            BigInt.compare trade.parameters.fiatPrice.amount min /= LT
+                   )
+                && (case query.fiat.max of
+                        Nothing ->
+                            True
+
+                        Just max ->
+                            BigInt.compare trade.parameters.fiatPrice.amount max /= GT
+                   )
+
+        newFilterFunc time trade =
+            initialFilterFunc model.openMode time trade
+                && searchTest time trade
+                && daiTest trade
+                && fiatTest trade
     in
-    { model | filterFunc = newFilterFunc }
+    { newModel
+        | query = query
+        , filterFunc = newFilterFunc
+    }
+
+
+resetSearch : Model -> Model
+resetSearch model =
+    { model
+        | sortFunc = initialSortFunc
+        , filterFunc = initialFilterFunc model.openMode
+        , inputs = initialInputs
+        , query = initialQuery
+    }
 
 
 testTextMatch : List String -> List PaymentMethod -> Bool
