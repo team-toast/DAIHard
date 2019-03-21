@@ -87,14 +87,30 @@ searchTermsDisplayElement searchTerms =
                 (terms
                     |> List.map
                         (\term ->
-                            Element.el
+                            Element.row
                                 [ Element.Background.color <| Element.rgba255 16 7 234 0.2
                                 , Element.Border.rounded 5
                                 , Element.padding 4
+                                , Element.spacing 3
                                 ]
-                                (Element.text term)
+                                [ Element.text term
+                                , removeSearchTermButton term
+                                ]
                         )
                 )
+
+
+removeSearchTermButton : String -> Element Msg
+removeSearchTermButton term =
+    Element.el
+        [ Element.padding 3
+        , Element.alignTop
+        , Element.pointer
+        , Element.Events.onClick <| RemoveTerm term
+        , Element.Font.size 10
+        , Element.Font.color EH.red
+        ]
+        (Element.text "x")
 
 
 resultsElement : Time.Posix -> Model -> Element Msg

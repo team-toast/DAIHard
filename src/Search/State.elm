@@ -246,6 +246,12 @@ update msg model =
             , Nothing
             )
 
+        RemoveTerm term ->
+            ( model |> removePaymentInputTerm term
+            , Cmd.none
+            , Nothing
+            )
+
         ApplyInputs ->
             ( model |> applyInputs
             , Cmd.none
@@ -338,6 +344,16 @@ addPaymentInputTerm model =
                     |> updatePaymentMethodInput ""
                     |> updatePaymentMethodTerms newSearchTerms
         }
+
+
+removePaymentInputTerm : String -> Model -> Model
+removePaymentInputTerm term model =
+    let
+        newTermList =
+            model.inputs.paymentMethodTerms
+                |> List.filter ((/=) term)
+    in
+    { model | inputs = model.inputs |> updatePaymentMethodTerms newTermList }
 
 
 applyInputs : Model -> Model

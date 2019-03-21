@@ -43,6 +43,7 @@ type Msg
     | PaymentMethodInputChanged String
     | ShowCurrencyDropdown Bool
     | AddSearchTerm
+    | RemoveTerm String
     | ApplyInputs
     | ResetSearch
     | ResolveDropdowns
