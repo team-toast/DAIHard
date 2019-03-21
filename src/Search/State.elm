@@ -170,6 +170,34 @@ update msg model =
                     in
                     ( model, Cmd.none, Nothing )
 
+        Refresh _ ->
+            let
+                _ =
+                    Debug.log "refreshing" ""
+
+                cmd =
+                    model.trades
+                        |> Array.toList
+                        |> List.indexedMap
+                            (\id trade ->
+                                case trade of
+                                    Contracts.Types.PartiallyLoaded _ ->
+                                        Cmd.none
+
+                                    Contracts.Types.Loaded info ->
+                                        let
+                                            address =
+                                                info.creationInfo.address
+                                        in
+                                        Contracts.Wrappers.getStateCmd model.ethNode model.tokenDecimals address (StateFetched id)
+                            )
+                        |> Cmd.batch
+            in
+            ( model
+            , cmd
+            , Nothing
+            )
+
         MinDaiChanged input ->
             ( { model | inputs = model.inputs |> updateMinDaiInput input }
             , Cmd.none
@@ -430,4 +458,4 @@ updateUserInfo userInfo model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    Time.every 5000 Refresh

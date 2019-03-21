@@ -34,6 +34,7 @@ type Msg
     | CreationInfoFetched Int (Result Http.Error TTF.CreatedTrade)
     | ParametersFetched Int (Result Http.Error (Result String Contracts.Types.CreateParameters))
     | StateFetched Int (Result Http.Error (Maybe Contracts.Types.State))
+    | Refresh Time.Posix
     | MinDaiChanged String
     | MaxDaiChanged String
     | FiatTypeInputChanged String
