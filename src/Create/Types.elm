@@ -20,6 +20,7 @@ type alias Model =
     , userInfo : Maybe UserInfo
     , openMode : Contracts.Types.OpenMode
     , parameterInputs : ContractParameterInputs
+    , showCurrencyDropdown : Bool
     , contractParameters : Maybe Contracts.Types.CreateParameters
     , busyWithTxChain : Bool
     }
@@ -28,7 +29,8 @@ type alias Model =
 type alias ContractParameterInputs =
     { openMode : Contracts.Types.OpenMode
     , tradeAmount : String
-    , totalPrice : String
+    , fiatType : String
+    , fiatAmount : String
     , paymentMethods : List PaymentMethod
     , autorecallInterval : String
     , autoabortInterval : String
@@ -38,7 +40,9 @@ type alias ContractParameterInputs =
 
 type Msg
     = TradeAmountChanged String
-    | PriceChanged String
+    | FiatTypeChanged String
+    | FiatAmountChanged String
+    | ShowCurrencyDropdown Bool
     | AutorecallIntervalChanged String
     | AutoabortIntervalChanged String
     | AutoreleaseIntervalChanged String

@@ -27,7 +27,8 @@ init ethNode tokenAddress tokenDecimals factoryAddress maybeOpenMode userInfo =
         initialInputs =
             { openMode = openMode
             , tradeAmount = "100"
-            , totalPrice = "100"
+            , fiatType = "USD"
+            , fiatAmount = "100"
             , paymentMethods = []
             , autorecallInterval = "3"
             , autoabortInterval = "3"
@@ -42,6 +43,7 @@ init ethNode tokenAddress tokenDecimals factoryAddress maybeOpenMode userInfo =
             , userInfo = userInfo
             , openMode = openMode
             , parameterInputs = initialInputs
+            , showCurrencyDropdown = False
             , contractParameters = Nothing
             , busyWithTxChain = False
             }
@@ -68,12 +70,19 @@ update msg model =
             in
             justModelUpdate (model |> udpateParameterInputs { oldInputs | tradeAmount = newAmountStr })
 
-        PriceChanged newAmountStr ->
+        FiatAmountChanged newAmountStr ->
             let
                 oldInputs =
                     model.parameterInputs
             in
-            justModelUpdate (model |> udpateParameterInputs { oldInputs | totalPrice = newAmountStr })
+            justModelUpdate (model |> udpateParameterInputs { oldInputs | fiatAmount = newAmountStr })
+
+        FiatTypeChanged newTypeStr ->
+            let
+                oldInputs =
+                    model.parameterInputs
+            in
+            justModelUpdate (model |> udpateParameterInputs { oldInputs | fiatType = newTypeStr })
 
         AutorecallIntervalChanged newTimeStr ->
             let
@@ -106,6 +115,10 @@ update msg model =
                     |> udpateParameterInputs
                         { oldInputs | paymentMethods = List.append oldInputs.paymentMethods [ paymentMethod ] }
                 )
+
+        ShowCurrencyDropdown flag ->
+            justModelUpdate
+                { model | showCurrencyDropdown = flag }
 
         BeginCreateProcess ->
             case model.contractParameters of
@@ -289,7 +302,7 @@ validateInputs numDecimals inputs =
         (\tradeAmount fiatAmount autorecallInterval autoabortInterval autoreleaseInterval ->
             { openMode = inputs.openMode
             , tradeAmount = tradeAmount
-            , fiatPrice = { fiatType = "USD", amount = fiatAmount }
+            , fiatPrice = { fiatType = inputs.fiatType, amount = fiatAmount }
             , autorecallInterval = autorecallInterval
             , autoabortInterval = autoabortInterval
             , autoreleaseInterval = autoreleaseInterval
@@ -297,7 +310,7 @@ validateInputs numDecimals inputs =
             }
         )
         (TokenValue.fromString numDecimals inputs.tradeAmount)
-        (BigInt.fromString inputs.totalPrice)
+        (BigInt.fromString inputs.fiatAmount)
         (TimeHelpers.daysStrToMaybePosix inputs.autorecallInterval)
         (TimeHelpers.daysStrToMaybePosix inputs.autoabortInterval)
         (TimeHelpers.daysStrToMaybePosix inputs.autoreleaseInterval)

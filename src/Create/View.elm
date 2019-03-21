@@ -79,7 +79,8 @@ contractParametersForm model =
             Element.column [ Element.width (Element.fillPortion 1), Element.spacing 8, Element.alignTop ]
                 (columnHeader "Dai Amounts"
                     :: ([ ( "Trade Amount", EH.smallInput "tradeAmount" model.parameterInputs.tradeAmount TradeAmountChanged )
-                        , ( "Total Fiat Price", EH.smallInput "summonfee" model.parameterInputs.totalPrice PriceChanged )
+                        , ( "Fiat Type", EH.currencySelector model.showCurrencyDropdown model.parameterInputs.fiatType ShowCurrencyDropdown FiatTypeChanged )
+                        , ( "Price", EH.smallInput "fiatAmount" model.parameterInputs.fiatAmount FiatAmountChanged )
                         ]
                             |> List.map nameAndElementToRow
                        )
