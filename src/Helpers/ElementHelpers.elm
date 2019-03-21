@@ -1,14 +1,17 @@
-module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonDeepBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, daiSymbol, daiValue, errorMessage, fakeLink, fiatValue, fillWidthBlock, green, hbreak, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, interval, intervalWithElapsedBar, lightGray, margin, methodName, pageBackgroundColor, pageTitle, red, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallInput, subpageBackgroundColor, testBorderStyles, textInputWithElement, timeInput, timeValue, tokenValue, white)
+module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonDeepBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, currencySelector, daiSymbol, daiValue, errorMessage, fakeLink, fiatValue, fillWidthBlock, green, hbreak, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, interval, intervalWithElapsedBar, lightGray, margin, methodName, pageBackgroundColor, pageTitle, red, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallInput, subpageBackgroundColor, testBorderStyles, textInputWithElement, timeInput, timeValue, tokenValue, white)
 
 import CommonTypes exposing (..)
 import Dict
 import Element exposing (Attribute, Element)
 import Element.Background
 import Element.Border
+import Element.Events
 import Element.Font
 import Element.Input
 import FiatValue exposing (FiatValue)
+import Html.Events
 import Images
+import Json.Decode
 import List
 import Time
 import TimeHelpers
@@ -496,8 +499,19 @@ timeInput labelStr value msgConstructor =
         ]
 
 
-textInputWithElement : List (Attribute msg) -> Element msg -> String -> String -> Maybe (Element.Input.Placeholder msg) -> (String -> msg) -> Element msg
-textInputWithElement attributes addedElement labelStr value placeholder msgConstructor =
+textInputWithElement : List (Attribute msg) -> Element msg -> String -> String -> Maybe (Element.Input.Placeholder msg) -> Maybe (Bool -> msg) -> (String -> msg) -> Element msg
+textInputWithElement attributes addedElement labelStr value placeholder maybeShowHideMsgConstructor msgConstructor =
+    let
+        focusEventAttributes =
+            case maybeShowHideMsgConstructor of
+                Nothing ->
+                    []
+
+                Just showHideMsgConstructor ->
+                    [ Element.Events.onFocus <| showHideMsgConstructor True
+                    , onClickNoPropagation <| showHideMsgConstructor True
+                    ]
+    in
     Element.row
         (attributes
             ++ [ Element.width Element.fill
@@ -522,28 +536,87 @@ textInputWithElement attributes addedElement labelStr value placeholder msgConst
             ]
             (Element.el [ Element.centerY, Element.paddingXY 10 0 ] addedElement)
         , Element.Input.text
-            [ Element.width Element.fill
-            , Element.height <| Element.px 40
-            , Element.Border.color lightGray
-            , Element.Border.roundEach
-                { topLeft = 0
-                , bottomLeft = 0
-                , topRight = 4
-                , bottomRight = 4
-                }
-            , Element.Border.widthEach
-                { top = 1
-                , bottom = 1
-                , right = 1
-                , left = 0
-                }
-            ]
+            (focusEventAttributes
+                ++ [ Element.width Element.fill
+                   , Element.height <| Element.px 40
+                   , Element.Border.color lightGray
+                   , Element.Border.roundEach
+                        { topLeft = 0
+                        , bottomLeft = 0
+                        , topRight = 4
+                        , bottomRight = 4
+                        }
+                   , Element.Border.widthEach
+                        { top = 1
+                        , bottom = 1
+                        , right = 1
+                        , left = 0
+                        }
+                   ]
+            )
             { onChange = msgConstructor
             , text = value
             , placeholder = placeholder
             , label = Element.Input.labelHidden labelStr
             }
         ]
+
+
+currencySelector : Bool -> String -> (Bool -> msg) -> (String -> msg) -> Element msg
+currencySelector showDropdown value showHideMsgConstructor msgConstructor =
+    let
+        placeholder =
+            Just <| Element.Input.placeholder [ Element.Font.italic ] <| Element.text "e.g. USD"
+
+        gotCurrency =
+            Dict.get value FiatValue.currencyTypes
+
+        selectedCurrencySymbolEl =
+            case gotCurrency of
+                Nothing ->
+                    Element.text "*"
+
+                Just ( _, image ) ->
+                    Element.image [ Element.height <| Element.px 26 ] image
+
+        dropdownEl =
+            case ( showDropdown, gotCurrency ) of
+                ( False, _ ) ->
+                    Element.none
+
+                ( True, Just _ ) ->
+                    Element.none
+
+                ( True, Nothing ) ->
+                    Element.column [ Element.width <| Element.px 100, Element.spacing 7 ]
+                        (FiatValue.searchTypes value
+                            |> Dict.toList
+                            |> List.map
+                                (\( typeString, ( _, image ) ) ->
+                                    Element.row [ Element.spacing 4, onClickNoPropagation <| msgConstructor typeString ]
+                                        [ Element.image [ Element.height <| Element.px 26 ] image
+                                        , Element.el [ Element.Font.size 16, Element.Font.semiBold ] <| Element.text typeString
+                                        ]
+                                )
+                        )
+    in
+    textInputWithElement
+        [ Element.below dropdownEl
+        ]
+        selectedCurrencySymbolEl
+        "select currency"
+        value
+        placeholder
+        (Just showHideMsgConstructor)
+        (String.toUpper >> msgConstructor)
+
+
+onClickNoPropagation : msg -> Attribute msg
+onClickNoPropagation msg =
+    Html.Events.stopPropagationOn
+        "click"
+        (Json.Decode.succeed ( msg, True ))
+        |> Element.htmlAttribute
 
 
 

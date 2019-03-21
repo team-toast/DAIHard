@@ -1,4 +1,4 @@
-module Search.Types exposing (FiatTypeAndRange, Model, Msg(..), ResultColumnType(..), SearchInputs, TokenRange, updateTradeCreationInfo, updateTradeParameters, updateTradeState)
+module Search.Types exposing (FiatTypeAndRange, Model, Msg(..), ResultColumnType(..), SearchInputs, TokenRange, updateCurrencyTypeInput, updatePaymentMethodInput, updateShowCurrencyDropdown, updateTradeCreationInfo, updateTradeParameters, updateTradeState)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
@@ -33,9 +33,12 @@ type Msg
     | CreationInfoFetched Int (Result Http.Error TTF.CreatedTrade)
     | ParametersFetched Int (Result Http.Error (Result String Contracts.Types.CreateParameters))
     | StateFetched Int (Result Http.Error (Maybe Contracts.Types.State))
-    | SearchInputChanged String
+    | PaymentMethodInputChanged String
+    | CurrencyInputChanged String
+    | ShowCurrencyDropdown Bool
     | AddSearchTerm
     | ResetSearch
+    | ResolveDropdowns
     | TradeClicked Int
     | SortBy ResultColumnType Bool
     | NoOp
@@ -43,7 +46,24 @@ type Msg
 
 type alias SearchInputs =
     { paymentMethod : String
+    , currencyType : String
+    , showCurrencyDropdown : Bool
     }
+
+
+updatePaymentMethodInput : String -> SearchInputs -> SearchInputs
+updatePaymentMethodInput input inputs =
+    { inputs | paymentMethod = input }
+
+
+updateCurrencyTypeInput : String -> SearchInputs -> SearchInputs
+updateCurrencyTypeInput input inputs =
+    { inputs | currencyType = input }
+
+
+updateShowCurrencyDropdown : Bool -> SearchInputs -> SearchInputs
+updateShowCurrencyDropdown flag inputs =
+    { inputs | showCurrencyDropdown = flag }
 
 
 type alias TokenRange =

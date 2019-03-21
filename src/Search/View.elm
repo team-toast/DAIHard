@@ -26,6 +26,7 @@ root time model =
         , Element.Background.color EH.white
         , Element.width Element.fill
         , Element.height Element.fill
+        , Element.Events.onClick ResolveDropdowns
         ]
         [ searchInputElement model.inputs model.searchTerms
         , EH.hbreak
@@ -43,6 +44,7 @@ searchInputElement inputs searchTerms =
             ]
             [ Element.el [ Element.width <| Element.fillPortion 3 ] <|
                 daiRangeInput (TokenRange Nothing Nothing)
+            , EH.currencySelector inputs.showCurrencyDropdown inputs.currencyType ShowCurrencyDropdown CurrencyInputChanged
             , Element.el [ Element.width <| Element.fillPortion 3 ] <|
                 fiatInput (FiatTypeAndRange Nothing Nothing Nothing)
             , Element.el [ Element.width <| Element.fillPortion 6 ] <|
@@ -150,8 +152,8 @@ daiRangeInput range =
                 ]
     in
     Element.column [ Element.spacing 5 ]
-        [ EH.textInputWithElement [] minElement "min dai" "" Nothing (\_ -> NoOp)
-        , EH.textInputWithElement [] maxElement "max dai" "" Nothing (\_ -> NoOp)
+        [ EH.textInputWithElement [] minElement "min dai" "" Nothing Nothing (\_ -> NoOp)
+        , EH.textInputWithElement [] maxElement "max dai" "" Nothing Nothing (\_ -> NoOp)
         ]
         |> withInputHeader "Dai Range"
 
@@ -188,7 +190,7 @@ paymentMethodsInput searchString =
             }
         , Element.htmlAttribute <| Html.Events.Extra.onEnter AddSearchTerm
         ]
-        { onChange = SearchInputChanged
+        { onChange = PaymentMethodInputChanged
         , text = searchString
         , placeholder = Nothing
         , label = Element.Input.labelHidden "payment methods search"

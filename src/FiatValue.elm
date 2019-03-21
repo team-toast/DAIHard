@@ -1,4 +1,4 @@
-module FiatValue exposing (FiatValue, compare, currencyTypes, decoder, encode, getFloatValueWithWarning, renderToString)
+module FiatValue exposing (FiatValue, compare, currencyTypes, decoder, encode, getFloatValueWithWarning, renderToString, searchTypes)
 
 import BigInt exposing (BigInt)
 import BigIntHelpers
@@ -17,6 +17,9 @@ type alias FiatValue =
 currencyTypes : Dict String ( Char, Image )
 currencyTypes =
     [ ( "USD", '$' )
+    , ( "EUR", '€' )
+    , ( "ZAR", 'R' )
+    , ( "GBP", '£' )
     ]
         |> List.map
             (\( typeString, typeChar ) ->
@@ -29,6 +32,15 @@ currencyTypes =
                 )
             )
         |> Dict.fromList
+
+
+searchTypes : String -> Dict String ( Char, Image )
+searchTypes input =
+    currencyTypes
+        |> Dict.filter
+            (\typeString _ ->
+                String.contains input typeString
+            )
 
 
 getFloatValueWithWarning : FiatValue -> Float

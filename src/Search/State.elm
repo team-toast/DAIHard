@@ -56,6 +56,8 @@ initialSortFunc a b =
 initialInputs : SearchInputs
 initialInputs =
     { paymentMethod = ""
+    , currencyType = ""
+    , showCurrencyDropdown = False
     }
 
 
@@ -155,8 +157,20 @@ update msg model =
                     in
                     ( model, Cmd.none, Nothing )
 
-        SearchInputChanged input ->
-            ( { model | inputs = { paymentMethod = input } }
+        PaymentMethodInputChanged input ->
+            ( { model | inputs = model.inputs |> updatePaymentMethodInput input }
+            , Cmd.none
+            , Nothing
+            )
+
+        CurrencyInputChanged input ->
+            ( { model | inputs = model.inputs |> updateCurrencyTypeInput input }
+            , Cmd.none
+            , Nothing
+            )
+
+        ShowCurrencyDropdown flag ->
+            ( { model | inputs = model.inputs |> updateShowCurrencyDropdown flag }
             , Cmd.none
             , Nothing
             )
@@ -177,7 +191,7 @@ update msg model =
 
                     newModel =
                         { model
-                            | inputs = { paymentMethod = "" }
+                            | inputs = model.inputs |> updatePaymentMethodInput ""
                             , searchTerms = newSearchTerms
                         }
                 in
@@ -243,6 +257,12 @@ update msg model =
                            )
             in
             ( { model | sortFunc = newSortFunc }
+            , Cmd.none
+            , Nothing
+            )
+
+        ResolveDropdowns ->
+            ( { model | inputs = model.inputs |> updateShowCurrencyDropdown False }
             , Cmd.none
             , Nothing
             )
