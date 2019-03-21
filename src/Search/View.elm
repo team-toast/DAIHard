@@ -36,22 +36,42 @@ root time model =
 
 searchInputElement : SearchInputs -> Element Msg
 searchInputElement inputs =
-    Element.column [ Element.spacing 10, Element.width Element.fill, Element.padding 30 ]
+    Element.column
+        [ Element.spacing 10
+        , Element.padding 30
+        , Element.width Element.shrink
+        , Element.centerX
+        ]
         [ Element.row
-            [ Element.width Element.fill
-            , Element.height <| Element.px 100
+            [ Element.width Element.shrink
             , Element.spacing 10
             ]
-            [ Element.el [ Element.width <| Element.fillPortion 1 ] <|
+            [ Element.el
+                [ Element.width <| Element.shrink
+                , Element.alignTop
+                ]
+              <|
                 daiRangeInput inputs.minDai inputs.maxDai
-            , Element.el [ Element.width <| Element.fillPortion 2 ] <|
+            , Element.el
+                [ Element.width Element.shrink
+                , Element.alignTop
+                ]
+              <|
                 fiatInput inputs.showCurrencyDropdown inputs.fiatType inputs.minFiat inputs.maxFiat
-            , Element.column [ Element.width <| Element.fillPortion 6, Element.alignTop ]
+            , Element.column
+                [ Element.width Element.shrink
+                , Element.alignTop
+                , Element.spacing 5
+                ]
                 [ paymentMethodsInput inputs.paymentMethod
                 , searchTermsDisplayElement inputs.paymentMethodTerms
                 ]
-            , Element.column [ Element.spacing 5 ]
+            , Element.column
+                [ Element.spacing 5
+                , Element.width Element.shrink
+                ]
                 [ applyButton, resetButton ]
+                |> withInputHeader " "
             ]
         ]
 
@@ -145,7 +165,7 @@ daiRangeInput minDai maxDai =
                 , Element.el [ Element.Font.size 16, Element.centerY ] (Element.text "max")
                 ]
     in
-    Element.column [ Element.spacing 5 ]
+    Element.column [ Element.spacing 5, Element.width <| Element.px 200 ]
         [ EH.textInputWithElement [] minElement "min dai" minDai Nothing Nothing MinDaiChanged
         , EH.textInputWithElement [] maxElement "max dai" maxDai Nothing Nothing MaxDaiChanged
         ]
@@ -170,10 +190,10 @@ fiatInput showTypeDropdown fiatType minFiat maxFiat =
                 , Element.el [ Element.Font.size 16, Element.centerY ] (Element.text "max")
                 ]
     in
-    Element.row [ Element.spacing 5, Element.width Element.fill ]
-        [ Element.el [ Element.alignTop, Element.width <| Element.fillPortion 1 ] <|
+    Element.row [ Element.spacing 5, Element.width Element.shrink ]
+        [ Element.el [ Element.alignTop, Element.width <| Element.px 120 ] <|
             EH.currencySelector showTypeDropdown fiatType ShowCurrencyDropdown FiatTypeInputChanged
-        , Element.column [ Element.spacing 5, Element.alignTop, Element.width <| Element.fillPortion 2 ]
+        , Element.column [ Element.spacing 5, Element.alignTop, Element.width <| Element.px 200 ]
             [ EH.textInputWithElement [] minElement "min" minFiat Nothing Nothing MinFiatChanged
             , EH.textInputWithElement [] maxElement "max" maxFiat Nothing Nothing MaxFiatChanged
             ]
@@ -181,17 +201,11 @@ fiatInput showTypeDropdown fiatType minFiat maxFiat =
         |> withInputHeader "Fiat Type"
 
 
-fiatRangeInput : FiatTypeAndRange -> Element Msg
-fiatRangeInput range =
-    dummyTextInput
-        |> withInputHeader "Fiat Amount"
-
-
 paymentMethodsInput : String -> Element Msg
 paymentMethodsInput searchString =
     Element.Input.text
         [ Element.alignTop
-        , Element.width Element.fill
+        , Element.width <| Element.px 300
         , Element.height <| Element.px 40
         , Element.Border.color EH.lightGray
         , Element.Border.shadow
@@ -208,25 +222,6 @@ paymentMethodsInput searchString =
         , label = Element.Input.labelHidden "payment methods search"
         }
         |> withInputHeader "Payment Methods"
-
-
-dummyTextInput =
-    Element.Input.text
-        [ Element.width Element.fill
-        , Element.height <| Element.px 40
-        , Element.Border.color EH.lightGray
-        , Element.Border.shadow
-            { offset = ( 0, 3 )
-            , size = 0
-            , blur = 20
-            , color = Element.rgba255 233 237 242 0.05
-            }
-        ]
-        { onChange = \_ -> NoOp
-        , text = ""
-        , placeholder = Nothing
-        , label = Element.Input.labelHidden ""
-        }
 
 
 applyButton : Element Msg
