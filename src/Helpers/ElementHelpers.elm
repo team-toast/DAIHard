@@ -1,10 +1,17 @@
-module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, bulletPointString, buttonBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, fakeLink, fillWidthBlock, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, methodName, pageBackgroundColor, pageTitle, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallInput, subpageBackgroundColor, testBorderStyles, timeInput, timeValue, tokenValue, usdValue, white)
+module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, blue, bulletPointString, buttonBlue, buttonDeepBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, currencySelector, daiSymbol, daiValue, errorMessage, fakeLink, fiatSymbolElementFromFiatType, fiatValue, fillWidthBlock, green, hbreak, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, interval, intervalWithElapsedBar, lightGray, margin, methodName, pageBackgroundColor, pageTitle, red, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallInput, subpageBackgroundColor, testBorderStyles, textInputWithElement, timeInput, timeValue, tokenValue, white, yellow)
 
-import Element
+import CommonTypes exposing (..)
+import Dict
+import Element exposing (Attribute, Element)
 import Element.Background
 import Element.Border
+import Element.Events
 import Element.Font
 import Element.Input
+import FiatValue exposing (FiatValue)
+import Html.Events
+import Images
+import Json.Decode
 import List
 import Time
 import TimeHelpers
@@ -21,6 +28,26 @@ black =
 
 white =
     Element.rgb 1 1 1
+
+
+red =
+    Element.rgb255 244 0 103
+
+
+green =
+    Element.rgb255 51 183 2
+
+
+blue =
+    Element.rgb 0 0 1
+
+
+yellow =
+    Element.rgb 1 1 0
+
+
+lightGray =
+    Element.rgb255 233 237 242
 
 
 initiatorColor =
@@ -60,11 +87,11 @@ buttonRed =
 
 
 headerBackgroundColor =
-    Element.rgb 0 0.3 0.6
+    Element.rgb255 10 33 108
 
 
 pageBackgroundColor =
-    Element.rgb 0 0.2 0.4
+    Element.rgb 0.9 0.9 0.9
 
 
 subpageBackgroundColor =
@@ -91,11 +118,19 @@ contractBorderColor =
     Element.rgb 0.5 0.5 0.1
 
 
+defaultHbreakColor =
+    Element.rgb 0.8 0.8 0.8
+
+
+buttonDeepBlue =
+    Element.rgb 0 0.15 0.35
+
+
 
 -- HEADINGS
 
 
-pageTitle : String -> Element.Element a
+pageTitle : String -> Element msg
 pageTitle s =
     let
         styles =
@@ -107,7 +142,7 @@ pageTitle s =
     Element.el styles (Element.text s)
 
 
-sectionHeading : String -> Element.Element a
+sectionHeading : String -> Element msg
 sectionHeading s =
     Element.column [ Element.spacing 30 ]
         [ Element.el [ Element.Font.size 30, Element.Font.bold ] (Element.text s)
@@ -115,12 +150,12 @@ sectionHeading s =
         ]
 
 
-block : String -> Element.Element msg -> Element.Element msg
+block : String -> Element msg -> Element msg
 block title bodyElement =
     blockPlusAttributes title bodyElement []
 
 
-blockPlusAttributes : String -> Element.Element msg -> List (Element.Attribute msg) -> Element.Element msg
+blockPlusAttributes : String -> Element msg -> List (Attribute msg) -> Element msg
 blockPlusAttributes title bodyElement attributes =
     let
         elementStyles =
@@ -152,7 +187,7 @@ blockPlusAttributes title bodyElement attributes =
         ]
 
 
-fillWidthBlock : String -> Element.Element msg -> Element.Element msg
+fillWidthBlock : String -> Element msg -> Element msg
 fillWidthBlock title bodyElement =
     blockPlusAttributes title bodyElement [ Element.width Element.fill ]
 
@@ -161,22 +196,22 @@ fillWidthBlock title bodyElement =
 -- SPECIAL TERMS
 
 
-initiator : List (Element.Attribute a) -> Element.Element a
+initiator : List (Attribute msg) -> Element msg
 initiator attributes =
     Element.el (attributes ++ [ Element.Font.color initiatorColor ]) (Element.text "Initiator")
 
 
-responder : List (Element.Attribute a) -> Element.Element a
+responder : List (Attribute msg) -> Element msg
 responder attributes =
     Element.el (attributes ++ [ Element.Font.color responderColor ]) (Element.text "Responder")
 
 
-buyer : List (Element.Attribute a) -> Element.Element a
+buyer : List (Attribute msg) -> Element msg
 buyer attributes =
     Element.el (attributes ++ [ Element.Font.color buyerColor ]) (Element.text "Buyer")
 
 
-seller : List (Element.Attribute a) -> Element.Element a
+seller : List (Attribute msg) -> Element msg
 seller attributes =
     Element.el (attributes ++ [ Element.Font.color sellerColor ]) (Element.text "Seller")
 
@@ -185,17 +220,17 @@ seller attributes =
 -- TEXT STYLES
 
 
-methodName : String -> Element.Element a
+methodName : String -> Element msg
 methodName name =
     Element.el [ Element.Font.family [ Element.Font.monospace ], Element.Background.color (Element.rgb 0.9 0.9 0.9) ] (Element.text name)
 
 
-sectionReference : String -> Element.Element a
+sectionReference : String -> Element msg
 sectionReference name =
     Element.el [ Element.Font.bold ] (Element.text name)
 
 
-fakeLink : String -> Element.Element a
+fakeLink : String -> Element msg
 fakeLink name =
     Element.link
         [ Element.Font.color (Element.rgb 0 0 1)
@@ -210,7 +245,7 @@ fakeLink name =
 -- RENDERERS
 
 
-tokenValue : TokenValue -> Element.Element a
+tokenValue : TokenValue -> Element msg
 tokenValue tv =
     let
         s =
@@ -219,16 +254,73 @@ tokenValue tv =
     Element.el [ Element.Font.color (Element.rgb 0 0 1) ] (Element.text s)
 
 
-usdValue : TokenValue -> Element.Element a
-usdValue tv =
+daiValue : TokenValue -> Element msg
+daiValue tv =
     let
-        s =
-            "US$" ++ TokenValue.renderToString (Just 2) tv
+        numStr =
+            TokenValue.toConciseString tv
     in
-    Element.el [ Element.Font.color (Element.rgb 0 0 1) ] (Element.text s)
+    Element.row [ Element.spacing 4 ]
+        [ daiSymbol []
+        , Element.el [ Element.Font.size 16 ] <| Element.text numStr
+        ]
 
 
-timeValue : Time.Posix -> Element.Element a
+fiatValue : FiatValue -> Element msg
+fiatValue fv =
+    let
+        currencyElement =
+            case Dict.get fv.fiatType FiatValue.currencyTypes of
+                Nothing ->
+                    Element.el [ Element.Font.color red ] (Element.text "!")
+
+                Just ( typeChar, image ) ->
+                    Element.image
+                        [ Element.height <| Element.px 26 ]
+                        image
+    in
+    Element.row [ Element.spacing 4 ]
+        [ currencyElement
+        , Element.el
+            [ Element.Font.color <| Element.rgba 0 0 0 0.5
+            , Element.Font.medium
+            , Element.width <| Element.px 50
+            , Element.clip
+            ]
+            (Element.text fv.fiatType)
+        , Element.text <| FiatValue.renderToString fv
+        ]
+
+
+margin : Bool -> Float -> Element msg
+margin upIsGreen marginFloat =
+    case marginFloatToConciseUnsignedString marginFloat of
+        "0%" ->
+            Element.el [ Element.Font.size 16 ] (Element.text "0%")
+
+        unsignedPercentString ->
+            let
+                isUp =
+                    marginFloat >= 0
+
+                isGreen =
+                    not <| xor isUp upIsGreen
+
+                textColor =
+                    if isGreen then
+                        green
+
+                    else
+                        red
+            in
+            Element.row [ Element.spacing 4 ]
+                [ marginSymbol [] isUp isGreen
+                , Element.el [ Element.Font.color textColor, Element.Font.size 16 ]
+                    (Element.text unsignedPercentString)
+                ]
+
+
+timeValue : Time.Posix -> Element msg
 timeValue tv =
     let
         s =
@@ -253,11 +345,121 @@ secondsRemainingString end now =
     secondsLeftString ++ " seconds"
 
 
+interval : Maybe Element.Color -> Time.Posix -> Element msg
+interval maybeLowValColor i =
+    case TimeHelpers.toHumanReadableInterval i of
+        Nothing ->
+            errorMessage "Interval display failed! Is it too big?" i
+
+        Just hrInterval ->
+            let
+                lowValColor =
+                    maybeLowValColor
+                        |> Maybe.withDefault black
+
+                hc =
+                    if hrInterval.days == 0 then
+                        lightGray
+
+                    else
+                        black
+
+                ( mc, sc ) =
+                    if hrInterval.days == 0 && hrInterval.hours == 0 then
+                        ( lightGray, lowValColor )
+
+                    else
+                        ( black, black )
+            in
+            Element.row [ Element.spacing 5 ]
+                [ timeUnitElement hrInterval.days 'd' hc
+                , timeUnitElement hrInterval.hours 'h' mc
+                , timeUnitElement hrInterval.min 'm' sc
+                ]
+
+
+timeUnitElement : Int -> Char -> Element.Color -> Element msg
+timeUnitElement num unitChar color =
+    let
+        numStr =
+            String.fromInt num
+                |> String.padLeft 2 '0'
+    in
+    Element.el [ Element.Font.size 16, Element.Font.color color, Element.Font.medium ]
+        (Element.text <| numStr ++ String.fromChar unitChar)
+
+
+intervalWithElapsedBar : Time.Posix -> Time.Posix -> Element.Length -> Element msg
+intervalWithElapsedBar i total width =
+    let
+        color =
+            let
+                seconds =
+                    TimeHelpers.posixToSeconds i
+            in
+            if seconds < 60 * 60 then
+                red
+
+            else if seconds < 60 * 60 * 24 then
+                yellow
+
+            else
+                green
+
+        ratio =
+            TimeHelpers.getRatio
+                (TimeHelpers.sub total i)
+                total
+    in
+    Element.column [ Element.spacing 5, Element.width width ]
+        [ Element.el [ Element.centerX ] (interval Nothing i)
+        , elapsedBar ratio color
+        ]
+
+
+elapsedBar : Float -> Element.Color -> Element msg
+elapsedBar ratio filledBarColor =
+    let
+        barStyles =
+            [ Element.height <| Element.px 3
+            , Element.Border.rounded 20
+            ]
+
+        filledFillPortion =
+            round (ratio * 200.0)
+
+        unfilledFillPortion =
+            200 - filledFillPortion
+
+        backgroundBarEl =
+            Element.el
+                (barStyles ++ [ Element.width Element.fill, Element.Background.color lightGray ])
+                Element.none
+
+        filledBarEl =
+            Element.el
+                (barStyles ++ [ Element.width <| Element.fillPortion filledFillPortion, Element.Background.color filledBarColor ])
+                Element.none
+
+        spacerEl =
+            Element.el
+                [ Element.width <| Element.fillPortion unfilledFillPortion ]
+                Element.none
+    in
+    Element.row
+        [ Element.width Element.fill
+        , Element.behindContent backgroundBarEl
+        ]
+        [ filledBarEl
+        , spacerEl
+        ]
+
+
 
 -- GROUPINGS
 
 
-clauseList : List (Element.Element a) -> Element.Element a
+clauseList : List (Element msg) -> Element msg
 clauseList clauseElements =
     let
         constructClauseElement body =
@@ -274,7 +476,7 @@ clauseList clauseElements =
 -- INPUTS
 
 
-smallInput : String -> String -> (String -> a) -> Element.Element a
+smallInput : String -> String -> (String -> msg) -> Element msg
 smallInput labelStr valueStr msgConstructor =
     Element.Input.text [ Element.width (Element.px 100) ]
         { onChange = msgConstructor
@@ -284,7 +486,7 @@ smallInput labelStr valueStr msgConstructor =
         }
 
 
-timeInput : String -> String -> (String -> a) -> Element.Element a
+timeInput : String -> String -> (String -> msg) -> Element msg
 timeInput labelStr value msgConstructor =
     Element.row []
         [ Element.Input.text [ Element.width (Element.px 50) ]
@@ -297,11 +499,130 @@ timeInput labelStr value msgConstructor =
         ]
 
 
+textInputWithElement : List (Attribute msg) -> Element msg -> String -> String -> Maybe (Element.Input.Placeholder msg) -> Maybe (Bool -> msg) -> (String -> msg) -> Element msg
+textInputWithElement attributes addedElement labelStr value placeholder maybeShowHideMsgConstructor msgConstructor =
+    let
+        focusEventAttributes =
+            case maybeShowHideMsgConstructor of
+                Nothing ->
+                    []
+
+                Just showHideMsgConstructor ->
+                    [ Element.Events.onFocus <| showHideMsgConstructor True
+                    , onClickNoPropagation <| showHideMsgConstructor True
+                    ]
+    in
+    Element.row
+        (attributes
+            ++ [ Element.width Element.fill
+               , Element.height <| Element.px 40
+               , Element.Border.shadow
+                    { offset = ( 0, 3 )
+                    , size = 0
+                    , blur = 20
+                    , color = Element.rgba255 233 237 242 0.05
+                    }
+               ]
+        )
+        [ Element.el
+            [ Element.Background.color lightGray
+            , Element.height <| Element.px 40
+            , Element.Border.roundEach
+                { topLeft = 4
+                , bottomLeft = 4
+                , topRight = 0
+                , bottomRight = 0
+                }
+            ]
+            (Element.el [ Element.centerY, Element.paddingXY 10 0 ] addedElement)
+        , Element.Input.text
+            (focusEventAttributes
+                ++ [ Element.width Element.fill
+                   , Element.height <| Element.px 40
+                   , Element.Border.color lightGray
+                   , Element.Border.roundEach
+                        { topLeft = 0
+                        , bottomLeft = 0
+                        , topRight = 4
+                        , bottomRight = 4
+                        }
+                   , Element.Border.widthEach
+                        { top = 1
+                        , bottom = 1
+                        , right = 1
+                        , left = 0
+                        }
+                   ]
+            )
+            { onChange = msgConstructor
+            , text = value
+            , placeholder = placeholder
+            , label = Element.Input.labelHidden labelStr
+            }
+        ]
+
+
+currencySelector : Bool -> String -> (Bool -> msg) -> (String -> msg) -> Element msg
+currencySelector showDropdown typeInput showHideMsgConstructor msgConstructor =
+    let
+        gotCurrency =
+            Dict.get typeInput FiatValue.currencyTypes
+
+        dropdownEl =
+            case ( showDropdown, gotCurrency ) of
+                ( False, _ ) ->
+                    Element.none
+
+                ( True, Just _ ) ->
+                    Element.none
+
+                ( True, Nothing ) ->
+                    Element.column [ Element.width <| Element.px 100, Element.spacing 7 ]
+                        (FiatValue.searchTypes typeInput
+                            |> Dict.toList
+                            |> List.map
+                                (\( typeString, ( _, image ) ) ->
+                                    Element.row [ Element.spacing 4, onClickNoPropagation <| msgConstructor typeString ]
+                                        [ Element.image [ Element.height <| Element.px 26 ] image
+                                        , Element.el [ Element.Font.size 16, Element.Font.semiBold ] <| Element.text typeString
+                                        ]
+                                )
+                        )
+    in
+    textInputWithElement
+        [ Element.below dropdownEl
+        ]
+        (fiatSymbolElementFromFiatType typeInput)
+        "select currency"
+        typeInput
+        Nothing
+        (Just showHideMsgConstructor)
+        (String.toUpper >> msgConstructor)
+
+
+fiatSymbolElementFromFiatType : String -> Element msg
+fiatSymbolElementFromFiatType fiatType =
+    case Dict.get fiatType FiatValue.currencyTypes of
+        Nothing ->
+            Element.text "*"
+
+        Just ( _, image ) ->
+            Element.image [ Element.height <| Element.px 26 ] image
+
+
+onClickNoPropagation : msg -> Attribute msg
+onClickNoPropagation msg =
+    Html.Events.stopPropagationOn
+        "click"
+        (Json.Decode.succeed ( msg, True ))
+        |> Element.htmlAttribute
+
+
 
 -- BUTTONS
 
 
-contractActionButton : String -> Element.Color -> msg -> Element.Element msg
+contractActionButton : String -> Element.Color -> msg -> Element msg
 contractActionButton name color msgConstructor =
     Element.Input.button
         [ Element.padding 15
@@ -317,7 +638,17 @@ contractActionButton name color msgConstructor =
 -- STYLE HELPERS
 
 
-roundBottomCorners : Int -> Element.Attribute msg
+hbreak : Element msg
+hbreak =
+    Element.el
+        [ Element.width Element.fill
+        , Element.height (Element.px 1)
+        , Element.Background.color defaultHbreakColor
+        ]
+        Element.none
+
+
+roundBottomCorners : Int -> Attribute msg
 roundBottomCorners r =
     Element.Border.roundEach
         { topLeft = 0
@@ -327,7 +658,7 @@ roundBottomCorners r =
         }
 
 
-roundTopCorners : Int -> Element.Attribute msg
+roundTopCorners : Int -> Attribute msg
 roundTopCorners r =
     Element.Border.roundEach
         { topLeft = r
@@ -337,7 +668,7 @@ roundTopCorners r =
         }
 
 
-contractShadowAttribute : Element.Attribute msg
+contractShadowAttribute : Attribute msg
 contractShadowAttribute =
     Element.Border.shadow
         { offset = ( -3, 10 )
@@ -358,11 +689,76 @@ bulletPointString =
 
 
 
+-- IMAGES
+
+
+daiSymbol : List (Attribute msg) -> Element msg
+daiSymbol attributes =
+    Element.image
+        ((Element.height <| Element.px 26) :: attributes)
+        Images.daiSymbol
+
+
+marginSymbol : List (Attribute msg) -> Bool -> Bool -> Element msg
+marginSymbol attributes isUp isGreen =
+    Element.image
+        ((Element.height <| Element.px 34) :: attributes)
+        (Images.marginSymbol isUp isGreen)
+
+
+
 -- DEBUG
 
 
-testBorderStyles : List (Element.Attribute msg)
+testBorderStyles : List (Attribute msg)
 testBorderStyles =
     [ Element.Border.width 1
     , Element.Border.color (Element.rgb 1 0 1)
     ]
+
+
+errorMessage : String -> a -> Element msg
+errorMessage str debugObj =
+    let
+        _ =
+            Debug.log str debugObj
+    in
+    Element.el
+        [ Element.padding 1
+        , Element.Background.color <| Element.rgb 1 0 0
+        , Element.Font.color white
+        ]
+        (Element.text str)
+
+
+
+-- ETC
+
+
+marginFloatToConciseUnsignedString : Float -> String
+marginFloatToConciseUnsignedString f =
+    let
+        absPercentNumber =
+            abs <| f * 100.0
+
+        preDecimalString =
+            floor absPercentNumber
+                |> String.fromInt
+
+        decimalRemainder =
+            absPercentNumber - toFloat (floor absPercentNumber)
+
+        extraDigitsNeeded =
+            max 0 (3 - String.length preDecimalString)
+
+        decimalString =
+            case extraDigitsNeeded of
+                0 ->
+                    ""
+
+                n ->
+                    String.fromFloat decimalRemainder
+                        |> String.dropLeft 1
+                        |> String.left extraDigitsNeeded
+    in
+    preDecimalString ++ decimalString ++ "%"

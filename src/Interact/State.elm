@@ -24,7 +24,7 @@ import Time
 import TokenValue
 
 
-init : EthHelpers.EthNode -> Address -> Address -> Int -> Maybe UserInfo -> BigInt -> ( Model, Cmd Msg, ChainCmd Msg )
+init : EthHelpers.EthNode -> Address -> Address -> Int -> Maybe UserInfo -> Int -> ( Model, Cmd Msg, ChainCmd Msg )
 init ethNode factoryAddress tokenAddress tokenDecimals userInfo tradeId =
     let
         cmd =
@@ -34,8 +34,7 @@ init ethNode factoryAddress tokenAddress tokenDecimals userInfo tradeId =
       , userInfo = userInfo
       , tokenAddress = tokenAddress
       , tokenDecimals = tokenDecimals
-      , tradeId = tradeId
-      , tradeInfo = NothingLoaded
+      , trade = Contracts.Types.partialTradeInfo tradeId
       , history = Array.empty
       , messageInput = ""
       , eventSentry = Nothing
@@ -45,9 +44,9 @@ init ethNode factoryAddress tokenAddress tokenDecimals userInfo tradeId =
     )
 
 
-getContractCreationInfoCmd : EthHelpers.EthNode -> Address -> BigInt -> Cmd Msg
+getContractCreationInfoCmd : EthHelpers.EthNode -> Address -> Int -> Cmd Msg
 getContractCreationInfoCmd ethNode factoryAddress id =
-    Contracts.Wrappers.getCreationInfoFromIdCmd ethNode factoryAddress id CreationInfoFetched
+    Contracts.Wrappers.getCreationInfoFromIdCmd ethNode factoryAddress (BigInt.fromInt id) CreationInfoFetched
 
 
 updateUserInfo : Maybe UserInfo -> Model -> Model
@@ -59,8 +58,8 @@ update : Msg -> Model -> ( Model, Cmd Msg, ChainCmd Msg )
 update msg model =
     case msg of
         Refresh time ->
-            case ( model.tradeInfo, model.eventSentry ) of
-                ( Loaded tradeInfo, Just sentry ) ->
+            case ( model.trade, model.eventSentry ) of
+                ( Contracts.Types.Loaded tradeInfo, Just sentry ) ->
                     ( model
                     , Cmd.batch
                         [ Contracts.Wrappers.getStateCmd model.ethNode model.tokenDecimals tradeInfo.creationInfo.address StateFetched
@@ -105,7 +104,7 @@ update msg model =
 
                         newModel =
                             { model
-                                | tradeInfo = partialInfo newCreationInfo
+                                | trade = model.trade |> Contracts.Types.updateCreationInfo newCreationInfo
                                 , eventSentry = Just sentry
                             }
                     in
@@ -127,7 +126,7 @@ update msg model =
         StateFetched fetchResult ->
             case fetchResult of
                 Ok (Just state) ->
-                    ( { model | tradeInfo = model.tradeInfo |> updateState state }, Cmd.none, ChainCmd.none )
+                    ( { model | trade = model.trade |> Contracts.Types.updateState state }, Cmd.none, ChainCmd.none )
 
                 _ ->
                     let
@@ -139,11 +138,7 @@ update msg model =
         ParametersFetched fetchResult ->
             case fetchResult of
                 Ok (Ok parameters) ->
-                    let
-                        _ =
-                            Debug.log "transferMethods" parameters.transferMethods
-                    in
-                    ( { model | tradeInfo = model.tradeInfo |> updateParameters parameters }, Cmd.none, ChainCmd.none )
+                    ( { model | trade = model.trade |> Contracts.Types.updateParameters parameters }, Cmd.none, ChainCmd.none )
 
                 badResult ->
                     let
@@ -171,8 +166,8 @@ update msg model =
         ContractAction actionMsg ->
             let
                 chainCmd =
-                    case model.tradeInfo of
-                        Loaded tradeInfo ->
+                    case model.trade of
+                        Contracts.Types.Loaded tradeInfo ->
                             case actionMsg of
                                 RenderContract.Types.Recall ->
                                     let
@@ -275,8 +270,8 @@ update msg model =
                     ( model, Cmd.none, ChainCmd.none )
 
                 Ok txReceipt ->
-                    case ( model.tradeInfo, model.userInfo ) of
-                        ( Loaded tradeInfo, Just userInfo ) ->
+                    case ( model.trade, model.userInfo ) of
+                        ( Contracts.Types.Loaded tradeInfo, Just userInfo ) ->
                             let
                                 txParams =
                                     TT.commit tradeInfo.creationInfo.address userInfo.commPubkey
@@ -298,8 +293,8 @@ update msg model =
             )
 
         MessageSubmit ->
-            case ( model.userInfo, model.tradeInfo ) of
-                ( Just userInfo, Loaded tradeInfo ) ->
+            case ( model.userInfo, model.trade ) of
+                ( Just userInfo, Contracts.Types.Loaded tradeInfo ) ->
                     let
                         cmd =
                             encryptToPubkeys (encodeEncryptionArgs model.messageInput (getCommPubkeys tradeInfo))
@@ -324,8 +319,8 @@ update msg model =
                                 )
                             )
             in
-            case ( model.userInfo, model.tradeInfo, encodedEncryptionMessages ) of
-                ( Just userInfo, Loaded tradeInfo, Ok ( Ok initiatorMessage, Ok responderMessage ) ) ->
+            case ( model.userInfo, model.trade, encodedEncryptionMessages ) of
+                ( Just userInfo, Contracts.Types.Loaded tradeInfo, Ok ( Ok initiatorMessage, Ok responderMessage ) ) ->
                     case getUserRole tradeInfo userInfo.address of
                         Nothing ->
                             let
@@ -509,8 +504,8 @@ handleNewEvents toastytradeEvents model =
         userRole =
             Maybe.map2
                 getUserRole
-                (case model.tradeInfo of
-                    Loaded tradeInfo ->
+                (case model.trade of
+                    Contracts.Types.Loaded tradeInfo ->
                         Just tradeInfo
 
                     troublesomeGarbage ->
@@ -703,7 +698,7 @@ decryptNewMessagesCmd model userRole =
         |> Cmd.batch
 
 
-getCommPubkeys : TradeFullInfo -> List String
+getCommPubkeys : Contracts.Types.FullTradeInfo -> List String
 getCommPubkeys tradeInfo =
     case tradeInfo.state.responderCommPubkey of
         Just responderCommPubkey ->

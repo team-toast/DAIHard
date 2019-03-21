@@ -3,7 +3,7 @@ module Create.State exposing (init, subscriptions, udpateParameterInputs, update
 import BigInt
 import BigIntHelpers
 import ChainCmd exposing (ChainCmd)
-import CommonTypes exposing (UserInfo)
+import CommonTypes exposing (..)
 import Contracts.Generated.ERC20Token as TokenContract
 import Contracts.Types
 import Contracts.Wrappers
@@ -11,20 +11,25 @@ import Create.Types exposing (..)
 import Eth
 import Eth.Types exposing (Address)
 import EthHelpers
+import FiatValue exposing (FiatValue)
 import Flip exposing (flip)
 import Routing
 import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
-init : EthHelpers.EthNode -> Address -> Int -> Address -> Maybe UserInfo -> ( Model, Cmd Msg, ChainCmd Msg )
-init ethNode tokenAddress tokenDecimals factoryAddress userInfo =
+init : EthHelpers.EthNode -> Address -> Int -> Address -> Maybe Contracts.Types.OpenMode -> Maybe UserInfo -> ( Model, Cmd Msg, ChainCmd Msg )
+init ethNode tokenAddress tokenDecimals factoryAddress maybeOpenMode userInfo =
     let
+        openMode =
+            maybeOpenMode |> Maybe.withDefault Contracts.Types.SellerOpened
+
         initialInputs =
-            { openMode = Contracts.Types.SellerOpened
+            { openMode = openMode
             , tradeAmount = "100"
-            , totalPrice = "100"
-            , transferMethods = []
+            , fiatType = "USD"
+            , fiatAmount = "100"
+            , paymentMethods = []
             , autorecallInterval = "3"
             , autoabortInterval = "3"
             , autoreleaseInterval = "3"
@@ -36,7 +41,9 @@ init ethNode tokenAddress tokenDecimals factoryAddress userInfo =
             , tokenDecimals = tokenDecimals
             , factoryAddress = factoryAddress
             , userInfo = userInfo
+            , openMode = openMode
             , parameterInputs = initialInputs
+            , showCurrencyDropdown = False
             , contractParameters = Nothing
             , busyWithTxChain = False
             }
@@ -63,12 +70,19 @@ update msg model =
             in
             justModelUpdate (model |> udpateParameterInputs { oldInputs | tradeAmount = newAmountStr })
 
-        PriceChanged newAmountStr ->
+        FiatAmountChanged newAmountStr ->
             let
                 oldInputs =
                     model.parameterInputs
             in
-            justModelUpdate (model |> udpateParameterInputs { oldInputs | totalPrice = newAmountStr })
+            justModelUpdate (model |> udpateParameterInputs { oldInputs | fiatAmount = newAmountStr })
+
+        FiatTypeChanged newTypeStr ->
+            let
+                oldInputs =
+                    model.parameterInputs
+            in
+            justModelUpdate (model |> udpateParameterInputs { oldInputs | fiatType = newTypeStr })
 
         AutorecallIntervalChanged newTimeStr ->
             let
@@ -91,7 +105,7 @@ update msg model =
             in
             justModelUpdate (model |> udpateParameterInputs { oldInputs | autoreleaseInterval = newTimeStr })
 
-        SwitchInitiatorRole ->
+        AddPaymentMethod paymentMethod ->
             let
                 oldInputs =
                     model.parameterInputs
@@ -99,27 +113,12 @@ update msg model =
             justModelUpdate
                 (model
                     |> udpateParameterInputs
-                        { oldInputs
-                            | openMode =
-                                case oldInputs.openMode of
-                                    Contracts.Types.BuyerOpened ->
-                                        Contracts.Types.SellerOpened
-
-                                    Contracts.Types.SellerOpened ->
-                                        Contracts.Types.BuyerOpened
-                        }
+                        { oldInputs | paymentMethods = List.append oldInputs.paymentMethods [ paymentMethod ] }
                 )
 
-        AddTransferMethod transferMethod ->
-            let
-                oldInputs =
-                    model.parameterInputs
-            in
+        ShowCurrencyDropdown flag ->
             justModelUpdate
-                (model
-                    |> udpateParameterInputs
-                        { oldInputs | transferMethods = List.append oldInputs.transferMethods [ transferMethod ] }
-                )
+                { model | showCurrencyDropdown = flag }
 
         BeginCreateProcess ->
             case model.contractParameters of
@@ -300,19 +299,18 @@ updateParameters model =
 validateInputs : Int -> ContractParameterInputs -> Maybe Contracts.Types.UserParameters
 validateInputs numDecimals inputs =
     Maybe.map5
-        (\tradeAmount totalPriceString autorecallInterval autoabortInterval autoreleaseInterval ->
+        (\tradeAmount fiatAmount autorecallInterval autoabortInterval autoreleaseInterval ->
             { openMode = inputs.openMode
             , tradeAmount = tradeAmount
-            , totalPriceCurrency = "??"
-            , totalPriceValue = totalPriceString
+            , fiatPrice = { fiatType = inputs.fiatType, amount = fiatAmount }
             , autorecallInterval = autorecallInterval
             , autoabortInterval = autoabortInterval
             , autoreleaseInterval = autoreleaseInterval
-            , transferMethods = inputs.transferMethods
+            , paymentMethods = inputs.paymentMethods
             }
         )
         (TokenValue.fromString numDecimals inputs.tradeAmount)
-        (TokenValue.fromString numDecimals inputs.totalPrice)
+        (BigInt.fromString inputs.fiatAmount)
         (TimeHelpers.daysStrToMaybePosix inputs.autorecallInterval)
         (TimeHelpers.daysStrToMaybePosix inputs.autoabortInterval)
         (TimeHelpers.daysStrToMaybePosix inputs.autoreleaseInterval)

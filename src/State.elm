@@ -1,7 +1,6 @@
 port module State exposing (init, subscriptions, update)
 
 import BigInt
-import Browse.State
 import Browser
 import Browser.Navigation
 import ChainCmd exposing (ChainCmd)
@@ -17,6 +16,7 @@ import Interact.State
 import Json.Decode
 import Json.Encode
 import Routing
+import Search.State
 import Time
 import Types exposing (..)
 import Url exposing (Url)
@@ -50,6 +50,8 @@ init flags url key =
                 , userAddress = Nothing
                 , userInfo = Nothing
                 , tokenContractDecimals = flags.tokenContractDecimals
+                , showBuyDaiDropdown = False
+                , showSellDaiDropdown = False
                 , submodel = HomeModel
                 }
                 url
@@ -150,32 +152,6 @@ updateValidModel msg model =
                     in
                     ( Running model, Cmd.none )
 
-        -- ( Running model
-        -- , encryptToPubkeys
-        --     (Json.Encode.object
-        --         [ ( "message", Json.Encode.string "hiiii" )
-        --         , ( "pubkeyHexStrings", Json.Encode.list Json.Encode.string [ pubkeyHexString ] )
-        --         ]
-        --     )
-        -- )
-        MessagesEncrypted encryptedMessages ->
-            let
-                objectDecoder =
-                    Json.Decode.map4 EncryptedMessage
-                        (Json.Decode.field "encapsulated" Json.Decode.string)
-                        (Json.Decode.field "iv" Json.Decode.string)
-                        (Json.Decode.field "tag" Json.Decode.string)
-                        (Json.Decode.field "encrypted" Json.Decode.string)
-
-                decoder =
-                    Json.Decode.list objectDecoder
-
-                _ =
-                    Debug.log "decoded"
-                        (Json.Decode.decodeValue decoder encryptedMessages)
-            in
-            ( Running model, Cmd.none )
-
         CreateMsg createMsg ->
             case model.submodel of
                 CreateModel createModel ->
@@ -229,17 +205,17 @@ updateValidModel msg model =
                 _ ->
                     ( Running model, Cmd.none )
 
-        BrowseMsg browseMsg ->
+        SearchMsg searchMsg ->
             case model.submodel of
-                BrowseModel browseModel ->
+                SearchModel searchModel ->
                     let
-                        ( newBrowseModel, browseCmd, newRoute ) =
-                            Browse.State.update browseMsg browseModel
+                        ( newSearchModel, searchCmd, newRoute ) =
+                            Search.State.update searchMsg searchModel
                     in
                     case newRoute of
                         Nothing ->
-                            ( Running { model | submodel = BrowseModel newBrowseModel }
-                            , Cmd.map BrowseMsg browseCmd
+                            ( Running { model | submodel = SearchModel newSearchModel }
+                            , Cmd.map SearchMsg searchCmd
                             )
 
                         Just route ->
@@ -255,8 +231,53 @@ updateValidModel msg model =
             in
             ( Running { model | txSentry = submodel }, subCmd )
 
+        BuyDaiDropdownToggle ->
+            let
+                newModel =
+                    if model.showBuyDaiDropdown then
+                        { model
+                            | showBuyDaiDropdown = False
+                        }
+
+                    else
+                        { model
+                            | showBuyDaiDropdown = True
+                            , showSellDaiDropdown = False
+                        }
+            in
+            ( Running newModel, Cmd.none )
+
+        SellDaiDropdownToggle ->
+            let
+                newModel =
+                    if model.showSellDaiDropdown then
+                        { model
+                            | showSellDaiDropdown = False
+                        }
+
+                    else
+                        { model
+                            | showSellDaiDropdown = True
+                            , showBuyDaiDropdown = False
+                        }
+            in
+            ( Running newModel, Cmd.none )
+
+        CloseDropdowns ->
+            let
+                newModel =
+                    { model
+                        | showBuyDaiDropdown = False
+                        , showSellDaiDropdown = False
+                    }
+            in
+            ( Running newModel, Cmd.none )
+
         Fail str ->
             ( Failed str, Cmd.none )
+
+        NoOp ->
+            ( Running model, Cmd.none )
 
 
 updateFromUrl : ValidModel -> Url -> ( Model, Cmd Msg )
@@ -279,10 +300,10 @@ gotoRoute model route =
             , Browser.Navigation.pushUrl model.key newUrlString
             )
 
-        Routing.Create ->
+        Routing.Create maybeOpenMode ->
             let
                 ( createModel, createCmd, chainCmdOrder ) =
-                    Create.State.init model.node model.tokenContractAddress model.tokenContractDecimals model.factoryAddress model.userInfo
+                    Create.State.init model.node model.tokenContractAddress model.tokenContractDecimals model.factoryAddress maybeOpenMode model.userInfo
 
                 ( newTxSentry, chainCmd ) =
                     ChainCmd.execute model.txSentry (ChainCmd.map CreateMsg chainCmdOrder)
@@ -299,15 +320,15 @@ gotoRoute model route =
                 ]
             )
 
-        Routing.Interact id ->
-            case Maybe.map BigInt.fromInt id of
+        Routing.Interact maybeID ->
+            case maybeID of
                 Nothing ->
                     ( Failed "Error interpreting url", Browser.Navigation.pushUrl model.key newUrlString )
 
-                Just bigIntId ->
+                Just id ->
                     let
                         ( interactModel, interactCmd, chainCmdOrder ) =
-                            Interact.State.init model.node model.factoryAddress model.tokenContractAddress model.tokenContractDecimals model.userInfo bigIntId
+                            Interact.State.init model.node model.factoryAddress model.tokenContractAddress model.tokenContractDecimals model.userInfo id
 
                         ( newTxSentry, chainCmd ) =
                             ChainCmd.execute model.txSentry (ChainCmd.map InteractMsg chainCmdOrder)
@@ -324,17 +345,17 @@ gotoRoute model route =
                         ]
                     )
 
-        Routing.Browse ->
+        Routing.Search openMode ->
             let
-                ( browseModel, browseCmd ) =
-                    Browse.State.init model.node model.factoryAddress model.tokenContractDecimals model.userInfo
+                ( searchModel, searchCmd ) =
+                    Search.State.init model.node model.factoryAddress model.tokenContractDecimals openMode model.userInfo
             in
             ( Running
                 { model
-                    | submodel = BrowseModel browseModel
+                    | submodel = SearchModel searchModel
                 }
             , Cmd.batch
-                [ Cmd.map BrowseMsg browseCmd
+                [ Cmd.map SearchMsg searchCmd
                 , Browser.Navigation.pushUrl model.key newUrlString
                 ]
             )
@@ -355,8 +376,8 @@ updateSubmodelUserInfo userInfo submodel =
         InteractModel interactModel ->
             InteractModel (interactModel |> Interact.State.updateUserInfo userInfo)
 
-        BrowseModel browseModel ->
-            BrowseModel (browseModel |> Browse.State.updateUserInfo userInfo)
+        SearchModel searchModel ->
+            SearchModel (searchModel |> Search.State.updateUserInfo userInfo)
 
 
 subscriptions : Model -> Sub Msg
@@ -388,8 +409,8 @@ submodelSubscriptions model =
         InteractModel interactModel ->
             Sub.map InteractMsg <| Interact.State.subscriptions interactModel
 
-        BrowseModel browseModel ->
-            Sub.map BrowseMsg <| Browse.State.subscriptions browseModel
+        SearchModel searchModel ->
+            Sub.map SearchMsg <| Search.State.subscriptions searchModel
 
 
 port walletSentryPort : (Json.Decode.Value -> msg) -> Sub msg

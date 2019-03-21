@@ -9,11 +9,11 @@ import ElementHelpers as EH
 import Eth.Utils
 import Flip exposing (flip)
 import Maybe.Extra
+import PaymentMethods exposing (PaymentMethod)
 import RenderContract.Types exposing (..)
 import Time
 import TimeHelpers
 import TokenValue exposing (TokenValue)
-import TransferMethods exposing (TransferMethod)
 
 
 render : ViewMode -> Contracts.Types.CreateParameters -> Element.Element Msg
@@ -71,7 +71,7 @@ render viewMode parameters =
                         )
                     , EH.tokenValue parameters.tradeAmount
                     , Element.text " for "
-                    , Element.text parameters.totalPriceString
+                    , EH.fiatValue parameters.fiatPrice
                     ]
                 , Element.paragraph []
                     [ Element.text "to be finalized within "
@@ -207,7 +207,7 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
                 [ Element.text "The "
                 , EH.buyer []
                 , Element.text " is expected to transfer "
-                , Element.text parameters.totalPriceString
+                , EH.fiatValue parameters.fiatPrice
                 , Element.text " to the "
                 , EH.seller []
                 , Element.text " according to the following "
@@ -218,7 +218,7 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
                 , EH.sectionReference "Claimed Phase"
                 , Element.text "."
                 ]
-            , fiatTransferMethodsElement parameters.transferMethods
+            , fiatPaymentMethodsElement parameters.paymentMethods
             , Element.paragraph []
                 [ Element.text "The "
                 , EH.seller []
@@ -289,8 +289,8 @@ committedPhaseElement viewMode parameters postCommitBalance claimFailBurnAmount 
         ]
 
 
-fiatTransferMethodsElement : List TransferMethod -> Element.Element Msg
-fiatTransferMethodsElement transferMethods =
+fiatPaymentMethodsElement : List PaymentMethod -> Element.Element Msg
+fiatPaymentMethodsElement paymentMethods =
     Element.column [ Element.width Element.fill, Element.spacing 5 ]
         [ Element.el [ Element.Font.size 24, Element.Font.italic, Element.Font.bold ]
             (Element.text "Transfer Methods")
@@ -302,8 +302,8 @@ fiatTransferMethodsElement transferMethods =
             , Element.padding 10
             , Element.spacing 5
             ]
-            (transferMethods
-                |> List.map TransferMethods.demoView
+            (paymentMethods
+                |> List.map PaymentMethods.demoView
             )
         ]
 
@@ -318,7 +318,7 @@ claimedPhaseElement viewMode parameters postCommitBalance =
                     [ Element.text "The "
                     , EH.seller []
                     , Element.text " is expected to verify with certainty whether he has received at least "
-                    , EH.usdValue parameters.tradeAmount
+                    , EH.fiatValue parameters.fiatPrice
                     , Element.text " from the "
                     , EH.buyer []
                     , Element.text "."
@@ -336,7 +336,7 @@ claimedPhaseElement viewMode parameters postCommitBalance =
                             ]
                         , Element.paragraph []
                             [ Element.text "If the transfer has not taken place, or if the transfer amount was less than "
-                            , EH.usdValue parameters.tradeAmount
+                            , EH.fiatValue parameters.fiatPrice
                             , Element.text ", the "
                             , EH.seller []
                             , Element.text " is expected to execute the "

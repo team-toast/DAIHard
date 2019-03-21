@@ -1,29 +1,35 @@
-module Contracts.Wrappers exposing (createSell, decodeParameters, getCreationInfoFromIdCmd, getDevFeeCmd, getNumTTsCmd, getParametersAndStateCmd, getParametersCmd, getStateCmd)
+module Contracts.Wrappers exposing (createSell, decodeParameters, getCreationInfoFromIdCmd, getDevFeeCmd, getNumTradesCmd, getParametersAndStateCmd, getParametersCmd, getStateCmd)
 
 import BigInt exposing (BigInt)
+import CommonTypes exposing (..)
 import Contracts.Generated.Toastytrade as TT
 import Contracts.Generated.ToastytradeFactory as TTF
 import Contracts.Types exposing (..)
 import Eth
 import Eth.Types exposing (Address, Call)
 import EthHelpers
+import FiatValue exposing (FiatValue)
 import Flip exposing (flip)
 import Http
 import Json.Decode
 import Json.Encode
+import PaymentMethods
 import Task
 import Time
 import TimeHelpers
 import TokenValue exposing (TokenValue)
-import TransferMethods
 
 
 createSell : Address -> CreateParameters -> Call Address
 createSell contractAddress parameters =
     let
-        encodedTransferMethods =
-            Json.Encode.list TransferMethods.encodeTransferMethod
-                parameters.transferMethods
+        encodedPaymentMethods =
+            Json.Encode.list PaymentMethods.encodePaymentMethod
+                parameters.paymentMethods
+                |> Json.Encode.encode 0
+
+        encodedFiatData =
+            FiatValue.encode parameters.fiatPrice
                 |> Json.Encode.encode 0
     in
     TTF.openToastytrade
@@ -36,8 +42,8 @@ createSell contractAddress parameters =
         (TimeHelpers.posixToSecondsBigInt parameters.autorecallInterval)
         (TimeHelpers.posixToSecondsBigInt parameters.autoabortInterval)
         (TimeHelpers.posixToSecondsBigInt parameters.autoreleaseInterval)
-        parameters.totalPriceString
-        encodedTransferMethods
+        encodedFiatData
+        encodedPaymentMethods
         parameters.initiatorCommPubkey
 
 
@@ -47,8 +53,8 @@ getDevFeeCmd ethNode factoryAddress tradeAmount msgConstructor =
         |> Task.attempt msgConstructor
 
 
-getNumTTsCmd : EthHelpers.EthNode -> Address -> (Result Http.Error BigInt -> msg) -> Cmd msg
-getNumTTsCmd ethNode factoryAddress msgConstructor =
+getNumTradesCmd : EthHelpers.EthNode -> Address -> (Result Http.Error BigInt -> msg) -> Cmd msg
+getNumTradesCmd ethNode factoryAddress msgConstructor =
     Eth.call ethNode.http (TTF.getNumToastytradeSells factoryAddress)
         |> Task.attempt msgConstructor
 
@@ -96,18 +102,24 @@ decodeParameters numDecimals encodedParameters =
             TimeHelpers.secondsBigIntToMaybePosix encodedParameters.autoreleaseInterval
                 |> Result.fromMaybe "error converting BigInt to Time.Posix"
 
-        decodedTransferMethodsResult =
+        decodedPaymentMethodsResult =
             Json.Decode.decodeString
-                (Json.Decode.list TransferMethods.transferMethodDecoder)
+                (Json.Decode.list PaymentMethods.paymentMethodDecoder)
                 encodedParameters.fiatTransferMethods
                 |> Result.mapError Json.Decode.errorToString
+
+        decodedFiatPrice =
+            Json.Decode.decodeString
+                FiatValue.decoder
+                encodedParameters.totalPrice
+                |> Result.mapError Json.Decode.errorToString
     in
-    Result.map4
-        (\autorecallInterval depositDeadlineInterval autoreleaseInterval decodedTransferMethods ->
+    Result.map5
+        (\autorecallInterval depositDeadlineInterval autoreleaseInterval decodedPaymentMethods fiatPrice ->
             { openMode = initiatorIsBuyerToOpenMode encodedParameters.initiatorIsBuyer
             , tradeAmount = TokenValue.tokenValue numDecimals encodedParameters.tokenAmount
-            , totalPriceString = encodedParameters.totalPrice
-            , transferMethods = decodedTransferMethods
+            , fiatPrice = fiatPrice
+            , paymentMethods = decodedPaymentMethods
             , initiatorCommPubkey = encodedParameters.initiatorCommPubkey
             , autorecallInterval = autorecallInterval
             , autoabortInterval = depositDeadlineInterval
@@ -120,4 +132,5 @@ decodeParameters numDecimals encodedParameters =
         autorecallIntervalResult
         depositDeadlineIntervalResult
         autoreleaseIntervalResult
-        decodedTransferMethodsResult
+        decodedPaymentMethodsResult
+        decodedFiatPrice
