@@ -1,14 +1,14 @@
-module Contracts.Types exposing (CreateParameters, FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), State, ToastytradeEvent(..), Trade(..), TradeCreationInfo, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, initiatorIsBuyerToOpenMode, openModeToInitiatorIsBuyer, partialTradeInfo, phaseToString, txReceiptToCreatedToastytradeSellAddress, txReceiptToCreatedToastytradeSellId, updateCreationInfo, updateParameters, updateState)
+module Contracts.Types exposing (CreateParameters, FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), State, ToastytradeEvent(..), Trade(..), TradeCreationInfo, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, initiatorIsBuyerToOpenMode, openModeToInitiatorIsBuyer, partialTradeInfo, phaseToString, txReceiptToCreatedToastytradeSellId, updateCreationInfo, updateParameters, updateState)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
 import Contracts.Generated.Toastytrade as TT
+import Eth.Decode
 import Eth.Types exposing (Address)
 import Eth.Utils
 import EthHelpers
 import FiatValue exposing (FiatValue)
-import Internal.Decode as EthInternalDecode
 import Json.Decode
 import PaymentMethods exposing (PaymentMethod)
 import Time
@@ -247,7 +247,7 @@ eventDecoder =
                 else if hashedSig == Eth.Utils.keccak256 "Released()" then
                     Json.Decode.succeed ReleasedEvent
 
-                else if hashedSig == Eth.Utils.keccak256 "Burned" then
+                else if hashedSig == Eth.Utils.keccak256 "Burned()" then
                     Json.Decode.succeed BurnedEvent
 
                 else
@@ -257,27 +257,7 @@ eventDecoder =
 
 topicDecoder : Int -> Json.Decode.Decoder Eth.Types.Hex
 topicDecoder index =
-    Json.Decode.field "topics" (Json.Decode.index 0 EthInternalDecode.hex)
-
-
-txReceiptToCreatedToastytradeSellAddress : Address -> Eth.Types.TxReceipt -> Result String Address
-txReceiptToCreatedToastytradeSellAddress factoryAddress txReceipt =
-    let
-        maybeCreateEventData =
-            txReceipt.logs
-                |> List.filter (\log -> log.address == factoryAddress)
-                |> List.head
-                |> Maybe.map (\log -> log.data)
-    in
-    case maybeCreateEventData of
-        Just createEventData ->
-            createEventData
-                |> String.dropLeft (2 + 64)
-                |> String.left 64
-                |> Abi.Decode.fromString Abi.Decode.address
-
-        Nothing ->
-            Err "Can't find a log generated from the given factoryAddress. Are you looking at the wrong transaction?"
+    Json.Decode.field "topics" (Json.Decode.index 0 Eth.Decode.hex)
 
 
 txReceiptToCreatedToastytradeSellId : Address -> Eth.Types.TxReceipt -> Result String BigInt
@@ -285,9 +265,20 @@ txReceiptToCreatedToastytradeSellId factoryAddress txReceipt =
     let
         maybeCreateEventData =
             txReceipt.logs
-                |> List.filter (\log -> log.address == factoryAddress)
+                |> List.filter
+                    (\log ->
+                        (Eth.Utils.addressToString >> String.toLower) log.address
+                            == (Eth.Utils.addressToString >> String.toLower) factoryAddress
+                    )
                 |> List.head
-                |> Maybe.map (\log -> log.data)
+                |> Maybe.map
+                    (\log ->
+                        let
+                            _ =
+                                Debug.log "log'd addr" log.address
+                        in
+                        log.data
+                    )
     in
     case maybeCreateEventData of
         Just createEventData ->

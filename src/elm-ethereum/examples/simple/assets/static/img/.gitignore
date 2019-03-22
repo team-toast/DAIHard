@@ -1,4 +1,0 @@
-# Just here to allow the img folder to be added to git.
-# ignore everything in this directory except this file.
-*
-!.gitignore
