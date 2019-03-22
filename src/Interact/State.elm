@@ -10,10 +10,11 @@ import Contracts.Generated.Toastytrade as TT
 import Contracts.Types
 import Contracts.Wrappers
 import Eth
+import Eth.Decode
+import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
 import Eth.Utils
 import EthHelpers
-import EventSentryHack exposing (EventSentry)
 import Interact.Types exposing (..)
 import Json.Decode
 import Json.Encode
@@ -27,8 +28,11 @@ import TokenValue
 init : EthHelpers.EthNode -> Address -> Address -> Int -> Maybe UserInfo -> Int -> ( Model, Cmd Msg, ChainCmd Msg )
 init ethNode factoryAddress tokenAddress tokenDecimals userInfo tradeId =
     let
-        cmd =
+        getCreationInfoCmd =
             getContractCreationInfoCmd ethNode factoryAddress tradeId
+
+        ( eventSentry, eventSentryCmd ) =
+            EventSentry.init EventSentryMsg ethNode.http
     in
     ( { ethNode = ethNode
       , userInfo = userInfo
@@ -37,9 +41,9 @@ init ethNode factoryAddress tokenAddress tokenDecimals userInfo tradeId =
       , trade = Contracts.Types.partialTradeInfo tradeId
       , history = Array.empty
       , messageInput = ""
-      , eventSentry = Nothing
+      , eventSentry = eventSentry
       }
-    , cmd
+    , Cmd.batch [ getCreationInfoCmd, eventSentryCmd ]
     , ChainCmd.none
     )
 
@@ -58,17 +62,16 @@ update : Msg -> Model -> ( Model, Cmd Msg, ChainCmd Msg )
 update msg model =
     case msg of
         Refresh time ->
-            case ( model.trade, model.eventSentry ) of
-                ( Contracts.Types.Loaded tradeInfo, Just sentry ) ->
+            case model.trade of
+                Contracts.Types.Loaded tradeInfo ->
                     ( model
                     , Cmd.batch
                         [ Contracts.Wrappers.getStateCmd model.ethNode model.tokenDecimals tradeInfo.creationInfo.address StateFetched
-                        , EventSentryHack.pollForChanges sentry
                         ]
                     , ChainCmd.none
                     )
 
-                ( _, _ ) ->
+                _ ->
                     ( model, Cmd.none, ChainCmd.none )
 
         CreationInfoFetched fetchResult ->
@@ -77,41 +80,29 @@ update msg model =
                     let
                         newCreationInfo =
                             { address = createdSell.address_
-                            , blocknum =
-                                case BigIntHelpers.toInt createdSell.blocknum of
-                                    Just blocknum ->
-                                        blocknum
-
-                                    Nothing ->
-                                        let
-                                            _ =
-                                                Debug.log "Error converting blocknum from bigint" createdSell.blocknum
-                                        in
-                                        0
+                            , blocknum = BigIntHelpers.toIntWithWarning createdSell.blocknum
                             }
 
-                        sentry =
-                            EventSentryHack.init
-                                model.ethNode.http
-                                newCreationInfo.address
-                                Contracts.Types.eventDecoder
-                                ToastytradeEventsFetched
-                                newCreationInfo.blocknum
-                                EventSentryMsg
-
-                        pollCmd =
-                            EventSentryHack.pollForChanges sentry
+                        ( newSentry, sentryCmd, _ ) =
+                            EventSentry.watch
+                                EventsFetched
+                                model.eventSentry
+                                { address = newCreationInfo.address
+                                , fromBlock = Eth.Types.BlockNum (BigIntHelpers.toIntWithWarning createdSell.blocknum)
+                                , toBlock = Eth.Types.LatestBlock
+                                , topics = []
+                                }
 
                         newModel =
                             { model
                                 | trade = model.trade |> Contracts.Types.updateCreationInfo newCreationInfo
-                                , eventSentry = Just sentry
+                                , eventSentry = newSentry
                             }
                     in
                     ( newModel
                     , Cmd.batch
                         [ Contracts.Wrappers.getParametersAndStateCmd newModel.ethNode newModel.tokenDecimals newCreationInfo.address ParametersFetched StateFetched
-                        , pollCmd
+                        , sentryCmd
                         ]
                     , ChainCmd.none
                     )
@@ -147,21 +138,12 @@ update msg model =
                     in
                     ( model, Cmd.none, ChainCmd.none )
 
-        ToastytradeEventsFetched fetchResult ->
-            case fetchResult of
-                Ok events ->
-                    let
-                        ( newModel, cmd ) =
-                            handleNewEvents events model
-                    in
-                    ( newModel, cmd, ChainCmd.none )
-
-                Err errstr ->
-                    let
-                        _ =
-                            Debug.log "Error with ToastytradeEventsFetched" errstr
-                    in
-                    ( model, Cmd.none, ChainCmd.none )
+        EventsFetched logs ->
+            let
+                ( newModel, cmd ) =
+                    handleNewLog logs model
+            in
+            ( newModel, cmd, ChainCmd.none )
 
         ContractAction actionMsg ->
             let
@@ -401,139 +383,139 @@ update msg model =
                     ( model, Cmd.none, ChainCmd.none )
 
         EventSentryMsg eventMsg ->
-            case model.eventSentry of
-                Just eventSentry ->
-                    let
-                        ( newEventSentry, cmd ) =
-                            EventSentryHack.update
-                                eventMsg
-                                eventSentry
-                    in
-                    ( { model
-                        | eventSentry =
-                            Just newEventSentry
-                      }
-                    , cmd
-                    , ChainCmd.none
-                    )
-
-                Nothing ->
-                    let
-                        _ =
-                            Debug.log "get an eventSentry msg, but there aren't any eventSentries..!?" eventMsg
-                    in
-                    ( model, Cmd.none, ChainCmd.none )
+            let
+                ( newEventSentry, cmd ) =
+                    EventSentry.update
+                        eventMsg
+                        model.eventSentry
+            in
+            ( { model
+                | eventSentry =
+                    newEventSentry
+              }
+            , cmd
+            , ChainCmd.none
+            )
 
 
-handleNewEvents : List (Eth.Types.Event Contracts.Types.ToastytradeEvent) -> Model -> ( Model, Cmd Msg )
-handleNewEvents toastytradeEvents model =
+handleNewLog : Eth.Types.Log -> Model -> ( Model, Cmd Msg )
+handleNewLog log model =
     let
-        newEvents =
-            toastytradeEvents
-                |> List.map
-                    (\ttEvent ->
-                        let
-                            eventInfo =
-                                case ttEvent.returnData of
-                                    Contracts.Types.InitiatorStatementLogEvent data ->
-                                        Statement <|
-                                            { who = Initiator
-                                            , message =
-                                                case
-                                                    ( decodeEncryptedMessage data.encryptedForInitiator
-                                                    , decodeEncryptedMessage data.encryptedForResponder
-                                                    )
-                                                of
-                                                    ( Just decodedForInitiator, Just decodedForResponder ) ->
-                                                        Encrypted ( decodedForInitiator, decodedForResponder )
-
-                                                    _ ->
-                                                        FailedDecode
-                                            , blocknum = ttEvent.blockNumber
-                                            }
-
-                                    Contracts.Types.ResponderStatementLogEvent data ->
-                                        Statement <|
-                                            { who = Responder
-                                            , message =
-                                                case
-                                                    ( decodeEncryptedMessage data.encryptedForInitiator
-                                                    , decodeEncryptedMessage data.encryptedForResponder
-                                                    )
-                                                of
-                                                    ( Just decodedForInitiator, Just decodedForResponder ) ->
-                                                        Encrypted ( decodedForInitiator, decodedForResponder )
-
-                                                    _ ->
-                                                        FailedDecode
-                                            , blocknum = ttEvent.blockNumber
-                                            }
-
-                                    Contracts.Types.CommittedEvent data ->
-                                        StateChange (Committed data.responder)
-
-                                    Contracts.Types.RecalledEvent ->
-                                        StateChange Recalled
-
-                                    Contracts.Types.AbortedEvent ->
-                                        StateChange Aborted
-
-                                    Contracts.Types.ReleasedEvent ->
-                                        StateChange Released
-
-                                    Contracts.Types.BurnedEvent ->
-                                        StateChange Burned
-
-                                    Contracts.Types.PhaseChangeEvent data ->
-                                        if data.newPhase == BigInt.fromInt 1 then
-                                            StateChange Opened
-
-                                        else if data.newPhase == BigInt.fromInt 3 then
-                                            StateChange Claimed
-
-                                        else
-                                            StateChange RedundantEvent
-                        in
-                        { eventInfo = eventInfo
-                        , blocknum = ttEvent.blockNumber
-                        , time = Nothing
-                        }
-                    )
-                |> Array.fromList
-
-        userRole =
-            Maybe.map2
-                getUserRole
-                (case model.trade of
-                    Contracts.Types.Loaded tradeInfo ->
-                        Just tradeInfo
-
-                    troublesomeGarbage ->
-                        let
-                            _ =
-                                Debug.log "Trying to build decryption command, but missing crucial info" troublesomeGarbage
-                        in
-                        Nothing
-                )
-                (model.userInfo
-                    |> Maybe.map (\i -> i.address)
-                )
-                |> Maybe.Extra.join
-
-        cmd =
-            case userRole of
-                Just role ->
-                    decryptNewMessagesCmd model role
-
-                Nothing ->
-                    Cmd.none
+        decodedEvent =
+            Eth.Decode.event Contracts.Types.eventDecoder log
     in
-    ( { model
-        | history =
-            Array.append model.history newEvents
-      }
-    , cmd
-    )
+    case decodedEvent.returnData of
+        Err err ->
+            let
+                _ =
+                    Debug.log "Error decoding contract event" err
+            in
+            ( model, Cmd.none )
+
+        Ok returnData ->
+            let
+                info =
+                    case returnData of
+                        Contracts.Types.InitiatorStatementLogEvent data ->
+                            Statement <|
+                                { who = Initiator
+                                , message =
+                                    case
+                                        ( decodeEncryptedMessage data.encryptedForInitiator
+                                        , decodeEncryptedMessage data.encryptedForResponder
+                                        )
+                                    of
+                                        ( Just decodedForInitiator, Just decodedForResponder ) ->
+                                            Encrypted ( decodedForInitiator, decodedForResponder )
+
+                                        _ ->
+                                            FailedDecode
+                                , blocknum = decodedEvent.blockNumber
+                                }
+
+                        Contracts.Types.ResponderStatementLogEvent data ->
+                            Statement <|
+                                { who = Responder
+                                , message =
+                                    case
+                                        ( decodeEncryptedMessage data.encryptedForInitiator
+                                        , decodeEncryptedMessage data.encryptedForResponder
+                                        )
+                                    of
+                                        ( Just decodedForInitiator, Just decodedForResponder ) ->
+                                            Encrypted ( decodedForInitiator, decodedForResponder )
+
+                                        _ ->
+                                            FailedDecode
+                                , blocknum = decodedEvent.blockNumber
+                                }
+
+                        Contracts.Types.CommittedEvent data ->
+                            StateChange (Committed data.responder)
+
+                        Contracts.Types.RecalledEvent ->
+                            StateChange Recalled
+
+                        Contracts.Types.AbortedEvent ->
+                            StateChange Aborted
+
+                        Contracts.Types.ReleasedEvent ->
+                            StateChange Released
+
+                        Contracts.Types.BurnedEvent ->
+                            StateChange Burned
+
+                        Contracts.Types.PhaseChangeEvent data ->
+                            if data.newPhase == BigInt.fromInt 1 then
+                                StateChange Opened
+
+                            else if data.newPhase == BigInt.fromInt 3 then
+                                StateChange Claimed
+
+                            else
+                                StateChange RedundantEvent
+
+                newEvent =
+                    { eventInfo = info
+                    , blocknum = decodedEvent.blockNumber
+                    , time = Nothing
+                    }
+
+                userRole =
+                    Maybe.map2
+                        getUserRole
+                        (case model.trade of
+                            Contracts.Types.Loaded tradeInfo ->
+                                Just tradeInfo
+
+                            troublesomeGarbage ->
+                                let
+                                    _ =
+                                        Debug.log "Trying to build decryption command, but missing crucial info" troublesomeGarbage
+                                in
+                                Nothing
+                        )
+                        (model.userInfo
+                            |> Maybe.map (\i -> i.address)
+                        )
+                        |> Maybe.Extra.join
+
+                cmd =
+                    case ( newEvent.eventInfo, userRole ) of
+                        ( Statement _, Just role ) ->
+                            decryptNewMessagesCmd model role
+
+                        _ ->
+                            Cmd.none
+            in
+            ( { model
+                | history =
+                    Array.append
+                        model.history
+                        (Array.fromList [ newEvent ])
+              }
+            , cmd
+            )
 
 
 encodeEncryptionArgs : String -> List String -> Json.Encode.Value
@@ -669,6 +651,10 @@ decodeSizedStringHelper remaining processed =
 
 decryptNewMessagesCmd : Model -> InitiatorOrResponder -> Cmd Msg
 decryptNewMessagesCmd model userRole =
+    let
+        _ =
+            Debug.log "decrypting" ""
+    in
     model.history
         |> Array.toIndexedList
         |> List.map

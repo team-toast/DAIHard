@@ -247,7 +247,7 @@ update msg model =
                         }
 
         CreateMined (Err errstr) ->
-            let
+            let 
                 _ =
                     Debug.log "error mining create contract tx" errstr
             in

@@ -6,9 +6,9 @@ import CommonTypes exposing (..)
 import Contracts.Generated.Toastytrade as TT
 import Contracts.Generated.ToastytradeFactory as TTF
 import Contracts.Types
+import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
 import EthHelpers
-import EventSentryHack exposing (EventSentry)
 import Http
 import Json.Decode
 import RenderContract.Types
@@ -23,7 +23,7 @@ type alias Model =
     , trade : Contracts.Types.Trade
     , history : Array Event
     , messageInput : String
-    , eventSentry : Maybe (EventSentry Contracts.Types.ToastytradeEvent Msg)
+    , eventSentry : EventSentry Msg
     }
 
 
@@ -35,12 +35,12 @@ type Msg
     | PreCommitApproveMined (Result String Eth.Types.TxReceipt)
     | ContractActionMined (Result String Eth.Types.TxReceipt)
     | Refresh Time.Posix
-    | ToastytradeEventsFetched (Result Http.Error (List (Eth.Types.Event Contracts.Types.ToastytradeEvent)))
+    | EventsFetched (Eth.Types.Log)
     | MessageInputChanged String
     | MessageSubmit
     | EncryptionFinished Json.Decode.Value
     | DecryptionFinished Json.Decode.Value
-    | EventSentryMsg EventSentryHack.Msg
+    | EventSentryMsg EventSentry.Msg
 
 
 type InitiatorOrResponder
