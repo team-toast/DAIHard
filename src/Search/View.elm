@@ -26,7 +26,7 @@ root time model =
         , Element.Background.color EH.white
         , Element.width Element.fill
         , Element.height Element.fill
-        , Element.Events.onClick ResolveDropdowns
+        , Element.Events.onClick (ShowCurrencyDropdown False)
         ]
         [ searchInputElement model.inputs
         , EH.hbreak
@@ -182,8 +182,8 @@ daiRangeInput minDai maxDai =
                 ]
     in
     Element.column [ Element.spacing 5, Element.width <| Element.px 200 ]
-        [ EH.textInputWithElement [] minElement "min dai" minDai Nothing Nothing MinDaiChanged
-        , EH.textInputWithElement [] maxElement "max dai" maxDai Nothing Nothing MaxDaiChanged
+        [ EH.textInputWithElement [] [ Element.Events.onFocus (ShowCurrencyDropdown False) ] minElement "min dai" minDai Nothing Nothing MinDaiChanged
+        , EH.textInputWithElement [] [ Element.Events.onFocus (ShowCurrencyDropdown False) ] maxElement "max dai" maxDai Nothing Nothing MaxDaiChanged
         ]
         |> withInputHeader "Dai Range"
 
@@ -210,8 +210,8 @@ fiatInput showTypeDropdown fiatType minFiat maxFiat =
         [ Element.el [ Element.alignTop, Element.width <| Element.px 120 ] <|
             EH.currencySelector showTypeDropdown fiatType ShowCurrencyDropdown FiatTypeInputChanged
         , Element.column [ Element.spacing 5, Element.alignTop, Element.width <| Element.px 200 ]
-            [ EH.textInputWithElement [] minElement "min" minFiat Nothing Nothing MinFiatChanged
-            , EH.textInputWithElement [] maxElement "max" maxFiat Nothing Nothing MaxFiatChanged
+            [ EH.textInputWithElement [] [ Element.Events.onFocus (ShowCurrencyDropdown False) ] minElement "min" minFiat Nothing Nothing MinFiatChanged
+            , EH.textInputWithElement [] [ Element.Events.onFocus (ShowCurrencyDropdown False) ] maxElement "max" maxFiat Nothing Nothing MaxFiatChanged
             ]
         ]
         |> withInputHeader "Fiat Type"

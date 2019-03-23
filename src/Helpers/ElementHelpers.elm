@@ -1,6 +1,7 @@
 module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, blue, bulletPointString, buttonBlue, buttonDeepBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, currencySelector, daiSymbol, daiValue, errorMessage, fakeLink, fiatSymbolElementFromFiatType, fiatValue, fillWidthBlock, green, hbreak, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, interval, intervalWithElapsedBar, lightGray, margin, methodName, pageBackgroundColor, pageTitle, red, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallInput, subpageBackgroundColor, testBorderStyles, textInputWithElement, timeInput, timeValue, tokenValue, white, yellow)
 
 import CommonTypes exposing (..)
+import Css
 import Dict
 import Element exposing (Attribute, Element)
 import Element.Background
@@ -10,6 +11,7 @@ import Element.Font
 import Element.Input
 import FiatValue exposing (FiatValue)
 import Html.Events
+import Html.Styled
 import Images
 import Json.Decode
 import List
@@ -499,8 +501,8 @@ timeInput labelStr value msgConstructor =
         ]
 
 
-textInputWithElement : List (Attribute msg) -> Element msg -> String -> String -> Maybe (Element.Input.Placeholder msg) -> Maybe (Bool -> msg) -> (String -> msg) -> Element msg
-textInputWithElement attributes addedElement labelStr value placeholder maybeShowHideMsgConstructor msgConstructor =
+textInputWithElement : List (Attribute msg) -> List (Attribute msg) -> Element msg -> String -> String -> Maybe (Element.Input.Placeholder msg) -> Maybe (Bool -> msg) -> (String -> msg) -> Element msg
+textInputWithElement attributes inputAttributes addedElement labelStr value placeholder maybeShowHideMsgConstructor msgConstructor =
     let
         focusEventAttributes =
             case maybeShowHideMsgConstructor of
@@ -537,6 +539,7 @@ textInputWithElement attributes addedElement labelStr value placeholder maybeSho
             (Element.el [ Element.centerY, Element.paddingXY 10 0 ] addedElement)
         , Element.Input.text
             (focusEventAttributes
+                ++ inputAttributes
                 ++ [ Element.width Element.fill
                    , Element.height <| Element.px 40
                    , Element.Border.color lightGray
@@ -577,27 +580,51 @@ currencySelector showDropdown typeInput showHideMsgConstructor msgConstructor =
                     Element.none
 
                 ( True, Nothing ) ->
-                    Element.column [ Element.width <| Element.px 100, Element.spacing 7 ]
+                    Element.column
+                        [ Element.width <| Element.fill
+                        , Element.Border.color black
+                        , Element.Border.width 1
+                        , Element.Background.color white
+                        , Element.padding 5
+                        , Element.width Element.fill
+                        ]
                         (FiatValue.searchTypes typeInput
                             |> Dict.toList
                             |> List.map
                                 (\( typeString, ( _, image ) ) ->
-                                    Element.row [ Element.spacing 4, onClickNoPropagation <| msgConstructor typeString ]
+                                    Element.row
+                                        [ Element.width Element.fill
+                                        , Element.spacing 9
+                                        , Element.paddingXY 0 5
+                                        , onClickNoPropagation <| msgConstructor typeString
+                                        , Element.mouseOver [ Element.Background.color <| Element.rgb 0.8 0.8 1 ]
+                                        ]
                                         [ Element.image [ Element.height <| Element.px 26 ] image
-                                        , Element.el [ Element.Font.size 16, Element.Font.semiBold ] <| Element.text typeString
+                                        , Element.el [ Element.Font.size 16, Element.Font.semiBold ] <| textWithoutTextCursor typeString
                                         ]
                                 )
                         )
     in
     textInputWithElement
-        [ Element.below dropdownEl
-        ]
+        [ Element.below dropdownEl ]
+        []
         (fiatSymbolElementFromFiatType typeInput)
         "select currency"
         typeInput
         Nothing
         (Just showHideMsgConstructor)
         (String.toUpper >> msgConstructor)
+
+
+textWithoutTextCursor : String -> Element msg
+textWithoutTextCursor s =
+    Html.Styled.styled
+        Html.Styled.span
+        [ Css.hover [ Css.cursor Css.default ] ]
+        []
+        [ Html.Styled.text s ]
+        |> Html.Styled.toUnstyled
+        |> Element.html
 
 
 fiatSymbolElementFromFiatType : String -> Element msg

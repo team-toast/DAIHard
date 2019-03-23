@@ -30,7 +30,11 @@ root model =
                 , label = Element.text "Create!"
                 }
     in
-    Element.column [ Element.spacing 20, Element.width Element.fill ]
+    Element.column
+        [ Element.spacing 20
+        , Element.width Element.fill
+        , Element.Events.onClick (ShowCurrencyDropdown False)
+        ]
         [ titleElement model
         , contractParametersFormElement model
         , createButton

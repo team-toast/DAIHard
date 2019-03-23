@@ -46,7 +46,6 @@ type Msg
     | RemoveTerm String
     | ApplyInputs
     | ResetSearch
-    | ResolveDropdowns
     | TradeClicked Int
     | SortBy ResultColumnType Bool
     | NoOp

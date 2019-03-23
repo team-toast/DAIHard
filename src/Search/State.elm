@@ -313,12 +313,6 @@ update msg model =
             , Nothing
             )
 
-        ResolveDropdowns ->
-            ( { model | inputs = model.inputs |> updateShowCurrencyDropdown False }
-            , Cmd.none
-            , Nothing
-            )
-
         NoOp ->
             noUpdate model
 
