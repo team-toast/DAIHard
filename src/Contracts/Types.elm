@@ -4,6 +4,7 @@ import Abi.Decode
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
 import Contracts.Generated.Toastytrade as TT
+import Contracts.Generated.ToastytradeFactory as TTF
 import Eth.Decode
 import Eth.Types exposing (Address)
 import Eth.Utils
@@ -262,35 +263,20 @@ topicDecoder index =
 
 txReceiptToCreatedToastytradeSellId : Address -> Eth.Types.TxReceipt -> Result String BigInt
 txReceiptToCreatedToastytradeSellId factoryAddress txReceipt =
-    let
-        maybeCreateEventData =
-            txReceipt.logs
-                |> List.filter
-                    (\log ->
-                        (Eth.Utils.addressToString >> String.toLower) log.address
-                            == (Eth.Utils.addressToString >> String.toLower) factoryAddress
-                    )
-                |> List.head
-                |> Maybe.map
-                    (\log ->
-                        let
-                            _ =
-                                Debug.log "log'd addr" log.address
-                        in
-                        log.data
-                    )
-    in
-    case maybeCreateEventData of
-        Just createEventData ->
-            createEventData
-                -- Remove the '0x' at the beginning
-                |> String.dropLeft 2
-                -- Take the first 64-char argument
-                |> String.left 64
-                |> Abi.Decode.fromString Abi.Decode.uint
-
-        Nothing ->
-            Err "Can't find a log generated from the given factoryAddress. Are you looking at the wrong transaction?"
+    txReceipt.logs
+        |> List.filter
+            (\log ->
+                (Eth.Utils.addressToString >> String.toLower) log.address
+                    == (Eth.Utils.addressToString >> String.toLower) factoryAddress
+            )
+        |> List.head
+        |> Result.fromMaybe "No log found from that factoryAddress in that txReceipt"
+        |> Result.andThen
+            (\log ->
+                (Eth.Decode.event TTF.newToastytradeDecoder log).returnData
+                    |> Result.mapError Json.Decode.errorToString
+            )
+        |> Result.map .id
 
 
 bigIntToPhase : BigInt -> Maybe Phase
