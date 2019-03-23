@@ -224,7 +224,7 @@ deriveValues parameters state =
 
 eventDecoder : Json.Decode.Decoder ToastytradeEvent
 eventDecoder =
-    topicDecoder 0
+    eventSigDecoder
         |> Json.Decode.andThen
             (\hashedSig ->
                 if hashedSig == Eth.Utils.keccak256 "Committed(address)" then
@@ -256,8 +256,8 @@ eventDecoder =
             )
 
 
-topicDecoder : Int -> Json.Decode.Decoder Eth.Types.Hex
-topicDecoder index =
+eventSigDecoder : Json.Decode.Decoder Eth.Types.Hex
+eventSigDecoder =
     Json.Decode.field "topics" (Json.Decode.index 0 Eth.Decode.hex)
 
 
