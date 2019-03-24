@@ -114,8 +114,11 @@ updateValidModel msg model =
                 Nothing ->
                     Cmd.none
 
-                Just _ ->
-                    genPrivkey "Deriving keypair for encrypted communication on TOASTYTRADE. Never sign this on any other site!"
+                Just address ->
+                    genPrivkey <|
+                        encodeGenPrivkeyArgs
+                            address
+                            "Deriving keypair for encrypted communication on TOASTYTRADE. Never sign this on any other site!"
             )
 
         UserPubkeySet commPubkeyValue ->
@@ -280,6 +283,14 @@ updateValidModel msg model =
             ( Running model, Cmd.none )
 
 
+encodeGenPrivkeyArgs : Address -> String -> Json.Decode.Value
+encodeGenPrivkeyArgs address signMsg =
+    Json.Encode.object
+        [ ("address", Json.Encode.string <| Eth.Utils.addressToString address)
+        , ("signSeedMsg", Json.Encode.string signMsg)
+        ]
+
+
 updateFromUrl : ValidModel -> Url -> ( Model, Cmd Msg )
 updateFromUrl model url =
     gotoRoute model (Routing.urlToRoute url)
@@ -422,7 +433,7 @@ port txOut : Json.Decode.Value -> Cmd msg
 port txIn : (Json.Decode.Value -> msg) -> Sub msg
 
 
-port genPrivkey : String -> Cmd msg
+port genPrivkey : Json.Decode.Value -> Cmd msg
 
 
 port userPubkeyResult : (Json.Decode.Value -> msg) -> Sub msg

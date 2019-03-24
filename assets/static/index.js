@@ -41,17 +41,20 @@ window.addEventListener('load', function () {
 function portStuff(app) {
     elm_ethereum_ports.txSentry(app.ports.txOut, app.ports.txIn, web3);
     elm_ethereum_ports.walletSentry(app.ports.walletSentryPort, web3);
-    app.ports.genPrivkey.subscribe(function (signSeedMsg) {
-        secureComms.prepareKeypair(signSeedMsg, web3.eth.accounts[0], function (err, res) {
+    app.ports.genPrivkey.subscribe(function (args) {
+        secureComms.prepareKeypair(args.signSeedMsg, args.address, function (err, res) {
+            console.log("pubkey: ", res)
             app.ports.userPubkeyResult.send(res);
         })
     });
     app.ports.encryptToPubkeys.subscribe(function (data) {
+        console.log("encrypting in JS");
         var encryptedMessages = secureComms.encryptToPubkeys(data.message, data.pubkeyHexStrings);
 
         app.ports.encryptionFinished.send(encryptedMessages);
     });
     app.ports.decryptMessage.subscribe(function (data) {
+        console.log("decrypting in JS");
         var id = data.id;
 
         var result = secureComms.decryptForUser(data.encapsulation, data.iv, data.tag, data.encrypted);
