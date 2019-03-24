@@ -534,39 +534,43 @@ handleNewLog log model =
                     , time = Nothing
                     }
 
-                userRole =
-                    Maybe.map2
-                        getUserRole
-                        (case model.trade of
-                            Contracts.Types.Loaded tradeInfo ->
-                                Just tradeInfo
-
-                            troublesomeGarbage ->
-                                let
-                                    _ =
-                                        Debug.log "Trying to build decryption command, but missing crucial info" troublesomeGarbage
-                                in
-                                Nothing
-                        )
-                        (model.userInfo
-                            |> Maybe.map (\i -> i.address)
-                        )
-                        |> Maybe.Extra.join
+                newModel =
+                    { model
+                        | history =
+                            Array.append
+                                model.history
+                                (Array.fromList [ newEvent ])
+                    }
 
                 cmd =
+                    let
+                        userRole =
+                            Maybe.map2
+                                getUserRole
+                                (case model.trade of
+                                    Contracts.Types.Loaded tradeInfo ->
+                                        Just tradeInfo
+
+                                    troublesomeGarbage ->
+                                        let
+                                            _ =
+                                                Debug.log "Trying to build decryption command, but missing crucial info" troublesomeGarbage
+                                        in
+                                        Nothing
+                                )
+                                (model.userInfo
+                                    |> Maybe.map (\i -> i.address)
+                                )
+                                |> Maybe.Extra.join
+                    in
                     case ( newEvent.eventInfo, userRole ) of
                         ( Statement _, Just role ) ->
-                            decryptNewMessagesCmd model role
+                            decryptNewMessagesCmd newModel role
 
                         _ ->
                             Cmd.none
             in
-            ( { model
-                | history =
-                    Array.append
-                        model.history
-                        (Array.fromList [ newEvent ])
-              }
+            ( newModel
             , cmd
             )
 
@@ -710,6 +714,7 @@ decryptNewMessagesCmd model userRole =
     in
     model.history
         |> Array.toIndexedList
+        |> Debug.log "indexed list"
         |> List.map
             (\( id, historyEvent ) ->
                 case historyEvent.eventInfo of
