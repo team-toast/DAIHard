@@ -42,6 +42,7 @@ init ethNode factoryAddress tokenAddress tokenDecimals userInfo tradeId =
       , history = Array.empty
       , messageInput = ""
       , eventSentry = eventSentry
+      , sentryWatching = False
       }
     , Cmd.batch [ getCreationInfoCmd, eventSentryCmd ]
     , ChainCmd.none
@@ -83,27 +84,13 @@ update msg model =
                             , blocknum = BigIntHelpers.toIntWithWarning createdSell.blocknum
                             }
 
-                        ( newSentry, sentryCmd, _ ) =
-                            EventSentry.watch
-                                EventsFetched
-                                model.eventSentry
-                                { address = newCreationInfo.address
-                                , fromBlock = Eth.Types.BlockNum (BigIntHelpers.toIntWithWarning createdSell.blocknum)
-                                , toBlock = Eth.Types.LatestBlock
-                                , topics = []
-                                }
-
                         newModel =
                             { model
                                 | trade = model.trade |> Contracts.Types.updateCreationInfo newCreationInfo
-                                , eventSentry = newSentry
                             }
                     in
                     ( newModel
-                    , Cmd.batch
-                        [ Contracts.Wrappers.getParametersAndStateCmd newModel.ethNode newModel.tokenDecimals newCreationInfo.address ParametersFetched StateFetched
-                        , sentryCmd
-                        ]
+                    , Contracts.Wrappers.getParametersAndStateCmd newModel.ethNode newModel.tokenDecimals newCreationInfo.address ParametersFetched StateFetched
                     , ChainCmd.none
                     )
 
@@ -117,7 +104,40 @@ update msg model =
         StateFetched fetchResult ->
             case fetchResult of
                 Ok (Just state) ->
-                    ( { model | trade = model.trade |> Contracts.Types.updateState state }, Cmd.none, ChainCmd.none )
+                    let
+                        newTrade =
+                            model.trade |> Contracts.Types.updateState state
+                    in
+                    case ( model.sentryWatching, newTrade ) of
+                        ( False, Contracts.Types.Loaded info ) ->
+                            let
+                                ( newSentry, sentryCmd, _ ) =
+                                    EventSentry.watch
+                                        EventsFetched
+                                        model.eventSentry
+                                        { address = info.creationInfo.address
+                                        , fromBlock = Eth.Types.BlockNum info.creationInfo.blocknum
+                                        , toBlock = Eth.Types.LatestBlock
+                                        , topics = []
+                                        }
+
+                                newModel =
+                                    { model
+                                        | trade = newTrade
+                                        , eventSentry = newSentry
+                                        , sentryWatching = True
+                                    }
+                            in
+                            ( newModel
+                            , sentryCmd
+                            , ChainCmd.none
+                            )
+
+                        _ ->
+                            ( { model | trade = newTrade }
+                            , Cmd.none
+                            , ChainCmd.none
+                            )
 
                 _ ->
                     let
@@ -129,7 +149,40 @@ update msg model =
         ParametersFetched fetchResult ->
             case fetchResult of
                 Ok (Ok parameters) ->
-                    ( { model | trade = model.trade |> Contracts.Types.updateParameters parameters }, Cmd.none, ChainCmd.none )
+                    let
+                        newTrade =
+                            model.trade |> Contracts.Types.updateParameters parameters
+                    in
+                    case ( model.sentryWatching, newTrade ) of
+                        ( False, Contracts.Types.Loaded info ) ->
+                            let
+                                ( newSentry, sentryCmd, _ ) =
+                                    EventSentry.watch
+                                        EventsFetched
+                                        model.eventSentry
+                                        { address = info.creationInfo.address
+                                        , fromBlock = Eth.Types.BlockNum info.creationInfo.blocknum
+                                        , toBlock = Eth.Types.LatestBlock
+                                        , topics = []
+                                        }
+
+                                newModel =
+                                    { model
+                                        | trade = newTrade
+                                        , eventSentry = newSentry
+                                        , sentryWatching = True
+                                    }
+                            in
+                            ( newModel
+                            , sentryCmd
+                            , ChainCmd.none
+                            )
+
+                        _ ->
+                            ( { model | trade = newTrade }
+                            , Cmd.none
+                            , ChainCmd.none
+                            )
 
                 badResult ->
                     let

@@ -24,6 +24,7 @@ type alias Model =
     , history : Array Event
     , messageInput : String
     , eventSentry : EventSentry Msg
+    , sentryWatching : Bool
     }
 
 
@@ -35,7 +36,7 @@ type Msg
     | PreCommitApproveMined (Result String Eth.Types.TxReceipt)
     | ContractActionMined (Result String Eth.Types.TxReceipt)
     | Refresh Time.Posix
-    | EventsFetched (Eth.Types.Log)
+    | EventsFetched Eth.Types.Log
     | MessageInputChanged String
     | MessageSubmit
     | EncryptionFinished Json.Decode.Value
