@@ -10,8 +10,6 @@ import Element.Input
 import ElementHelpers as EH
 import Eth.Utils
 import Interact.Types exposing (..)
-import RenderContract.Types
-import RenderContract.View
 import Time
 
 
@@ -26,12 +24,8 @@ root time model =
 maybeContractElement : Time.Posix -> Model -> Element.Element Msg
 maybeContractElement time model =
     case ( model.userInfo, model.trade ) of
-        ( Just userInfo, Contracts.Types.Loaded tradeInfo ) ->
-            let
-                context =
-                    RenderContract.Types.generateContext tradeInfo.parameters tradeInfo.state userInfo.address time
-            in
-            Element.map ContractAction (RenderContract.View.render (RenderContract.Types.Active context) tradeInfo.parameters)
+        ( Just userInfo, Contracts.Types.LoadedTrade tradeInfo ) ->
+            Element.text "Contract rendering currently lobotomized."
 
         ( Nothing, _ ) ->
             Element.text "Can't find user address. Is Metamask unlocked?"
@@ -174,7 +168,7 @@ renderEvent event =
 maybeCommInputElement : Model -> Element.Element Msg
 maybeCommInputElement model =
     case ( model.userInfo, model.trade ) of
-        ( Just userInfo, Contracts.Types.Loaded tradeInfo ) ->
+        ( Just userInfo, Contracts.Types.LoadedTrade tradeInfo ) ->
             case tradeInfo.state.phase of
                 Contracts.Types.Created ->
                     Element.none

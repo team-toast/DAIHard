@@ -19,7 +19,6 @@ import Interact.Types exposing (..)
 import Json.Decode
 import Json.Encode
 import Maybe.Extra
-import RenderContract.Types
 import Result.Extra
 import Time
 import TokenValue
@@ -64,7 +63,7 @@ update msg model =
     case msg of
         Refresh time ->
             case model.trade of
-                Contracts.Types.Loaded tradeInfo ->
+                Contracts.Types.LoadedTrade tradeInfo ->
                     ( model
                     , Cmd.batch
                         [ Contracts.Wrappers.getStateCmd model.ethNode model.tokenDecimals tradeInfo.creationInfo.address StateFetched
@@ -109,7 +108,7 @@ update msg model =
                             model.trade |> Contracts.Types.updateState state
                     in
                     case ( model.sentryWatching, newTrade ) of
-                        ( False, Contracts.Types.Loaded info ) ->
+                        ( False, Contracts.Types.LoadedTrade info ) ->
                             let
                                 ( newSentry, sentryCmd, _ ) =
                                     EventSentry.watch
@@ -154,7 +153,7 @@ update msg model =
                             model.trade |> Contracts.Types.updateParameters parameters
                     in
                     case ( model.sentryWatching, newTrade ) of
-                        ( False, Contracts.Types.Loaded info ) ->
+                        ( False, Contracts.Types.LoadedTrade info ) ->
                             let
                                 ( newSentry, sentryCmd, _ ) =
                                     EventSentry.watch
@@ -202,9 +201,9 @@ update msg model =
             let
                 chainCmd =
                     case model.trade of
-                        Contracts.Types.Loaded tradeInfo ->
+                        Contracts.Types.LoadedTrade tradeInfo ->
                             case actionMsg of
-                                RenderContract.Types.Recall ->
+                                Recall ->
                                     let
                                         txParams =
                                             TT.recall tradeInfo.creationInfo.address
@@ -212,7 +211,7 @@ update msg model =
                                     in
                                     ChainCmd.custom genericCustomSend txParams
 
-                                RenderContract.Types.Commit ->
+                                Commit ->
                                     let
                                         fullDepositAmount =
                                             TokenValue.getBigInt <|
@@ -239,7 +238,7 @@ update msg model =
                                     ChainCmd.custom customSend
                                         txParams
 
-                                RenderContract.Types.Claim ->
+                                Claim ->
                                     let
                                         txParams =
                                             TT.claim tradeInfo.creationInfo.address
@@ -247,7 +246,7 @@ update msg model =
                                     in
                                     ChainCmd.custom genericCustomSend txParams
 
-                                RenderContract.Types.Abort ->
+                                Abort ->
                                     let
                                         txParams =
                                             TT.abort tradeInfo.creationInfo.address
@@ -255,7 +254,7 @@ update msg model =
                                     in
                                     ChainCmd.custom genericCustomSend txParams
 
-                                RenderContract.Types.Release ->
+                                Release ->
                                     let
                                         txParams =
                                             TT.release tradeInfo.creationInfo.address
@@ -263,7 +262,7 @@ update msg model =
                                     in
                                     ChainCmd.custom genericCustomSend txParams
 
-                                RenderContract.Types.Burn ->
+                                Burn ->
                                     let
                                         txParams =
                                             TT.burn tradeInfo.creationInfo.address
@@ -271,7 +270,7 @@ update msg model =
                                     in
                                     ChainCmd.custom genericCustomSend txParams
 
-                                RenderContract.Types.Poke ->
+                                Poke ->
                                     let
                                         txParams =
                                             TT.poke tradeInfo.creationInfo.address
@@ -306,7 +305,7 @@ update msg model =
 
                 Ok txReceipt ->
                     case ( model.trade, model.userInfo ) of
-                        ( Contracts.Types.Loaded tradeInfo, Just userInfo ) ->
+                        ( Contracts.Types.LoadedTrade tradeInfo, Just userInfo ) ->
                             let
                                 txParams =
                                     TT.commit tradeInfo.creationInfo.address userInfo.commPubkey
@@ -329,7 +328,7 @@ update msg model =
 
         MessageSubmit ->
             case ( model.userInfo, model.trade ) of
-                ( Just userInfo, Contracts.Types.Loaded tradeInfo ) ->
+                ( Just userInfo, Contracts.Types.LoadedTrade tradeInfo ) ->
                     let
                         cmd =
                             encryptToPubkeys (encodeEncryptionArgs model.messageInput (getCommPubkeys tradeInfo))
@@ -355,7 +354,7 @@ update msg model =
                             )
             in
             case ( model.userInfo, model.trade, encodedEncryptionMessages ) of
-                ( Just userInfo, Contracts.Types.Loaded tradeInfo, Ok ( Ok initiatorMessage, Ok responderMessage ) ) ->
+                ( Just userInfo, Contracts.Types.LoadedTrade tradeInfo, Ok ( Ok initiatorMessage, Ok responderMessage ) ) ->
                     case getUserRole tradeInfo userInfo.address of
                         Nothing ->
                             let
@@ -518,16 +517,6 @@ handleNewLog log model =
                         Contracts.Types.BurnedEvent ->
                             StateChange Burned
 
-                        Contracts.Types.PhaseChangeEvent data ->
-                            if data.newPhase == BigInt.fromInt 1 then
-                                StateChange Opened
-
-                            else if data.newPhase == BigInt.fromInt 3 then
-                                StateChange Claimed
-
-                            else
-                                StateChange RedundantEvent
-
                 newEvent =
                     { eventInfo = info
                     , blocknum = decodedEvent.blockNumber
@@ -548,7 +537,7 @@ handleNewLog log model =
                             Maybe.map2
                                 getUserRole
                                 (case model.trade of
-                                    Contracts.Types.Loaded tradeInfo ->
+                                    Contracts.Types.LoadedTrade tradeInfo ->
                                         Just tradeInfo
 
                                     troublesomeGarbage ->
@@ -744,13 +733,13 @@ decryptNewMessagesCmd model userRole =
 
 getCommPubkeys : Contracts.Types.FullTradeInfo -> List String
 getCommPubkeys tradeInfo =
-    case tradeInfo.state.responderCommPubkey of
-        Just responderCommPubkey ->
-            [ tradeInfo.parameters.initiatorCommPubkey
-            , responderCommPubkey
+    case tradeInfo.commInfo of
+        Contracts.Types.LoadedCommInfo commInfo ->
+            [ commInfo.initiatorPubkey
+            , commInfo.responderPubkey
             ]
 
-        Nothing ->
+        _ ->
             let
                 _ =
                     Debug.log "Trying to encrypt a message, but can't find the responderCommPubkey! Is the contract still in the Open phase?" ""

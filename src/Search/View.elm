@@ -298,7 +298,7 @@ viewTradeRow time asBuyer trade =
             , ( 1, viewTradeAmount trade )
             , ( 2, viewFiat trade )
             , ( 1, viewMargin trade (not asBuyer) )
-            , ( 6, viewPaymentMethods trade )
+            , ( 6, viewPaymentMethods trade.paymentMethods )
             , ( 2, viewAutoabortWindow asBuyer trade )
             , ( 2, viewAutoreleaseWindow asBuyer trade )
             , ( 2, viewTradeButton trade.factoryID )
@@ -351,10 +351,10 @@ viewMargin trade upIsGreen =
         |> Maybe.withDefault Element.none
 
 
-viewPaymentMethods : Contracts.Types.FullTradeInfo -> Element Msg
-viewPaymentMethods trade =
+viewPaymentMethods : List PaymentMethod -> Element Msg
+viewPaymentMethods paymentMethods =
     Element.row [ Element.padding 3 ]
-        (trade.parameters.paymentMethods
+        (paymentMethods
             |> List.map PaymentMethods.demoView
         )
 
@@ -405,7 +405,7 @@ getLoadedTrades =
     List.filterMap
         (\trade ->
             case trade of
-                Contracts.Types.Loaded tradeInfo ->
+                Contracts.Types.LoadedTrade tradeInfo ->
                     Just tradeInfo
 
                 _ ->

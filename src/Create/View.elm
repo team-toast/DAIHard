@@ -8,8 +8,6 @@ import Element.Font
 import Element.Input
 import ElementHelpers as EH
 import PaymentMethods
-import RenderContract.Types
-import RenderContract.View
 
 
 root : Model -> Element.Element Msg
@@ -18,11 +16,10 @@ root model =
         contractRendered =
             case model.contractParameters of
                 Nothing ->
-                    Element.text "no contract?????"
+                    Element.text "Invalid parameters."
 
                 Just parameters ->
-                    RenderContract.View.render RenderContract.Types.Draft parameters
-                        |> Element.map (\_ -> NoOp)
+                    Element.text "Parameters valid! But rendering currently broken!"
 
         createButton =
             Element.Input.button [ Element.centerX, Element.Font.size 24 ]

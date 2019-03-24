@@ -1,172 +1,11 @@
 [
 	{
-		"constant": true,
-		"inputs": [],
-		"name": "seller",
-		"outputs": [
-			{
-				"name": "",
-				"type": "address"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "pokeRewardSent",
-		"outputs": [
-			{
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "getBalance",
-		"outputs": [
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "initiatorIsBuyer",
-		"outputs": [
-			{
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": false,
-		"inputs": [],
-		"name": "poke",
-		"outputs": [
-			{
-				"name": "moved",
-				"type": "bool"
-			}
-		],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "getState",
-		"outputs": [
-			{
-				"name": "balance",
-				"type": "uint256"
-			},
-			{
-				"name": "phase",
-				"type": "uint8"
-			},
-			{
-				"name": "phaseStartTimestamp",
-				"type": "uint256"
-			},
-			{
-				"name": "responder",
-				"type": "address"
-			},
-			{
-				"name": "responderCommPubkey",
-				"type": "string"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "responder",
-		"outputs": [
-			{
-				"name": "",
-				"type": "address"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"name": "phaseStartTimestamps",
-		"outputs": [
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
 		"constant": false,
 		"inputs": [],
 		"name": "abort",
 		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "autorecallInterval",
-		"outputs": [
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "responderDeposit",
-		"outputs": [
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
 		"type": "function"
 	},
 	{
@@ -185,141 +24,6 @@
 		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "initiator",
-		"outputs": [
-			{
-				"name": "",
-				"type": "address"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "autoreleaseInterval",
-		"outputs": [
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "devFee",
-		"outputs": [
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "pokeReward",
-		"outputs": [
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "buyer",
-		"outputs": [
-			{
-				"name": "",
-				"type": "address"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "autoreleaseAvailable",
-		"outputs": [
-			{
-				"name": "available",
-				"type": "bool"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "pokeNeeded",
-		"outputs": [
-			{
-				"name": "needed",
-				"type": "bool"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": false,
-		"inputs": [],
-		"name": "release",
-		"outputs": [],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "fiatTransferMethods",
-		"outputs": [
-			{
-				"name": "",
-				"type": "string"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "responderCommPubkey",
-		"outputs": [
-			{
-				"name": "",
-				"type": "string"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
 		"type": "function"
 	},
 	{
@@ -348,10 +52,311 @@
 				"type": "string"
 			}
 		],
+		"name": "initiatorStatement",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "_initiator",
+				"type": "address"
+			},
+			{
+				"name": "_initiatorIsBuyer",
+				"type": "bool"
+			},
+			{
+				"name": "uintArgs",
+				"type": "uint256[6]"
+			},
+			{
+				"name": "_price",
+				"type": "string"
+			},
+			{
+				"name": "fiatTransferMethods",
+				"type": "string"
+			},
+			{
+				"name": "commPubkey",
+				"type": "string"
+			}
+		],
+		"name": "open",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [],
+		"name": "poke",
+		"outputs": [
+			{
+				"name": "moved",
+				"type": "bool"
+			}
+		],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [],
+		"name": "recall",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [],
+		"name": "release",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "encryptedForInitiator",
+				"type": "string"
+			},
+			{
+				"name": "encryptedForResponder",
+				"type": "string"
+			}
+		],
 		"name": "responderStatement",
 		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"name": "_tokenContract",
+				"type": "address"
+			},
+			{
+				"name": "_devFeeAddress",
+				"type": "address"
+			}
+		],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"name": "fiatTransferMethods",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"name": "commPubkey",
+				"type": "string"
+			}
+		],
+		"name": "Opened",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [],
+		"name": "Recalled",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"name": "responder",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"name": "commPubkey",
+				"type": "string"
+			}
+		],
+		"name": "Committed",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [],
+		"name": "Claimed",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [],
+		"name": "Aborted",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [],
+		"name": "Released",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [],
+		"name": "Burned",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [],
+		"name": "Poke",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"name": "encryptedForInitiator",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"name": "encryptedForResponder",
+				"type": "string"
+			}
+		],
+		"name": "InitiatorStatementLog",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"name": "encryptedForInitiator",
+				"type": "string"
+			},
+			{
+				"indexed": false,
+				"name": "encryptedForResponder",
+				"type": "string"
+			}
+		],
+		"name": "ResponderStatementLog",
+		"type": "event"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "autoabortAvailable",
+		"outputs": [
+			{
+				"name": "passed",
+				"type": "bool"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "autoabortInterval",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "autorecallAvailable",
+		"outputs": [
+			{
+				"name": "available",
+				"type": "bool"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "autorecallInterval",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "autoreleaseAvailable",
+		"outputs": [
+			{
+				"name": "available",
+				"type": "bool"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "autoreleaseInterval",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "buyer",
+		"outputs": [
+			{
+				"name": "",
+				"type": "address"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
@@ -371,7 +376,21 @@
 	{
 		"constant": true,
 		"inputs": [],
-		"name": "autoabortInterval",
+		"name": "devFee",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "getBalance",
 		"outputs": [
 			{
 				"name": "",
@@ -420,14 +439,6 @@
 				"type": "uint256"
 			},
 			{
-				"name": "fiatTransferMethods",
-				"type": "string"
-			},
-			{
-				"name": "initiatorCommPubkey",
-				"type": "string"
-			},
-			{
 				"name": "pokeReward",
 				"type": "uint256"
 			}
@@ -439,11 +450,23 @@
 	{
 		"constant": true,
 		"inputs": [],
-		"name": "totalPrice",
+		"name": "getState",
 		"outputs": [
 			{
-				"name": "",
-				"type": "string"
+				"name": "balance",
+				"type": "uint256"
+			},
+			{
+				"name": "phase",
+				"type": "uint8"
+			},
+			{
+				"name": "phaseStartTimestamp",
+				"type": "uint256"
+			},
+			{
+				"name": "responder",
+				"type": "address"
 			}
 		],
 		"payable": false,
@@ -451,46 +474,26 @@
 		"type": "function"
 	},
 	{
-		"constant": false,
-		"inputs": [
+		"constant": true,
+		"inputs": [],
+		"name": "initiator",
+		"outputs": [
 			{
-				"name": "_initiator",
+				"name": "",
 				"type": "address"
-			},
-			{
-				"name": "_initiatorIsBuyer",
-				"type": "bool"
-			},
-			{
-				"name": "uintArgs",
-				"type": "uint256[6]"
-			},
-			{
-				"name": "_totalPrice",
-				"type": "string"
-			},
-			{
-				"name": "_fiatTransferMethods",
-				"type": "string"
-			},
-			{
-				"name": "commPubkey",
-				"type": "string"
 			}
 		],
-		"name": "open",
-		"outputs": [],
 		"payable": false,
-		"stateMutability": "nonpayable",
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
 		"constant": true,
 		"inputs": [],
-		"name": "autoabortAvailable",
+		"name": "initiatorIsBuyer",
 		"outputs": [
 			{
-				"name": "passed",
+				"name": "",
 				"type": "bool"
 			}
 		],
@@ -513,18 +516,70 @@
 		"type": "function"
 	},
 	{
-		"constant": false,
-		"inputs": [],
-		"name": "recall",
-		"outputs": [],
+		"constant": true,
+		"inputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "phaseStartTimestamps",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
 		"payable": false,
-		"stateMutability": "nonpayable",
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
 		"constant": true,
 		"inputs": [],
-		"name": "initiatorCommPubkey",
+		"name": "pokeNeeded",
+		"outputs": [
+			{
+				"name": "needed",
+				"type": "bool"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "pokeReward",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "pokeRewardSent",
+		"outputs": [
+			{
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "price",
 		"outputs": [
 			{
 				"name": "",
@@ -536,21 +591,45 @@
 		"type": "function"
 	},
 	{
-		"constant": false,
-		"inputs": [
+		"constant": true,
+		"inputs": [],
+		"name": "responder",
+		"outputs": [
 			{
-				"name": "encryptedForInitiator",
-				"type": "string"
-			},
-			{
-				"name": "encryptedForResponder",
-				"type": "string"
+				"name": "",
+				"type": "address"
 			}
 		],
-		"name": "initiatorStatement",
-		"outputs": [],
 		"payable": false,
-		"stateMutability": "nonpayable",
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "responderDeposit",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "seller",
+		"outputs": [
+			{
+				"name": "",
+				"type": "address"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
@@ -566,116 +645,5 @@
 		"payable": false,
 		"stateMutability": "view",
 		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "autorecallAvailable",
-		"outputs": [
-			{
-				"name": "available",
-				"type": "bool"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"name": "_tokenContract",
-				"type": "address"
-			},
-			{
-				"name": "_devFeeAddress",
-				"type": "address"
-			}
-		],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "constructor"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": false,
-				"name": "newPhase",
-				"type": "uint8"
-			}
-		],
-		"name": "PhaseChange",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [],
-		"name": "Recalled",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": false,
-				"name": "responder",
-				"type": "address"
-			}
-		],
-		"name": "Committed",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [],
-		"name": "Aborted",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [],
-		"name": "Released",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [],
-		"name": "Burned",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": false,
-				"name": "encryptedForInitiator",
-				"type": "string"
-			},
-			{
-				"indexed": false,
-				"name": "encryptedForResponder",
-				"type": "string"
-			}
-		],
-		"name": "InitiatorStatementLog",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": false,
-				"name": "encryptedForInitiator",
-				"type": "string"
-			},
-			{
-				"indexed": false,
-				"name": "encryptedForResponder",
-				"type": "string"
-			}
-		],
-		"name": "ResponderStatementLog",
-		"type": "event"
 	}
 ]

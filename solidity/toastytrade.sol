@@ -1,6 +1,18 @@
-pragma solidity 0.5.4;
+pragma solidity 0.5.6;
 
-import "ERC20Interface.sol";
+contract ERC20Interface {
+    function totalSupply() public view returns (uint);
+    function balanceOf(address tokenOwner) public view returns (uint balance);
+    function allowance(address tokenOwner, address spender) public view returns (uint remaining);
+    function transfer(address to, uint tokens) public returns (bool success);
+    function approve(address spender, uint tokens) public returns (bool success);
+    function transferFrom(address from, address to, uint tokens) public returns (bool success);
+
+    uint8 public decimals;
+
+    event Transfer(address indexed from, address indexed to, uint tokens);
+    event Approval(address indexed tokenOwner, address indexed spender, uint tokens);
+}
 
 contract ToastytradeFactory {
     event NewToastytrade(uint id, address toastytradeAddress, bool indexed initiatorIsPayer);
@@ -85,14 +97,12 @@ contract Toastytrade {
         _;
     }
 
-    event PhaseChange(Phase newPhase);
     uint[5] public phaseStartTimestamps;
 
     function changePhase(Phase p)
     internal {
         phase = p;
         phaseStartTimestamps[uint(p)] = block.timestamp;
-        emit PhaseChange(p);
     }
 
 
@@ -141,7 +151,7 @@ contract Toastytrade {
     }
 
     uint public tokenAmount;
-    string public totalPrice;
+    string public price;
     uint public buyerDeposit;
 
     uint public responderDeposit; // This will be equal to either tokenAmount or buyerDeposit, depending on initiatorIsBuyer
@@ -149,11 +159,6 @@ contract Toastytrade {
     uint public autorecallInterval;
     uint public autoabortInterval;
     uint public autoreleaseInterval;
-
-    string public fiatTransferMethods;
-
-    string public initiatorCommPubkey;
-    string public responderCommPubkey;
 
     uint public pokeReward;
     uint public devFee;
@@ -170,11 +175,11 @@ contract Toastytrade {
     5 - autoreleaseInterval
     */
 
-    function open(address payable _initiator, bool _initiatorIsBuyer, uint[6] memory uintArgs, string memory _totalPrice, string memory _fiatTransferMethods, string memory commPubkey)
+    event Opened(string fiatTransferMethods, string commPubkey);
+
+    function open(address payable _initiator, bool _initiatorIsBuyer, uint[6] memory uintArgs, string memory _price, string memory fiatTransferMethods, string memory commPubkey)
     public {
         require(getBalance() > 0, "You can't open a toastytrade without first depositing tokens.");
-
-        changePhase(Phase.Open);
 
         responderDeposit = uintArgs[0];
         pokeReward = uintArgs[1];
@@ -197,10 +202,10 @@ contract Toastytrade {
             buyerDeposit = responderDeposit;
         }
 
-        totalPrice = _totalPrice;
+        price = _price;
 
-        fiatTransferMethods = _fiatTransferMethods;
-        initiatorCommPubkey = commPubkey;
+        changePhase(Phase.Open);
+        emit Opened(fiatTransferMethods, commPubkey);
     }
 
     /* ---------------------- OPEN PHASE --------------------------
@@ -217,7 +222,8 @@ contract Toastytrade {
     ------------------------------------------------------------ */
 
     event Recalled();
-    event Committed(address responder);
+    event Committed(address responder, string commPubkey);
+
 
     function recall()
     external
@@ -230,9 +236,8 @@ contract Toastytrade {
     internal {
         require(tokenContract.transfer(initiator, getBalance()), "Recall of tokens to initiator failed!");
 
-        emit Recalled();
-
         changePhase(Phase.Closed);
+        emit Recalled();
     }
 
     function autorecallAvailable()
@@ -258,11 +263,8 @@ contract Toastytrade {
             buyer = responder;
         }
 
-        responderCommPubkey = commPubkey;
-
-        emit Committed(responder);
-
         changePhase(Phase.Committed);
+        emit Committed(responder, commPubkey);
     }
 
     /* ---------------------- COMMITTED PHASE ---------------------
@@ -278,6 +280,7 @@ contract Toastytrade {
 
     ------------------------------------------------------------ */
 
+    event Claimed();
     event Aborted();
 
     function abort()
@@ -311,9 +314,8 @@ contract Toastytrade {
         
         //There may be a wei or two left over in the contract due to integer division. Not a big deal.
 
-        emit Aborted();
-
         changePhase(Phase.Closed);
+        emit Aborted();
     }
 
     function autoabortAvailable()
@@ -331,6 +333,7 @@ contract Toastytrade {
         require(!autoabortAvailable(), "The deposit deadline has passed!");
 
         changePhase(Phase.Claimed);
+        emit Claimed();
     }
 
     /* ---------------------- CLAIMED PHASE -----------------------
@@ -375,9 +378,8 @@ contract Toastytrade {
         //Release the remaining balance to the buyer.
         require(tokenContract.transfer(buyer, getBalance()), "Final release transfer to buyer failed!");
 
-        emit Released();
-
         changePhase(Phase.Closed);
+        emit Released();
     }
 
     function burn()
@@ -393,9 +395,8 @@ contract Toastytrade {
     internal {
         require(tokenContract.transfer(address(0x0), getBalance()), "Final token burn failed!");
 
-        emit Burned();
-
         changePhase(Phase.Closed);
+        emit Burned();
     }
 
     /* ---------------------- OTHER METHODS ----------------------- */
@@ -403,8 +404,8 @@ contract Toastytrade {
     function getState()
     external
     view
-    returns(uint balance, Phase phase, uint phaseStartTimestamp, address responder, string memory responderCommPubkey) {
-        return (getBalance(), this.phase(), phaseStartTimestamps[uint(phase)], this.responder(), this.responderCommPubkey());
+    returns(uint balance, Phase phase, uint phaseStartTimestamp, address responder) {
+        return (getBalance(), this.phase(), phaseStartTimestamps[uint(phase)], this.responder());
     }
 
     function getBalance()
@@ -417,13 +418,15 @@ contract Toastytrade {
     function getParameters()
     external
     view
-    returns (address initiator, bool initiatorIsBuyer, uint tokenAmount, string memory totalPrice, uint buyerDeposit, uint autorecallInterval, uint autoabortInterval, uint autoreleaseInterval, string memory fiatTransferMethods, string memory initiatorCommPubkey, uint pokeReward)
+    returns (address initiator, bool initiatorIsBuyer, uint tokenAmount, string memory totalPrice, uint buyerDeposit, uint autorecallInterval, uint autoabortInterval, uint autoreleaseInterval, uint pokeReward)
     {
-        return (this.initiator(), this.initiatorIsBuyer(), this.tokenAmount(), this.totalPrice(), this.buyerDeposit(), this.autorecallInterval(), this.autoabortInterval(), this.autoreleaseInterval(), this.fiatTransferMethods(), this.initiatorCommPubkey(), this.pokeReward());
+        return (this.initiator(), this.initiatorIsBuyer(), this.tokenAmount(), this.price(), this.buyerDeposit(), this.autorecallInterval(), this.autoabortInterval(), this.autoreleaseInterval(), this.pokeReward());
     }
 
     // Poke function lets anyone move the contract along,
     // if it's due for some state transition.
+
+    event Poke();
 
     function pokeNeeded()
     public
@@ -441,6 +444,7 @@ contract Toastytrade {
         if (pokeNeeded()) {
             tokenContract.transfer(msg.sender, pokeReward);
             pokeRewardSent = true;
+            emit Poke();
         }
         else return false;
 
@@ -465,7 +469,7 @@ contract Toastytrade {
     }
 
     // StatementLogs allow a starting point for any necessary communication,
-    // and can be used anytime by either party after a Responder commits (including in the Closed phase).
+    // and can be used anytime by either party after a Responder commits (even in the Closed phase).
 
 
     event InitiatorStatementLog(string encryptedForInitiator, string encryptedForResponder);

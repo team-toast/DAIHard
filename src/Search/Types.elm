@@ -32,7 +32,7 @@ type alias Model =
 type Msg
     = NumTradesFetched (Result Http.Error BigInt)
     | CreationInfoFetched Int (Result Http.Error TTF.CreatedTrade)
-    | ParametersFetched Int (Result Http.Error (Result String Contracts.Types.CreateParameters))
+    | ParametersFetched Int (Result Http.Error (Result String Contracts.Types.TradeParameters))
     | StateFetched Int (Result Http.Error (Maybe Contracts.Types.State))
     | Refresh Time.Posix
     | MinDaiChanged String
@@ -172,7 +172,7 @@ updateTradeCreationInfo id creationInfo model =
             model
 
 
-updateTradeParameters : Int -> Contracts.Types.CreateParameters -> Model -> Model
+updateTradeParameters : Int -> Contracts.Types.TradeParameters -> Model -> Model
 updateTradeParameters id parameters model =
     case Array.get id model.trades of
         Just trade ->

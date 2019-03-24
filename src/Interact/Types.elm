@@ -1,4 +1,4 @@
-module Interact.Types exposing (CommMessage, EncryptedMessage, Event, EventInfo(..), InitiatorOrResponder(..), MessageContent(..), Model, Msg(..), StateChangeInfo(..), getUserRole)
+module Interact.Types exposing (CommMessage, ContractMsg(..), EncryptedMessage, Event, EventInfo(..), InitiatorOrResponder(..), MessageContent(..), Model, Msg(..), StateChangeInfo(..), getUserRole)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
@@ -11,7 +11,6 @@ import Eth.Types exposing (Address)
 import EthHelpers
 import Http
 import Json.Decode
-import RenderContract.Types
 import Time
 
 
@@ -31,8 +30,8 @@ type alias Model =
 type Msg
     = CreationInfoFetched (Result Http.Error TTF.CreatedTrade)
     | StateFetched (Result Http.Error (Maybe Contracts.Types.State))
-    | ParametersFetched (Result Http.Error (Result String Contracts.Types.CreateParameters))
-    | ContractAction RenderContract.Types.Msg
+    | ParametersFetched (Result Http.Error (Result String Contracts.Types.TradeParameters))
+    | ContractAction ContractMsg
     | PreCommitApproveMined (Result String Eth.Types.TxReceipt)
     | ContractActionMined (Result String Eth.Types.TxReceipt)
     | Refresh Time.Posix
@@ -42,6 +41,16 @@ type Msg
     | EncryptionFinished Json.Decode.Value
     | DecryptionFinished Json.Decode.Value
     | EventSentryMsg EventSentry.Msg
+
+
+type ContractMsg
+    = Poke
+    | Commit
+    | Recall
+    | Claim
+    | Abort
+    | Release
+    | Burn
 
 
 type InitiatorOrResponder

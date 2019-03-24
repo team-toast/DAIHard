@@ -181,10 +181,10 @@ update msg model =
                         |> List.indexedMap
                             (\id trade ->
                                 case trade of
-                                    Contracts.Types.PartiallyLoaded _ ->
+                                    Contracts.Types.PartiallyLoadedTrade _ ->
                                         Cmd.none
 
-                                    Contracts.Types.Loaded info ->
+                                    Contracts.Types.LoadedTrade info ->
                                         let
                                             address =
                                                 info.creationInfo.address
@@ -365,7 +365,7 @@ applyInputs model =
                     True
 
                 terms ->
-                    testTextMatch terms trade.parameters.paymentMethods
+                    testTextMatch terms trade.paymentMethods
 
         daiTest trade =
             (case query.dai.min of

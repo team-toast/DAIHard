@@ -1,4 +1,4 @@
-module Contracts.Types exposing (CreateParameters, FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), State, ToastytradeEvent(..), Trade(..), TradeCreationInfo, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, initiatorIsBuyerToOpenMode, openModeToInitiatorIsBuyer, partialTradeInfo, phaseToString, txReceiptToCreatedToastytradeSellId, updateCreationInfo, updateParameters, updateState)
+module Contracts.Types exposing (CreateParameters, FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), SecureCommInfo(..), State, ToastytradeEvent(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, initiatorIsBuyerToOpenMode, openModeToInitiatorIsBuyer, partialCommInfo, partialTradeInfo, phaseToString, txReceiptToCreatedToastytradeSellId, updateCreationInfo, updateInitiatorPubkey, updateParameters, updatePaymentMethods, updateResponderPubkey, updateState)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
@@ -61,12 +61,10 @@ type alias UserParameters =
     }
 
 
-type alias CreateParameters =
+type alias TradeParameters =
     { openMode : OpenMode
     , tradeAmount : TokenValue
     , fiatPrice : FiatValue
-    , paymentMethods : List PaymentMethod
-    , initiatorCommPubkey : String
     , autorecallInterval : Time.Posix
     , autoabortInterval : Time.Posix
     , autoreleaseInterval : Time.Posix
@@ -76,12 +74,35 @@ type alias CreateParameters =
     }
 
 
+type alias CreateParameters =
+    { tradeParameters : TradeParameters
+    , initiatorCommPubkey : String
+    , paymentMethods : List PaymentMethod
+    }
+
+
 type alias State =
     { balance : TokenValue
     , phase : Phase
     , phaseStartTime : Time.Posix
     , responder : Maybe Address
-    , responderCommPubkey : Maybe String
+    }
+
+
+type SecureCommInfo
+    = PartiallyLoadedCommInfo PartialCommInfo
+    | LoadedCommInfo FullCommInfo
+
+
+type alias PartialCommInfo =
+    { initiatorPubkey : Maybe String
+    , responderPubkey : Maybe String
+    }
+
+
+type alias FullCommInfo =
+    { initiatorPubkey : String
+    , responderPubkey : String
     }
 
 
@@ -92,26 +113,29 @@ type alias DerivedValues =
 
 
 type ToastytradeEvent
-    = CommittedEvent TT.Committed
-    | InitiatorStatementLogEvent TT.InitiatorStatementLog
-    | ResponderStatementLogEvent TT.ResponderStatementLog
-    | PhaseChangeEvent TT.PhaseChange
+    = OpenedEvent TT.Opened
+    | CommittedEvent TT.Committed
     | RecalledEvent
+    | ClaimedEvent
     | AbortedEvent
     | ReleasedEvent
     | BurnedEvent
+    | PokeEvent
+    | InitiatorStatementLogEvent TT.InitiatorStatementLog
+    | ResponderStatementLogEvent TT.ResponderStatementLog
 
 
 type Trade
-    = PartiallyLoaded PartialTradeInfo
-    | Loaded FullTradeInfo
+    = PartiallyLoadedTrade PartialTradeInfo
+    | LoadedTrade FullTradeInfo
 
 
 type alias PartialTradeInfo =
     { factoryID : Int
     , creationInfo : Maybe TradeCreationInfo
-    , parameters : Maybe CreateParameters
+    , parameters : Maybe TradeParameters
     , state : Maybe State
+    , paymentMethods : Maybe (List PaymentMethod)
     }
 
 
@@ -124,43 +148,93 @@ type alias TradeCreationInfo =
 type alias FullTradeInfo =
     { factoryID : Int
     , creationInfo : TradeCreationInfo
-    , parameters : CreateParameters
+    , parameters : TradeParameters
     , state : State
     , derived : DerivedValues
+    , commInfo : SecureCommInfo
+    , paymentMethods : List PaymentMethod
     }
+
+
+partialCommInfo : SecureCommInfo
+partialCommInfo =
+    PartiallyLoadedCommInfo <| PartialCommInfo Nothing Nothing
+
+
+updateInitiatorPubkey : String -> SecureCommInfo -> SecureCommInfo
+updateInitiatorPubkey pubkey commInfo =
+    case commInfo of
+        PartiallyLoadedCommInfo pInfo ->
+            { pInfo | initiatorPubkey = Just pubkey }
+                |> checkIfCommInfoLoaded
+
+        LoadedCommInfo _ ->
+            let
+                _ =
+                    Debug.log "Trying to update a commPubkey on a SecureCommInfo that's already loaded!" ""
+            in
+            commInfo
+
+
+updateResponderPubkey : String -> SecureCommInfo -> SecureCommInfo
+updateResponderPubkey pubkey commInfo =
+    case commInfo of
+        PartiallyLoadedCommInfo pInfo ->
+            { pInfo | responderPubkey = Just pubkey }
+                |> checkIfCommInfoLoaded
+
+        LoadedCommInfo _ ->
+            let
+                _ =
+                    Debug.log "Trying to update a commPubkey on a SecureCommInfo that's already loaded!" ""
+            in
+            commInfo
+
+
+checkIfCommInfoLoaded : PartialCommInfo -> SecureCommInfo
+checkIfCommInfoLoaded pInfo =
+    case ( pInfo.initiatorPubkey, pInfo.responderPubkey ) of
+        ( Just initiatorPubkey, Just responderPubkey ) ->
+            LoadedCommInfo <|
+                FullCommInfo
+                    initiatorPubkey
+                    responderPubkey
+
+        _ ->
+            PartiallyLoadedCommInfo pInfo
 
 
 partialTradeInfo : Int -> Trade
 partialTradeInfo factoryID =
-    PartiallyLoaded (PartialTradeInfo factoryID Nothing Nothing Nothing)
+    PartiallyLoadedTrade (PartialTradeInfo factoryID Nothing Nothing Nothing Nothing)
 
 
 updateCreationInfo : TradeCreationInfo -> Trade -> Trade
 updateCreationInfo creationInfo trade =
     case trade of
-        PartiallyLoaded pInfo ->
+        PartiallyLoadedTrade pInfo ->
             { pInfo | creationInfo = Just creationInfo }
-                |> checkIfLoaded
+                |> checkIfTradeLoaded
 
-        Loaded _ ->
+        LoadedTrade _ ->
             let
                 _ =
-                    Debug.log "Trying to update creation info on a trade that's already been loaded!" ""
+                    Debug.log "Trying to update creation info on a trade that's already fully loaded!" ""
             in
             trade
 
 
-updateParameters : CreateParameters -> Trade -> Trade
+updateParameters : TradeParameters -> Trade -> Trade
 updateParameters parameters trade =
     case trade of
-        PartiallyLoaded pInfo ->
+        PartiallyLoadedTrade pInfo ->
             { pInfo | parameters = Just parameters }
-                |> checkIfLoaded
+                |> checkIfTradeLoaded
 
-        Loaded info ->
+        LoadedTrade info ->
             let
                 _ =
-                    Debug.log "Trying to update parameters on a trade that's already been loaded!" ""
+                    Debug.log "Trying to update parameters on a trade that's already fully loaded!" ""
             in
             trade
 
@@ -168,32 +242,49 @@ updateParameters parameters trade =
 updateState : State -> Trade -> Trade
 updateState state trade =
     case trade of
-        PartiallyLoaded pInfo ->
+        PartiallyLoadedTrade pInfo ->
             { pInfo | state = Just state }
-                |> checkIfLoaded
+                |> checkIfTradeLoaded
 
-        Loaded info ->
-            Loaded { info | state = state }
+        LoadedTrade info ->
+            LoadedTrade { info | state = state }
 
 
-checkIfLoaded : PartialTradeInfo -> Trade
-checkIfLoaded pInfo =
-    case ( pInfo.creationInfo, pInfo.parameters, pInfo.state ) of
-        ( Just creationInfo, Just parameters, Just state ) ->
-            Loaded
+updatePaymentMethods : List PaymentMethod -> Trade -> Trade
+updatePaymentMethods paymentMethods trade =
+    case trade of
+        PartiallyLoadedTrade pInfo ->
+            { pInfo | paymentMethods = Just paymentMethods }
+                |> checkIfTradeLoaded
+
+        LoadedTrade info ->
+            let
+                _ =
+                    Debug.log "Trying to update payment methods on a trade that's already fully loaded!" ""
+            in
+            trade
+
+
+checkIfTradeLoaded : PartialTradeInfo -> Trade
+checkIfTradeLoaded pInfo =
+    case ( ( pInfo.creationInfo, pInfo.parameters ), ( pInfo.state, pInfo.paymentMethods ) ) of
+        ( ( Just creationInfo, Just parameters ), ( Just state, Just paymentMethods ) ) ->
+            LoadedTrade
                 (FullTradeInfo
                     pInfo.factoryID
                     creationInfo
                     parameters
                     state
                     (deriveValues parameters state)
+                    partialCommInfo
+                    paymentMethods
                 )
 
         _ ->
-            PartiallyLoaded pInfo
+            PartiallyLoadedTrade pInfo
 
 
-deriveValues : CreateParameters -> State -> DerivedValues
+deriveValues : TradeParameters -> State -> DerivedValues
 deriveValues parameters state =
     let
         currentPhaseInterval =
@@ -227,20 +318,17 @@ eventDecoder =
     eventSigDecoder
         |> Json.Decode.andThen
             (\hashedSig ->
-                if hashedSig == Eth.Utils.keccak256 "Committed(address)" then
+                if hashedSig == Eth.Utils.keccak256 "Opened(string,string)" then
+                    Json.Decode.map OpenedEvent TT.openedDecoder
+
+                else if hashedSig == Eth.Utils.keccak256 "Committed(address,string)" then
                     Json.Decode.map CommittedEvent TT.committedDecoder
-
-                else if hashedSig == Eth.Utils.keccak256 "InitiatorStatementLog(string,string)" then
-                    Json.Decode.map InitiatorStatementLogEvent TT.initiatorStatementLogDecoder
-
-                else if hashedSig == Eth.Utils.keccak256 "ResponderStatementLog(string,string)" then
-                    Json.Decode.map ResponderStatementLogEvent TT.responderStatementLogDecoder
-
-                else if hashedSig == Eth.Utils.keccak256 "PhaseChange(uint8)" then
-                    Json.Decode.map PhaseChangeEvent TT.phaseChangeDecoder
 
                 else if hashedSig == Eth.Utils.keccak256 "Recalled()" then
                     Json.Decode.succeed RecalledEvent
+
+                else if hashedSig == Eth.Utils.keccak256 "Claimed()" then
+                    Json.Decode.succeed ClaimedEvent
 
                 else if hashedSig == Eth.Utils.keccak256 "Aborted()" then
                     Json.Decode.succeed AbortedEvent
@@ -250,6 +338,15 @@ eventDecoder =
 
                 else if hashedSig == Eth.Utils.keccak256 "Burned()" then
                     Json.Decode.succeed BurnedEvent
+
+                else if hashedSig == Eth.Utils.keccak256 "InitiatorStatementLog(string,string)" then
+                    Json.Decode.map InitiatorStatementLogEvent TT.initiatorStatementLogDecoder
+
+                else if hashedSig == Eth.Utils.keccak256 "ResponderStatementLog(string,string)" then
+                    Json.Decode.map ResponderStatementLogEvent TT.responderStatementLogDecoder
+
+                else if hashedSig == Eth.Utils.keccak256 "Poke()" then
+                    Json.Decode.succeed PokeEvent
 
                 else
                     Json.Decode.fail "Unrecognized topic hash"
@@ -335,17 +432,19 @@ buildCreateParameters initiatorInfo userParameters =
                 userParameters.tradeAmount
                 (BigInt.fromInt 2500000000000000)
     in
-    { openMode = userParameters.openMode
-    , tradeAmount = userParameters.tradeAmount
-    , fiatPrice = userParameters.fiatPrice
-    , autorecallInterval = userParameters.autorecallInterval
-    , autoabortInterval = userParameters.autoabortInterval
-    , autoreleaseInterval = userParameters.autoreleaseInterval
-    , paymentMethods = userParameters.paymentMethods
-    , initiatorAddress = initiatorInfo.address
+    { tradeParameters =
+        { openMode = userParameters.openMode
+        , tradeAmount = userParameters.tradeAmount
+        , fiatPrice = userParameters.fiatPrice
+        , autorecallInterval = userParameters.autorecallInterval
+        , autoabortInterval = userParameters.autoabortInterval
+        , autoreleaseInterval = userParameters.autoreleaseInterval
+        , initiatorAddress = initiatorInfo.address
+        , buyerDeposit = buyerDeposit
+        , pokeReward = pokeReward
+        }
     , initiatorCommPubkey = initiatorInfo.commPubkey
-    , buyerDeposit = buyerDeposit
-    , pokeReward = pokeReward
+    , paymentMethods = userParameters.paymentMethods
     }
 
 
@@ -364,13 +463,6 @@ decodeState numDecimals encodedState =
             , phase = phase
             , phaseStartTime = phaseStartTime
             , responder = EthHelpers.addressIfNot0x0 encodedState.responder
-            , responderCommPubkey =
-                case encodedState.responderCommPubkey of
-                    "" ->
-                        Nothing
-
-                    s ->
-                        Just s
             }
         )
         maybePhase
