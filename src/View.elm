@@ -97,7 +97,7 @@ logoElement =
         , Element.padding 20
         , Element.Events.onClick <| GotoRoute Routing.Home
         ]
-        (Element.text "BURN | ME")
+        (Element.text "DAI | HARD")
 
 
 buyDaiElement : Bool -> Element Msg
