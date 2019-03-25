@@ -174,7 +174,7 @@ update msg model =
                 badResult ->
                     let
                         _ =
-                            Debug.log "bad parametersFetched result" badResult
+                            Debug.log "bad parameters Fetched result" badResult
                     in
                     ( model, Cmd.none, Nothing )
 
