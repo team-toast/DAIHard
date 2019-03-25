@@ -4,7 +4,7 @@ window.forge = require('node-forge');
 
 import { Elm } from '../../src/App'
 
-window.factoryAddress = "0xb1c25d39EfA2d5105f9CBdc83Dc3CB49C9F2203a";
+window.factoryAddress = "0xC7499B683a2C7E94FFA3972503611A16cdD22673";
 window.tokenContractAddress = "0xC4375B7De8af5a38a93548eb8453a498222C4fF2";
 
 window.testStuff = secureComms.testStuff;
@@ -48,20 +48,17 @@ function portStuff(app) {
         })
     });
     app.ports.encryptToPubkeys.subscribe(function (data) {
-        console.log("encrypting in JS");
         var encryptedMessages = secureComms.encryptToPubkeys(data.message, data.pubkeyHexStrings);
 
         app.ports.encryptionFinished.send(encryptedMessages);
     });
     app.ports.decryptMessage.subscribe(function (data) {
-        console.log("decrypting in JS");
         var id = data.id;
 
         var result = secureComms.decryptForUser(data.encapsulation, data.iv, data.tag, data.encrypted);
         if (!result) {
             console.log("Uh oh! Decryption didn't work...");
         }
-        console.log("decrypt result: ", result);
 
         app.ports.decryptionFinished.send({ id: id, message: result })
     });

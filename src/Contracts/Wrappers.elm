@@ -1,4 +1,4 @@
-module Contracts.Wrappers exposing (createSell, decodeParameters, getCreationInfoFromIdCmd, getDevFeeCmd, getNumTradesCmd, getParametersAndStateCmd, getParametersCmd, getStateCmd)
+module Contracts.Wrappers exposing (createSell, decodeParameters, getCreationInfoFromIdCmd, getDevFeeCmd, getNumTradesCmd, getOpenedEventDataSentryCmd, getParametersAndStateCmd, getParametersCmd, getStateCmd)
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -6,7 +6,10 @@ import Contracts.Generated.Toastytrade as TT
 import Contracts.Generated.ToastytradeFactory as TTF
 import Contracts.Types exposing (..)
 import Eth
+import Eth.Decode
+import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address, Call)
+import Eth.Utils
 import EthHelpers
 import FiatValue exposing (FiatValue)
 import Flip exposing (flip)
@@ -24,7 +27,7 @@ createSell : Address -> CreateParameters -> Call Address
 createSell contractAddress parameters =
     let
         encodedPaymentMethods =
-            Json.Encode.list PaymentMethods.encodePaymentMethod
+            Json.Encode.list PaymentMethods.encode
                 parameters.paymentMethods
                 |> Json.Encode.encode 0
 
@@ -85,6 +88,27 @@ getStateCmd ethNode numDecimals ttAddress msgConstructor =
     Eth.call ethNode.http (TT.getState ttAddress)
         |> Task.map (decodeState numDecimals)
         |> Task.attempt msgConstructor
+
+
+getOpenedEventDataSentryCmd : EventSentry msg -> TradeCreationInfo -> (Result Json.Decode.Error TT.Opened -> msg) -> ( EventSentry msg, Cmd msg )
+getOpenedEventDataSentryCmd eventSentry creationInfo msgConstructor =
+    let
+        logToMsg : Eth.Types.Log -> msg
+        logToMsg log =
+            (Eth.Decode.event TT.openedDecoder log).returnData
+                |> msgConstructor
+
+        logFilter =
+            { fromBlock = Eth.Types.BlockNum creationInfo.blocknum
+            , toBlock = Eth.Types.BlockNum creationInfo.blocknum
+            , address = creationInfo.address
+            , topics = [ Just <| Eth.Utils.keccak256 "Opened(string,string)" ]
+            }
+    in
+    EventSentry.watchOnce
+        logToMsg
+        eventSentry
+        logFilter
 
 
 decodeParameters : Int -> TT.GetParameters -> Result String TradeParameters

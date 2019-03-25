@@ -1,4 +1,4 @@
-module Contracts.Types exposing (CreateParameters, FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), SecureCommInfo(..), State, ToastytradeEvent(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, initiatorIsBuyerToOpenMode, openModeToInitiatorIsBuyer, partialCommInfo, partialTradeInfo, phaseToString, txReceiptToCreatedToastytradeSellId, updateCreationInfo, updateInitiatorPubkey, updateParameters, updatePaymentMethods, updateResponderPubkey, updateState)
+module Contracts.Types exposing (CreateParameters, FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), State, ToastytradeEvent(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, initiatorIsBuyerToOpenMode, openModeToInitiatorIsBuyer, partialTradeInfo, phaseToString, txReceiptToCreatedToastytradeSellId, updateCreationInfo, updateParameters, updatePaymentMethods, updateState)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
@@ -89,23 +89,6 @@ type alias State =
     }
 
 
-type SecureCommInfo
-    = PartiallyLoadedCommInfo PartialCommInfo
-    | LoadedCommInfo FullCommInfo
-
-
-type alias PartialCommInfo =
-    { initiatorPubkey : Maybe String
-    , responderPubkey : Maybe String
-    }
-
-
-type alias FullCommInfo =
-    { initiatorPubkey : String
-    , responderPubkey : String
-    }
-
-
 type alias DerivedValues =
     { phaseEndTime : Time.Posix
     , margin : Maybe Float
@@ -135,7 +118,7 @@ type alias PartialTradeInfo =
     , creationInfo : Maybe TradeCreationInfo
     , parameters : Maybe TradeParameters
     , state : Maybe State
-    , paymentMethods : Maybe (List PaymentMethod)
+    , paymentMethods : Maybe (Result String (List PaymentMethod)) -- Here we use a Result to contain the undecoded string upon decode failure
     }
 
 
@@ -151,57 +134,8 @@ type alias FullTradeInfo =
     , parameters : TradeParameters
     , state : State
     , derived : DerivedValues
-    , commInfo : SecureCommInfo
-    , paymentMethods : List PaymentMethod
+    , paymentMethods : Result String (List PaymentMethod) -- Here we use a Result to contain the undecoded string upon decode failure
     }
-
-
-partialCommInfo : SecureCommInfo
-partialCommInfo =
-    PartiallyLoadedCommInfo <| PartialCommInfo Nothing Nothing
-
-
-updateInitiatorPubkey : String -> SecureCommInfo -> SecureCommInfo
-updateInitiatorPubkey pubkey commInfo =
-    case commInfo of
-        PartiallyLoadedCommInfo pInfo ->
-            { pInfo | initiatorPubkey = Just pubkey }
-                |> checkIfCommInfoLoaded
-
-        LoadedCommInfo _ ->
-            let
-                _ =
-                    Debug.log "Trying to update a commPubkey on a SecureCommInfo that's already loaded!" ""
-            in
-            commInfo
-
-
-updateResponderPubkey : String -> SecureCommInfo -> SecureCommInfo
-updateResponderPubkey pubkey commInfo =
-    case commInfo of
-        PartiallyLoadedCommInfo pInfo ->
-            { pInfo | responderPubkey = Just pubkey }
-                |> checkIfCommInfoLoaded
-
-        LoadedCommInfo _ ->
-            let
-                _ =
-                    Debug.log "Trying to update a commPubkey on a SecureCommInfo that's already loaded!" ""
-            in
-            commInfo
-
-
-checkIfCommInfoLoaded : PartialCommInfo -> SecureCommInfo
-checkIfCommInfoLoaded pInfo =
-    case ( pInfo.initiatorPubkey, pInfo.responderPubkey ) of
-        ( Just initiatorPubkey, Just responderPubkey ) ->
-            LoadedCommInfo <|
-                FullCommInfo
-                    initiatorPubkey
-                    responderPubkey
-
-        _ ->
-            PartiallyLoadedCommInfo pInfo
 
 
 partialTradeInfo : Int -> Trade
@@ -250,7 +184,7 @@ updateState state trade =
             LoadedTrade { info | state = state }
 
 
-updatePaymentMethods : List PaymentMethod -> Trade -> Trade
+updatePaymentMethods : Result String (List PaymentMethod) -> Trade -> Trade
 updatePaymentMethods paymentMethods trade =
     case trade of
         PartiallyLoadedTrade pInfo ->
@@ -276,7 +210,6 @@ checkIfTradeLoaded pInfo =
                     parameters
                     state
                     (deriveValues parameters state)
-                    partialCommInfo
                     paymentMethods
                 )
 

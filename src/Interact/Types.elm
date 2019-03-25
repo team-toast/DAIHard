@@ -1,4 +1,4 @@
-module Interact.Types exposing (CommMessage, ContractMsg(..), EncryptedMessage, Event, EventInfo(..), InitiatorOrResponder(..), MessageContent(..), Model, Msg(..), StateChangeInfo(..), getUserRole)
+module Interact.Types exposing (CommMessage, ContractMsg(..), EncryptedMessage, Event, EventInfo(..), FullCommInfo, InitiatorOrResponder(..), MessageContent(..), Model, Msg(..), PartialCommInfo, SecureCommInfo(..), StateChangeInfo(..), checkIfCommInfoLoaded, getUserRole, partialCommInfo, updateInitiatorPubkey, updateResponderPubkey)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
@@ -21,9 +21,9 @@ type alias Model =
     , tokenDecimals : Int
     , trade : Contracts.Types.Trade
     , history : Array Event
+    , secureCommInfo : SecureCommInfo
     , messageInput : String
     , eventSentry : EventSentry Msg
-    , sentryWatching : Bool
     }
 
 
@@ -94,13 +94,69 @@ type alias EncryptedMessage =
 
 type StateChangeInfo
     = Opened
-    | Recalled
     | Committed Address
-    | Aborted
+    | Recalled
     | Claimed
+    | Aborted
     | Released
     | Burned
-    | RedundantEvent
+
+
+type SecureCommInfo
+    = PartiallyLoadedCommInfo PartialCommInfo
+    | LoadedCommInfo FullCommInfo
+
+
+type alias PartialCommInfo =
+    { initiatorPubkey : Maybe String
+    , responderPubkey : Maybe String
+    }
+
+
+type alias FullCommInfo =
+    { initiatorPubkey : String
+    , responderPubkey : String
+    }
+
+
+partialCommInfo : SecureCommInfo
+partialCommInfo =
+    PartiallyLoadedCommInfo <| PartialCommInfo Nothing Nothing
+
+
+updateResponderPubkey : String -> SecureCommInfo -> SecureCommInfo
+updateResponderPubkey pubkey commInfo =
+    case commInfo of
+        PartiallyLoadedCommInfo pInfo ->
+            { pInfo | responderPubkey = Just pubkey }
+                |> checkIfCommInfoLoaded
+
+        LoadedCommInfo info ->
+            LoadedCommInfo { info | responderPubkey = pubkey }
+
+
+updateInitiatorPubkey : String -> SecureCommInfo -> SecureCommInfo
+updateInitiatorPubkey pubkey commInfo =
+    case commInfo of
+        PartiallyLoadedCommInfo pInfo ->
+            { pInfo | initiatorPubkey = Just pubkey }
+                |> checkIfCommInfoLoaded
+
+        LoadedCommInfo info ->
+            LoadedCommInfo { info | initiatorPubkey = pubkey }
+
+
+checkIfCommInfoLoaded : PartialCommInfo -> SecureCommInfo
+checkIfCommInfoLoaded pInfo =
+    case ( pInfo.initiatorPubkey, pInfo.responderPubkey ) of
+        ( Just initiatorPubkey, Just responderPubkey ) ->
+            LoadedCommInfo <|
+                FullCommInfo
+                    initiatorPubkey
+                    responderPubkey
+
+        _ ->
+            PartiallyLoadedCommInfo pInfo
 
 
 getUserRole : Contracts.Types.FullTradeInfo -> Address -> Maybe InitiatorOrResponder

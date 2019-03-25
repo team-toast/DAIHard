@@ -25,7 +25,28 @@ maybeContractElement : Time.Posix -> Model -> Element.Element Msg
 maybeContractElement time model =
     case ( model.userInfo, model.trade ) of
         ( Just userInfo, Contracts.Types.LoadedTrade tradeInfo ) ->
-            Element.text "Contract rendering currently lobotomized."
+            Element.column
+                [ Element.spacing 5
+                , Element.Background.color EH.white
+                ]
+                ([ Element.text "Contract rendering currently lobotomized, but here are some buttons!"
+                 ]
+                    ++ List.map
+                        (\( msg, name ) ->
+                            Element.Input.button []
+                                { onPress = Just <| ContractAction msg
+                                , label = Element.text name
+                                }
+                        )
+                        [ ( Commit, "Commit" )
+                        , ( Recall, "Recall" )
+                        , ( Claim, "Claim" )
+                        , ( Abort, "Abort" )
+                        , ( Release, "Release" )
+                        , ( Burn, "Burn" )
+                        , ( Poke, "Poke" )
+                        ]
+                )
 
         ( Nothing, _ ) ->
             Element.text "Can't find user address. Is Metamask unlocked?"
@@ -143,9 +164,6 @@ renderEvent event =
 
                         Burned ->
                             Just ( Element.rgb 0 0 1, EH.white, "Seller burned the Dai and closed the contract" )
-
-                        RedundantEvent ->
-                            Nothing
             in
             case maybeElementInfo of
                 Nothing ->
