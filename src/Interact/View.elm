@@ -10,8 +10,6 @@ import Element.Input
 import ElementHelpers as EH
 import Eth.Utils
 import Interact.Types exposing (..)
-import RenderContract.Types
-import RenderContract.View
 import Time
 
 
@@ -26,12 +24,29 @@ root time model =
 maybeContractElement : Time.Posix -> Model -> Element.Element Msg
 maybeContractElement time model =
     case ( model.userInfo, model.trade ) of
-        ( Just userInfo, Contracts.Types.Loaded tradeInfo ) ->
-            let
-                context =
-                    RenderContract.Types.generateContext tradeInfo.parameters tradeInfo.state userInfo.address time
-            in
-            Element.map ContractAction (RenderContract.View.render (RenderContract.Types.Active context) tradeInfo.parameters)
+        ( Just userInfo, Contracts.Types.LoadedTrade tradeInfo ) ->
+            Element.column
+                [ Element.spacing 5
+                , Element.Background.color EH.white
+                ]
+                ([ Element.text "Contract rendering currently lobotomized, but here are some buttons!"
+                 ]
+                    ++ List.map
+                        (\( msg, name ) ->
+                            Element.Input.button []
+                                { onPress = Just <| ContractAction msg
+                                , label = Element.text name
+                                }
+                        )
+                        [ ( Commit, "Commit" )
+                        , ( Recall, "Recall" )
+                        , ( Claim, "Claim" )
+                        , ( Abort, "Abort" )
+                        , ( Release, "Release" )
+                        , ( Burn, "Burn" )
+                        , ( Poke, "Poke" )
+                        ]
+                )
 
         ( Nothing, _ ) ->
             Element.text "Can't find user address. Is Metamask unlocked?"
@@ -149,9 +164,6 @@ renderEvent event =
 
                         Burned ->
                             Just ( Element.rgb 0 0 1, EH.white, "Seller burned the Dai and closed the contract" )
-
-                        RedundantEvent ->
-                            Nothing
             in
             case maybeElementInfo of
                 Nothing ->
@@ -174,7 +186,7 @@ renderEvent event =
 maybeCommInputElement : Model -> Element.Element Msg
 maybeCommInputElement model =
     case ( model.userInfo, model.trade ) of
-        ( Just userInfo, Contracts.Types.Loaded tradeInfo ) ->
+        ( Just userInfo, Contracts.Types.LoadedTrade tradeInfo ) ->
             case tradeInfo.state.phase of
                 Contracts.Types.Created ->
                     Element.none

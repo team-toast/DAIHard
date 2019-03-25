@@ -298,7 +298,7 @@ viewTradeRow time asBuyer trade =
             , ( 1, viewTradeAmount trade )
             , ( 2, viewFiat trade )
             , ( 1, viewMargin trade (not asBuyer) )
-            , ( 6, viewPaymentMethods trade )
+            , ( 6, viewPaymentMethods trade.paymentMethods )
             , ( 2, viewAutoabortWindow asBuyer trade )
             , ( 2, viewAutoreleaseWindow asBuyer trade )
             , ( 2, viewTradeButton trade.factoryID )
@@ -351,12 +351,20 @@ viewMargin trade upIsGreen =
         |> Maybe.withDefault Element.none
 
 
-viewPaymentMethods : Contracts.Types.FullTradeInfo -> Element Msg
-viewPaymentMethods trade =
-    Element.row [ Element.padding 3 ]
-        (trade.parameters.paymentMethods
-            |> List.map PaymentMethods.demoView
-        )
+viewPaymentMethods : Result String (List PaymentMethod) -> Element Msg
+viewPaymentMethods paymentMethodsDecodeResult =
+    case paymentMethodsDecodeResult of
+        Ok paymentMethods ->
+            Element.row [ Element.padding 3 ]
+                (paymentMethods
+                    |> List.map PaymentMethods.demoView
+                )
+
+        Err undecoded ->
+            Element.paragraph [ Element.padding 3 ]
+                [ Element.el [ Element.Font.color EH.red ] <| Element.text "Could not decode into a list of payment methods! Here is the text: "
+                , Element.text undecoded
+                ]
 
 
 viewAutoabortWindow : Bool -> Contracts.Types.FullTradeInfo -> Element Msg
@@ -405,7 +413,7 @@ getLoadedTrades =
     List.filterMap
         (\trade ->
             case trade of
-                Contracts.Types.Loaded tradeInfo ->
+                Contracts.Types.LoadedTrade tradeInfo ->
                     Just tradeInfo
 
                 _ ->

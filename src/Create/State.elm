@@ -128,7 +128,7 @@ update msg model =
                         Contracts.Wrappers.getDevFeeCmd
                             model.ethNode
                             model.factoryAddress
-                            (TokenValue.getBigInt parameters.tradeAmount)
+                            (TokenValue.getBigInt parameters.tradeParameters.tradeAmount)
                             DevFeeFetched
                     , chainCmd = ChainCmd.none
                     , newRoute = Nothing
@@ -147,17 +147,17 @@ update msg model =
                     let
                         mainDepositAmount =
                             TokenValue.getBigInt <|
-                                case parameters.openMode of
+                                case parameters.tradeParameters.openMode of
                                     Contracts.Types.BuyerOpened ->
-                                        parameters.buyerDeposit
+                                        parameters.tradeParameters.buyerDeposit
 
                                     Contracts.Types.SellerOpened ->
-                                        parameters.tradeAmount
+                                        parameters.tradeParameters.tradeAmount
 
                         fullDepositAmount =
                             mainDepositAmount
                                 |> BigInt.add devFee
-                                |> BigInt.add (TokenValue.getBigInt parameters.pokeReward)
+                                |> BigInt.add (TokenValue.getBigInt parameters.tradeParameters.pokeReward)
 
                         txParams =
                             TokenContract.approve
@@ -247,7 +247,7 @@ update msg model =
                         }
 
         CreateMined (Err errstr) ->
-            let 
+            let
                 _ =
                     Debug.log "error mining create contract tx" errstr
             in

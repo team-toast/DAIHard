@@ -1,14 +1,18 @@
-module Search.Types exposing (FiatTypeAndRange, Model, Msg(..), ResultColumnType(..), SearchInputs, SearchQuery, TokenRange, inputsToQuery, updateFiatTypeInput, updateMaxDaiInput, updateMaxFiatInput, updateMinDaiInput, updateMinFiatInput, updatePaymentMethodInput, updatePaymentMethodTerms, updateShowCurrencyDropdown, updateTradeCreationInfo, updateTradeParameters, updateTradeState)
+module Search.Types exposing (FiatTypeAndRange, Model, Msg(..), ResultColumnType(..), SearchInputs, SearchQuery, TokenRange, inputsToQuery, updateFiatTypeInput, updateMaxDaiInput, updateMaxFiatInput, updateMinDaiInput, updateMinFiatInput, updatePaymentMethodInput, updatePaymentMethodTerms, updateShowCurrencyDropdown, updateTradeCreationInfo, updateTradeParameters, updateTradePaymentMethods, updateTradeState)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
+import Contracts.Generated.Toastytrade as TT
 import Contracts.Generated.ToastytradeFactory as TTF
 import Contracts.Types
+import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
 import EthHelpers
 import FiatValue exposing (FiatValue)
 import Http
+import Json.Decode
+import PaymentMethods exposing (PaymentMethod)
 import String.Extra
 import Time
 import TokenValue exposing (TokenValue)
@@ -16,6 +20,7 @@ import TokenValue exposing (TokenValue)
 
 type alias Model =
     { ethNode : EthHelpers.EthNode
+    , eventSentry : EventSentry Msg
     , userInfo : Maybe UserInfo
     , factoryAddress : Address
     , tokenDecimals : Int
@@ -32,8 +37,10 @@ type alias Model =
 type Msg
     = NumTradesFetched (Result Http.Error BigInt)
     | CreationInfoFetched Int (Result Http.Error TTF.CreatedTrade)
-    | ParametersFetched Int (Result Http.Error (Result String Contracts.Types.CreateParameters))
+    | ParametersFetched Int (Result Http.Error (Result String Contracts.Types.TradeParameters))
     | StateFetched Int (Result Http.Error (Maybe Contracts.Types.State))
+    | OpenedEventDataFetched Int (Result Json.Decode.Error TT.Opened)
+    | EventSentryMsg EventSentry.Msg
     | Refresh Time.Posix
     | MinDaiChanged String
     | MaxDaiChanged String
@@ -172,7 +179,7 @@ updateTradeCreationInfo id creationInfo model =
             model
 
 
-updateTradeParameters : Int -> Contracts.Types.CreateParameters -> Model -> Model
+updateTradeParameters : Int -> Contracts.Types.TradeParameters -> Model -> Model
 updateTradeParameters id parameters model =
     case Array.get id model.trades of
         Just trade ->
@@ -214,5 +221,28 @@ updateTradeState id state model =
             let
                 _ =
                     Debug.log "updateTTState ran into an out-of-range error" ""
+            in
+            model
+
+
+updateTradePaymentMethods : Int -> Result String (List PaymentMethod) -> Model -> Model
+updateTradePaymentMethods id methods model =
+    case Array.get id model.trades of
+        Just trade ->
+            let
+                newTrade =
+                    Contracts.Types.updatePaymentMethods methods trade
+
+                newTradeArray =
+                    Array.set id
+                        newTrade
+                        model.trades
+            in
+            { model | trades = newTradeArray }
+
+        Nothing ->
+            let
+                _ =
+                    Debug.log "updateTTPaymentMethods ran into an out-of-range error" ""
             in
             model

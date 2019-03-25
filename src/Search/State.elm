@@ -6,6 +6,7 @@ import BigIntHelpers
 import CommonTypes exposing (UserInfo)
 import Contracts.Types
 import Contracts.Wrappers
+import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
 import EthHelpers
 import FiatValue exposing (FiatValue)
@@ -23,8 +24,14 @@ init ethNode factoryAddress tokenDecimals maybeOpenMode userInfo =
     let
         openMode =
             maybeOpenMode |> Maybe.withDefault Contracts.Types.SellerOpened
+
+        ( eventSentry, sentryCmd ) =
+            EventSentry.init
+                EventSentryMsg
+                ethNode.http
     in
     ( { ethNode = ethNode
+      , eventSentry = eventSentry
       , userInfo = userInfo
       , factoryAddress = factoryAddress
       , tokenDecimals = tokenDecimals
@@ -36,7 +43,10 @@ init ethNode factoryAddress tokenDecimals maybeOpenMode userInfo =
       , filterFunc = initialFilterFunc openMode
       , sortFunc = initialSortFunc
       }
-    , Contracts.Wrappers.getNumTradesCmd ethNode factoryAddress NumTradesFetched
+    , Cmd.batch
+        [ Contracts.Wrappers.getNumTradesCmd ethNode factoryAddress NumTradesFetched
+        , sentryCmd
+        ]
     )
 
 
@@ -121,15 +131,28 @@ update msg model =
 
         CreationInfoFetched id fetchResult ->
             case fetchResult of
-                Ok creationInfo ->
-                    ( model
-                        |> updateTradeCreationInfo
-                            id
-                            (Contracts.Types.TradeCreationInfo
-                                creationInfo.address_
-                                (BigIntHelpers.toIntWithWarning creationInfo.blocknum)
-                            )
-                    , Contracts.Wrappers.getParametersAndStateCmd model.ethNode model.tokenDecimals creationInfo.address_ (ParametersFetched id) (StateFetched id)
+                Ok encodedCreationInfo ->
+                    let
+                        creationInfo =
+                            Contracts.Types.TradeCreationInfo
+                                encodedCreationInfo.address_
+                                (BigIntHelpers.toIntWithWarning encodedCreationInfo.blocknum)
+
+                        newModel =
+                            model
+                                |> updateTradeCreationInfo id creationInfo
+
+                        ( newSentry, sentryCmd ) =
+                            Contracts.Wrappers.getOpenedEventDataSentryCmd model.eventSentry creationInfo (OpenedEventDataFetched id)
+
+                        cmd =
+                            Cmd.batch
+                                [ Contracts.Wrappers.getParametersAndStateCmd model.ethNode model.tokenDecimals creationInfo.address (ParametersFetched id) (StateFetched id)
+                                , sentryCmd
+                                ]
+                    in
+                    ( { newModel | eventSentry = newSentry }
+                    , cmd
                     , Nothing
                     )
 
@@ -151,7 +174,7 @@ update msg model =
                 badResult ->
                     let
                         _ =
-                            Debug.log "bad parametersFetched result" badResult
+                            Debug.log "bad parameters Fetched result" badResult
                     in
                     ( model, Cmd.none, Nothing )
 
@@ -170,21 +193,41 @@ update msg model =
                     in
                     ( model, Cmd.none, Nothing )
 
+        OpenedEventDataFetched id fetchResult ->
+            case fetchResult of
+                Ok openedEventData ->
+                    let
+                        paymentMethods =
+                            PaymentMethods.decodePaymentMethodList
+                                openedEventData.fiatTransferMethods
+                    in
+                    ( model |> updateTradePaymentMethods id paymentMethods
+                    , Cmd.none
+                    , Nothing
+                    )
+
+                Err decodeError ->
+                    let
+                        _ =
+                            Debug.log "Error decoding the fetched result of OpenEvent data" decodeError
+                    in
+                    ( model
+                    , Cmd.none
+                    , Nothing
+                    )
+
         Refresh _ ->
             let
-                _ =
-                    Debug.log "refreshing" ""
-
                 cmd =
                     model.trades
                         |> Array.toList
                         |> List.indexedMap
                             (\id trade ->
                                 case trade of
-                                    Contracts.Types.PartiallyLoaded _ ->
+                                    Contracts.Types.PartiallyLoadedTrade _ ->
                                         Cmd.none
 
-                                    Contracts.Types.Loaded info ->
+                                    Contracts.Types.LoadedTrade info ->
                                         let
                                             address =
                                                 info.creationInfo.address
@@ -313,6 +356,21 @@ update msg model =
             , Nothing
             )
 
+        EventSentryMsg eventMsg ->
+            let
+                ( newEventSentry, cmd ) =
+                    EventSentry.update
+                        eventMsg
+                        model.eventSentry
+            in
+            ( { model
+                | eventSentry =
+                    newEventSentry
+              }
+            , cmd
+            , Nothing
+            )
+
         NoOp ->
             noUpdate model
 
@@ -365,7 +423,7 @@ applyInputs model =
                     True
 
                 terms ->
-                    testTextMatch terms trade.parameters.paymentMethods
+                    testTextMatch terms trade.paymentMethods
 
         daiTest trade =
             (case query.dai.min of
@@ -428,32 +486,39 @@ resetSearch model =
     }
 
 
-testTextMatch : List String -> List PaymentMethod -> Bool
-testTextMatch terms paymentMethods =
-    paymentMethods
-        |> List.any
-            (\pm ->
-                let
-                    searchable =
-                        case pm of
-                            PaymentMethods.CashDrop s ->
-                                s
+testTextMatch : List String -> Result String (List PaymentMethod) -> Bool
+testTextMatch terms paymentMethodsDecodeResult =
+    let
+        searchForAllTerms searchable =
+            terms
+                |> List.all
+                    (\term ->
+                        String.contains term searchable
+                    )
+    in
+    case paymentMethodsDecodeResult of
+        Err searchable ->
+            -- Here we use a Result to contain the undecoded string upon decode failure
+            searchForAllTerms searchable
 
-                            PaymentMethods.CashHandoff s ->
-                                s
+        Ok paymentMethods ->
+            paymentMethods
+                |> List.any
+                    (\method ->
+                        searchForAllTerms <|
+                            case method of
+                                PaymentMethods.CashDrop s ->
+                                    s
 
-                            PaymentMethods.BankTransfer identifier ->
-                                identifier.info
+                                PaymentMethods.CashHandoff s ->
+                                    s
 
-                            PaymentMethods.Custom s ->
-                                s
-                in
-                terms
-                    |> List.all
-                        (\term ->
-                            String.contains term searchable
-                        )
-            )
+                                PaymentMethods.BankTransfer identifier ->
+                                    identifier.info
+
+                                PaymentMethods.Custom s ->
+                                    s
+                    )
 
 
 noUpdate : Model -> ( Model, Cmd Msg, Maybe Routing.Route )

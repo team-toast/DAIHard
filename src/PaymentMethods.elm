@@ -1,4 +1,4 @@
-module PaymentMethods exposing (BankIdentifier, BankIdentifierType(..), PaymentMethod(..), bankIdentifierDecoder, bankIdentifierTypeDecoder, demoView, encodeBankIdentifier, encodeBankIdentifierType, encodePaymentMethod, paymentMethodDecoder)
+module PaymentMethods exposing (BankIdentifier, BankIdentifierType(..), PaymentMethod(..), bankIdentifierDecoder, bankIdentifierTypeDecoder, decodePaymentMethodList, decoder, demoView, encode, encodeBankIdentifier, encodeBankIdentifierType)
 
 import Element
 import Element.Border
@@ -15,8 +15,8 @@ type PaymentMethod
     | BankTransfer BankIdentifier
 
 
-encodePaymentMethod : PaymentMethod -> Json.Encode.Value
-encodePaymentMethod paymentMethod =
+encode : PaymentMethod -> Json.Encode.Value
+encode paymentMethod =
     let
         ( transferTypeString, transferInfo ) =
             case paymentMethod of
@@ -46,8 +46,8 @@ encodePaymentMethod paymentMethod =
         ]
 
 
-paymentMethodDecoder : Json.Decode.Decoder PaymentMethod
-paymentMethodDecoder =
+decoder : Json.Decode.Decoder PaymentMethod
+decoder =
     Json.Decode.field "type" Json.Decode.string
         |> Json.Decode.andThen
             (\typeStr ->
@@ -73,6 +73,14 @@ paymentMethodDecoder =
                             "unrecognized transfer type: "
                                 ++ unrecognizedType
             )
+
+
+decodePaymentMethodList : String -> Result String (List PaymentMethod)
+decodePaymentMethodList s =
+    Json.Decode.decodeString (Json.Decode.list decoder) s
+        -- If the decode fails, we keep the undecodeable string to display to the user later
+        |> Result.mapError
+            (\_ -> s)
 
 
 type alias BankIdentifier =

@@ -3,7 +3,7 @@ module Contracts.Generated.Toastytrade exposing
     , GetParameters
     , GetState
     , InitiatorStatementLog
-    , PhaseChange
+    , Opened
     , ResponderStatementLog
     , abort
     , abortedEvent
@@ -18,43 +18,43 @@ module Contracts.Generated.Toastytrade exposing
     , buyer
     , buyerDeposit
     , claim
+    , claimedEvent
     , commit
     , committedDecoder
     , committedEvent
     , devFee
-    , fiatTransferMethods
     , getBalance
     , getParameters
     , getParametersDecoder
     , getState
     , getStateDecoder
     , initiator
-    , initiatorCommPubkey
     , initiatorIsBuyer
     , initiatorStatement
     , initiatorStatementLogDecoder
     , initiatorStatementLogEvent
+    , open
+    , openedDecoder
+    , openedEvent
     , phase
-    , phaseChangeDecoder
-    , phaseChangeEvent
     , phaseStartTimestamps
     , poke
+    , pokeEvent
     , pokeNeeded
     , pokeReward
     , pokeRewardSent
+    , price
     , recall
     , recalledEvent
     , release
     , releasedEvent
     , responder
-    , responderCommPubkey
     , responderDeposit
     , responderStatement
     , responderStatementLogDecoder
     , responderStatementLogEvent
     , seller
     , tokenAmount
-    , totalPrice
     )
 
 import Abi.Decode as AbiDecode exposing (abiDecode, andMap, data, toElmDecoder, topic)
@@ -269,21 +269,6 @@ devFee contractAddress =
     }
 
 
-{-| "fiatTransferMethods()" function
--}
-fiatTransferMethods : Address -> Call String
-fiatTransferMethods contractAddress =
-    { to = Just contractAddress
-    , from = Nothing
-    , gas = Nothing
-    , gasPrice = Nothing
-    , value = Nothing
-    , data = Just <| AbiEncode.functionCall "fiatTransferMethods()" []
-    , nonce = Nothing
-    , decoder = toElmDecoder AbiDecode.string
-    }
-
-
 {-| "getBalance()" function
 -}
 getBalance : Address -> Call BigInt
@@ -310,8 +295,6 @@ type alias GetParameters =
     , autorecallInterval : BigInt
     , autoabortInterval : BigInt
     , autoreleaseInterval : BigInt
-    , fiatTransferMethods : String
-    , initiatorCommPubkey : String
     , pokeReward : BigInt
     }
 
@@ -340,8 +323,6 @@ getParametersDecoder =
         |> andMap AbiDecode.uint
         |> andMap AbiDecode.uint
         |> andMap AbiDecode.uint
-        |> andMap AbiDecode.string
-        |> andMap AbiDecode.string
         |> andMap AbiDecode.uint
         |> toElmDecoder
 
@@ -353,7 +334,6 @@ type alias GetState =
     , phase : BigInt
     , phaseStartTimestamp : BigInt
     , responder : Address
-    , responderCommPubkey : String
     }
 
 
@@ -377,7 +357,6 @@ getStateDecoder =
         |> andMap AbiDecode.uint
         |> andMap AbiDecode.uint
         |> andMap AbiDecode.address
-        |> andMap AbiDecode.string
         |> toElmDecoder
 
 
@@ -393,21 +372,6 @@ initiator contractAddress =
     , data = Just <| AbiEncode.functionCall "initiator()" []
     , nonce = Nothing
     , decoder = toElmDecoder AbiDecode.address
-    }
-
-
-{-| "initiatorCommPubkey()" function
--}
-initiatorCommPubkey : Address -> Call String
-initiatorCommPubkey contractAddress =
-    { to = Just contractAddress
-    , from = Nothing
-    , gas = Nothing
-    , gasPrice = Nothing
-    , value = Nothing
-    , data = Just <| AbiEncode.functionCall "initiatorCommPubkey()" []
-    , nonce = Nothing
-    , decoder = toElmDecoder AbiDecode.string
     }
 
 
@@ -436,6 +400,21 @@ initiatorStatement contractAddress encryptedForInitiator encryptedForResponder =
     , gasPrice = Nothing
     , value = Nothing
     , data = Just <| AbiEncode.functionCall "initiatorStatement(string,string)" [ AbiEncode.string encryptedForInitiator, AbiEncode.string encryptedForResponder ]
+    , nonce = Nothing
+    , decoder = Decode.succeed ()
+    }
+
+
+{-| "open(address,bool,uint256[6],string,string,string)" function
+-}
+open : Address -> Address -> Bool -> BigInt -> String -> String -> String -> Call ()
+open contractAddress initiator_ initiatorIsBuyer_ uintArgs price_ fiatTransferMethods commPubkey =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "open(address,bool,uint256[6],string,string,string)" [ AbiEncode.address initiator_, AbiEncode.bool initiatorIsBuyer_, AbiEncode.uint uintArgs, AbiEncode.string price_, AbiEncode.string fiatTransferMethods, AbiEncode.string commPubkey ]
     , nonce = Nothing
     , decoder = Decode.succeed ()
     }
@@ -531,6 +510,21 @@ pokeRewardSent contractAddress =
     }
 
 
+{-| "price()" function
+-}
+price : Address -> Call String
+price contractAddress =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "price()" []
+    , nonce = Nothing
+    , decoder = toElmDecoder AbiDecode.string
+    }
+
+
 {-| "recall()" function
 -}
 recall : Address -> Call ()
@@ -573,21 +567,6 @@ responder contractAddress =
     , data = Just <| AbiEncode.functionCall "responder()" []
     , nonce = Nothing
     , decoder = toElmDecoder AbiDecode.address
-    }
-
-
-{-| "responderCommPubkey()" function
--}
-responderCommPubkey : Address -> Call String
-responderCommPubkey contractAddress =
-    { to = Just contractAddress
-    , from = Nothing
-    , gas = Nothing
-    , gasPrice = Nothing
-    , value = Nothing
-    , data = Just <| AbiEncode.functionCall "responderCommPubkey()" []
-    , nonce = Nothing
-    , decoder = toElmDecoder AbiDecode.string
     }
 
 
@@ -651,21 +630,6 @@ tokenAmount contractAddress =
     }
 
 
-{-| "totalPrice()" function
--}
-totalPrice : Address -> Call String
-totalPrice contractAddress =
-    { to = Just contractAddress
-    , from = Nothing
-    , gas = Nothing
-    , gasPrice = Nothing
-    , value = Nothing
-    , data = Just <| AbiEncode.functionCall "totalPrice()" []
-    , nonce = Nothing
-    , decoder = toElmDecoder AbiDecode.string
-    }
-
-
 {-| "Aborted()" event
 -}
 abortedEvent : Address -> LogFilter
@@ -688,10 +652,23 @@ burnedEvent contractAddress =
     }
 
 
-{-| "Committed(address)" event
+{-| "Claimed()" event
+-}
+claimedEvent : Address -> LogFilter
+claimedEvent contractAddress =
+    { fromBlock = LatestBlock
+    , toBlock = LatestBlock
+    , address = contractAddress
+    , topics = [ Just <| U.keccak256 "Claimed()" ]
+    }
+
+
+{-| "Committed(address,string)" event
 -}
 type alias Committed =
-    { responder : Address }
+    { responder : Address
+    , commPubkey : String
+    }
 
 
 committedEvent : Address -> LogFilter
@@ -699,7 +676,7 @@ committedEvent contractAddress =
     { fromBlock = LatestBlock
     , toBlock = LatestBlock
     , address = contractAddress
-    , topics = [ Just <| U.keccak256 "Committed(address)" ]
+    , topics = [ Just <| U.keccak256 "Committed(address,string)" ]
     }
 
 
@@ -707,6 +684,7 @@ committedDecoder : Decoder Committed
 committedDecoder =
     succeed Committed
         |> custom (data 0 AbiDecode.address)
+        |> custom (data 1 AbiDecode.string)
 
 
 {-| "InitiatorStatementLog(string,string)" event
@@ -733,25 +711,39 @@ initiatorStatementLogDecoder =
         |> custom (data 1 AbiDecode.string)
 
 
-{-| "PhaseChange(uint8)" event
+{-| "Opened(string,string)" event
 -}
-type alias PhaseChange =
-    { newPhase : BigInt }
-
-
-phaseChangeEvent : Address -> LogFilter
-phaseChangeEvent contractAddress =
-    { fromBlock = LatestBlock
-    , toBlock = LatestBlock
-    , address = contractAddress
-    , topics = [ Just <| U.keccak256 "PhaseChange(uint8)" ]
+type alias Opened =
+    { fiatTransferMethods : String
+    , commPubkey : String
     }
 
 
-phaseChangeDecoder : Decoder PhaseChange
-phaseChangeDecoder =
-    succeed PhaseChange
-        |> custom (data 0 AbiDecode.uint)
+openedEvent : Address -> LogFilter
+openedEvent contractAddress =
+    { fromBlock = LatestBlock
+    , toBlock = LatestBlock
+    , address = contractAddress
+    , topics = [ Just <| U.keccak256 "Opened(string,string)" ]
+    }
+
+
+openedDecoder : Decoder Opened
+openedDecoder =
+    succeed Opened
+        |> custom (data 0 AbiDecode.string)
+        |> custom (data 1 AbiDecode.string)
+
+
+{-| "Poke()" event
+-}
+pokeEvent : Address -> LogFilter
+pokeEvent contractAddress =
+    { fromBlock = LatestBlock
+    , toBlock = LatestBlock
+    , address = contractAddress
+    , topics = [ Just <| U.keccak256 "Poke()" ]
+    }
 
 
 {-| "Recalled()" event
