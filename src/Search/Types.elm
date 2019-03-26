@@ -8,7 +8,7 @@ import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Types
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
-import EthHelpers
+import EthHelpers exposing (EthNode)
 import FiatValue exposing (FiatValue)
 import Http
 import Json.Decode
@@ -19,11 +19,9 @@ import TokenValue exposing (TokenValue)
 
 
 type alias Model =
-    { ethNode : EthHelpers.EthNode
+    { ethNode : EthNode
     , eventSentry : EventSentry Msg
     , userInfo : Maybe UserInfo
-    , factoryAddress : Address
-    , tokenDecimals : Int
     , numTrades : Maybe Int
     , openMode : Contracts.Types.OpenMode
     , inputs : SearchInputs

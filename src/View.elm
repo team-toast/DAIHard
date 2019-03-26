@@ -10,7 +10,6 @@ import Element.Events
 import Element.Font
 import Element.Input
 import ElementHelpers as EH
-import Interact.View
 import Routing
 import Search.View
 import Types exposing (..)
@@ -80,8 +79,6 @@ headerContent model =
             , Element.spacing 75
             ]
             [ logoElement
-            , buyDaiElement model.showBuyDaiDropdown
-            , sellDaiElement model.showSellDaiDropdown
             , myOffersElement
             ]
         )
@@ -98,78 +95,6 @@ logoElement =
         , Element.Events.onClick <| GotoRoute Routing.Home
         ]
         (Element.text "DAI | HARD")
-
-
-buyDaiElement : Bool -> Element Msg
-buyDaiElement showDropdown =
-    let
-        dropdownAttributes =
-            if showDropdown then
-                [ Element.below buyDaiDropdown ]
-
-            else
-                []
-    in
-    Element.Input.button
-        (headerMenuAttributes ++ dropdownAttributes ++ [ Element.Events.onLoseFocus CloseDropdowns ])
-        { onPress = Just BuyDaiDropdownToggle
-        , label = Element.el [ Element.Font.semiBold ] <| Element.text "Buy Dai"
-        }
-
-
-buyDaiDropdown : Element Msg
-buyDaiDropdown =
-    Element.column
-        dropdownStyles
-        [ Element.el
-            [ Element.padding 10
-            , Element.pointer
-            , Element.Events.onClick <| GotoRoute <| Routing.Create <| Just Contracts.Types.BuyerOpened
-            ]
-            (Element.text "Create Buy Offer")
-        , Element.el
-            [ Element.padding 10
-            , Element.pointer
-            , Element.Events.onClick <| GotoRoute <| Routing.Search <| Just Contracts.Types.SellerOpened
-            ]
-            (Element.text "See Sell Offers")
-        ]
-
-
-sellDaiElement : Bool -> Element Msg
-sellDaiElement showDropdown =
-    let
-        dropdownAttributes =
-            if showDropdown then
-                [ Element.below sellDaiDropdown ]
-
-            else
-                []
-    in
-    Element.Input.button
-        (headerMenuAttributes ++ dropdownAttributes ++ [ Element.Events.onLoseFocus CloseDropdowns ])
-        { onPress = Just SellDaiDropdownToggle
-        , label = Element.text "Sell Dai"
-        }
-
-
-sellDaiDropdown : Element Msg
-sellDaiDropdown =
-    Element.column
-        dropdownStyles
-        [ Element.el
-            [ Element.padding 10
-            , Element.pointer
-            , Element.Events.onClick <| GotoRoute <| Routing.Create <| Just Contracts.Types.SellerOpened
-            ]
-            (Element.text "Create Sell Offer")
-        , Element.el
-            [ Element.padding 10
-            , Element.pointer
-            , Element.Events.onClick <| GotoRoute <| Routing.Search <| Just Contracts.Types.BuyerOpened
-            ]
-            (Element.text "See Buy Offers")
-        ]
 
 
 dropdownStyles : List (Attribute Msg)
@@ -211,9 +136,8 @@ subModelElement model =
             CreateModel createModel ->
                 Element.map CreateMsg (Create.View.root createModel)
 
-            InteractModel interactModel ->
-                Element.map InteractMsg (Interact.View.root model.time interactModel)
-
+            -- InteractModel interactModel ->
+            --     Element.map InteractMsg (Interact.View.root model.time interactModel)
             SearchModel searchModel ->
                 Element.map SearchMsg (Search.View.root model.time searchModel)
         )

@@ -1,4 +1,4 @@
-module ElementHelpers exposing (black, block, blockBackgroundColor, blockBorderColor, blockPlusAttributes, blue, bulletPointString, buttonBlue, buttonDeepBlue, buttonGreen, buttonRed, buyer, clauseList, contractActionButton, contractBackgroundColor, contractBorderColor, contractInsetBackgroundColor, contractShadowAttribute, currencySelector, daiSymbol, daiValue, errorMessage, fakeLink, fiatSymbolElementFromFiatType, fiatValue, fillWidthBlock, green, hbreak, headerBackgroundColor, initiator, initiatorBackgroundColor, initiatorColor, interval, intervalWithElapsedBar, lightGray, margin, methodName, pageBackgroundColor, pageTitle, red, responder, responderBackgroundColor, responderColor, roundBottomCorners, roundTopCorners, secondsRemainingString, sectionHeading, sectionReference, seller, smallInput, subpageBackgroundColor, testBorderStyles, textInputWithElement, timeInput, timeValue, tokenValue, white, yellow)
+module ElementHelpers exposing (black, blue, bulletPointString, currencySelector, daiSymbol, daiValue, disabledTextColor, errorMessage, fakeLink, fiatTypeToSymbolElement, fiatValue, green, headerBackgroundColor, inputWithHeader, interval, intervalWithElapsedBar, lightGray, margin, pageBackgroundColor, red, roundBottomCorners, roundTopCorners, subtleShadow, testBorderStyles, textInputWithElement, tokenValue, white, yellow)
 
 import CommonTypes exposing (..)
 import Css
@@ -52,184 +52,20 @@ lightGray =
     Element.rgb255 233 237 242
 
 
-initiatorColor =
-    Element.rgb 0 0.7 0
-
-
-responderColor =
-    Element.rgb 1 0.55 0
-
-
-buyerColor =
-    initiatorColor
-
-
-sellerColor =
-    responderColor
-
-
-initiatorBackgroundColor =
-    Element.rgb 0.6 1 0.6
-
-
-responderBackgroundColor =
-    Element.rgb 1 0.7 0.5
-
-
-buttonBlue =
-    Element.rgb 0 0 1
-
-
-buttonGreen =
-    Element.rgb 0 1 0
-
-
-buttonRed =
-    Element.rgb 1 0 0
+pageBackgroundColor =
+    Element.rgb 0.9 0.9 0.9
 
 
 headerBackgroundColor =
     Element.rgb255 10 33 108
 
 
-pageBackgroundColor =
-    Element.rgb 0.9 0.9 0.9
-
-
-subpageBackgroundColor =
-    Element.rgb 0.95 0.95 0.95
-
-
-blockBackgroundColor =
-    Element.rgb 1 1 1
-
-
-blockBorderColor =
-    Element.rgb 0.1 0.4 0.7
-
-
-contractBackgroundColor =
-    Element.rgb 1 1 0.7
-
-
-contractInsetBackgroundColor =
-    Element.rgb 1 1 0.85
-
-
-contractBorderColor =
-    Element.rgb 0.5 0.5 0.1
-
-
-defaultHbreakColor =
-    Element.rgb 0.8 0.8 0.8
-
-
-buttonDeepBlue =
-    Element.rgb 0 0.15 0.35
+disabledTextColor =
+    Element.rgba255 1 31 52 0.13
 
 
 
--- HEADINGS
-
-
-pageTitle : String -> Element msg
-pageTitle s =
-    let
-        styles =
-            [ Element.Font.size 36
-            , Element.Font.color (Element.rgb 1 1 1)
-            , Element.centerX
-            ]
-    in
-    Element.el styles (Element.text s)
-
-
-sectionHeading : String -> Element msg
-sectionHeading s =
-    Element.column [ Element.spacing 30 ]
-        [ Element.el [ Element.Font.size 30, Element.Font.bold ] (Element.text s)
-        , Element.el [] Element.none
-        ]
-
-
-block : String -> Element msg -> Element msg
-block title bodyElement =
-    blockPlusAttributes title bodyElement []
-
-
-blockPlusAttributes : String -> Element msg -> List (Attribute msg) -> Element msg
-blockPlusAttributes title bodyElement attributes =
-    let
-        elementStyles =
-            attributes
-
-        headerStyles =
-            [ Element.padding 10
-            , Element.width Element.fill
-            , Element.Background.color blockBorderColor
-            , roundTopCorners 10
-            ]
-
-        bodyStyles =
-            [ Element.Background.color blockBackgroundColor
-            , Element.padding 20
-            , Element.width Element.fill
-            , roundBottomCorners 10
-            , Element.Border.color blockBorderColor
-            , Element.Border.width 3
-            ]
-    in
-    Element.column elementStyles
-        [ Element.el headerStyles
-            (Element.el
-                [ Element.Font.size 28, Element.Font.color white, Element.centerX ]
-                (Element.text title)
-            )
-        , Element.el bodyStyles bodyElement
-        ]
-
-
-fillWidthBlock : String -> Element msg -> Element msg
-fillWidthBlock title bodyElement =
-    blockPlusAttributes title bodyElement [ Element.width Element.fill ]
-
-
-
--- SPECIAL TERMS
-
-
-initiator : List (Attribute msg) -> Element msg
-initiator attributes =
-    Element.el (attributes ++ [ Element.Font.color initiatorColor ]) (Element.text "Initiator")
-
-
-responder : List (Attribute msg) -> Element msg
-responder attributes =
-    Element.el (attributes ++ [ Element.Font.color responderColor ]) (Element.text "Responder")
-
-
-buyer : List (Attribute msg) -> Element msg
-buyer attributes =
-    Element.el (attributes ++ [ Element.Font.color buyerColor ]) (Element.text "Buyer")
-
-
-seller : List (Attribute msg) -> Element msg
-seller attributes =
-    Element.el (attributes ++ [ Element.Font.color sellerColor ]) (Element.text "Seller")
-
-
-
--- TEXT STYLES
-
-
-methodName : String -> Element msg
-methodName name =
-    Element.el [ Element.Font.family [ Element.Font.monospace ], Element.Background.color (Element.rgb 0.9 0.9 0.9) ] (Element.text name)
-
-
-sectionReference : String -> Element msg
-sectionReference name =
-    Element.el [ Element.Font.bold ] (Element.text name)
+-- LINKS
 
 
 fakeLink : String -> Element msg
@@ -251,7 +87,7 @@ tokenValue : TokenValue -> Element msg
 tokenValue tv =
     let
         s =
-            TokenValue.renderToString Nothing tv ++ " Dai"
+            TokenValue.renderToString Nothing tv ++ " DAI"
     in
     Element.el [ Element.Font.color (Element.rgb 0 0 1) ] (Element.text s)
 
@@ -320,31 +156,6 @@ margin upIsGreen marginFloat =
                 , Element.el [ Element.Font.color textColor, Element.Font.size 16 ]
                     (Element.text unsignedPercentString)
                 ]
-
-
-timeValue : Time.Posix -> Element msg
-timeValue tv =
-    let
-        s =
-            (TimeHelpers.posixToSeconds tv
-                // (60 * 60 * 24)
-                |> String.fromInt
-            )
-                ++ " days"
-    in
-    Element.el [ Element.Font.color (Element.rgb 0 0 1) ] (Element.text s)
-
-
-secondsRemainingString : Time.Posix -> Time.Posix -> String
-secondsRemainingString end now =
-    let
-        secondsLeftString =
-            TimeHelpers.sub end now
-                |> Time.posixToMillis
-                |> (\millis -> millis // 1000)
-                |> String.fromInt
-    in
-    secondsLeftString ++ " seconds"
 
 
 interval : Maybe Element.Color -> Time.Posix -> Element msg
@@ -458,54 +269,14 @@ elapsedBar ratio filledBarColor =
 
 
 
--- GROUPINGS
-
-
-clauseList : List (Element msg) -> Element msg
-clauseList clauseElements =
-    let
-        constructClauseElement body =
-            Element.row []
-                [ Element.el [ Element.alignTop, Element.Font.size 24, Element.width (Element.px 50) ] (Element.el [ Element.centerX ] (Element.text bulletPointString))
-                , body
-                ]
-    in
-    Element.column [ Element.spacing 20, Element.padding 10 ]
-        (List.map constructClauseElement clauseElements)
-
-
-
 -- INPUTS
 
 
-smallInput : String -> String -> (String -> msg) -> Element msg
-smallInput labelStr valueStr msgConstructor =
-    Element.Input.text [ Element.width (Element.px 100) ]
-        { onChange = msgConstructor
-        , text = valueStr
-        , placeholder = Nothing
-        , label = Element.Input.labelHidden labelStr
-        }
-
-
-timeInput : String -> String -> (String -> msg) -> Element msg
-timeInput labelStr value msgConstructor =
-    Element.row []
-        [ Element.Input.text [ Element.width (Element.px 50) ]
-            { onChange = msgConstructor
-            , text = value
-            , placeholder = Nothing
-            , label = Element.Input.labelHidden labelStr
-            }
-        , Element.text " days"
-        ]
-
-
 textInputWithElement : List (Attribute msg) -> List (Attribute msg) -> Element msg -> String -> String -> Maybe (Element.Input.Placeholder msg) -> Maybe (Bool -> msg) -> (String -> msg) -> Element msg
-textInputWithElement attributes inputAttributes addedElement labelStr value placeholder maybeShowHideMsgConstructor msgConstructor =
+textInputWithElement attributes inputAttributes addedElement labelStr value placeholder maybeShowHideDropdownMsg msgConstructor =
     let
         focusEventAttributes =
-            case maybeShowHideMsgConstructor of
+            case maybeShowHideDropdownMsg of
                 Nothing ->
                     []
 
@@ -608,7 +379,7 @@ currencySelector showDropdown typeInput showHideMsgConstructor msgConstructor =
     textInputWithElement
         [ Element.below dropdownEl ]
         []
-        (fiatSymbolElementFromFiatType typeInput)
+        (fiatTypeToSymbolElement typeInput)
         "select currency"
         typeInput
         Nothing
@@ -627,8 +398,8 @@ textWithoutTextCursor s =
         |> Element.html
 
 
-fiatSymbolElementFromFiatType : String -> Element msg
-fiatSymbolElementFromFiatType fiatType =
+fiatTypeToSymbolElement : String -> Element msg
+fiatTypeToSymbolElement fiatType =
     case Dict.get fiatType FiatValue.currencyTypes of
         Nothing ->
             Element.text "*"
@@ -646,33 +417,7 @@ onClickNoPropagation msg =
 
 
 
--- BUTTONS
-
-
-contractActionButton : String -> Element.Color -> msg -> Element msg
-contractActionButton name color msgConstructor =
-    Element.Input.button
-        [ Element.padding 15
-        , Element.Background.color color
-        , Element.Border.rounded 5
-        ]
-        { onPress = Just msgConstructor
-        , label = Element.text name
-        }
-
-
-
 -- STYLE HELPERS
-
-
-hbreak : Element msg
-hbreak =
-    Element.el
-        [ Element.width Element.fill
-        , Element.height (Element.px 1)
-        , Element.Background.color defaultHbreakColor
-        ]
-        Element.none
 
 
 roundBottomCorners : Int -> Attribute msg
@@ -695,13 +440,25 @@ roundTopCorners r =
         }
 
 
-contractShadowAttribute : Attribute msg
-contractShadowAttribute =
+inputWithHeader : String -> Element msg -> Element msg
+inputWithHeader headerString element =
+    Element.column [ Element.spacing 10 ]
+        [ Element.el
+            [ Element.Font.size 17
+            , Element.Font.semiBold
+            ]
+            (Element.text headerString)
+        , element
+        ]
+
+
+subtleShadow : Attribute msg
+subtleShadow =
     Element.Border.shadow
-        { offset = ( -3, 10 )
+        { offset = ( 0, 3 )
         , size = 0
-        , blur = 5
-        , color = Element.rgb 0.5 0.5 0.5
+        , blur = 20
+        , color = Element.rgba255 0 0 0 0.04
         }
 
 
@@ -755,7 +512,7 @@ errorMessage str debugObj =
         , Element.Background.color <| Element.rgb 1 0 0
         , Element.Font.color white
         ]
-        (Element.text str)
+        (Element.text <| "Error:" ++ str)
 
 
 

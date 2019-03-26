@@ -4,9 +4,6 @@ window.forge = require('node-forge');
 
 import { Elm } from '../../src/App'
 
-window.factoryAddress = "0x02b37f71e1B274570fbb5b26f20D8eA1777Fb65a";
-window.tokenContractAddress = "0xC4375B7De8af5a38a93548eb8453a498222C4fF2";
-
 window.testStuff = secureComms.testStuff;
 
 window.addEventListener('load', function () {
@@ -15,10 +12,7 @@ window.addEventListener('load', function () {
             window.app = Elm.App.init({
                 node: document.getElementById('elm'),
                 flags: {
-                    tokenContractDecimals: 18,
-                    networkId: parseInt(networkId),
-                    tokenContractAddressString: tokenContractAddress,
-                    factoryAddressString: factoryAddress
+                    networkId: parseInt(networkId)
                 }
             });
             portStuff(app);
@@ -28,10 +22,7 @@ window.addEventListener('load', function () {
         window.app = Elm.App.init({
             node: document.getElementById('elm'),
             flags: {
-                tokenContractDecimals: 18,
-                networkId: parseInt(networkId),
-                tokenContractAddressString: tokenContractAddress,
-                factoryAddressString: factoryAddress
+                networkId: parseInt(networkId)
             }
         });
         console.log("Metamask not detected.");

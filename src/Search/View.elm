@@ -29,7 +29,6 @@ root time model =
         , Element.Events.onClick (ShowCurrencyDropdown False)
         ]
         [ searchInputElement model.inputs
-        , EH.hbreak
         , resultsElement time model
         ]
 
@@ -192,7 +191,7 @@ fiatInput : Bool -> String -> String -> String -> Element Msg
 fiatInput showTypeDropdown fiatType minFiat maxFiat =
     let
         fiatLabelElement =
-            EH.fiatSymbolElementFromFiatType fiatType
+            EH.fiatTypeToSymbolElement fiatType
 
         minElement =
             Element.row [ Element.spacing 8, Element.centerY, Element.width <| Element.px 60 ]
@@ -243,7 +242,7 @@ paymentMethodsInput searchString =
 applyButton : Element Msg
 applyButton =
     Element.Input.button
-        [ Element.Background.color EH.buttonDeepBlue
+        [ Element.Background.color EH.blue
         , Element.padding 10
         , Element.Border.rounded 5
         ]
@@ -261,7 +260,7 @@ applyButton =
 resetButton : Element Msg
 resetButton =
     Element.Input.button
-        [ Element.Background.color EH.buttonDeepBlue
+        [ Element.Background.color EH.blue
         , Element.padding 10
         , Element.Border.rounded 5
         ]

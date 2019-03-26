@@ -10,8 +10,8 @@ import Url.Parser.Query
 
 type Route
     = Home
-    | Create (Maybe Contracts.Types.OpenMode)
-    | Interact (Maybe Int)
+    | Create
+      -- | Interact (Maybe Int)
     | Search (Maybe Contracts.Types.OpenMode)
     | NotFound
 
@@ -20,8 +20,9 @@ routeParser : Parser (Route -> a) a
 routeParser =
     Url.Parser.oneOf
         [ Url.Parser.map Home Url.Parser.top
-        , Url.Parser.map Create (Url.Parser.s "create" <?> typeParser)
-        , Url.Parser.map Interact (Url.Parser.s "interact" <?> Url.Parser.Query.int "id")
+        , Url.Parser.map Create (Url.Parser.s "create")
+
+        -- , Url.Parser.map Interact (Url.Parser.s "interact" <?> Url.Parser.Query.int "id")
         , Url.Parser.map Search (Url.Parser.s "search" <?> typeParser)
         ]
 
@@ -60,19 +61,17 @@ routeToString route =
         Home ->
             Url.Builder.absolute [] []
 
-        Create maybeOpenMode ->
-            Url.Builder.absolute [ "create" ] <| buildMaybeOpenModeQueryParameters maybeOpenMode
+        Create ->
+            Url.Builder.absolute [ "create" ] []
 
-        Interact maybeId ->
-            Url.Builder.absolute [ "interact" ]
-                (case maybeId of
-                    Nothing ->
-                        []
-
-                    Just id ->
-                        [ Url.Builder.string "id" <| String.fromInt id ]
-                )
-
+        -- Interact maybeId ->
+        --     Url.Builder.absolute [ "interact" ]
+        --         (case maybeId of
+        --             Nothing ->
+        --                 []
+        --             Just id ->
+        --                 [ Url.Builder.string "id" <| String.fromInt id ]
+        -- )
         Search maybeOpenMode ->
             Url.Builder.absolute [ "search" ] <| buildMaybeOpenModeQueryParameters maybeOpenMode
 

@@ -1,12 +1,12 @@
-module Create.Types exposing (Inputs, Model, Msg(..), UpdateResult, justModelUpdate)
+module Create.Types exposing (ContractParameterInputs, Model, Msg(..), UpdateResult, justModelUpdate)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (UserInfo)
 import Contracts.Generated.DAIHardFactory as DHF
-import Contracts.Types as CTypes
+import Contracts.Types
 import Eth.Types exposing (Address, TxReceipt)
-import EthHelpers exposing (EthNode)
+import EthHelpers
 import Http
 import PaymentMethods exposing (PaymentMethod)
 import Routing
@@ -14,18 +14,22 @@ import TokenValue exposing (TokenValue)
 
 
 type alias Model =
-    { node : EthNode
+    { ethNode : EthHelpers.EthNode
+    , tokenAddress : Address
+    , tokenDecimals : Int
+    , factoryAddress : Address
     , userInfo : Maybe UserInfo
-    , inputs : Inputs
+    , openMode : Contracts.Types.OpenMode
+    , parameterInputs : ContractParameterInputs
     , showCurrencyDropdown : Bool
-    , createParameters : Maybe CTypes.CreateParameters
+    , contractParameters : Maybe Contracts.Types.CreateParameters
     , busyWithTxChain : Bool
     }
 
 
-type alias Inputs =
-    { openMode : CTypes.OpenMode
-    , daiAmount : String
+type alias ContractParameterInputs =
+    { openMode : Contracts.Types.OpenMode
+    , tradeAmount : String
     , fiatType : String
     , fiatAmount : String
     , paymentMethods : List PaymentMethod
@@ -36,11 +40,13 @@ type alias Inputs =
 
 
 type Msg
-    = ChangeType CTypes.OpenMode
-    | TradeAmountChanged String
+    = TradeAmountChanged String
     | FiatTypeChanged String
     | FiatAmountChanged String
     | ShowCurrencyDropdown Bool
+    | AutorecallIntervalChanged String
+    | AutoabortIntervalChanged String
+    | AutoreleaseIntervalChanged String
     | AddPaymentMethod PaymentMethod
     | BeginCreateProcess
     | ExtraFeesFetched (Result Http.Error DHF.GetExtraFees)

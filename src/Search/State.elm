@@ -4,6 +4,7 @@ import Array exposing (Array)
 import BigInt exposing (BigInt)
 import BigIntHelpers
 import CommonTypes exposing (UserInfo)
+import Constants exposing (..)
 import Contracts.Types
 import Contracts.Wrappers
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
@@ -19,8 +20,8 @@ import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
-init : EthHelpers.EthNode -> Address -> Int -> Maybe Contracts.Types.OpenMode -> Maybe UserInfo -> ( Model, Cmd Msg )
-init ethNode factoryAddress tokenDecimals maybeOpenMode userInfo =
+init : EthHelpers.EthNode -> Maybe Contracts.Types.OpenMode -> Maybe UserInfo -> ( Model, Cmd Msg )
+init ethNode maybeOpenMode userInfo =
     let
         openMode =
             maybeOpenMode |> Maybe.withDefault Contracts.Types.SellerOpened
@@ -33,8 +34,6 @@ init ethNode factoryAddress tokenDecimals maybeOpenMode userInfo =
     ( { ethNode = ethNode
       , eventSentry = eventSentry
       , userInfo = userInfo
-      , factoryAddress = factoryAddress
-      , tokenDecimals = tokenDecimals
       , numTrades = Nothing
       , openMode = openMode
       , trades = Array.empty
@@ -44,7 +43,7 @@ init ethNode factoryAddress tokenDecimals maybeOpenMode userInfo =
       , sortFunc = initialSortFunc
       }
     , Cmd.batch
-        [ Contracts.Wrappers.getNumTradesCmd ethNode factoryAddress NumTradesFetched
+        [ Contracts.Wrappers.getNumTradesCmd ethNode NumTradesFetched
         , sentryCmd
         ]
     )
@@ -98,7 +97,7 @@ update msg model =
                                         (List.range 0 (numTrades - 1)
                                             |> List.map
                                                 (\id ->
-                                                    Contracts.Wrappers.getCreationInfoFromIdCmd model.ethNode model.factoryAddress (BigInt.fromInt id) (CreationInfoFetched id)
+                                                    Contracts.Wrappers.getCreationInfoFromIdCmd model.ethNode (BigInt.fromInt id) (CreationInfoFetched id)
                                                 )
                                         )
 
@@ -147,7 +146,7 @@ update msg model =
 
                         cmd =
                             Cmd.batch
-                                [ Contracts.Wrappers.getParametersAndStateCmd model.ethNode model.tokenDecimals creationInfo.address (ParametersFetched id) (StateFetched id)
+                                [ Contracts.Wrappers.getParametersAndStateCmd model.ethNode creationInfo.address (ParametersFetched id) (StateFetched id)
                                 , sentryCmd
                                 ]
                     in
@@ -232,7 +231,7 @@ update msg model =
                                             address =
                                                 info.creationInfo.address
                                         in
-                                        Contracts.Wrappers.getStateCmd model.ethNode model.tokenDecimals address (StateFetched id)
+                                        Contracts.Wrappers.getStateCmd model.ethNode address (StateFetched id)
                             )
                         |> Cmd.batch
             in
@@ -308,8 +307,9 @@ update msg model =
             )
 
         TradeClicked id ->
-            ( model, Cmd.none, Just (Routing.Interact (Just id)) )
+            ( model, Cmd.none, Nothing )
 
+        -- ( model, Cmd.none, Just (Routing.Interact (Just id)) )
         SortBy colType ascending ->
             let
                 newSortFunc =

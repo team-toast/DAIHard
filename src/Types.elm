@@ -8,8 +8,7 @@ import Create.Types
 import Eth.Sentry.Tx as TxSentry exposing (TxSentry)
 import Eth.Sentry.Wallet as WalletSentry exposing (WalletSentry)
 import Eth.Types exposing (Address)
-import EthHelpers
-import Interact.Types
+import EthHelpers exposing (EthNode)
 import Json.Decode
 import Routing
 import Search.Types
@@ -19,9 +18,6 @@ import Url exposing (Url)
 
 type alias Flags =
     { networkId : Int
-    , tokenContractDecimals : Int
-    , tokenContractAddressString : String
-    , factoryAddressString : String
     }
 
 
@@ -32,16 +28,11 @@ type Model
 
 type alias ValidModel =
     { key : Browser.Navigation.Key
-    , tokenContractAddress : Address
-    , factoryAddress : Address
     , time : Time.Posix
-    , node : EthHelpers.EthNode
+    , node : EthNode
     , txSentry : TxSentry Msg
     , userAddress : Maybe Address
     , userInfo : Maybe UserInfo
-    , tokenContractDecimals : Int
-    , showBuyDaiDropdown : Bool
-    , showSellDaiDropdown : Bool
     , submodel : Submodel
     }
 
@@ -49,7 +40,7 @@ type alias ValidModel =
 type Submodel
     = HomeModel
     | CreateModel Create.Types.Model
-    | InteractModel Interact.Types.Model
+      --| InteractModel Interact.Types.Model
     | SearchModel Search.Types.Model
 
 
@@ -62,10 +53,7 @@ type Msg
     | TxSentryMsg TxSentry.Msg
     | UserPubkeySet Json.Decode.Value
     | CreateMsg Create.Types.Msg
-    | InteractMsg Interact.Types.Msg
+      --| InteractMsg Interact.Types.Msg
     | SearchMsg Search.Types.Msg
-    | BuyDaiDropdownToggle
-    | SellDaiDropdownToggle
-    | CloseDropdowns
     | Fail String
     | NoOp

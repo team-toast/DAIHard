@@ -2,6 +2,7 @@ module Contracts.Wrappers exposing (decodeParameters, getCreationInfoFromIdCmd, 
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
+import Constants exposing (..)
 import Contracts.Generated.DAIHardFactory as DHF
 import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Types exposing (..)
@@ -23,8 +24,8 @@ import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
-openTrade : Address -> CreateParameters -> Call Address
-openTrade contractAddress parameters =
+openTrade : CreateParameters -> Call Address
+openTrade parameters =
     let
         encodedPaymentMethods =
             Json.Encode.list PaymentMethods.encode
@@ -36,7 +37,7 @@ openTrade contractAddress parameters =
                 |> Json.Encode.encode 0
     in
     DHF.openDAIHardTrade
-        contractAddress
+        factoryAddress
         parameters.initiatorAddress
         (openModeToInitiatorIsBuyer parameters.openMode)
         (TokenValue.getBigInt parameters.tradeAmount)
@@ -49,49 +50,49 @@ openTrade contractAddress parameters =
         parameters.initiatorCommPubkey
 
 
-getDevFeeCmd : EthHelpers.EthNode -> Address -> BigInt -> (Result Http.Error BigInt -> msg) -> Cmd msg
-getDevFeeCmd ethNode factoryAddress tradeAmount msgConstructor =
+getDevFeeCmd : EthHelpers.EthNode -> BigInt -> (Result Http.Error BigInt -> msg) -> Cmd msg
+getDevFeeCmd ethNode tradeAmount msgConstructor =
     Eth.call ethNode.http (DHF.getDevFee factoryAddress tradeAmount)
         |> Task.attempt msgConstructor
 
 
-getExtraFeesCmd : EthHelpers.EthNode -> Address -> BigInt -> (Result Http.Error DHF.GetExtraFees -> msg) -> Cmd msg
-getExtraFeesCmd ethNode factoryAddress tradeAmount msgConstructor =
+getExtraFeesCmd : EthHelpers.EthNode -> BigInt -> (Result Http.Error DHF.GetExtraFees -> msg) -> Cmd msg
+getExtraFeesCmd ethNode tradeAmount msgConstructor =
     Eth.call ethNode.http (DHF.getExtraFees factoryAddress tradeAmount)
         |> Task.attempt msgConstructor
 
 
-getNumTradesCmd : EthHelpers.EthNode -> Address -> (Result Http.Error BigInt -> msg) -> Cmd msg
-getNumTradesCmd ethNode factoryAddress msgConstructor =
+getNumTradesCmd : EthHelpers.EthNode -> (Result Http.Error BigInt -> msg) -> Cmd msg
+getNumTradesCmd ethNode msgConstructor =
     Eth.call ethNode.http (DHF.getNumTrades factoryAddress)
         |> Task.attempt msgConstructor
 
 
-getCreationInfoFromIdCmd : EthHelpers.EthNode -> Address -> BigInt -> (Result Http.Error DHF.CreatedTrade -> msg) -> Cmd msg
-getCreationInfoFromIdCmd ethNode factoryAddress ttId msgConstructor =
+getCreationInfoFromIdCmd : EthHelpers.EthNode -> BigInt -> (Result Http.Error DHF.CreatedTrade -> msg) -> Cmd msg
+getCreationInfoFromIdCmd ethNode ttId msgConstructor =
     Eth.call ethNode.http (DHF.createdTrades factoryAddress ttId)
         |> Task.attempt msgConstructor
 
 
-getParametersAndStateCmd : EthHelpers.EthNode -> Int -> Address -> (Result Http.Error (Result String TradeParameters) -> msg) -> (Result Http.Error (Maybe State) -> msg) -> Cmd msg
-getParametersAndStateCmd ethNode tokenDecimals address parametersMsgConstructor stateMsgConstructor =
+getParametersAndStateCmd : EthHelpers.EthNode -> Address -> (Result Http.Error (Result String TradeParameters) -> msg) -> (Result Http.Error (Maybe State) -> msg) -> Cmd msg
+getParametersAndStateCmd ethNode address parametersMsgConstructor stateMsgConstructor =
     Cmd.batch
-        [ getParametersCmd ethNode tokenDecimals address parametersMsgConstructor
-        , getStateCmd ethNode tokenDecimals address stateMsgConstructor
+        [ getParametersCmd ethNode address parametersMsgConstructor
+        , getStateCmd ethNode address stateMsgConstructor
         ]
 
 
-getParametersCmd : EthHelpers.EthNode -> Int -> Address -> (Result Http.Error (Result String TradeParameters) -> msg) -> Cmd msg
-getParametersCmd ethNode numDecimals ttAddress msgConstructor =
+getParametersCmd : EthHelpers.EthNode -> Address -> (Result Http.Error (Result String TradeParameters) -> msg) -> Cmd msg
+getParametersCmd ethNode ttAddress msgConstructor =
     Eth.call ethNode.http (DHT.getParameters ttAddress)
-        |> Task.map (decodeParameters numDecimals)
+        |> Task.map (decodeParameters tokenDecimals)
         |> Task.attempt msgConstructor
 
 
-getStateCmd : EthHelpers.EthNode -> Int -> Address -> (Result Http.Error (Maybe State) -> msg) -> Cmd msg
-getStateCmd ethNode numDecimals ttAddress msgConstructor =
+getStateCmd : EthHelpers.EthNode -> Address -> (Result Http.Error (Maybe State) -> msg) -> Cmd msg
+getStateCmd ethNode ttAddress msgConstructor =
     Eth.call ethNode.http (DHT.getState ttAddress)
-        |> Task.map (decodeState numDecimals)
+        |> Task.map (decodeState tokenDecimals)
         |> Task.attempt msgConstructor
 
 

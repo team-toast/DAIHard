@@ -5,14 +5,14 @@ import Browser
 import Browser.Navigation
 import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (UserInfo)
+import Constants exposing (..)
 import Create.State
 import Eth.Net
 import Eth.Sentry.Tx as TxSentry
 import Eth.Sentry.Wallet as WalletSentry exposing (WalletSentry)
 import Eth.Types exposing (Address)
 import Eth.Utils
-import EthHelpers
-import Interact.State
+import EthHelpers exposing (EthNode)
 import Json.Decode
 import Json.Encode
 import Routing
@@ -25,42 +25,23 @@ import Url exposing (Url)
 init : Flags -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init flags url key =
     let
-        _ =
-            genPrivkey
+        node =
+            Eth.Net.toNetworkId flags.networkId
+                |> EthHelpers.ethNode
 
-        -- Hack because Elm 0.19 will discard code that isn't used elsewhere in Elm code, event outgoing ports. >:(
+        txSentry =
+            TxSentry.init ( txOut, txIn ) TxSentryMsg node.http
     in
-    case ( Eth.Utils.toAddress flags.tokenContractAddressString, Eth.Utils.toAddress flags.factoryAddressString ) of
-        ( Ok tokenContractAddress, Ok factoryAddress ) ->
-            let
-                node =
-                    Eth.Net.toNetworkId flags.networkId
-                        |> EthHelpers.ethNode
-
-                txSentry =
-                    TxSentry.init ( txOut, txIn ) TxSentryMsg node.http
-            in
-            updateFromUrl
-                { key = key
-                , tokenContractAddress = tokenContractAddress
-                , factoryAddress = factoryAddress
-                , time = Time.millisToPosix 0
-                , node = node
-                , txSentry = txSentry
-                , userAddress = Nothing
-                , userInfo = Nothing
-                , tokenContractDecimals = flags.tokenContractDecimals
-                , showBuyDaiDropdown = False
-                , showSellDaiDropdown = False
-                , submodel = HomeModel
-                }
-                url
-
-        ( Err errstr, _ ) ->
-            ( Failed ("error interpreting token contract address: " ++ errstr), Cmd.none )
-
-        ( _, Err errstr ) ->
-            ( Failed ("error interpreting factory contract address: " ++ errstr), Cmd.none )
+    updateFromUrl
+        { key = key
+        , time = Time.millisToPosix 0
+        , node = node
+        , txSentry = txSentry
+        , userAddress = Nothing
+        , userInfo = Nothing
+        , submodel = HomeModel
+        }
+        url
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -184,30 +165,27 @@ updateValidModel msg model =
                 _ ->
                     ( Running model, Cmd.none )
 
-        InteractMsg interactMsg ->
-            case model.submodel of
-                InteractModel interactModel ->
-                    let
-                        ( newInteractModel, interactCmd, chainCmdOrder ) =
-                            Interact.State.update interactMsg interactModel
-
-                        ( newTxSentry, chainCmd ) =
-                            ChainCmd.execute model.txSentry (ChainCmd.map InteractMsg chainCmdOrder)
-                    in
-                    ( Running
-                        { model
-                            | submodel = InteractModel newInteractModel
-                            , txSentry = newTxSentry
-                        }
-                    , Cmd.batch
-                        [ Cmd.map InteractMsg interactCmd
-                        , chainCmd
-                        ]
-                    )
-
-                _ ->
-                    ( Running model, Cmd.none )
-
+        -- InteractMsg interactMsg ->
+        --     case model.submodel of
+        --         InteractModel interactModel ->
+        --             let
+        --                 ( newInteractModel, interactCmd, chainCmdOrder ) =
+        --                     Interact.State.update interactMsg interactModel
+        --                 ( newTxSentry, chainCmd ) =
+        --                     ChainCmd.execute model.txSentry (ChainCmd.map InteractMsg chainCmdOrder)
+        --             in
+        --             ( Running
+        --                 { model
+        --                     | submodel = InteractModel newInteractModel
+        --                     , txSentry = newTxSentry
+        --                 }
+        --             , Cmd.batch
+        --                 [ Cmd.map InteractMsg interactCmd
+        --                 , chainCmd
+        --                 ]
+        --             )
+        --         _ ->
+        --             ( Running model, Cmd.none )
         SearchMsg searchMsg ->
             case model.submodel of
                 SearchModel searchModel ->
@@ -234,48 +212,6 @@ updateValidModel msg model =
             in
             ( Running { model | txSentry = submodel }, subCmd )
 
-        BuyDaiDropdownToggle ->
-            let
-                newModel =
-                    if model.showBuyDaiDropdown then
-                        { model
-                            | showBuyDaiDropdown = False
-                        }
-
-                    else
-                        { model
-                            | showBuyDaiDropdown = True
-                            , showSellDaiDropdown = False
-                        }
-            in
-            ( Running newModel, Cmd.none )
-
-        SellDaiDropdownToggle ->
-            let
-                newModel =
-                    if model.showSellDaiDropdown then
-                        { model
-                            | showSellDaiDropdown = False
-                        }
-
-                    else
-                        { model
-                            | showSellDaiDropdown = True
-                            , showBuyDaiDropdown = False
-                        }
-            in
-            ( Running newModel, Cmd.none )
-
-        CloseDropdowns ->
-            let
-                newModel =
-                    { model
-                        | showBuyDaiDropdown = False
-                        , showSellDaiDropdown = False
-                    }
-            in
-            ( Running newModel, Cmd.none )
-
         Fail str ->
             ( Failed str, Cmd.none )
 
@@ -286,8 +222,8 @@ updateValidModel msg model =
 encodeGenPrivkeyArgs : Address -> String -> Json.Decode.Value
 encodeGenPrivkeyArgs address signMsg =
     Json.Encode.object
-        [ ("address", Json.Encode.string <| Eth.Utils.addressToString address)
-        , ("signSeedMsg", Json.Encode.string signMsg)
+        [ ( "address", Json.Encode.string <| Eth.Utils.addressToString address )
+        , ( "signSeedMsg", Json.Encode.string signMsg )
         ]
 
 
@@ -311,10 +247,10 @@ gotoRoute model route =
             , Browser.Navigation.pushUrl model.key newUrlString
             )
 
-        Routing.Create maybeOpenMode ->
+        Routing.Create ->
             let
                 ( createModel, createCmd, chainCmdOrder ) =
-                    Create.State.init model.node model.tokenContractAddress model.tokenContractDecimals model.factoryAddress maybeOpenMode model.userInfo
+                    Create.State.init model.node model.userInfo
 
                 ( newTxSentry, chainCmd ) =
                     ChainCmd.execute model.txSentry (ChainCmd.map CreateMsg chainCmdOrder)
@@ -331,35 +267,32 @@ gotoRoute model route =
                 ]
             )
 
-        Routing.Interact maybeID ->
-            case maybeID of
-                Nothing ->
-                    ( Failed "Error interpreting url", Browser.Navigation.pushUrl model.key newUrlString )
-
-                Just id ->
-                    let
-                        ( interactModel, interactCmd, chainCmdOrder ) =
-                            Interact.State.init model.node model.factoryAddress model.tokenContractAddress model.tokenContractDecimals model.userInfo id
-
-                        ( newTxSentry, chainCmd ) =
-                            ChainCmd.execute model.txSentry (ChainCmd.map InteractMsg chainCmdOrder)
-                    in
-                    ( Running
-                        { model
-                            | submodel = InteractModel interactModel
-                            , txSentry = newTxSentry
-                        }
-                    , Cmd.batch
-                        [ Cmd.map InteractMsg interactCmd
-                        , chainCmd
-                        , Browser.Navigation.pushUrl model.key newUrlString
-                        ]
-                    )
-
+        -- Routing.Interact maybeID ->
+        --     case maybeID of
+        --         Nothing ->
+        --             ( Failed "Error interpreting url", Browser.Navigation.pushUrl model.key newUrlString )
+        --         Just id ->
+        --             let
+        --                 ( interactModel, interactCmd, chainCmdOrder ) =
+        --                     Interact.State.init model.node model.userInfo id
+        --                 ( newTxSentry, chainCmd ) =
+        --                     ChainCmd.execute model.txSentry (ChainCmd.map InteractMsg chainCmdOrder)
+        --             in
+        --             ( Running
+        --                 { model
+        --                     | submodel = InteractModel interactModel
+        --                     , txSentry = newTxSentry
+        --                 }
+        --             , Cmd.batch
+        --                 [ Cmd.map InteractMsg interactCmd
+        --                 , chainCmd
+        --                 , Browser.Navigation.pushUrl model.key newUrlString
+        --                 ]
+        --             )
         Routing.Search openMode ->
             let
                 ( searchModel, searchCmd ) =
-                    Search.State.init model.node model.factoryAddress model.tokenContractDecimals openMode model.userInfo
+                    Search.State.init model.node openMode model.userInfo
             in
             ( Running
                 { model
@@ -384,9 +317,8 @@ updateSubmodelUserInfo userInfo submodel =
         CreateModel createModel ->
             CreateModel (createModel |> Create.State.updateUserInfo userInfo)
 
-        InteractModel interactModel ->
-            InteractModel (interactModel |> Interact.State.updateUserInfo userInfo)
-
+        -- InteractModel interactModel ->
+        --     InteractModel (interactModel |> Interact.State.updateUserInfo userInfo)
         SearchModel searchModel ->
             SearchModel (searchModel |> Search.State.updateUserInfo userInfo)
 
@@ -417,9 +349,8 @@ submodelSubscriptions model =
         CreateModel createModel ->
             Sub.map CreateMsg <| Create.State.subscriptions createModel
 
-        InteractModel interactModel ->
-            Sub.map InteractMsg <| Interact.State.subscriptions interactModel
-
+        -- InteractModel interactModel ->
+        --     Sub.map InteractMsg <| Interact.State.subscriptions interactModel
         SearchModel searchModel ->
             Sub.map SearchMsg <| Search.State.subscriptions searchModel
 

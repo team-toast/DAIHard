@@ -1,12 +1,11 @@
-module Create.State exposing (init, subscriptions, update, updateUserInfo)
+module Create.State exposing (init, subscriptions, udpateParameterInputs, update, updateUserInfo, validateInputs)
 
 import BigInt
 import BigIntHelpers
 import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
-import Constants exposing (..)
 import Contracts.Generated.ERC20Token as TokenContract
-import Contracts.Types as CTypes
+import Contracts.Types
 import Contracts.Wrappers
 import Create.Types exposing (..)
 import Eth
@@ -19,12 +18,15 @@ import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
-init : EthHelpers.EthNode -> Maybe UserInfo -> ( Model, Cmd Msg, ChainCmd Msg )
-init node userInfo =
+init : EthHelpers.EthNode -> Address -> Int -> Address -> Maybe Contracts.Types.OpenMode -> Maybe UserInfo -> ( Model, Cmd Msg, ChainCmd Msg )
+init ethNode tokenAddress tokenDecimals factoryAddress maybeOpenMode userInfo =
     let
+        openMode =
+            maybeOpenMode |> Maybe.withDefault Contracts.Types.SellerOpened
+
         initialInputs =
-            { openMode = CTypes.SellerOpened
-            , daiAmount = "100"
+            { openMode = openMode
+            , tradeAmount = "100"
             , fiatType = "USD"
             , fiatAmount = "100"
             , paymentMethods = []
@@ -34,15 +36,19 @@ init node userInfo =
             }
 
         model =
-            { node = node
+            { ethNode = ethNode
+            , tokenAddress = tokenAddress
+            , tokenDecimals = tokenDecimals
+            , factoryAddress = factoryAddress
             , userInfo = userInfo
-            , inputs = initialInputs
+            , openMode = openMode
+            , parameterInputs = initialInputs
             , showCurrencyDropdown = False
-            , createParameters = Nothing
+            , contractParameters = Nothing
             , busyWithTxChain = False
             }
     in
-    ( model |> updateInputs initialInputs
+    ( model |> udpateParameterInputs initialInputs
     , Cmd.none
     , ChainCmd.none
     )
@@ -51,81 +57,77 @@ init node userInfo =
 updateUserInfo : Maybe UserInfo -> Model -> Model
 updateUserInfo userInfo model =
     { model | userInfo = userInfo }
-        |> updateInputs model.inputs
+        |> udpateParameterInputs model.parameterInputs
 
 
 update : Msg -> Model -> UpdateResult
-update msg prevModel =
+update msg model =
     case msg of
-        ChangeType openMode ->
-            let
-                oldInputs =
-                    prevModel.inputs
-            in
-            justModelUpdate
-                { prevModel | inputs = { oldInputs | openMode = openMode } }
-
         TradeAmountChanged newAmountStr ->
             let
                 oldInputs =
-                    prevModel.inputs
+                    model.parameterInputs
             in
-            justModelUpdate (prevModel |> updateInputs { oldInputs | daiAmount = newAmountStr })
+            justModelUpdate (model |> udpateParameterInputs { oldInputs | tradeAmount = newAmountStr })
 
         FiatAmountChanged newAmountStr ->
             let
                 oldInputs =
-                    prevModel.inputs
+                    model.parameterInputs
             in
-            justModelUpdate (prevModel |> updateInputs { oldInputs | fiatAmount = newAmountStr })
+            justModelUpdate (model |> udpateParameterInputs { oldInputs | fiatAmount = newAmountStr })
 
         FiatTypeChanged newTypeStr ->
             let
                 oldInputs =
-                    prevModel.inputs
+                    model.parameterInputs
             in
-            justModelUpdate (prevModel |> updateInputs { oldInputs | fiatType = newTypeStr })
+            justModelUpdate (model |> udpateParameterInputs { oldInputs | fiatType = newTypeStr })
 
-        -- AutorecallIntervalChanged newTimeStr ->
-        --     let
-        --         oldInputs =
-        --             prevModel.inputs
-        --     in
-        --     justModelUpdate (prevModel |> updateInputs { oldInputs | autorecallInterval = newTimeStr })
-        -- AutoabortIntervalChanged newTimeStr ->
-        --     let
-        --         oldInputs =
-        --             prevModel.inputs
-        --     in
-        --     justModelUpdate (prevModel |> updateInputs { oldInputs | autoabortInterval = newTimeStr })
-        -- AutoreleaseIntervalChanged newTimeStr ->
-        --     let
-        --         oldInputs =
-        --             prevModel.inputs
-        --     in
-        --     justModelUpdate (prevModel |> updateInputs { oldInputs | autoreleaseInterval = newTimeStr })
+        AutorecallIntervalChanged newTimeStr ->
+            let
+                oldInputs =
+                    model.parameterInputs
+            in
+            justModelUpdate (model |> udpateParameterInputs { oldInputs | autorecallInterval = newTimeStr })
+
+        AutoabortIntervalChanged newTimeStr ->
+            let
+                oldInputs =
+                    model.parameterInputs
+            in
+            justModelUpdate (model |> udpateParameterInputs { oldInputs | autoabortInterval = newTimeStr })
+
+        AutoreleaseIntervalChanged newTimeStr ->
+            let
+                oldInputs =
+                    model.parameterInputs
+            in
+            justModelUpdate (model |> udpateParameterInputs { oldInputs | autoreleaseInterval = newTimeStr })
+
         AddPaymentMethod paymentMethod ->
             let
                 oldInputs =
-                    prevModel.inputs
+                    model.parameterInputs
             in
             justModelUpdate
-                (prevModel
-                    |> updateInputs
+                (model
+                    |> udpateParameterInputs
                         { oldInputs | paymentMethods = List.append oldInputs.paymentMethods [ paymentMethod ] }
                 )
 
         ShowCurrencyDropdown flag ->
             justModelUpdate
-                { prevModel | showCurrencyDropdown = flag }
+                { model | showCurrencyDropdown = flag }
 
         BeginCreateProcess ->
-            case prevModel.createParameters of
+            case model.contractParameters of
                 Just parameters ->
-                    { model = prevModel
+                    { model = model
                     , cmd =
                         Contracts.Wrappers.getExtraFeesCmd
-                            prevModel.node
+                            model.ethNode
+                            model.factoryAddress
                             (TokenValue.getBigInt parameters.tradeAmount)
                             ExtraFeesFetched
                     , chainCmd = ChainCmd.none
@@ -137,18 +139,18 @@ update msg prevModel =
                         _ =
                             Debug.log "Trying to form fetchDevFee cmd, but can't find the contract parameters!" ""
                     in
-                    justModelUpdate prevModel
+                    justModelUpdate model
 
         ExtraFeesFetched fetchResult ->
-            case ( fetchResult, prevModel.userInfo, prevModel.createParameters ) of
+            case ( fetchResult, model.userInfo, model.contractParameters ) of
                 ( Ok fees, Just _, Just parameters ) ->
                     let
                         mainDepositAmount =
                             case parameters.openMode of
-                                CTypes.BuyerOpened ->
+                                Contracts.Types.BuyerOpened ->
                                     fees.buyerDeposit
 
-                                CTypes.SellerOpened ->
+                                Contracts.Types.SellerOpened ->
                                     TokenValue.getBigInt parameters.tradeAmount
 
                         fullDepositAmount =
@@ -158,8 +160,8 @@ update msg prevModel =
 
                         txParams =
                             TokenContract.approve
-                                daiAddress
-                                factoryAddress
+                                model.tokenAddress
+                                model.factoryAddress
                                 fullDepositAmount
                                 |> Eth.toSend
 
@@ -170,7 +172,7 @@ update msg prevModel =
                             }
 
                         newModel =
-                            { prevModel | busyWithTxChain = True }
+                            { model | busyWithTxChain = True }
                     in
                     { model = newModel
                     , cmd = Cmd.none
@@ -183,51 +185,52 @@ update msg prevModel =
                         _ =
                             Debug.log "Error fetching devFee: " fetchErrStr
                     in
-                    justModelUpdate prevModel
+                    justModelUpdate model
 
                 ( _, Nothing, _ ) ->
                     let
                         _ =
                             Debug.log "Metamask seems to be locked! I can't find the user address." ""
                     in
-                    justModelUpdate prevModel
+                    justModelUpdate model
 
                 ( _, _, Nothing ) ->
                     let
                         _ =
                             Debug.log "Can't create without a valid contract!" ""
                     in
-                    justModelUpdate prevModel
+                    justModelUpdate model
 
         ApproveMined (Err errstr) ->
             let
                 _ =
                     Debug.log "'approve' call mining error" errstr
             in
-            justModelUpdate prevModel
+            justModelUpdate model
 
         ApproveMined (Ok txReceipt) ->
-            if not prevModel.busyWithTxChain then
+            if not model.busyWithTxChain then
                 let
                     _ =
                         Debug.log "Not ready to catch this mined tx. Did you somehow cancel the tx chain?" ""
                 in
-                justModelUpdate prevModel
+                justModelUpdate model
 
             else
-                case prevModel.createParameters of
+                case model.contractParameters of
                     Nothing ->
                         let
                             _ =
                                 Debug.log "Can't find valid contract parameters. What the heck?????" ""
                         in
-                        justModelUpdate prevModel
+                        justModelUpdate model
 
-                    Just createParameters ->
+                    Just contractParameters ->
                         let
                             txParams =
                                 Contracts.Wrappers.openTrade
-                                    createParameters
+                                    model.factoryAddress
+                                    contractParameters
                                     |> Eth.toSend
 
                             customSend =
@@ -236,7 +239,7 @@ update msg prevModel =
                                 , onBroadcast = Nothing
                                 }
                         in
-                        { model = prevModel
+                        { model = model
                         , cmd = Cmd.none
                         , chainCmd = ChainCmd.custom customSend txParams
                         , newRoute = Nothing
@@ -247,21 +250,21 @@ update msg prevModel =
                 _ =
                     Debug.log "error mining create contract tx" errstr
             in
-            justModelUpdate prevModel
+            justModelUpdate model
 
         CreateMined (Ok txReceipt) ->
             let
                 maybeId =
-                    CTypes.txReceiptToCreatedToastytradeSellId txReceipt
+                    Contracts.Types.txReceiptToCreatedToastytradeSellId model.factoryAddress txReceipt
                         |> Result.toMaybe
                         |> Maybe.andThen BigIntHelpers.toInt
             in
             case maybeId of
                 Just id ->
-                    { model = prevModel
+                    { model = model
                     , cmd = Cmd.none
                     , chainCmd = ChainCmd.none
-                    , newRoute = Nothing --Just (Routing.Interact (Just id))
+                    , newRoute = Just (Routing.Interact (Just id))
                     }
 
                 Nothing ->
@@ -269,35 +272,35 @@ update msg prevModel =
                         _ =
                             Debug.log "Error getting the ID of the created contract. Here's the txReceipt" txReceipt
                     in
-                    justModelUpdate prevModel
+                    justModelUpdate model
 
         NoOp ->
-            justModelUpdate prevModel
+            justModelUpdate model
 
 
-updateInputs : Inputs -> Model -> Model
-updateInputs newParameters model =
-    { model | inputs = newParameters }
+udpateParameterInputs : ContractParameterInputs -> Model -> Model
+udpateParameterInputs newParameters model =
+    { model | parameterInputs = newParameters }
         |> updateParameters
 
 
 updateParameters : Model -> Model
 updateParameters model =
     { model
-        | createParameters =
+        | contractParameters =
             Maybe.map2
-                CTypes.buildCreateParameters
+                Contracts.Types.buildCreateParameters
                 model.userInfo
-                (validateInputs tokenDecimals model.inputs)
+                (validateInputs model.tokenDecimals model.parameterInputs)
     }
 
 
-validateInputs : Int -> Inputs -> Maybe CTypes.UserParameters
+validateInputs : Int -> ContractParameterInputs -> Maybe Contracts.Types.UserParameters
 validateInputs numDecimals inputs =
     Maybe.map5
-        (\daiAmount fiatAmount autorecallInterval autoabortInterval autoreleaseInterval ->
+        (\tradeAmount fiatAmount autorecallInterval autoabortInterval autoreleaseInterval ->
             { openMode = inputs.openMode
-            , tradeAmount = daiAmount
+            , tradeAmount = tradeAmount
             , fiatPrice = { fiatType = inputs.fiatType, amount = fiatAmount }
             , autorecallInterval = autorecallInterval
             , autoabortInterval = autoabortInterval
@@ -305,7 +308,7 @@ validateInputs numDecimals inputs =
             , paymentMethods = inputs.paymentMethods
             }
         )
-        (TokenValue.fromString numDecimals inputs.daiAmount)
+        (TokenValue.fromString numDecimals inputs.tradeAmount)
         (BigInt.fromString inputs.fiatAmount)
         (TimeHelpers.daysStrToMaybePosix inputs.autorecallInterval)
         (TimeHelpers.daysStrToMaybePosix inputs.autoabortInterval)

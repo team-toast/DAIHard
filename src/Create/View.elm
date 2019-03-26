@@ -1,154 +1,122 @@
 module Create.View exposing (root)
 
-import Contracts.Types
+import Contracts.Types as CTypes
 import Create.Types exposing (..)
-import Element
+import Element exposing (Attribute, Element)
+import Element.Background
+import Element.Border
 import Element.Events
 import Element.Font
 import Element.Input
 import ElementHelpers as EH
-import PaymentMethods
 
 
-root : Model -> Element.Element Msg
+root : Model -> Element Msg
 root model =
-    let
-        contractRendered =
-            case model.contractParameters of
-                Nothing ->
-                    Element.text "Invalid parameters."
-
-                Just parameters ->
-                    Element.text "Parameters valid! But rendering currently broken!"
-
-        createButton =
-            Element.Input.button [ Element.centerX, Element.Font.size 24 ]
-                { onPress = Just BeginCreateProcess
-                , label = Element.text "Create!"
-                }
-    in
     Element.column
-        [ Element.spacing 20
-        , Element.width Element.fill
-        , Element.Events.onClick (ShowCurrencyDropdown False)
+        [ Element.width Element.fill
+        , Element.spacing 30
         ]
-        [ titleElement model
-        , contractParametersFormElement model
-        , createButton
-        , Element.el [ Element.paddingXY 150 0 ] contractRendered
-        , createButton
+        [ mainInputElement model
+        , phasesElement model
+        , paymentMethodsElement model
         ]
 
 
-titleElement : Model -> Element.Element Msg
-titleElement model =
-    Element.el
-        [ Element.centerX
-        , Element.Font.size 36
+mainInputElement : Model -> Element Msg
+mainInputElement model =
+    Element.row
+        [ Element.width Element.fill
+        , Element.Background.color EH.white
+        , Element.Border.rounded 5
+        , Element.padding 20
+        , Element.spaceEvenly
+        , EH.subtleShadow
         ]
-        (Element.text
-            (case model.parameterInputs.openMode of
-                Contracts.Types.BuyerOpened ->
-                    "Opening as Buyer"
-
-                Contracts.Types.SellerOpened ->
-                    "Opening as Seller"
-            )
-        )
+        [ tradeTypeElement model
+        , daiElement model
+        , fiatElement model
+        , marginElement model
+        , buttonsElement model
+        ]
 
 
-contractParametersFormElement : Model -> Element.Element Msg
-contractParametersFormElement model =
-    EH.fillWidthBlock "Contract parameters" (contractParametersForm model)
+tradeTypeElement : Model -> Element Msg
+tradeTypeElement model =
+    EH.inputWithHeader
+        "Trade Type"
+        (typeToggleElement model.inputs.openMode)
 
 
-contractParametersForm : Model -> Element.Element Msg
-contractParametersForm model =
+typeToggleElement : CTypes.OpenMode -> Element Msg
+typeToggleElement openMode =
     let
-        columnHeader title =
-            Element.el [ Element.Font.size 24, Element.Font.bold, Element.centerX ] (Element.text title)
+        baseStyles =
+            [ Element.Font.size 24
+            , Element.Font.medium
+            , Element.pointer
+            ]
 
-        daiAmountInputs =
-            let
-                nameAndElementToRow tuple =
-                    Element.row [ Element.spacing 8 ]
-                        [ Element.el [ Element.width (Element.px 200) ]
-                            (Element.paragraph [ Element.width Element.shrink, Element.alignLeft ] [ Element.text (Tuple.first tuple) ])
-                        , Tuple.second tuple
-                        ]
-            in
-            Element.column [ Element.width (Element.fillPortion 1), Element.spacing 8, Element.alignTop ]
-                (columnHeader "Dai Amounts"
-                    :: ([ ( "Trade Amount", EH.smallInput "tradeAmount" model.parameterInputs.tradeAmount TradeAmountChanged )
-                        , ( "Fiat Type", EH.currencySelector model.showCurrencyDropdown model.parameterInputs.fiatType ShowCurrencyDropdown FiatTypeChanged )
-                        , ( "Price", EH.smallInput "fiatAmount" model.parameterInputs.fiatAmount FiatAmountChanged )
-                        ]
-                            |> List.map nameAndElementToRow
-                       )
-                )
-
-        paymentMethodsInput =
-            Element.column [ Element.width (Element.fillPortion 3), Element.spacing 8, Element.alignTop ]
-                [ columnHeader "Fiat Transfer Methods"
-                , Element.column [ Element.width Element.fill, Element.spacing 8 ]
-                    [ Element.Input.button [ Element.centerX ]
-                        { onPress =
-                            Just <|
-                                AddPaymentMethod <|
-                                    PaymentMethods.CashDrop
-                                        "Fairbanks, AK. Within 10 min walk from the 'Justastore' gas station."
-                        , label = Element.text "Cash Drop"
-                        }
-                    , Element.Input.button [ Element.centerX ]
-                        { onPress =
-                            Just <|
-                                AddPaymentMethod <|
-                                    PaymentMethods.CashHandoff
-                                        "Hoi An, Vietnam. Old town."
-                        , label = Element.text "Cash handoff"
-                        }
-                    , Element.Input.button [ Element.centerX ]
-                        { onPress =
-                            Just <|
-                                AddPaymentMethod <|
-                                    PaymentMethods.BankTransfer
-                                        { identifierType = PaymentMethods.Name
-                                        , info = "National Bank of America"
-                                        }
-                        , label = Element.text "Bank transfer"
-                        }
-                    , Element.Input.button [ Element.centerX ]
-                        { onPress =
-                            Just <|
-                                AddPaymentMethod <|
-                                    PaymentMethods.Custom "wire it to me"
-                        , label = Element.text "Custom 'wire it to me'"
-                        }
-                    ]
-                ]
-
-        intervalInputs =
-            let
-                nameAndElementToReversedRow tuple =
-                    Element.row [ Element.spacing 8 ]
-                        [ Tuple.second tuple
-                        , Element.el [ Element.width (Element.px 170) ]
-                            (Element.paragraph [ Element.width Element.shrink, Element.alignLeft ] [ Element.text (Tuple.first tuple) ])
-                        ]
-            in
-            Element.column [ Element.width (Element.fillPortion 1), Element.spacing 8, Element.alignTop ]
-                [ columnHeader "Phase Time Limits"
-                , Element.column [ Element.spacing 8 ]
-                    ([ ( "Autorecall", EH.timeInput "autorecall interval" model.parameterInputs.autorecallInterval AutorecallIntervalChanged )
-                     , ( "Autoabort", EH.timeInput "autoabort interval" model.parameterInputs.autoabortInterval AutoabortIntervalChanged )
-                     , ( "Autorelease", EH.timeInput "autorelease interval" model.parameterInputs.autoreleaseInterval AutoreleaseIntervalChanged )
-                     ]
-                        |> List.map nameAndElementToReversedRow
+        ( buyDaiStyles, sellDaiStyles ) =
+            case openMode of
+                CTypes.BuyerOpened ->
+                    ( baseStyles
+                    , baseStyles ++ [ Element.Font.color EH.disabledTextColor ]
                     )
-                ]
+
+                CTypes.SellerOpened ->
+                    ( baseStyles ++ [ Element.Font.color EH.disabledTextColor ]
+                    , baseStyles
+                    )
     in
-    Element.row [ Element.width Element.fill, Element.spacing 20 ]
-        [ daiAmountInputs
-        , paymentMethodsInput
-        , intervalInputs
+    Element.row [ Element.spacing 20 ]
+        [ Element.el
+            ([ Element.Events.onClick <| ChangeType CTypes.SellerOpened ] ++ sellDaiStyles)
+            (Element.text "Sell DAI")
+        , Element.el
+            ([ Element.Events.onClick <| ChangeType CTypes.BuyerOpened ] ++ buyDaiStyles)
+            (Element.text "Buy DAI")
         ]
+
+
+daiElement : Model -> Element Msg
+daiElement model =
+    EH.inputWithHeader
+        (case model.inputs.openMode of
+            CTypes.BuyerOpened ->
+                "You're buying"
+
+            CTypes.SellerOpened ->
+                "You're selling"
+        )
+        (daiInputElement model.inputs.daiAmount)
+
+
+daiInputElement : String -> Element Msg
+daiInputElement amountString =
+    Element.none
+
+
+fiatElement : Model -> Element Msg
+fiatElement model =
+    Element.none
+
+
+marginElement : Model -> Element Msg
+marginElement model =
+    Element.none
+
+
+buttonsElement : Model -> Element Msg
+buttonsElement model =
+    Element.none
+
+
+phasesElement : Model -> Element Msg
+phasesElement model =
+    Element.none
+
+
+paymentMethodsElement : Model -> Element Msg
+paymentMethodsElement model =
+    Element.none

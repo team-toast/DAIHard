@@ -3,6 +3,7 @@ module Contracts.Types exposing (CreateParameters, FullTradeInfo, OpenMode(..), 
 import Abi.Decode
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
+import Constants exposing (..)
 import Contracts.Generated.DAIHardFactory as DHF
 import Contracts.Generated.DAIHardTrade as DHT
 import Eth.Decode
@@ -298,8 +299,8 @@ eventSigDecoder =
     Json.Decode.field "topics" (Json.Decode.index 0 Eth.Decode.hex)
 
 
-txReceiptToCreatedToastytradeSellId : Address -> Eth.Types.TxReceipt -> Result String BigInt
-txReceiptToCreatedToastytradeSellId factoryAddress txReceipt =
+txReceiptToCreatedToastytradeSellId : Eth.Types.TxReceipt -> Result String BigInt
+txReceiptToCreatedToastytradeSellId txReceipt =
     txReceipt.logs
         |> List.filter
             (\log ->
