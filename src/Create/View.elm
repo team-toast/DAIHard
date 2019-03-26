@@ -94,7 +94,25 @@ daiElement model =
 
 daiInputElement : String -> Element Msg
 daiInputElement amountString =
-    Element.none
+    EH.fancyInput
+        [ Element.width <| Element.px 200 ]
+        ( Nothing, Just <| EH.daiSymbolAndLabel )
+        "dai input"
+        Nothing
+        amountString
+        TradeAmountChanged
+
+
+dumb amountString =
+    EH.textInputWithElement
+        []
+        []
+        (EH.daiSymbol [ Element.centerY ])
+        "dai input"
+        amountString
+        Nothing
+        Nothing
+        TradeAmountChanged
 
 
 fiatElement : Model -> Element Msg

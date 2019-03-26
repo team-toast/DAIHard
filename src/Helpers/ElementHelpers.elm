@@ -1,4 +1,4 @@
-module ElementHelpers exposing (black, blue, bulletPointString, currencySelector, daiSymbol, daiValue, disabledTextColor, errorMessage, fakeLink, fiatTypeToSymbolElement, fiatValue, green, headerBackgroundColor, inputWithHeader, interval, intervalWithElapsedBar, lightGray, margin, pageBackgroundColor, red, roundBottomCorners, roundTopCorners, subtleShadow, testBorderStyles, textInputWithElement, tokenValue, white, yellow)
+module ElementHelpers exposing (black, blue, bulletPointString, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, disabledTextColor, errorMessage, fakeLink, fancyInput, fiatTypeToSymbolElement, fiatValue, green, headerBackgroundColor, inputWithHeader, interval, intervalWithElapsedBar, lightGray, margin, pageBackgroundColor, red, roundBottomCorners, roundTopCorners, subtleShadow, testBorderStyles, textInputWithElement, tokenValue, white, yellow)
 
 import CommonTypes exposing (..)
 import Css
@@ -15,6 +15,7 @@ import Html.Styled
 import Images
 import Json.Decode
 import List
+import Maybe.Extra
 import Time
 import TimeHelpers
 import TokenValue exposing (TokenValue)
@@ -272,6 +273,45 @@ elapsedBar ratio filledBarColor =
 -- INPUTS
 
 
+fancyInput : List (Attribute msg) -> ( Maybe (Element msg), Maybe (Element msg) ) -> String -> Maybe (Element.Input.Placeholder msg) -> String -> (String -> msg) -> Element msg
+fancyInput attributes ( maybeLeftElement, maybeRightElement ) labelStr placeholder value msgConstructor =
+    let
+        inputElement =
+            Element.Input.text
+                [ Element.width Element.fill
+                , Element.height <| Element.px 40
+                , Element.Border.width 0
+                ]
+                { onChange = msgConstructor
+                , text = value
+                , placeholder = placeholder
+                , label = Element.Input.labelHidden labelStr
+                }
+    in
+    Element.row
+        ([ Element.spacing 5
+         , Element.Border.color lightGray
+         , Element.Border.widthEach
+            { bottom = 1
+            , top = 0
+            , right = 0
+            , left = 0
+            }
+         ]
+            ++ attributes
+        )
+        ([ Maybe.map
+            (Element.el [ Element.alignLeft ])
+            maybeLeftElement
+         , Just inputElement
+         , Maybe.map
+            (Element.el [ Element.alignRight ])
+            maybeRightElement
+         ]
+            |> Maybe.Extra.values
+        )
+
+
 textInputWithElement : List (Attribute msg) -> List (Attribute msg) -> Element msg -> String -> String -> Maybe (Element.Input.Placeholder msg) -> Maybe (Bool -> msg) -> (String -> msg) -> Element msg
 textInputWithElement attributes inputAttributes addedElement labelStr value placeholder maybeShowHideDropdownMsg msgConstructor =
     let
@@ -481,6 +521,20 @@ daiSymbol attributes =
     Element.image
         ((Element.height <| Element.px 26) :: attributes)
         Images.daiSymbol
+
+
+daiSymbolAndLabel : Element msg
+daiSymbolAndLabel =
+    Element.row
+        [ Element.spacing 5 ]
+        [ daiSymbol []
+        , Element.el
+            [ Element.Font.size 24
+            , Element.Font.medium
+            , Element.Font.color <| Element.rgb255 109 127 138
+            ]
+            (Element.text "DAI")
+        ]
 
 
 marginSymbol : List (Attribute msg) -> Bool -> Bool -> Element msg
