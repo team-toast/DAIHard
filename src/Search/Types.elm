@@ -3,8 +3,8 @@ module Search.Types exposing (FiatTypeAndRange, Model, Msg(..), ResultColumnType
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
-import Contracts.Generated.Toastytrade as TT
-import Contracts.Generated.ToastytradeFactory as TTF
+import Contracts.Generated.DAIHardFactory as DHF
+import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Types
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
@@ -36,10 +36,10 @@ type alias Model =
 
 type Msg
     = NumTradesFetched (Result Http.Error BigInt)
-    | CreationInfoFetched Int (Result Http.Error TTF.CreatedTrade)
+    | CreationInfoFetched Int (Result Http.Error DHF.CreatedTrade)
     | ParametersFetched Int (Result Http.Error (Result String Contracts.Types.TradeParameters))
     | StateFetched Int (Result Http.Error (Maybe Contracts.Types.State))
-    | OpenedEventDataFetched Int (Result Json.Decode.Error TT.Opened)
+    | OpenedEventDataFetched Int (Result Json.Decode.Error DHT.Opened)
     | EventSentryMsg EventSentry.Msg
     | Refresh Time.Posix
     | MinDaiChanged String

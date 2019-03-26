@@ -1,9 +1,9 @@
-module Contracts.Wrappers exposing (createSell, decodeParameters, getCreationInfoFromIdCmd, getDevFeeCmd, getNumTradesCmd, getOpenedEventDataSentryCmd, getParametersAndStateCmd, getParametersCmd, getStateCmd)
+module Contracts.Wrappers exposing (decodeParameters, getCreationInfoFromIdCmd, getDevFeeCmd, getExtraFeesCmd, getNumTradesCmd, getOpenedEventDataSentryCmd, getParametersAndStateCmd, getParametersCmd, getStateCmd, openTrade)
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
-import Contracts.Generated.Toastytrade as TT
-import Contracts.Generated.ToastytradeFactory as TTF
+import Contracts.Generated.DAIHardFactory as DHF
+import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Types exposing (..)
 import Eth
 import Eth.Decode
@@ -23,8 +23,8 @@ import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
-createSell : Address -> CreateParameters -> Call Address
-createSell contractAddress parameters =
+openTrade : Address -> CreateParameters -> Call Address
+openTrade contractAddress parameters =
     let
         encodedPaymentMethods =
             Json.Encode.list PaymentMethods.encode
@@ -32,19 +32,18 @@ createSell contractAddress parameters =
                 |> Json.Encode.encode 0
 
         encodedFiatData =
-            FiatValue.encode parameters.tradeParameters.fiatPrice
+            FiatValue.encode parameters.fiatPrice
                 |> Json.Encode.encode 0
     in
-    TTF.openToastytrade
+    DHF.openDAIHardTrade
         contractAddress
-        parameters.tradeParameters.initiatorAddress
-        (openModeToInitiatorIsBuyer parameters.tradeParameters.openMode)
-        (TokenValue.getBigInt parameters.tradeParameters.tradeAmount)
-        (TokenValue.getBigInt parameters.tradeParameters.buyerDeposit)
-        (TokenValue.getBigInt parameters.tradeParameters.pokeReward)
-        (TimeHelpers.posixToSecondsBigInt parameters.tradeParameters.autorecallInterval)
-        (TimeHelpers.posixToSecondsBigInt parameters.tradeParameters.autoabortInterval)
-        (TimeHelpers.posixToSecondsBigInt parameters.tradeParameters.autoreleaseInterval)
+        parameters.initiatorAddress
+        (openModeToInitiatorIsBuyer parameters.openMode)
+        (TokenValue.getBigInt parameters.tradeAmount)
+        (TokenValue.getBigInt parameters.pokeReward)
+        (TimeHelpers.posixToSecondsBigInt parameters.autorecallInterval)
+        (TimeHelpers.posixToSecondsBigInt parameters.autoabortInterval)
+        (TimeHelpers.posixToSecondsBigInt parameters.autoreleaseInterval)
         encodedFiatData
         encodedPaymentMethods
         parameters.initiatorCommPubkey
@@ -52,19 +51,25 @@ createSell contractAddress parameters =
 
 getDevFeeCmd : EthHelpers.EthNode -> Address -> BigInt -> (Result Http.Error BigInt -> msg) -> Cmd msg
 getDevFeeCmd ethNode factoryAddress tradeAmount msgConstructor =
-    Eth.call ethNode.http (TTF.getDevFee factoryAddress tradeAmount)
+    Eth.call ethNode.http (DHF.getDevFee factoryAddress tradeAmount)
+        |> Task.attempt msgConstructor
+
+
+getExtraFeesCmd : EthHelpers.EthNode -> Address -> BigInt -> (Result Http.Error DHF.GetExtraFees -> msg) -> Cmd msg
+getExtraFeesCmd ethNode factoryAddress tradeAmount msgConstructor =
+    Eth.call ethNode.http (DHF.getExtraFees factoryAddress tradeAmount)
         |> Task.attempt msgConstructor
 
 
 getNumTradesCmd : EthHelpers.EthNode -> Address -> (Result Http.Error BigInt -> msg) -> Cmd msg
 getNumTradesCmd ethNode factoryAddress msgConstructor =
-    Eth.call ethNode.http (TTF.getNumToastytradeSells factoryAddress)
+    Eth.call ethNode.http (DHF.getNumTrades factoryAddress)
         |> Task.attempt msgConstructor
 
 
-getCreationInfoFromIdCmd : EthHelpers.EthNode -> Address -> BigInt -> (Result Http.Error TTF.CreatedTrade -> msg) -> Cmd msg
+getCreationInfoFromIdCmd : EthHelpers.EthNode -> Address -> BigInt -> (Result Http.Error DHF.CreatedTrade -> msg) -> Cmd msg
 getCreationInfoFromIdCmd ethNode factoryAddress ttId msgConstructor =
-    Eth.call ethNode.http (TTF.createdTrades factoryAddress ttId)
+    Eth.call ethNode.http (DHF.createdTrades factoryAddress ttId)
         |> Task.attempt msgConstructor
 
 
@@ -78,24 +83,24 @@ getParametersAndStateCmd ethNode tokenDecimals address parametersMsgConstructor 
 
 getParametersCmd : EthHelpers.EthNode -> Int -> Address -> (Result Http.Error (Result String TradeParameters) -> msg) -> Cmd msg
 getParametersCmd ethNode numDecimals ttAddress msgConstructor =
-    Eth.call ethNode.http (TT.getParameters ttAddress)
+    Eth.call ethNode.http (DHT.getParameters ttAddress)
         |> Task.map (decodeParameters numDecimals)
         |> Task.attempt msgConstructor
 
 
 getStateCmd : EthHelpers.EthNode -> Int -> Address -> (Result Http.Error (Maybe State) -> msg) -> Cmd msg
 getStateCmd ethNode numDecimals ttAddress msgConstructor =
-    Eth.call ethNode.http (TT.getState ttAddress)
+    Eth.call ethNode.http (DHT.getState ttAddress)
         |> Task.map (decodeState numDecimals)
         |> Task.attempt msgConstructor
 
 
-getOpenedEventDataSentryCmd : EventSentry msg -> TradeCreationInfo -> (Result Json.Decode.Error TT.Opened -> msg) -> ( EventSentry msg, Cmd msg )
+getOpenedEventDataSentryCmd : EventSentry msg -> TradeCreationInfo -> (Result Json.Decode.Error DHT.Opened -> msg) -> ( EventSentry msg, Cmd msg )
 getOpenedEventDataSentryCmd eventSentry creationInfo msgConstructor =
     let
         logToMsg : Eth.Types.Log -> msg
         logToMsg log =
-            (Eth.Decode.event TT.openedDecoder log).returnData
+            (Eth.Decode.event DHT.openedDecoder log).returnData
                 |> msgConstructor
 
         logFilter =
@@ -111,7 +116,7 @@ getOpenedEventDataSentryCmd eventSentry creationInfo msgConstructor =
         logFilter
 
 
-decodeParameters : Int -> TT.GetParameters -> Result String TradeParameters
+decodeParameters : Int -> DHT.GetParameters -> Result String TradeParameters
 decodeParameters numDecimals encodedParameters =
     let
         autorecallIntervalResult =
@@ -135,13 +140,13 @@ decodeParameters numDecimals encodedParameters =
     Result.map4
         (\autorecallInterval depositDeadlineInterval autoreleaseInterval fiatPrice ->
             { openMode = initiatorIsBuyerToOpenMode encodedParameters.initiatorIsBuyer
-            , tradeAmount = TokenValue.tokenValue numDecimals encodedParameters.tokenAmount
+            , tradeAmount = TokenValue.tokenValue numDecimals encodedParameters.daiAmount
+            , buyerDeposit = TokenValue.tokenValue numDecimals encodedParameters.buyerDeposit
             , fiatPrice = fiatPrice
             , autorecallInterval = autorecallInterval
             , autoabortInterval = depositDeadlineInterval
             , autoreleaseInterval = autoreleaseInterval
             , initiatorAddress = encodedParameters.initiator
-            , buyerDeposit = TokenValue.tokenValue numDecimals encodedParameters.buyerDeposit
             , pokeReward = TokenValue.tokenValue numDecimals encodedParameters.pokeReward
             }
         )

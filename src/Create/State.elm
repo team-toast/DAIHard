@@ -125,11 +125,11 @@ update msg model =
                 Just parameters ->
                     { model = model
                     , cmd =
-                        Contracts.Wrappers.getDevFeeCmd
+                        Contracts.Wrappers.getExtraFeesCmd
                             model.ethNode
                             model.factoryAddress
-                            (TokenValue.getBigInt parameters.tradeParameters.tradeAmount)
-                            DevFeeFetched
+                            (TokenValue.getBigInt parameters.tradeAmount)
+                            ExtraFeesFetched
                     , chainCmd = ChainCmd.none
                     , newRoute = Nothing
                     }
@@ -141,23 +141,22 @@ update msg model =
                     in
                     justModelUpdate model
 
-        DevFeeFetched fetchResult ->
+        ExtraFeesFetched fetchResult ->
             case ( fetchResult, model.userInfo, model.contractParameters ) of
-                ( Ok devFee, Just _, Just parameters ) ->
+                ( Ok fees, Just _, Just parameters ) ->
                     let
                         mainDepositAmount =
-                            TokenValue.getBigInt <|
-                                case parameters.tradeParameters.openMode of
-                                    Contracts.Types.BuyerOpened ->
-                                        parameters.tradeParameters.buyerDeposit
+                            case parameters.openMode of
+                                Contracts.Types.BuyerOpened ->
+                                    fees.buyerDeposit
 
-                                    Contracts.Types.SellerOpened ->
-                                        parameters.tradeParameters.tradeAmount
+                                Contracts.Types.SellerOpened ->
+                                    TokenValue.getBigInt parameters.tradeAmount
 
                         fullDepositAmount =
                             mainDepositAmount
-                                |> BigInt.add devFee
-                                |> BigInt.add (TokenValue.getBigInt parameters.tradeParameters.pokeReward)
+                                |> BigInt.add fees.devFee
+                                |> BigInt.add (TokenValue.getBigInt parameters.pokeReward)
 
                         txParams =
                             TokenContract.approve
@@ -229,7 +228,7 @@ update msg model =
                     Just contractParameters ->
                         let
                             txParams =
-                                Contracts.Wrappers.createSell
+                                Contracts.Wrappers.openTrade
                                     model.factoryAddress
                                     contractParameters
                                     |> Eth.toSend

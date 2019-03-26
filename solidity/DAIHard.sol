@@ -14,15 +14,15 @@ contract ERC20Interface {
     event Approval(address indexed tokenOwner, address indexed spender, uint tokens);
 }
 
-contract ToastytradeFactory {
-    event NewToastytrade(uint id, address toastytradeAddress, bool indexed initiatorIsPayer);
+contract DAIHardFactory {
+    event NewTrade(uint id, address tradeAddress, bool indexed initiatorIsPayer);
 
-    ERC20Interface public tokenContract;
+    ERC20Interface public daiContract;
     address payable public devFeeAddress;
 
-    constructor(ERC20Interface _tokenContract, address payable _devFeeAddress)
+    constructor(ERC20Interface _daiContract, address payable _devFeeAddress)
     public {
-        tokenContract = _tokenContract;
+        daiContract = _daiContract;
         devFeeAddress = _devFeeAddress;
     }
 
@@ -33,54 +33,64 @@ contract ToastytradeFactory {
 
     CreationInfo[] public createdTrades;
 
+    function getBuyerDeposit(uint tradeAmount)
+    public
+    pure
+    returns (uint buyerDeposit) {
+        return tradeAmount / 3;
+    }
+
     function getDevFee(uint tradeAmount)
     public
     pure
     returns (uint devFee) {
-        return tradeAmount/100;
+        return tradeAmount / 100;
+    }
+
+    function getExtraFees(uint tradeAmount)
+    public
+    pure
+    returns (uint buyerDeposit, uint devFee) {
+        return (getBuyerDeposit(tradeAmount), getDevFee(tradeAmount));
     }
 
     /*
     The Solidity compiler can't handle much stack depth,
     so we have to pack some args together in annoying ways...
-    Hence the 'uintArgs'. Here is their layout:
-    0 - tokenAmount
-    1 - buyerDeposit
-    2 - pokeReward
-    3 - autorecallInterval
-    4 - autoabortInterval
-    5 - autoreleaseInterval
+    Hence the 'uintArgs'. Here is its layout:
+    0 - daiAmount
+    1 - pokeReward
+    2 - autorecallInterval
+    3 - autoabortInterval
+    4 - autoreleaseInterval
     */
 
-    function openToastytrade(address payable _initiator, bool initiatorIsBuyer, uint[6] calldata uintArgs, string calldata _totalPrice, string calldata _fiatTransferMethods, string calldata _commPubkey)
+    function openDAIHardTrade(address payable _initiator, bool initiatorIsBuyer, uint[5] calldata uintArgs, string calldata _totalPrice, string calldata _fiatTransferMethods, string calldata _commPubkey)
     external
-    returns (Toastytrade) {
-        Toastytrade newTT = new Toastytrade(tokenContract, devFeeAddress);
-
-        createdTrades.push(CreationInfo(address(newTT), block.number));
-
+    returns (DAIHardTrade) {
         uint transferAmount;
-        uint[6] memory newUintArgs; // Note that this structure is not the same as the above comment describes. See below in Toastytrade.open.
-
-        uint devFee = getDevFee(uintArgs[0]);
+        uint[6] memory newUintArgs; // Note that this structure is not the same as the above comment describes. See below in DAIHardTrade.open.
 
         if (initiatorIsBuyer) {
-            transferAmount = uintArgs[1] + uintArgs[2] + devFee;
-            newUintArgs = [uintArgs[0], uintArgs[2], devFee, uintArgs[3], uintArgs[4], uintArgs[5]];
+            transferAmount = getBuyerDeposit(uintArgs[0]) + uintArgs[1] + getDevFee(uintArgs[0]);
+            newUintArgs = [uintArgs[0], uintArgs[1], getDevFee(uintArgs[0]), uintArgs[2], uintArgs[3], uintArgs[4]];
         }
         else {
-            transferAmount = uintArgs[0] + uintArgs[2] + devFee;
-            newUintArgs = [uintArgs[1], uintArgs[2], devFee, uintArgs[3], uintArgs[4], uintArgs[5]];
+            transferAmount = uintArgs[0] + uintArgs[1] + getDevFee(uintArgs[0]);
+            newUintArgs = [getBuyerDeposit(uintArgs[0]), uintArgs[1], getDevFee(uintArgs[0]), uintArgs[2], uintArgs[3], uintArgs[4]];
         }
 
-        require(tokenContract.transferFrom(msg.sender, address(newTT), transferAmount), "Token transfer failed. Did you call approve() on the token contract?");
+        //create the new trade and add its creationInfo to createdTrades
+        DAIHardTrade newTrade = new DAIHardTrade(daiContract, devFeeAddress);
+        createdTrades.push(CreationInfo(address(newTrade), block.number));
+        emit NewTrade(createdTrades.length - 1, address(newTrade), initiatorIsBuyer);
 
-        newTT.open(_initiator, initiatorIsBuyer, newUintArgs, _totalPrice, _fiatTransferMethods, _commPubkey);
-
-        emit NewToastytrade(createdTrades.length - 1, address(newTT), initiatorIsBuyer);
+        //transfer DAI to the trade and open it
+        require(daiContract.transferFrom(msg.sender, address(newTrade), transferAmount), "Token transfer failed. Did you call approve() on the DAI contract?");
+        newTrade.open(_initiator, initiatorIsBuyer, newUintArgs, _totalPrice, _fiatTransferMethods, _commPubkey);
     }
 
-    function getNumToastytradeSells()
+    function getNumTrades()
     external
     view
     returns (uint num) {
@@ -88,7 +98,7 @@ contract ToastytradeFactory {
     }
 }
 
-contract Toastytrade {
+contract DAIHardTrade {
     enum Phase {Created, Open, Committed, Claimed, Closed}
     Phase public phase;
 
@@ -137,24 +147,24 @@ contract Toastytrade {
         _;
     }
 
-    ERC20Interface tokenContract;
+    ERC20Interface daiContract;
     address payable devFeeAddress;
 
-    constructor(ERC20Interface _tokenContract, address payable _devFeeAddress)
+    constructor(ERC20Interface _daiContract, address payable _devFeeAddress)
     public {
         changePhase(Phase.Created);
 
-        tokenContract = _tokenContract;
+        daiContract = _daiContract;
         devFeeAddress = _devFeeAddress;
 
         pokeRewardSent = false;
     }
 
-    uint public tokenAmount;
+    uint public daiAmount;
     string public price;
     uint public buyerDeposit;
 
-    uint public responderDeposit; // This will be equal to either tokenAmount or buyerDeposit, depending on initiatorIsBuyer
+    uint public responderDeposit; // This will be equal to either daiAmount or buyerDeposit, depending on initiatorIsBuyer
 
     uint public autorecallInterval;
     uint public autoabortInterval;
@@ -179,7 +189,7 @@ contract Toastytrade {
 
     function open(address payable _initiator, bool _initiatorIsBuyer, uint[6] memory uintArgs, string memory _price, string memory fiatTransferMethods, string memory commPubkey)
     public {
-        require(getBalance() > 0, "You can't open a toastytrade without first depositing tokens.");
+        require(getBalance() > 0, "You can't open a trade without first depositing DAI.");
 
         responderDeposit = uintArgs[0];
         pokeReward = uintArgs[1];
@@ -193,12 +203,12 @@ contract Toastytrade {
         initiatorIsBuyer = _initiatorIsBuyer;
         if (initiatorIsBuyer) {
             buyer = initiator;
-            tokenAmount = responderDeposit;
+            daiAmount = responderDeposit;
             buyerDeposit = getBalance() - (pokeReward + devFee);
         }
         else {
             seller = initiator;
-            tokenAmount = getBalance() - (pokeReward + devFee);
+            daiAmount = getBalance() - (pokeReward + devFee);
             buyerDeposit = responderDeposit;
         }
 
@@ -234,7 +244,7 @@ contract Toastytrade {
 
     function internalRecall()
     internal {
-        require(tokenContract.transfer(initiator, getBalance()), "Recall of tokens to initiator failed!");
+        require(daiContract.transfer(initiator, getBalance()), "Recall of DAI to initiator failed!");
 
         changePhase(Phase.Closed);
         emit Recalled();
@@ -251,7 +261,7 @@ contract Toastytrade {
     function commit(string calldata commPubkey)
     external
     inPhase(Phase.Open) {
-        require(tokenContract.transferFrom(msg.sender, address(this), responderDeposit), "Can't transfer the required deposit from the token contract. Did you call approve first?");
+        require(daiContract.transferFrom(msg.sender, address(this), responderDeposit), "Can't transfer the required deposit from the DAI contract. Did you call approve first?");
         require(!autorecallAvailable(), "autorecallInterval has passed; this offer has expired.");
 
         responder = msg.sender;
@@ -269,7 +279,7 @@ contract Toastytrade {
 
     /* ---------------------- COMMITTED PHASE ---------------------
 
-    In the Committed phase, the Buyer is expected to deposit fiat for the token,
+    In the Committed phase, the Buyer is expected to deposit fiat for the DAI,
     then call claim().
 
     Otherwise, the Buyer can call abort(), which cancels the contract,
@@ -298,11 +308,11 @@ contract Toastytrade {
 
         //Punish both parties equally by burning burnAmount.
         //Instead of burning burnAmount twice, just burn it all in one call.
-        require(tokenContract.transfer(address(0x0), burnAmount*2), "Token burn failed!");
+        require(daiContract.transfer(address(0x0), burnAmount*2), "Token burn failed!");
 
         //Send back deposits minus burned amounts.
-        require(tokenContract.transfer(buyer, buyerDeposit - burnAmount), "Token transfer to Buyer failed!");
-        require(tokenContract.transfer(seller, tokenAmount - burnAmount), "Token transfer to Seller failed!");
+        require(daiContract.transfer(buyer, buyerDeposit - burnAmount), "Token transfer to Buyer failed!");
+        require(daiContract.transfer(seller, daiAmount - burnAmount), "Token transfer to Seller failed!");
 
         uint sendBackToInitiator = devFee;
         //If there was a pokeReward left, it should be sent back to the initiator
@@ -310,7 +320,7 @@ contract Toastytrade {
             sendBackToInitiator += pokeReward;
         }
         
-        require(tokenContract.transfer(initiator, sendBackToInitiator), "Token refund of devFee+pokeReward to Initiator failed!");
+        require(daiContract.transfer(initiator, sendBackToInitiator), "Token refund of devFee+pokeReward to Initiator failed!");
         
         //There may be a wei or two left over in the contract due to integer division. Not a big deal.
 
@@ -369,14 +379,14 @@ contract Toastytrade {
     internal {
         //If the pokeReward has not been sent, refund it to the initiator
         if (!pokeRewardSent) {
-            require(tokenContract.transfer(initiator, pokeReward), "Refund of pokeReward to Initiator failed!");
+            require(daiContract.transfer(initiator, pokeReward), "Refund of pokeReward to Initiator failed!");
         }
 
-        //Upon successful trade, the devFee is sent to the developers of Toastytrade.
-        require(tokenContract.transfer(devFeeAddress, devFee), "Token transfer to devFeeAddress failed!");
+        //Upon successful resolution of trade, the devFee is sent to the developers of DAIHard.
+        require(daiContract.transfer(devFeeAddress, devFee), "Token transfer to devFeeAddress failed!");
 
         //Release the remaining balance to the buyer.
-        require(tokenContract.transfer(buyer, getBalance()), "Final release transfer to buyer failed!");
+        require(daiContract.transfer(buyer, getBalance()), "Final release transfer to buyer failed!");
 
         changePhase(Phase.Closed);
         emit Released();
@@ -393,7 +403,7 @@ contract Toastytrade {
 
     function internalBurn()
     internal {
-        require(tokenContract.transfer(address(0x0), getBalance()), "Final token burn failed!");
+        require(daiContract.transfer(address(0x0), getBalance()), "Final DAI burn failed!");
 
         changePhase(Phase.Closed);
         emit Burned();
@@ -412,15 +422,15 @@ contract Toastytrade {
     public
     view
     returns(uint) {
-        return tokenContract.balanceOf(address(this));
+        return daiContract.balanceOf(address(this));
     }
 
     function getParameters()
     external
     view
-    returns (address initiator, bool initiatorIsBuyer, uint tokenAmount, string memory totalPrice, uint buyerDeposit, uint autorecallInterval, uint autoabortInterval, uint autoreleaseInterval, uint pokeReward)
+    returns (address initiator, bool initiatorIsBuyer, uint daiAmount, string memory totalPrice, uint buyerDeposit, uint autorecallInterval, uint autoabortInterval, uint autoreleaseInterval, uint pokeReward)
     {
-        return (this.initiator(), this.initiatorIsBuyer(), this.tokenAmount(), this.price(), this.buyerDeposit(), this.autorecallInterval(), this.autoabortInterval(), this.autoreleaseInterval(), this.pokeReward());
+        return (this.initiator(), this.initiatorIsBuyer(), this.daiAmount(), this.price(), this.buyerDeposit(), this.autorecallInterval(), this.autoabortInterval(), this.autoreleaseInterval(), this.pokeReward());
     }
 
     // Poke function lets anyone move the contract along,
@@ -442,7 +452,7 @@ contract Toastytrade {
     external 
     returns (bool moved) {
         if (pokeNeeded()) {
-            tokenContract.transfer(msg.sender, pokeReward);
+            daiContract.transfer(msg.sender, pokeReward);
             pokeRewardSent = true;
             emit Poke();
         }

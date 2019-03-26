@@ -3,8 +3,8 @@ module Interact.Types exposing (CommMessage, ContractMsg(..), EncryptedMessage, 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
-import Contracts.Generated.Toastytrade as TT
-import Contracts.Generated.ToastytradeFactory as TTF
+import Contracts.Generated.DAIHardFactory as DHF
+import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Types
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
@@ -28,7 +28,7 @@ type alias Model =
 
 
 type Msg
-    = CreationInfoFetched (Result Http.Error TTF.CreatedTrade)
+    = CreationInfoFetched (Result Http.Error DHF.CreatedTrade)
     | StateFetched (Result Http.Error (Maybe Contracts.Types.State))
     | ParametersFetched (Result Http.Error (Result String Contracts.Types.TradeParameters))
     | ContractAction ContractMsg

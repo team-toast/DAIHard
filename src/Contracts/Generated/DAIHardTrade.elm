@@ -1,4 +1,4 @@
-module Contracts.Generated.Toastytrade exposing
+module Contracts.Generated.DAIHardTrade exposing
     ( Committed
     , GetParameters
     , GetState
@@ -22,6 +22,7 @@ module Contracts.Generated.Toastytrade exposing
     , commit
     , committedDecoder
     , committedEvent
+    , daiAmount
     , devFee
     , getBalance
     , getParameters
@@ -54,7 +55,6 @@ module Contracts.Generated.Toastytrade exposing
     , responderStatementLogDecoder
     , responderStatementLogEvent
     , seller
-    , tokenAmount
     )
 
 import Abi.Decode as AbiDecode exposing (abiDecode, andMap, data, toElmDecoder, topic)
@@ -254,6 +254,21 @@ commit contractAddress commPubkey =
     }
 
 
+{-| "daiAmount()" function
+-}
+daiAmount : Address -> Call BigInt
+daiAmount contractAddress =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "daiAmount()" []
+    , nonce = Nothing
+    , decoder = toElmDecoder AbiDecode.uint
+    }
+
+
 {-| "devFee()" function
 -}
 devFee : Address -> Call BigInt
@@ -289,7 +304,7 @@ getBalance contractAddress =
 type alias GetParameters =
     { initiator : Address
     , initiatorIsBuyer : Bool
-    , tokenAmount : BigInt
+    , daiAmount : BigInt
     , totalPrice : String
     , buyerDeposit : BigInt
     , autorecallInterval : BigInt
@@ -612,21 +627,6 @@ seller contractAddress =
     , data = Just <| AbiEncode.functionCall "seller()" []
     , nonce = Nothing
     , decoder = toElmDecoder AbiDecode.address
-    }
-
-
-{-| "tokenAmount()" function
--}
-tokenAmount : Address -> Call BigInt
-tokenAmount contractAddress =
-    { to = Just contractAddress
-    , from = Nothing
-    , gas = Nothing
-    , gasPrice = Nothing
-    , value = Nothing
-    , data = Just <| AbiEncode.functionCall "tokenAmount()" []
-    , nonce = Nothing
-    , decoder = toElmDecoder AbiDecode.uint
     }
 
 

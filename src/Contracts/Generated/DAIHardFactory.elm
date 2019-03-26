@@ -1,15 +1,18 @@
-module Contracts.Generated.ToastytradeFactory exposing
+module Contracts.Generated.DAIHardFactory exposing
     ( CreatedTrade
-    , NewToastytrade
+    , GetExtraFees
+    , NewTrade
     , createdTrades
     , createdTradesDecoder
+    , daiContract
     , devFeeAddress
+    , getBuyerDeposit
     , getDevFee
-    , getNumToastytradeSells
-    , newToastytradeDecoder
-    , newToastytradeEvent
-    , openToastytrade
-    , tokenContract
+    , getExtraFees
+    , getNumTrades
+    , newTradeDecoder
+    , newTradeEvent
+    , openDAIHardTrade
     )
 
 import Abi.Decode as AbiDecode exposing (abiDecode, andMap, data, toElmDecoder, topic)
@@ -58,6 +61,21 @@ createdTradesDecoder =
         |> toElmDecoder
 
 
+{-| "daiContract()" function
+-}
+daiContract : Address -> Call Address
+daiContract contractAddress =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "daiContract()" []
+    , nonce = Nothing
+    , decoder = toElmDecoder AbiDecode.address
+    }
+
+
 {-| "devFeeAddress()" function
 -}
 devFeeAddress : Address -> Call Address
@@ -70,6 +88,21 @@ devFeeAddress contractAddress =
     , data = Just <| AbiEncode.functionCall "devFeeAddress()" []
     , nonce = Nothing
     , decoder = toElmDecoder AbiDecode.address
+    }
+
+
+{-| "getBuyerDeposit(uint256)" function
+-}
+getBuyerDeposit : Address -> BigInt -> Call BigInt
+getBuyerDeposit contractAddress tradeAmount =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "getBuyerDeposit(uint256)" [ AbiEncode.uint tradeAmount ]
+    , nonce = Nothing
+    , decoder = toElmDecoder AbiDecode.uint
     }
 
 
@@ -88,25 +121,54 @@ getDevFee contractAddress tradeAmount =
     }
 
 
-{-| "getNumToastytradeSells()" function
+{-| "getExtraFees(uint256)" function
 -}
-getNumToastytradeSells : Address -> Call BigInt
-getNumToastytradeSells contractAddress =
+type alias GetExtraFees =
+    { buyerDeposit : BigInt
+    , devFee : BigInt
+    }
+
+
+getExtraFees : Address -> BigInt -> Call GetExtraFees
+getExtraFees contractAddress tradeAmount =
     { to = Just contractAddress
     , from = Nothing
     , gas = Nothing
     , gasPrice = Nothing
     , value = Nothing
-    , data = Just <| AbiEncode.functionCall "getNumToastytradeSells()" []
+    , data = Just <| AbiEncode.functionCall "getExtraFees(uint256)" [ AbiEncode.uint tradeAmount ]
+    , nonce = Nothing
+    , decoder = getExtraFeesDecoder
+    }
+
+
+getExtraFeesDecoder : Decoder GetExtraFees
+getExtraFeesDecoder =
+    abiDecode GetExtraFees
+        |> andMap AbiDecode.uint
+        |> andMap AbiDecode.uint
+        |> toElmDecoder
+
+
+{-| "getNumTrades()" function
+-}
+getNumTrades : Address -> Call BigInt
+getNumTrades contractAddress =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "getNumTrades()" []
     , nonce = Nothing
     , decoder = toElmDecoder AbiDecode.uint
     }
 
 
-{-| "openToastytrade(address,bool,uint256[6],string,string,string)" function
+{-| "openDAIHardTrade(address,bool,uint256[5],string,string,string)" function
 -}
-openToastytrade : Address -> Address -> Bool -> BigInt -> BigInt -> BigInt -> BigInt -> BigInt -> BigInt -> String -> String -> String -> Call Address
-openToastytrade contractAddress initiator initiatorIsBuyer tokenAmount buyerDeposit pokeReward autorecallInterval autoabortInterval autoreleaseInterval totalPrice fiatTransferMethods commPubkey =
+openDAIHardTrade : Address -> Address -> Bool -> BigInt -> BigInt -> BigInt -> BigInt -> BigInt -> String -> String -> String -> Call Address
+openDAIHardTrade contractAddress initiator initiatorIsBuyer daiAmount pokeReward autorecallInterval autoabortInterval autoreleaseInterval totalPrice fiatTransferMethods commPubkey =
     { to = Just contractAddress
     , from = Nothing
     , gas = Nothing
@@ -115,11 +177,10 @@ openToastytrade contractAddress initiator initiatorIsBuyer tokenAmount buyerDepo
     , data =
         Just <|
             AbiEncode.functionCall
-                "openToastytrade(address,bool,uint256[6],string,string,string)"
+                "openDAIHardTrade(address,bool,uint256[5],string,string,string)"
                 [ AbiEncode.address initiator
                 , AbiEncode.bool initiatorIsBuyer
-                , AbiEncode.uint tokenAmount
-                , AbiEncode.uint buyerDeposit
+                , AbiEncode.uint daiAmount
                 , AbiEncode.uint pokeReward
                 , AbiEncode.uint autorecallInterval
                 , AbiEncode.uint autoabortInterval
@@ -133,45 +194,30 @@ openToastytrade contractAddress initiator initiatorIsBuyer tokenAmount buyerDepo
     }
 
 
-{-| "tokenContract()" function
+{-| "NewTrade(uint256,address,bool)" event
 -}
-tokenContract : Address -> Call Address
-tokenContract contractAddress =
-    { to = Just contractAddress
-    , from = Nothing
-    , gas = Nothing
-    , gasPrice = Nothing
-    , value = Nothing
-    , data = Just <| AbiEncode.functionCall "tokenContract()" []
-    , nonce = Nothing
-    , decoder = toElmDecoder AbiDecode.address
-    }
-
-
-{-| "NewToastytrade(uint256,address,bool)" event
--}
-type alias NewToastytrade =
+type alias NewTrade =
     { id : BigInt
-    , toastytradeAddress : Address
+    , tradeAddress : Address
     , initiatorIsPayer : Bool
     }
 
 
-newToastytradeEvent : Address -> Maybe Bool -> LogFilter
-newToastytradeEvent contractAddress initiatorIsPayer =
+newTradeEvent : Address -> Maybe Bool -> LogFilter
+newTradeEvent contractAddress initiatorIsPayer =
     { fromBlock = LatestBlock
     , toBlock = LatestBlock
     , address = contractAddress
     , topics =
-        [ Just <| U.keccak256 "NewToastytrade(uint256,address,bool)"
+        [ Just <| U.keccak256 "NewTrade(uint256,address,bool)"
         , Maybe.map (abiEncode << AbiEncode.bool) initiatorIsPayer
         ]
     }
 
 
-newToastytradeDecoder : Decoder NewToastytrade
-newToastytradeDecoder =
-    succeed NewToastytrade
+newTradeDecoder : Decoder NewTrade
+newTradeDecoder =
+    succeed NewTrade
         |> custom (data 0 AbiDecode.uint)
         |> custom (data 1 AbiDecode.address)
         |> custom (topic 1 AbiDecode.bool)

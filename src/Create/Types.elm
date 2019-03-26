@@ -3,6 +3,7 @@ module Create.Types exposing (ContractParameterInputs, Model, Msg(..), UpdateRes
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (UserInfo)
+import Contracts.Generated.DAIHardFactory as DHF
 import Contracts.Types
 import Eth.Types exposing (Address, TxReceipt)
 import EthHelpers
@@ -48,7 +49,7 @@ type Msg
     | AutoreleaseIntervalChanged String
     | AddPaymentMethod PaymentMethod
     | BeginCreateProcess
-    | DevFeeFetched (Result Http.Error BigInt)
+    | ExtraFeesFetched (Result Http.Error DHF.GetExtraFees)
     | ApproveMined (Result String TxReceipt)
     | CreateMined (Result String TxReceipt)
     | NoOp

@@ -5,8 +5,8 @@ import BigInt exposing (BigInt)
 import BigIntHelpers
 import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (UserInfo)
+import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Generated.ERC20Token as TokenContract
-import Contracts.Generated.Toastytrade as TT
 import Contracts.Types
 import Contracts.Wrappers
 import Eth
@@ -177,7 +177,7 @@ update msg model =
                                 Recall ->
                                     let
                                         txParams =
-                                            TT.recall tradeInfo.creationInfo.address
+                                            DHT.recall tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
                                     ChainCmd.custom genericCustomSend txParams
@@ -212,7 +212,7 @@ update msg model =
                                 Claim ->
                                     let
                                         txParams =
-                                            TT.claim tradeInfo.creationInfo.address
+                                            DHT.claim tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
                                     ChainCmd.custom genericCustomSend txParams
@@ -220,7 +220,7 @@ update msg model =
                                 Abort ->
                                     let
                                         txParams =
-                                            TT.abort tradeInfo.creationInfo.address
+                                            DHT.abort tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
                                     ChainCmd.custom genericCustomSend txParams
@@ -228,7 +228,7 @@ update msg model =
                                 Release ->
                                     let
                                         txParams =
-                                            TT.release tradeInfo.creationInfo.address
+                                            DHT.release tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
                                     ChainCmd.custom genericCustomSend txParams
@@ -236,7 +236,7 @@ update msg model =
                                 Burn ->
                                     let
                                         txParams =
-                                            TT.burn tradeInfo.creationInfo.address
+                                            DHT.burn tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
                                     ChainCmd.custom genericCustomSend txParams
@@ -244,7 +244,7 @@ update msg model =
                                 Poke ->
                                     let
                                         txParams =
-                                            TT.poke tradeInfo.creationInfo.address
+                                            DHT.poke tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
                                     ChainCmd.custom genericCustomSend txParams
@@ -279,7 +279,7 @@ update msg model =
                         ( Contracts.Types.LoadedTrade tradeInfo, Just userInfo ) ->
                             let
                                 txParams =
-                                    TT.commit tradeInfo.creationInfo.address userInfo.commPubkey
+                                    DHT.commit tradeInfo.creationInfo.address userInfo.commPubkey
                                         |> Eth.toSend
                             in
                             ( model, Cmd.none, ChainCmd.custom genericCustomSend txParams )
@@ -339,11 +339,11 @@ update msg model =
                                 txParams =
                                     case userRole of
                                         Initiator ->
-                                            TT.initiatorStatement tradeInfo.creationInfo.address initiatorMessage responderMessage
+                                            DHT.initiatorStatement tradeInfo.creationInfo.address initiatorMessage responderMessage
                                                 |> Eth.toSend
 
                                         Responder ->
-                                            TT.responderStatement tradeInfo.creationInfo.address initiatorMessage responderMessage
+                                            DHT.responderStatement tradeInfo.creationInfo.address initiatorMessage responderMessage
                                                 |> Eth.toSend
                             in
                             ( model

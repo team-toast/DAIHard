@@ -3,8 +3,8 @@ module Contracts.Types exposing (CreateParameters, FullTradeInfo, OpenMode(..), 
 import Abi.Decode
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
-import Contracts.Generated.Toastytrade as TT
-import Contracts.Generated.ToastytradeFactory as TTF
+import Contracts.Generated.DAIHardFactory as DHF
+import Contracts.Generated.DAIHardTrade as DHT
 import Eth.Decode
 import Eth.Types exposing (Address)
 import Eth.Utils
@@ -75,7 +75,14 @@ type alias TradeParameters =
 
 
 type alias CreateParameters =
-    { tradeParameters : TradeParameters
+    { openMode : OpenMode
+    , tradeAmount : TokenValue
+    , fiatPrice : FiatValue
+    , autorecallInterval : Time.Posix
+    , autoabortInterval : Time.Posix
+    , autoreleaseInterval : Time.Posix
+    , initiatorAddress : Address
+    , pokeReward : TokenValue
     , initiatorCommPubkey : String
     , paymentMethods : List PaymentMethod
     }
@@ -96,16 +103,16 @@ type alias DerivedValues =
 
 
 type ToastytradeEvent
-    = OpenedEvent TT.Opened
-    | CommittedEvent TT.Committed
+    = OpenedEvent DHT.Opened
+    | CommittedEvent DHT.Committed
     | RecalledEvent
     | ClaimedEvent
     | AbortedEvent
     | ReleasedEvent
     | BurnedEvent
     | PokeEvent
-    | InitiatorStatementLogEvent TT.InitiatorStatementLog
-    | ResponderStatementLogEvent TT.ResponderStatementLog
+    | InitiatorStatementLogEvent DHT.InitiatorStatementLog
+    | ResponderStatementLogEvent DHT.ResponderStatementLog
 
 
 type Trade
@@ -252,10 +259,10 @@ eventDecoder =
         |> Json.Decode.andThen
             (\hashedSig ->
                 if hashedSig == Eth.Utils.keccak256 "Opened(string,string)" then
-                    Json.Decode.map OpenedEvent TT.openedDecoder
+                    Json.Decode.map OpenedEvent DHT.openedDecoder
 
                 else if hashedSig == Eth.Utils.keccak256 "Committed(address,string)" then
-                    Json.Decode.map CommittedEvent TT.committedDecoder
+                    Json.Decode.map CommittedEvent DHT.committedDecoder
 
                 else if hashedSig == Eth.Utils.keccak256 "Recalled()" then
                     Json.Decode.succeed RecalledEvent
@@ -273,10 +280,10 @@ eventDecoder =
                     Json.Decode.succeed BurnedEvent
 
                 else if hashedSig == Eth.Utils.keccak256 "InitiatorStatementLog(string,string)" then
-                    Json.Decode.map InitiatorStatementLogEvent TT.initiatorStatementLogDecoder
+                    Json.Decode.map InitiatorStatementLogEvent DHT.initiatorStatementLogDecoder
 
                 else if hashedSig == Eth.Utils.keccak256 "ResponderStatementLog(string,string)" then
-                    Json.Decode.map ResponderStatementLogEvent TT.responderStatementLogDecoder
+                    Json.Decode.map ResponderStatementLogEvent DHT.responderStatementLogDecoder
 
                 else if hashedSig == Eth.Utils.keccak256 "Poke()" then
                     Json.Decode.succeed PokeEvent
@@ -303,7 +310,7 @@ txReceiptToCreatedToastytradeSellId factoryAddress txReceipt =
         |> Result.fromMaybe "No log found from that factoryAddress in that txReceipt"
         |> Result.andThen
             (\log ->
-                (Eth.Decode.event TTF.newToastytradeDecoder log).returnData
+                (Eth.Decode.event DHF.newTradeDecoder log).returnData
                     |> Result.mapError Json.Decode.errorToString
             )
         |> Result.map .id
@@ -357,31 +364,25 @@ phaseToString phase =
 buildCreateParameters : UserInfo -> UserParameters -> CreateParameters
 buildCreateParameters initiatorInfo userParameters =
     let
-        buyerDeposit =
-            TokenValue.divByInt userParameters.tradeAmount 3
-
         pokeReward =
             TokenValue.updateValue
                 userParameters.tradeAmount
-                (BigInt.fromInt 2500000000000000)
+                (BigInt.fromInt 0)
     in
-    { tradeParameters =
-        { openMode = userParameters.openMode
-        , tradeAmount = userParameters.tradeAmount
-        , fiatPrice = userParameters.fiatPrice
-        , autorecallInterval = userParameters.autorecallInterval
-        , autoabortInterval = userParameters.autoabortInterval
-        , autoreleaseInterval = userParameters.autoreleaseInterval
-        , initiatorAddress = initiatorInfo.address
-        , buyerDeposit = buyerDeposit
-        , pokeReward = pokeReward
-        }
+    { openMode = userParameters.openMode
+    , tradeAmount = userParameters.tradeAmount
+    , fiatPrice = userParameters.fiatPrice
+    , autorecallInterval = userParameters.autorecallInterval
+    , autoabortInterval = userParameters.autoabortInterval
+    , autoreleaseInterval = userParameters.autoreleaseInterval
+    , initiatorAddress = initiatorInfo.address
+    , pokeReward = pokeReward
     , initiatorCommPubkey = initiatorInfo.commPubkey
     , paymentMethods = userParameters.paymentMethods
     }
 
 
-decodeState : Int -> TT.GetState -> Maybe State
+decodeState : Int -> DHT.GetState -> Maybe State
 decodeState numDecimals encodedState =
     let
         maybePhase =

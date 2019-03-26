@@ -145,7 +145,7 @@
 	{
 		"inputs": [
 			{
-				"name": "_tokenContract",
+				"name": "_daiContract",
 				"type": "address"
 			},
 			{
@@ -376,6 +376,20 @@
 	{
 		"constant": true,
 		"inputs": [],
+		"name": "daiAmount",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
 		"name": "devFee",
 		"outputs": [
 			{
@@ -415,7 +429,7 @@
 				"type": "bool"
 			},
 			{
-				"name": "tokenAmount",
+				"name": "daiAmount",
 				"type": "uint256"
 			},
 			{
@@ -626,20 +640,6 @@
 			{
 				"name": "",
 				"type": "address"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "tokenAmount",
-		"outputs": [
-			{
-				"name": "",
-				"type": "uint256"
 			}
 		],
 		"payable": false,
