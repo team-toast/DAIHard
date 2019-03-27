@@ -10,6 +10,7 @@ import EthHelpers exposing (EthNode)
 import Http
 import PaymentMethods exposing (PaymentMethod)
 import Routing
+import Time
 import TokenValue exposing (TokenValue)
 
 
@@ -30,9 +31,9 @@ type alias Inputs =
     , fiatAmount : String
     , margin : String
     , paymentMethods : List PaymentMethod
-    , autorecallInterval : String
-    , autoabortInterval : String
-    , autoreleaseInterval : String
+    , autorecallInterval : Time.Posix
+    , autoabortInterval : Time.Posix
+    , autoreleaseInterval : Time.Posix
     }
 
 
@@ -46,6 +47,9 @@ type Msg
     | ShowCurrencyDropdown Bool
     | OpenCurrencySelector
     | MarginStringChanged String
+    | AutorecallIntervalChanged Time.Posix
+    | AutoabortIntervalChanged Time.Posix
+    | AutoreleaseIntervalChanged Time.Posix
     | AddPaymentMethod PaymentMethod
     | ClearDraft
     | PublishClicked

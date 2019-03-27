@@ -330,7 +330,7 @@ viewExpiring time trade =
                 (TimeHelpers.add trade.state.phaseStartTime trade.parameters.autorecallInterval)
                 time
     in
-    EH.intervalWithElapsedBar interval trade.parameters.autorecallInterval Element.fill
+    EH.smallIntervalWithElapsedBar interval trade.parameters.autorecallInterval Element.fill
 
 
 viewTradeAmount : Contracts.Types.FullTradeInfo -> Element Msg
@@ -376,7 +376,7 @@ viewAutoabortWindow viewAsBuyer trade =
             else
                 Just EH.green
     in
-    EH.interval color trade.parameters.autoabortInterval
+    EH.interval False color trade.parameters.autoabortInterval
 
 
 viewAutoreleaseWindow : Bool -> Contracts.Types.FullTradeInfo -> Element Msg
@@ -389,7 +389,7 @@ viewAutoreleaseWindow viewAsBuyer trade =
             else
                 Just EH.red
     in
-    EH.interval color trade.parameters.autoreleaseInterval
+    EH.interval False color trade.parameters.autoreleaseInterval
 
 
 viewTradeButton : Int -> Element Msg

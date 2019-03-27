@@ -1,4 +1,18 @@
-module Images exposing (Image, daiSymbol, downArrow, image, marginSymbol, none, qmarkCircle, toElement, upArrow)
+module Images exposing
+    ( Image
+    , daiSymbol
+    , downArrow
+    , image
+    , marginSymbol
+    , none
+    , openWindowIcon
+    , paymentWindowIcon
+    , qmarkCircle
+    , releaseWindowIcon
+    , toElement
+    , upArrow
+    , addButton
+    )
 
 import Element exposing (Attribute, Element)
 
@@ -78,4 +92,35 @@ qmarkCircle =
     Just
         { src = "static/img/qmark-circle.svg"
         , description = ""
+        }
+
+
+openWindowIcon : Image
+openWindowIcon =
+    Just
+        { src = "static/img/open-window-icon.svg"
+        , description = ""
+        }
+
+
+paymentWindowIcon : Image
+paymentWindowIcon =
+    Just
+        { src = "static/img/payment-window-icon.svg"
+        , description = ""
+        }
+
+
+releaseWindowIcon : Image
+releaseWindowIcon =
+    Just
+        { src = "static/img/release-window-icon.svg"
+        , description = ""
+        }
+
+addButton : Image
+addButton =
+    Just
+        { src = "static/img/add-button.svg"
+        , description = "add"
         }

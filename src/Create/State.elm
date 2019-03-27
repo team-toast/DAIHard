@@ -15,6 +15,7 @@ import EthHelpers
 import FiatValue exposing (FiatValue)
 import Flip exposing (flip)
 import Routing
+import Time
 import TimeHelpers
 import TokenValue exposing (TokenValue)
 
@@ -44,9 +45,9 @@ initialInputs =
     , fiatAmount = ""
     , margin = "0"
     , paymentMethods = []
-    , autorecallInterval = "3"
-    , autoabortInterval = "3"
-    , autoreleaseInterval = "3"
+    , autorecallInterval = Time.millisToPosix <| 1000 * 60 * 60 * 2
+    , autoabortInterval = Time.millisToPosix <| 1000 * 60 * 30
+    , autoreleaseInterval = Time.millisToPosix <| 1000 * 60 * 60 * 12
     }
 
 
@@ -125,24 +126,27 @@ update msg prevModel =
             in
             justModelUpdate (prevModel |> updateInputs { oldInputs | margin = newString })
 
-        -- AutorecallIntervalChanged newTimeStr ->
-        --     let
-        --         oldInputs =
-        --             prevModel.inputs
-        --     in
-        --     justModelUpdate (prevModel |> updateInputs { oldInputs | autorecallInterval = newTimeStr })
-        -- AutoabortIntervalChanged newTimeStr ->
-        --     let
-        --         oldInputs =
-        --             prevModel.inputs
-        --     in
-        --     justModelUpdate (prevModel |> updateInputs { oldInputs | autoabortInterval = newTimeStr })
-        -- AutoreleaseIntervalChanged newTimeStr ->
-        --     let
-        --         oldInputs =
-        --             prevModel.inputs
-        --     in
-        --     justModelUpdate (prevModel |> updateInputs { oldInputs | autoreleaseInterval = newTimeStr })
+        AutorecallIntervalChanged newTime ->
+            let
+                oldInputs =
+                    prevModel.inputs
+            in
+            justModelUpdate (prevModel |> updateInputs { oldInputs | autorecallInterval = newTime })
+
+        AutoabortIntervalChanged newTime ->
+            let
+                oldInputs =
+                    prevModel.inputs
+            in
+            justModelUpdate (prevModel |> updateInputs { oldInputs | autoabortInterval = newTime })
+
+        AutoreleaseIntervalChanged newTime ->
+            let
+                oldInputs =
+                    prevModel.inputs
+            in
+            justModelUpdate (prevModel |> updateInputs { oldInputs | autoreleaseInterval = newTime })
+
         AddPaymentMethod paymentMethod ->
             let
                 oldInputs =
@@ -339,22 +343,19 @@ updateParameters model =
 
 validateInputs : Int -> Inputs -> Maybe CTypes.UserParameters
 validateInputs numDecimals inputs =
-    Maybe.map5
-        (\daiAmount fiatAmount autorecallInterval autoabortInterval autoreleaseInterval ->
+    Maybe.map2
+        (\daiAmount fiatAmount ->
             { openMode = inputs.openMode
             , tradeAmount = daiAmount
             , fiatPrice = { fiatType = inputs.fiatType, amount = fiatAmount }
-            , autorecallInterval = autorecallInterval
-            , autoabortInterval = autoabortInterval
-            , autoreleaseInterval = autoreleaseInterval
+            , autorecallInterval = inputs.autorecallInterval
+            , autoabortInterval = inputs.autoabortInterval
+            , autoreleaseInterval = inputs.autoreleaseInterval
             , paymentMethods = inputs.paymentMethods
             }
         )
         (TokenValue.fromString numDecimals inputs.daiAmount)
         (BigInt.fromString inputs.fiatAmount)
-        (TimeHelpers.daysStrToMaybePosix inputs.autorecallInterval)
-        (TimeHelpers.daysStrToMaybePosix inputs.autoabortInterval)
-        (TimeHelpers.daysStrToMaybePosix inputs.autoreleaseInterval)
 
 
 subscriptions : Model -> Sub Msg

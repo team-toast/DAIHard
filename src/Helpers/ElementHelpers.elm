@@ -1,4 +1,4 @@
-module ElementHelpers exposing (black, blue, blueButton, bulletPointString, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, disabledTextColor, errorMessage, fakeLink, fancyInput, fiatTypeToSymbolElement, fiatValue, green, headerBackgroundColor, inputWithHeader, interval, intervalWithElapsedBar, lightGray, margin, niceBottomBorderEl, pageBackgroundColor, red, redButton, roundBottomCorners, roundTopCorners, subtleShadow, testBorderStyles, textInputWithElement, tokenValue, white, yellow)
+module ElementHelpers exposing (black, blue, blueButton, bulletPointString, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, disabledTextColor, errorMessage, fakeLink, fancyInput, fiatTypeToSymbolElement, fiatValue, green, headerBackgroundColor, inputWithHeader, interval, intervalInput, lightGray, margin, modal, niceBottomBorderEl, pageBackgroundColor, permanentTextColor, red, redButton, roundBottomCorners, roundTopCorners, smallIntervalWithElapsedBar, subtleShadow, testBorderStyles, textInputWithElement, tokenValue, white, yellow)
 
 import Browser.Dom
 import CommonTypes exposing (..)
@@ -11,6 +11,7 @@ import Element.Events
 import Element.Font
 import Element.Input
 import FiatValue exposing (FiatValue)
+import Html.Attributes
 import Html.Events
 import Html.Styled
 import Images
@@ -53,6 +54,10 @@ yellow =
 
 lightGray =
     Element.rgb255 233 237 242
+
+
+permanentTextColor =
+    Element.rgba255 1 31 52 0.64
 
 
 pageBackgroundColor =
@@ -164,8 +169,8 @@ margin upIsGreen marginFloat =
                 ]
 
 
-interval : Maybe Element.Color -> Time.Posix -> Element msg
-interval maybeLowValColor i =
+interval : Bool -> Maybe Element.Color -> Time.Posix -> Element msg
+interval big maybeLowValColor i =
     case TimeHelpers.toHumanReadableInterval i of
         Nothing ->
             errorMessage "Interval display failed! Is it too big?" i
@@ -176,29 +181,125 @@ interval maybeLowValColor i =
                     maybeLowValColor
                         |> Maybe.withDefault black
 
-                hc =
+                dc =
                     if hrInterval.days == 0 then
                         lightGray
 
                     else
                         black
 
-                ( mc, sc ) =
+                ( hc, mc ) =
                     if hrInterval.days == 0 && hrInterval.hours == 0 then
                         ( lightGray, lowValColor )
 
                     else
                         ( black, black )
             in
+            if big then
+                Element.row
+                    [ Element.spaceEvenly
+                    , Element.width Element.fill
+                    ]
+                    [ bigTimeUnitElement 3 dc " days" hrInterval.days
+                    , bigTimeUnitElement 2 hc " hours" hrInterval.hours
+                    , bigTimeUnitElement 2 mc " min" hrInterval.min
+                    ]
+
+            else
             Element.row [ Element.spacing 5 ]
-                [ timeUnitElement hrInterval.days 'd' hc
-                , timeUnitElement hrInterval.hours 'h' mc
-                , timeUnitElement hrInterval.min 'm' sc
+                    [ conciseTimeUnitElement 'd' dc hrInterval.days
+                    , conciseTimeUnitElement 'h' hc hrInterval.hours
+                    , conciseTimeUnitElement 'm' mc hrInterval.min
+                    ]
+
+
+intervalInput : Maybe Element.Color -> Time.Posix -> (Time.Posix -> msg) -> Element msg
+intervalInput maybeLowValColor i newIntervalMsg =
+    case TimeHelpers.toHumanReadableInterval i of
+        Nothing ->
+            errorMessage "Interval display failed! Is it too big?" i
+
+        Just hrInterval ->
+            let
+                lowValColor =
+                    maybeLowValColor
+                        |> Maybe.withDefault black
+
+                dc =
+                    if hrInterval.days == 0 then
+                        lightGray
+
+                    else
+                        black
+
+                ( hc, mc ) =
+                    if hrInterval.days == 0 && hrInterval.hours == 0 then
+                        ( lightGray, lowValColor )
+
+                    else
+                        ( black, black )
+
+                withModifyArrows : Time.Posix -> Element msg -> Element msg
+                withModifyArrows incAmount el =
+                    Element.column [ Element.spacing 4 ]
+                        [ Element.el
+                            [ Element.padding 4
+                            , Element.pointer
+                            , Element.Events.onClick <|
+                                newIntervalMsg <|
+                                    TimeHelpers.add i incAmount
+                            ]
+                            (Images.toElement
+                                [ Element.height <| Element.px 10
+                                ]
+                                Images.upArrow
+                            )
+                        , el
+                        , Element.el
+                            [ Element.padding 4
+                            , Element.pointer
+                            , Element.Events.onClick <|
+                                newIntervalMsg <|
+                                    (TimeHelpers.sub i incAmount
+                                        |> TimeHelpers.negativeToZero
+                                    )
+                            ]
+                            (Images.toElement
+                                [ Element.height <| Element.px 10
+                                ]
+                                Images.downArrow
+                            )
+                        ]
+            in
+            Element.row
+                [ Element.spaceEvenly
+                , Element.width Element.fill
+                ]
+                [ bigTimeUnitElement 3 dc " days" hrInterval.days
+                    |> withModifyArrows (Time.millisToPosix <| 1000 * 60 * 60 * 24)
+                , bigTimeUnitElement 2 hc " hours" hrInterval.hours
+                    |> withModifyArrows (Time.millisToPosix <| 1000 * 60 * 60)
+                , bigTimeUnitElement 2 mc " min" hrInterval.min
+                    |> withModifyArrows (Time.millisToPosix <| 1000 * 60 * 5)
                 ]
 
 
-timeUnitElement : Int -> Char -> Element.Color -> Element msg
-timeUnitElement num unitChar color =
+bigTimeUnitElement : Int -> Element.Color -> String -> Int -> Element msg
+bigTimeUnitElement numDigits color labelString num =
+    let
+        numStr =
+            String.fromInt num
+                |> String.padLeft numDigits '0'
+    in
+    Element.el
+        [ Element.Font.size 22
+        , Element.Font.color color
+                ]
+        (Element.text <| numStr ++ labelString)
+
+
+conciseTimeUnitElement : Char -> Element.Color -> Int -> Element msg
+conciseTimeUnitElement unitChar color num =
     let
         numStr =
             String.fromInt num
@@ -208,8 +309,8 @@ timeUnitElement num unitChar color =
         (Element.text <| numStr ++ String.fromChar unitChar)
 
 
-intervalWithElapsedBar : Time.Posix -> Time.Posix -> Element.Length -> Element msg
-intervalWithElapsedBar i total width =
+smallIntervalWithElapsedBar : Time.Posix -> Time.Posix -> Element.Length -> Element msg
+smallIntervalWithElapsedBar i total width =
     let
         color =
             let
@@ -231,7 +332,7 @@ intervalWithElapsedBar i total width =
                 total
     in
     Element.column [ Element.spacing 5, Element.width width ]
-        [ Element.el [ Element.centerX ] (interval Nothing i)
+        [ Element.el [ Element.centerX ] (interval False Nothing i)
         , elapsedBar ratio color
         ]
 

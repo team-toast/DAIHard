@@ -10,18 +10,20 @@ import Element.Font
 import Element.Input
 import ElementHelpers as EH
 import FiatValue
-import Images
+import Images exposing (Image)
+import Time
 
 
 root : Model -> Element Msg
 root model =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing 30
+        , Element.spacing 40
         , Element.Events.onClick <| ShowCurrencyDropdown False
         ]
         [ mainInputElement model
         , phasesElement model
+        , paymentMethodsHeaderElement model
         , paymentMethodsElement model
         ]
 
@@ -192,7 +194,180 @@ buttonsElement model =
 
 phasesElement : Model -> Element Msg
 phasesElement model =
-    Element.none
+    Element.row
+        [ Element.width Element.fill
+        , Element.paddingXY 40 0
+        , Element.spacing 20
+        ]
+        [ Element.el [ Element.width <| Element.fillPortion 1 ] <|
+            openPhaseElement
+                model.inputs.autorecallInterval
+                model.inputs.openMode
+        , Element.el [ Element.width <| Element.fillPortion 1 ] <|
+            committedPhaseElement
+                model.inputs.autoabortInterval
+                model.inputs.openMode
+        , Element.el [ Element.width <| Element.fillPortion 1 ] <|
+            claimedPhaseElement
+                model.inputs.autoreleaseInterval
+                model.inputs.openMode
+        ]
+
+
+openPhaseElement : Time.Posix -> CTypes.OpenMode -> Element Msg
+openPhaseElement interval openMode =
+    phaseElement
+        Images.openWindowIcon
+        "Open Window"
+        (openWindowSummary openMode)
+        interval
+        Nothing
+        AutorecallIntervalChanged
+
+
+committedPhaseElement : Time.Posix -> CTypes.OpenMode -> Element Msg
+committedPhaseElement interval openMode =
+    phaseElement
+        Images.paymentWindowIcon
+        "Payment Window"
+        (paymentWindowSummary openMode)
+        interval
+        (Just EH.red)
+        AutoabortIntervalChanged
+
+
+claimedPhaseElement : Time.Posix -> CTypes.OpenMode -> Element Msg
+claimedPhaseElement interval openMode =
+    phaseElement
+        Images.releaseWindowIcon
+        "Release Window"
+        (releaseWindowSummary openMode)
+        interval
+        (Just EH.red)
+        AutoreleaseIntervalChanged
+
+
+openWindowSummary : CTypes.OpenMode -> String
+openWindowSummary openMode =
+    let
+        committingParty =
+            case openMode of
+                CTypes.BuyerOpened ->
+                    "seller"
+
+                CTypes.SellerOpened ->
+                    "buyer"
+    in
+    "The offer will expire by this time window if a "
+        ++ committingParty
+        ++ " does not commit to the trade. You can also remove the trade before this window runs out."
+
+
+paymentWindowSummary : CTypes.OpenMode -> String
+paymentWindowSummary openMode =
+    case openMode of
+        CTypes.BuyerOpened ->
+            "You have this time window to send the fiat funds (<- replace me!) to the seller using one of your payment methods indicated below."
+
+        CTypes.SellerOpened ->
+            "The buyer has this time window to send the fiat funds (<- replace me!) to you using one of your payment methods indicated below."
+
+
+releaseWindowSummary : CTypes.OpenMode -> String
+releaseWindowSummary openMode =
+    case openMode of
+        CTypes.BuyerOpened ->
+            "Once you confirm payment, the seller has this time window to decide whether to release the funds to you or burn everything."
+
+        CTypes.SellerOpened ->
+            "Once the buyer confirms payment, you have this time window to decide whether to release the funds to the buyer or burn everything."
+
+
+phaseElement : Image -> String -> String -> Time.Posix -> Maybe Element.Color -> (Time.Posix -> Msg) -> Element Msg
+phaseElement icon title summary interval lowIntervalColor newIntervalMsg =
+    let
+        descriptionElement =
+            Element.column
+                [ Element.spacing 15
+                , Element.width Element.fill
+                , Element.height <| Element.px 160
+                ]
+                [ Images.toElement [] icon
+                , Element.column
+                    [ Element.spacing 6 ]
+                    [ Element.el
+                        [ Element.Font.size 22
+                        , Element.Font.semiBold
+                        ]
+                        (Element.text title)
+                    , Element.paragraph
+                        [ Element.Font.size 17
+                        , Element.Font.medium
+                        , Element.Font.color EH.permanentTextColor
+                        ]
+                        [ Element.text summary ]
+                    ]
+                ]
+
+        intervalElement =
+            Element.el
+                [ Element.paddingXY 100 0
+                , Element.width Element.fill
+                ]
+                (EH.intervalInput lowIntervalColor interval newIntervalMsg)
+    in
+    Element.column
+        [ Element.width Element.fill
+        ]
+        [ Element.el
+            [ Element.width Element.fill
+            , Element.Background.color EH.white
+            , EH.roundTopCorners 8
+            , Element.Border.color EH.lightGray
+            , Element.Border.widthEach
+                { bottom = 2
+                , top = 0
+                , right = 0
+                , left = 0
+                }
+            , Element.paddingXY 62 42
+            ]
+            descriptionElement
+        , Element.el
+            [ Element.width Element.fill
+            , Element.Background.color EH.white
+            , EH.roundBottomCorners 8
+            , Element.paddingXY 0 42
+            ]
+            (Element.el
+                [ Element.centerX
+                , Element.width Element.fill
+                ]
+                intervalElement
+            )
+        ]
+
+
+paymentMethodsHeaderElement : Model -> Element Msg
+paymentMethodsHeaderElement model =
+    let
+        titleStr =
+            "Accepted Payment Methods ("
+                ++ (model.inputs.paymentMethods |> List.length |> String.fromInt)
+                ++ ")"
+
+        addMethodButton =
+            Images.toElement [] Images.addButton
+    in
+    Element.row
+        [ Element.spacing 8
+        , Element.paddingXY 40 0
+        , Element.Font.size 23
+        , Element.Font.semiBold
+        ]
+        [ Element.text titleStr
+        , addMethodButton
+        ]
 
 
 paymentMethodsElement : Model -> Element Msg

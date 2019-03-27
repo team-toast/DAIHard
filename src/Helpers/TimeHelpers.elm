@@ -1,4 +1,4 @@
-module TimeHelpers exposing (HumanReadableInterval, add, compare, daysStrToMaybePosix, getRatio, isNegative, posixToMillisBigInt, posixToSeconds, posixToSecondsBigInt, secondsBigIntToMaybePosix, sub, toHumanReadableInterval, toString)
+module TimeHelpers exposing (HumanReadableInterval, add, compare, daysStrToMaybePosix, getRatio, isNegative, negativeToZero, posixToMillisBigInt, posixToSeconds, posixToSecondsBigInt, secondsBigIntToMaybePosix, sub, toHumanReadableInterval, toString)
 
 import BigInt exposing (BigInt)
 import BigIntHelpers
@@ -19,6 +19,15 @@ sub t1 t2 =
         |> Time.posixToMillis
         |> (-) (Time.posixToMillis t1)
         |> Time.millisToPosix
+
+
+negativeToZero : Time.Posix -> Time.Posix
+negativeToZero t =
+    if Time.posixToMillis t < 0 then
+        Time.millisToPosix 0
+
+    else
+        t
 
 
 getRatio : Time.Posix -> Time.Posix -> Float
