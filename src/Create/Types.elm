@@ -47,6 +47,8 @@ type Msg
     | OpenCurrencySelector
     | MarginStringChanged String
     | AddPaymentMethod PaymentMethod
+    | ClearDraft
+    | PublishClicked
     | BeginCreateProcess
     | ExtraFeesFetched (Result Http.Error DHF.GetExtraFees)
     | ApproveMined (Result String TxReceipt)

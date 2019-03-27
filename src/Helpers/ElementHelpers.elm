@@ -1,4 +1,4 @@
-module ElementHelpers exposing (black, blue, bulletPointString, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, disabledTextColor, errorMessage, fakeLink, fancyInput, fiatTypeToSymbolElement, fiatValue, green, headerBackgroundColor, inputWithHeader, interval, intervalWithElapsedBar, lightGray, margin, niceBottomBorderEl, pageBackgroundColor, red, roundBottomCorners, roundTopCorners, subtleShadow, testBorderStyles, textInputWithElement, tokenValue, white, yellow)
+module ElementHelpers exposing (black, blue, blueButton, bulletPointString, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, disabledTextColor, errorMessage, fakeLink, fancyInput, fiatTypeToSymbolElement, fiatValue, green, headerBackgroundColor, inputWithHeader, interval, intervalWithElapsedBar, lightGray, margin, niceBottomBorderEl, pageBackgroundColor, red, redButton, roundBottomCorners, roundTopCorners, subtleShadow, testBorderStyles, textInputWithElement, tokenValue, white, yellow)
 
 import Browser.Dom
 import CommonTypes exposing (..)
@@ -276,6 +276,40 @@ elapsedBar ratio filledBarColor =
 
 
 -- INPUTS
+
+
+button : List (Attribute msg) -> String -> msg -> Element msg
+button attributes text msg =
+    Element.el
+        ([ Element.Border.rounded 4
+         , Element.pointer
+         , Element.Events.onClick msg
+         , Element.paddingXY 25 17
+         , Element.Font.color white
+         , Element.Font.size 18
+         , Element.Font.semiBold
+         , Element.mouseDown [ Element.alpha 0.6 ]
+         , Element.mouseOver [ Element.alpha 0.8 ]
+         ]
+            ++ attributes
+        )
+        (Element.text text)
+
+
+blueButton : String -> msg -> Element msg
+blueButton text msg =
+    button
+        [ Element.Background.color blue ]
+        text
+        msg
+
+
+redButton : String -> msg -> Element msg
+redButton text msg =
+    button
+        [ Element.Background.color red ]
+        text
+        msg
 
 
 fancyInput : List (Attribute msg) -> ( Maybe (Element msg), Maybe (Element msg) ) -> String -> Maybe (Element.Input.Placeholder msg) -> String -> (String -> msg) -> Element msg

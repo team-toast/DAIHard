@@ -183,7 +183,11 @@ marginInputElement marginString upIsGreen =
 
 buttonsElement : Model -> Element Msg
 buttonsElement model =
-    Element.none
+    Element.row
+        [ Element.spacing 10 ]
+        [ EH.blueButton "Clear Draft" ClearDraft
+        , EH.redButton "Publish Offer" PublishClicked
+        ]
 
 
 phasesElement : Model -> Element Msg

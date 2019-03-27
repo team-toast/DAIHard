@@ -22,18 +22,6 @@ import TokenValue exposing (TokenValue)
 init : EthHelpers.EthNode -> Maybe UserInfo -> ( Model, Cmd Msg, ChainCmd Msg )
 init node userInfo =
     let
-        initialInputs =
-            { openMode = CTypes.SellerOpened
-            , daiAmount = "100"
-            , fiatType = "USD"
-            , fiatAmount = "100"
-            , margin = "0"
-            , paymentMethods = []
-            , autorecallInterval = "3"
-            , autoabortInterval = "3"
-            , autoreleaseInterval = "3"
-            }
-
         model =
             { node = node
             , userInfo = userInfo
@@ -47,6 +35,19 @@ init node userInfo =
     , Cmd.none
     , ChainCmd.none
     )
+
+
+initialInputs =
+    { openMode = CTypes.SellerOpened
+    , daiAmount = ""
+    , fiatType = "USD"
+    , fiatAmount = ""
+    , margin = "0"
+    , paymentMethods = []
+    , autorecallInterval = "3"
+    , autoabortInterval = "3"
+    , autoreleaseInterval = "3"
+    }
 
 
 updateUserInfo : Maybe UserInfo -> Model -> Model
@@ -156,6 +157,12 @@ update msg prevModel =
         ShowCurrencyDropdown flag ->
             justModelUpdate
                 { prevModel | showFiatTypeDropdown = flag }
+
+        ClearDraft ->
+            justModelUpdate { prevModel | inputs = initialInputs }
+
+        PublishClicked ->
+            Debug.todo "Display warning modal"
 
         BeginCreateProcess ->
             case prevModel.createParameters of
