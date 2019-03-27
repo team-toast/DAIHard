@@ -1,5 +1,6 @@
-module ElementHelpers exposing (black, blue, bulletPointString, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, disabledTextColor, errorMessage, fakeLink, fancyInput, fiatTypeToSymbolElement, fiatValue, green, headerBackgroundColor, inputWithHeader, interval, intervalWithElapsedBar, lightGray, margin, pageBackgroundColor, red, roundBottomCorners, roundTopCorners, subtleShadow, testBorderStyles, textInputWithElement, tokenValue, white, yellow)
+module ElementHelpers exposing (black, blue, bulletPointString, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, disabledTextColor, errorMessage, fakeLink, fancyInput, fiatTypeToSymbolElement, fiatValue, green, headerBackgroundColor, inputWithHeader, interval, intervalWithElapsedBar, lightGray, margin, niceBottomBorderEl, pageBackgroundColor, red, roundBottomCorners, roundTopCorners, subtleShadow, testBorderStyles, textInputWithElement, tokenValue, white, yellow)
 
+import Browser.Dom
 import CommonTypes exposing (..)
 import Css
 import Dict
@@ -16,6 +17,7 @@ import Images
 import Json.Decode
 import List
 import Maybe.Extra
+import Task
 import Time
 import TimeHelpers
 import TokenValue exposing (TokenValue)
@@ -63,6 +65,10 @@ headerBackgroundColor =
 
 disabledTextColor =
     Element.rgba255 1 31 52 0.13
+
+
+currencyLabelColor =
+    Element.rgb255 109 127 138
 
 
 
@@ -114,7 +120,7 @@ fiatValue fv =
                     Element.el [ Element.Font.color red ] (Element.text "!")
 
                 Just ( typeChar, image ) ->
-                    Element.image
+                    Images.toElement
                         [ Element.height <| Element.px 26 ]
                         image
     in
@@ -124,7 +130,6 @@ fiatValue fv =
             [ Element.Font.color <| Element.rgba 0 0 0 0.5
             , Element.Font.medium
             , Element.width <| Element.px 50
-            , Element.clip
             ]
             (Element.text fv.fiatType)
         , Element.text <| FiatValue.renderToString fv
@@ -290,13 +295,6 @@ fancyInput attributes ( maybeLeftElement, maybeRightElement ) labelStr placehold
     in
     Element.row
         ([ Element.spacing 5
-         , Element.Border.color lightGray
-         , Element.Border.widthEach
-            { bottom = 1
-            , top = 0
-            , right = 0
-            , left = 0
-            }
          ]
             ++ attributes
         )
@@ -327,8 +325,7 @@ textInputWithElement attributes inputAttributes addedElement labelStr value plac
     in
     Element.row
         (attributes
-            ++ [ Element.width Element.fill
-               , Element.height <| Element.px 40
+            ++ [ Element.height <| Element.px 40
                , Element.Border.shadow
                     { offset = ( 0, 3 )
                     , size = 0
@@ -351,7 +348,7 @@ textInputWithElement attributes inputAttributes addedElement labelStr value plac
         , Element.Input.text
             (focusEventAttributes
                 ++ inputAttributes
-                ++ [ Element.width Element.fill
+                ++ [ Element.width <| Element.px 100
                    , Element.height <| Element.px 40
                    , Element.Border.color lightGray
                    , Element.Border.roundEach
@@ -376,11 +373,26 @@ textInputWithElement attributes inputAttributes addedElement labelStr value plac
         ]
 
 
-currencySelector : Bool -> String -> (Bool -> msg) -> (String -> msg) -> Element msg
-currencySelector showDropdown typeInput showHideMsgConstructor msgConstructor =
+currencySelector : Bool -> String -> msg -> (String -> msg) -> (Bool -> msg) -> msg -> Element msg
+currencySelector showDropdown typeStringInput openCurrencySelectorMsg typeStringChangedMsgConstructor showHideDropdownMsgConstructor arrowClickedMsg =
     let
         gotCurrency =
-            Dict.get typeInput FiatValue.currencyTypes
+            Dict.get typeStringInput FiatValue.currencyTypes
+
+        inputElement =
+            Element.Input.text
+                [ Element.width <| Element.px 80
+                , Element.height <| Element.px 40
+                , Element.Font.size 24
+                , Element.Font.medium
+                , Element.Border.color lightGray
+                , onClickNoPropagation openCurrencySelectorMsg
+                ]
+                { onChange = String.toUpper >> typeStringChangedMsgConstructor
+                , text = typeStringInput
+                , placeholder = Nothing
+                , label = Element.Input.labelHidden "currency type"
+                }
 
         dropdownEl =
             case ( showDropdown, gotCurrency ) of
@@ -399,7 +411,7 @@ currencySelector showDropdown typeInput showHideMsgConstructor msgConstructor =
                         , Element.padding 5
                         , Element.width Element.fill
                         ]
-                        (FiatValue.searchTypes typeInput
+                        (FiatValue.searchTypes typeStringInput
                             |> Dict.toList
                             |> List.map
                                 (\( typeString, ( _, image ) ) ->
@@ -407,24 +419,28 @@ currencySelector showDropdown typeInput showHideMsgConstructor msgConstructor =
                                         [ Element.width Element.fill
                                         , Element.spacing 9
                                         , Element.paddingXY 0 5
-                                        , onClickNoPropagation <| msgConstructor typeString
+                                        , onClickNoPropagation <| typeStringChangedMsgConstructor typeString
                                         , Element.mouseOver [ Element.Background.color <| Element.rgb 0.8 0.8 1 ]
                                         ]
-                                        [ Element.image [ Element.height <| Element.px 26 ] image
+                                        [ Images.toElement [ Element.height <| Element.px 26 ] image
                                         , Element.el [ Element.Font.size 16, Element.Font.semiBold ] <| textWithoutTextCursor typeString
                                         ]
                                 )
                         )
     in
-    textInputWithElement
-        [ Element.below dropdownEl ]
-        []
-        (fiatTypeToSymbolElement typeInput)
-        "select currency"
-        typeInput
-        Nothing
-        (Just showHideMsgConstructor)
-        (String.toUpper >> msgConstructor)
+    Element.row
+        [ Element.spacing 4
+        , Element.below dropdownEl
+        ]
+        [ FiatValue.typeStringToSymbol typeStringInput
+        , inputElement
+        , Images.toElement
+            [ Element.paddingXY 0 8
+            , Element.pointer
+            , Element.Events.onClick arrowClickedMsg
+            ]
+            Images.downArrow
+        ]
 
 
 textWithoutTextCursor : String -> Element msg
@@ -445,7 +461,7 @@ fiatTypeToSymbolElement fiatType =
             Element.text "*"
 
         Just ( _, image ) ->
-            Element.image [ Element.height <| Element.px 26 ] image
+            Images.toElement [ Element.height <| Element.px 26 ] image
 
 
 onClickNoPropagation : msg -> Attribute msg
@@ -502,6 +518,19 @@ subtleShadow =
         }
 
 
+niceBottomBorderEl : Element msg -> Element msg
+niceBottomBorderEl =
+    Element.el
+        [ Element.Border.color lightGray
+        , Element.Border.widthEach
+            { bottom = 2
+            , top = 0
+            , right = 0
+            , left = 0
+            }
+        ]
+
+
 
 -- SPECIAL CHARS
 
@@ -518,7 +547,7 @@ bulletPointString =
 
 daiSymbol : List (Attribute msg) -> Element msg
 daiSymbol attributes =
-    Element.image
+    Images.toElement
         ((Element.height <| Element.px 26) :: attributes)
         Images.daiSymbol
 
@@ -526,12 +555,12 @@ daiSymbol attributes =
 daiSymbolAndLabel : Element msg
 daiSymbolAndLabel =
     Element.row
-        [ Element.spacing 5 ]
+        [ Element.spacing 4 ]
         [ daiSymbol []
         , Element.el
             [ Element.Font.size 24
             , Element.Font.medium
-            , Element.Font.color <| Element.rgb255 109 127 138
+            , Element.Font.color currencyLabelColor
             ]
             (Element.text "DAI")
         ]
@@ -539,7 +568,7 @@ daiSymbolAndLabel =
 
 marginSymbol : List (Attribute msg) -> Bool -> Bool -> Element msg
 marginSymbol attributes isUp isGreen =
-    Element.image
+    Images.toElement
         ((Element.height <| Element.px 34) :: attributes)
         (Images.marginSymbol isUp isGreen)
 

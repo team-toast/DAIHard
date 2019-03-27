@@ -28,13 +28,13 @@ root time model =
         , Element.height Element.fill
         , Element.Events.onClick (ShowCurrencyDropdown False)
         ]
-        [ searchInputElement model.inputs
+        [ searchInputElement model.inputs model.showCurrencyDropdown
         , resultsElement time model
         ]
 
 
-searchInputElement : SearchInputs -> Element Msg
-searchInputElement inputs =
+searchInputElement : SearchInputs -> Bool -> Element Msg
+searchInputElement inputs showCurrencyDropdown =
     Element.column
         [ Element.spacing 10
         , Element.padding 30
@@ -56,7 +56,7 @@ searchInputElement inputs =
                 , Element.alignTop
                 ]
               <|
-                fiatInput inputs.showCurrencyDropdown inputs.fiatType inputs.minFiat inputs.maxFiat
+                fiatInput showCurrencyDropdown inputs.fiatType inputs.minFiat inputs.maxFiat
             , Element.column
                 [ Element.width Element.shrink
                 , Element.alignTop
@@ -207,7 +207,7 @@ fiatInput showTypeDropdown fiatType minFiat maxFiat =
     in
     Element.row [ Element.spacing 5, Element.width Element.shrink ]
         [ Element.el [ Element.alignTop, Element.width <| Element.px 120 ] <|
-            EH.currencySelector showTypeDropdown fiatType ShowCurrencyDropdown FiatTypeInputChanged
+            EH.currencySelector showTypeDropdown fiatType OpenCurrencySelector FiatTypeInputChanged ShowCurrencyDropdown FiatTypeArrowClicked
         , Element.column [ Element.spacing 5, Element.alignTop, Element.width <| Element.px 200 ]
             [ EH.textInputWithElement [] [ Element.Events.onFocus (ShowCurrencyDropdown False) ] minElement "min" minFiat Nothing Nothing MinFiatChanged
             , EH.textInputWithElement [] [ Element.Events.onFocus (ShowCurrencyDropdown False) ] maxElement "max" maxFiat Nothing Nothing MaxFiatChanged

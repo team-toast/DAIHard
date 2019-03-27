@@ -1,4 +1,4 @@
-module Create.Types exposing (Inputs, Model, Msg(..), UpdateResult, justModelUpdate)
+module Create.Types exposing (Inputs, Model, Msg(..), UpdateResult, interpretMarginString, justModelUpdate)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -17,7 +17,7 @@ type alias Model =
     { node : EthNode
     , userInfo : Maybe UserInfo
     , inputs : Inputs
-    , showCurrencyDropdown : Bool
+    , showFiatTypeDropdown : Bool
     , createParameters : Maybe CTypes.CreateParameters
     , busyWithTxChain : Bool
     }
@@ -28,6 +28,7 @@ type alias Inputs =
     , daiAmount : String
     , fiatType : String
     , fiatAmount : String
+    , margin : String
     , paymentMethods : List PaymentMethod
     , autorecallInterval : String
     , autoabortInterval : String
@@ -40,7 +41,11 @@ type Msg
     | TradeAmountChanged String
     | FiatTypeChanged String
     | FiatAmountChanged String
+    | FiatTypeArrowClicked
+    | FiatTypeLostFocus
     | ShowCurrencyDropdown Bool
+    | OpenCurrencySelector
+    | MarginStringChanged String
     | AddPaymentMethod PaymentMethod
     | BeginCreateProcess
     | ExtraFeesFetched (Result Http.Error DHF.GetExtraFees)
@@ -64,3 +69,8 @@ justModelUpdate model =
     , chainCmd = ChainCmd.none
     , newRoute = Nothing
     }
+
+
+interpretMarginString : String -> Maybe Float
+interpretMarginString =
+    String.toFloat >> Maybe.map ((*) 0.01)

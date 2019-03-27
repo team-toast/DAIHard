@@ -1,4 +1,4 @@
-module Search.Types exposing (FiatTypeAndRange, Model, Msg(..), ResultColumnType(..), SearchInputs, SearchQuery, TokenRange, inputsToQuery, updateFiatTypeInput, updateMaxDaiInput, updateMaxFiatInput, updateMinDaiInput, updateMinFiatInput, updatePaymentMethodInput, updatePaymentMethodTerms, updateShowCurrencyDropdown, updateTradeCreationInfo, updateTradeParameters, updateTradePaymentMethods, updateTradeState)
+module Search.Types exposing (FiatTypeAndRange, Model, Msg(..), ResultColumnType(..), SearchInputs, SearchQuery, TokenRange, inputsToQuery, updateFiatTypeInput, updateMaxDaiInput, updateMaxFiatInput, updateMinDaiInput, updateMinFiatInput, updatePaymentMethodInput, updatePaymentMethodTerms, updateTradeCreationInfo, updateTradeParameters, updateTradePaymentMethods, updateTradeState)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
@@ -25,6 +25,7 @@ type alias Model =
     , numTrades : Maybe Int
     , openMode : Contracts.Types.OpenMode
     , inputs : SearchInputs
+    , showCurrencyDropdown : Bool
     , query : SearchQuery
     , trades : Array Contracts.Types.Trade
     , filterFunc : Time.Posix -> Contracts.Types.FullTradeInfo -> Bool
@@ -43,6 +44,9 @@ type Msg
     | MinDaiChanged String
     | MaxDaiChanged String
     | FiatTypeInputChanged String
+    | FiatTypeArrowClicked
+    | FiatTypeLostFocus
+    | OpenCurrencySelector
     | MinFiatChanged String
     | MaxFiatChanged String
     | PaymentMethodInputChanged String
@@ -64,7 +68,6 @@ type alias SearchInputs =
     , maxFiat : String
     , paymentMethod : String
     , paymentMethodTerms : List String
-    , showCurrencyDropdown : Bool
     }
 
 
@@ -76,11 +79,6 @@ updatePaymentMethodInput input inputs =
 updateFiatTypeInput : String -> SearchInputs -> SearchInputs
 updateFiatTypeInput input inputs =
     { inputs | fiatType = input }
-
-
-updateShowCurrencyDropdown : Bool -> SearchInputs -> SearchInputs
-updateShowCurrencyDropdown flag inputs =
-    { inputs | showCurrencyDropdown = flag }
 
 
 updateMinDaiInput : String -> SearchInputs -> SearchInputs

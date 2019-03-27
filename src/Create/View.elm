@@ -9,6 +9,8 @@ import Element.Events
 import Element.Font
 import Element.Input
 import ElementHelpers as EH
+import FiatValue
+import Images
 
 
 root : Model -> Element Msg
@@ -16,6 +18,7 @@ root model =
     Element.column
         [ Element.width Element.fill
         , Element.spacing 30
+        , Element.Events.onClick <| ShowCurrencyDropdown False
         ]
         [ mainInputElement model
         , phasesElement model
@@ -81,21 +84,25 @@ typeToggleElement openMode =
 
 daiElement : Model -> Element Msg
 daiElement model =
-    EH.inputWithHeader
-        (case model.inputs.openMode of
-            CTypes.BuyerOpened ->
-                "You're buying"
+    EH.niceBottomBorderEl <|
+        EH.inputWithHeader
+            (case model.inputs.openMode of
+                CTypes.BuyerOpened ->
+                    "You're buying"
 
-            CTypes.SellerOpened ->
-                "You're selling"
-        )
-        (daiInputElement model.inputs.daiAmount)
+                CTypes.SellerOpened ->
+                    "You're selling"
+            )
+            (daiInputElement model.inputs.daiAmount)
 
 
 daiInputElement : String -> Element Msg
 daiInputElement amountString =
     EH.fancyInput
-        [ Element.width <| Element.px 200 ]
+        [ Element.width <| Element.px 250
+        , Element.Font.medium
+        , Element.Font.size 24
+        ]
         ( Nothing, Just <| EH.daiSymbolAndLabel )
         "dai input"
         Nothing
@@ -103,26 +110,75 @@ daiInputElement amountString =
         TradeAmountChanged
 
 
-dumb amountString =
-    EH.textInputWithElement
-        []
-        []
-        (EH.daiSymbol [ Element.centerY ])
-        "dai input"
-        amountString
-        Nothing
-        Nothing
-        TradeAmountChanged
-
-
 fiatElement : Model -> Element Msg
 fiatElement model =
-    Element.none
+    EH.niceBottomBorderEl <|
+        EH.inputWithHeader
+            "For fiat"
+            (fiatInputElement model.inputs.fiatType model.inputs.fiatAmount model.showFiatTypeDropdown)
+
+
+fiatInputElement : String -> String -> Bool -> Element Msg
+fiatInputElement typeString amountString showFiatTypeDropdown =
+    let
+        fiatCharElement =
+            Element.text <| FiatValue.typeStringToCharStringDefaultEmpty typeString
+    in
+    EH.fancyInput
+        [ Element.width <| Element.px 250
+        , Element.Font.medium
+        , Element.Font.size 24
+        ]
+        ( Just fiatCharElement, Just <| EH.currencySelector showFiatTypeDropdown typeString OpenCurrencySelector FiatTypeChanged ShowCurrencyDropdown FiatTypeArrowClicked )
+        "fiat input"
+        Nothing
+        amountString
+        FiatAmountChanged
 
 
 marginElement : Model -> Element Msg
 marginElement model =
-    Element.none
+    EH.niceBottomBorderEl <|
+        EH.inputWithHeader
+            "At margin"
+            (marginInputElement model.inputs.margin (model.inputs.openMode == CTypes.SellerOpened))
+
+
+marginInputElement : String -> Bool -> Element Msg
+marginInputElement marginString upIsGreen =
+    let
+        ( color, arrowImage ) =
+            case interpretMarginString marginString of
+                Just margin ->
+                    if margin == 0 then
+                        ( EH.black, Images.none )
+
+                    else if xor (margin > 0) upIsGreen then
+                        ( EH.red, Images.marginSymbol (margin > 0) False )
+
+                    else
+                        ( EH.green, Images.marginSymbol (margin > 0) True )
+
+                Nothing ->
+                    ( EH.black, Images.qmarkCircle )
+
+        percentAndArrowElement =
+            Element.row [ Element.spacing 8 ]
+                [ Element.text "%"
+                , Images.toElement [] arrowImage
+                ]
+    in
+    EH.fancyInput
+        [ Element.width <| Element.px 150
+        , Element.Font.medium
+        , Element.Font.size 24
+        , Element.Font.color color
+        ]
+        ( Nothing, Just percentAndArrowElement )
+        "margin input"
+        Nothing
+        marginString
+        MarginStringChanged
 
 
 buttonsElement : Model -> Element Msg

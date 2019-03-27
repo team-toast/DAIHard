@@ -27,6 +27,7 @@ init node userInfo =
             , daiAmount = "100"
             , fiatType = "USD"
             , fiatAmount = "100"
+            , margin = "0"
             , paymentMethods = []
             , autorecallInterval = "3"
             , autoabortInterval = "3"
@@ -37,7 +38,7 @@ init node userInfo =
             { node = node
             , userInfo = userInfo
             , inputs = initialInputs
-            , showCurrencyDropdown = False
+            , showFiatTypeDropdown = False
             , createParameters = Nothing
             , busyWithTxChain = False
             }
@@ -86,6 +87,43 @@ update msg prevModel =
             in
             justModelUpdate (prevModel |> updateInputs { oldInputs | fiatType = newTypeStr })
 
+        FiatTypeLostFocus ->
+            justModelUpdate
+                { prevModel
+                    | showFiatTypeDropdown = False
+                }
+
+        OpenCurrencySelector ->
+            let
+                oldInputs =
+                    prevModel.inputs
+            in
+            justModelUpdate
+                ({ prevModel
+                    | showFiatTypeDropdown = True
+                 }
+                    |> updateInputs { oldInputs | fiatType = "" }
+                )
+
+        FiatTypeArrowClicked ->
+            let
+                oldInputs =
+                    prevModel.inputs
+            in
+            justModelUpdate
+                ({ prevModel
+                    | showFiatTypeDropdown = True
+                 }
+                    |> updateInputs { oldInputs | fiatType = "" }
+                )
+
+        MarginStringChanged newString ->
+            let
+                oldInputs =
+                    prevModel.inputs
+            in
+            justModelUpdate (prevModel |> updateInputs { oldInputs | margin = newString })
+
         -- AutorecallIntervalChanged newTimeStr ->
         --     let
         --         oldInputs =
@@ -117,7 +155,7 @@ update msg prevModel =
 
         ShowCurrencyDropdown flag ->
             justModelUpdate
-                { prevModel | showCurrencyDropdown = flag }
+                { prevModel | showFiatTypeDropdown = flag }
 
         BeginCreateProcess ->
             case prevModel.createParameters of

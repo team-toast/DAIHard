@@ -1,8 +1,9 @@
-module FiatValue exposing (FiatValue, compare, currencyTypes, decoder, encode, getFloatValueWithWarning, renderToString, searchTypes)
+module FiatValue exposing (FiatValue, compare, currencyTypes, decoder, encode, getFloatValueWithWarning, renderToString, searchTypes, typeStringToCharStringDefaultEmpty, typeStringToSymbol)
 
 import BigInt exposing (BigInt)
 import BigIntHelpers
 import Dict exposing (Dict)
+import Element exposing (Element)
 import Images exposing (Image)
 import Json.Decode
 import Json.Encode
@@ -25,9 +26,10 @@ currencyTypes =
             (\( typeString, typeChar ) ->
                 ( typeString
                 , ( typeChar
-                  , { src = "static/img/currencies/" ++ typeString ++ ".png"
-                    , description = typeString
-                    }
+                  , Images.image
+                        { src = "static/img/currencies/" ++ typeString ++ ".png"
+                        , description = typeString
+                        }
                   )
                 )
             )
@@ -65,13 +67,23 @@ getFloatValueWithWarning value =
 
 renderToString : FiatValue -> String
 renderToString fv =
-    let
-        currencyChar =
-            Dict.get fv.fiatType currencyTypes
-                |> Maybe.map Tuple.first
-                |> Maybe.withDefault '?'
-    in
-    String.fromChar currencyChar ++ BigIntHelpers.toStringWithCommas fv.amount
+    typeStringToCharStringDefaultEmpty fv.fiatType ++ BigIntHelpers.toStringWithCommas fv.amount
+
+
+typeStringToCharStringDefaultEmpty : String -> String
+typeStringToCharStringDefaultEmpty typeString =
+    Dict.get typeString currencyTypes
+        |> Maybe.map Tuple.first
+        |> Maybe.map String.fromChar
+        |> Maybe.withDefault ""
+
+
+typeStringToSymbol : String -> Element msg
+typeStringToSymbol typeString =
+    Dict.get typeString currencyTypes
+        |> Maybe.map Tuple.second
+        |> Maybe.withDefault Images.qmarkCircle
+        |> Images.toElement [ Element.height <| Element.px 26 ]
 
 
 compare : FiatValue -> FiatValue -> Order

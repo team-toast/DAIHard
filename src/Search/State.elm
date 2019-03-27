@@ -38,6 +38,7 @@ init ethNode maybeOpenMode userInfo =
       , openMode = openMode
       , trades = Array.empty
       , inputs = initialInputs
+      , showCurrencyDropdown = False
       , query = initialQuery
       , filterFunc = initialFilterFunc openMode
       , sortFunc = initialSortFunc
@@ -71,7 +72,6 @@ initialInputs =
     , maxFiat = ""
     , paymentMethod = ""
     , paymentMethodTerms = []
-    , showCurrencyDropdown = False
     }
 
 
@@ -270,8 +270,23 @@ update msg model =
             , Nothing
             )
 
+        FiatTypeArrowClicked ->
+            ( { model
+                | inputs = model.inputs |> updateFiatTypeInput ""
+                , showCurrencyDropdown = True
+              }
+            , Cmd.none
+            , Nothing
+            )
+
+        FiatTypeLostFocus ->
+            Debug.todo ""
+
+        OpenCurrencySelector ->
+            Debug.todo ""
+
         ShowCurrencyDropdown flag ->
-            ( { model | inputs = model.inputs |> updateShowCurrencyDropdown flag }
+            ( { model | showCurrencyDropdown = flag }
             , Cmd.none
             , Nothing
             )
