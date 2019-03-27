@@ -1,4 +1,44 @@
-module ElementHelpers exposing (black, blue, blueButton, bulletPointString, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, darkGray, disabledTextColor, errorMessage, fakeLink, fancyInput, fiatTypeToSymbolElement, fiatValue, green, headerBackgroundColor, inputWithHeader, interval, intervalInput, lightGray, margin, modal, niceBottomBorderEl, pageBackgroundColor, permanentTextColor, red, redButton, roundBottomCorners, roundTopCorners, smallIntervalWithElapsedBar, subtleShadow, testBorderStyles, textInputWithElement, tokenValue, white, yellow)
+module ElementHelpers exposing
+    ( black
+    , blue
+    , blueButton
+    , bulletPointString
+    , currencySelector
+    , daiSymbol
+    , daiSymbolAndLabel
+    , daiValue
+    , darkGray
+    , disabledTextColor
+    , errorMessage
+    , fakeLink
+    , fancyInput
+    , fiatTypeToSymbolElement
+    , fiatValue
+    , green
+    , headerBackgroundColor
+    , inputWithHeader
+    , interval
+    , intervalInput
+    , lightBlue
+    , lightGray
+    , margin
+    , mediumGray
+    , modal
+    , niceBottomBorderEl
+    , pageBackgroundColor
+    , permanentTextColor
+    , red
+    , redButton
+    , roundBottomCorners
+    , roundTopCorners
+    , smallIntervalWithElapsedBar
+    , subtleShadow
+    , testBorderStyles
+    , textInputWithElement
+    , tokenValue
+    , white
+    , yellow
+    )
 
 import Browser.Dom
 import CommonTypes exposing (..)
@@ -48,12 +88,20 @@ blue =
     Element.rgb 0 0 1
 
 
+lightBlue =
+    Element.rgba 0 0 1 0.2
+
+
 yellow =
     Element.rgb 1 1 0
 
 
 lightGray =
     Element.rgb255 233 237 242
+
+
+mediumGray =
+    Element.rgb255 200 205 210
 
 
 darkGray =

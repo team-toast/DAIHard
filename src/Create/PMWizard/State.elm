@@ -10,8 +10,28 @@ init =
 
 
 update : Msg -> Model -> UpdateResult
-update msg model =
+update msg prevModel =
     case msg of
+        SelectType pmType ->
+            justModelUpdate
+                (Details <| PaymentMethods.blank pmType)
+
+        ChangeDetails s ->
+            case prevModel of
+                Details paymentMethod ->
+                    justModelUpdate <|
+                        Details { paymentMethod | info = s }
+
+                ChooseType ->
+                    let
+                        _ =
+                            Debug.log "Trying to change details, but no type selected!" ""
+                    in
+                    justModelUpdate prevModel
+
+        Back ->
+            justModelUpdate ChooseType
+
         CloseClicked ->
             UpdateResult
                 Nothing
@@ -19,4 +39,4 @@ update msg model =
                 Nothing
 
         NoOp ->
-            justModelUpdate model
+            justModelUpdate prevModel

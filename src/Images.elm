@@ -1,5 +1,7 @@
 module Images exposing
     ( Image
+    , addButton
+    , backButton
     , daiSymbol
     , downArrow
     , image
@@ -7,11 +9,13 @@ module Images exposing
     , none
     , openWindowIcon
     , paymentWindowIcon
+    , pmBank
+    , pmCash
+    , pmCustom
     , qmarkCircle
     , releaseWindowIcon
     , toElement
     , upArrow
-    , addButton
     )
 
 import Element exposing (Attribute, Element)
@@ -118,9 +122,42 @@ releaseWindowIcon =
         , description = ""
         }
 
+
 addButton : Image
 addButton =
     Just
         { src = "static/img/add-button.svg"
         , description = "add"
+        }
+
+
+pmCash : Image
+pmCash =
+    Just
+        { src = "static/img/pm-cash.svg"
+        , description = "cash"
+        }
+
+
+pmBank : Image
+pmBank =
+    Just
+        { src = "static/img/pm-bank.svg"
+        , description = "bank"
+        }
+
+
+pmCustom : Image
+pmCustom =
+    Just
+        { src = "static/img/pm-custom.svg"
+        , description = "custom"
+        }
+
+
+backButton : Image
+backButton =
+    Just
+        { src = "static/img/back-button.svg"
+        , description = "back"
         }

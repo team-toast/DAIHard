@@ -392,4 +392,4 @@ getModalOrNone model =
             EH.modal <|
                 Element.map
                     PMWizardMsg
-                    (PMWizard.root pmModal)
+                    (PMWizard.root pmModal model.inputs.openMode)

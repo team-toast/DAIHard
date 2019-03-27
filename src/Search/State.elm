@@ -503,37 +503,37 @@ resetSearch model =
 
 testTextMatch : List String -> Result String (List PaymentMethod) -> Bool
 testTextMatch terms paymentMethodsDecodeResult =
-    let
-        searchForAllTerms searchable =
-            terms
-                |> List.all
-                    (\term ->
-                        String.contains term searchable
-                    )
-    in
-    case paymentMethodsDecodeResult of
-        Err searchable ->
-            -- Here we use a Result to contain the undecoded string upon decode failure
-            searchForAllTerms searchable
+    Debug.todo ""
 
-        Ok paymentMethods ->
-            paymentMethods
-                |> List.any
-                    (\method ->
-                        searchForAllTerms <|
-                            case method of
-                                PaymentMethods.CashDrop s ->
-                                    s
 
-                                PaymentMethods.CashHandoff s ->
-                                    s
 
-                                PaymentMethods.BankTransfer identifier ->
-                                    identifier.info
-
-                                PaymentMethods.Custom s ->
-                                    s
-                    )
+-- let
+--     searchForAllTerms searchable =
+--         terms
+--             |> List.all
+--                 (\term ->
+--                     String.contains term searchable
+--                 )
+-- in
+-- case paymentMethodsDecodeResult of
+--     Err searchable ->
+--         -- Here we use a Result to contain the undecoded string upon decode failure
+--         searchForAllTerms searchable
+--     Ok paymentMethods ->
+--         paymentMethods
+--             |> List.any
+--                 (\method ->
+--                     searchForAllTerms <|
+--                         case method of
+--                             PaymentMethods.CashDrop s ->
+--                                 s
+--                             PaymentMethods.CashHandoff s ->
+--                                 s
+--                             PaymentMethods.BankTransfer identifier ->
+--                                 identifier.info
+--                             PaymentMethods.Custom s ->
+--                                 s
+--                 )
 
 
 noUpdate : Model -> ( Model, Cmd Msg, Maybe Routing.Route )

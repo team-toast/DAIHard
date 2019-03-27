@@ -5,10 +5,14 @@ import PaymentMethods exposing (PaymentMethod)
 
 type Model
     = ChooseType
+    | Details PaymentMethod
 
 
 type Msg
-    = CloseClicked
+    = SelectType PaymentMethods.Type
+    | ChangeDetails String
+    | Back
+    | CloseClicked
     | NoOp
 
 
@@ -32,3 +36,14 @@ getTitle model =
     case model of
         ChooseType ->
             "Choose Accepted Payment Methods"
+
+        Details paymentMethod ->
+            case paymentMethod.type_ of
+                PaymentMethods.Cash ->
+                    "Cash Drop/Handoff"
+
+                PaymentMethods.Bank ->
+                    "Bank Transfer"
+
+                PaymentMethods.Custom ->
+                    "Custom Payment Method"

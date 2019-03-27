@@ -356,7 +356,7 @@ viewPaymentMethods paymentMethodsDecodeResult =
         Ok paymentMethods ->
             Element.row [ Element.padding 3 ]
                 (paymentMethods
-                    |> List.map PaymentMethods.demoView
+                    |> List.map (Debug.todo "")
                 )
 
         Err undecoded ->
