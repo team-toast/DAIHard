@@ -1,4 +1,4 @@
-module ElementHelpers exposing (black, blue, blueButton, bulletPointString, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, disabledTextColor, errorMessage, fakeLink, fancyInput, fiatTypeToSymbolElement, fiatValue, green, headerBackgroundColor, inputWithHeader, interval, intervalInput, lightGray, margin, modal, niceBottomBorderEl, pageBackgroundColor, permanentTextColor, red, redButton, roundBottomCorners, roundTopCorners, smallIntervalWithElapsedBar, subtleShadow, testBorderStyles, textInputWithElement, tokenValue, white, yellow)
+module ElementHelpers exposing (black, blue, blueButton, bulletPointString, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, darkGray, disabledTextColor, errorMessage, fakeLink, fancyInput, fiatTypeToSymbolElement, fiatValue, green, headerBackgroundColor, inputWithHeader, interval, intervalInput, lightGray, margin, modal, niceBottomBorderEl, pageBackgroundColor, permanentTextColor, red, redButton, roundBottomCorners, roundTopCorners, smallIntervalWithElapsedBar, subtleShadow, testBorderStyles, textInputWithElement, tokenValue, white, yellow)
 
 import Browser.Dom
 import CommonTypes exposing (..)
@@ -54,6 +54,10 @@ yellow =
 
 lightGray =
     Element.rgb255 233 237 242
+
+
+darkGray =
+    Element.rgb255 150 150 150
 
 
 permanentTextColor =
@@ -206,7 +210,7 @@ interval big maybeLowValColor i =
                     ]
 
             else
-            Element.row [ Element.spacing 5 ]
+                Element.row [ Element.spacing 5 ]
                     [ conciseTimeUnitElement 'd' dc hrInterval.days
                     , conciseTimeUnitElement 'h' hc hrInterval.hours
                     , conciseTimeUnitElement 'm' mc hrInterval.min
@@ -294,7 +298,7 @@ bigTimeUnitElement numDigits color labelString num =
     Element.el
         [ Element.Font.size 22
         , Element.Font.color color
-                ]
+        ]
         (Element.text <| numStr ++ labelString)
 
 
@@ -764,3 +768,16 @@ marginFloatToConciseUnsignedString f =
                         |> String.left extraDigitsNeeded
     in
     preDecimalString ++ decimalString ++ "%"
+
+
+modal : Element msg -> Element msg
+modal =
+    Element.el
+        [ Element.Background.color <| Element.rgba 0.0 0.0 0.0 0.6
+        , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
+        , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
+        , Element.htmlAttribute <| Html.Attributes.style "top" "0"
+        , Element.htmlAttribute <| Html.Attributes.style "left" "0"
+        , Element.htmlAttribute <| Html.Attributes.style "width" "100%"
+        , Element.htmlAttribute <| Html.Attributes.style "height" "100%"
+        ]

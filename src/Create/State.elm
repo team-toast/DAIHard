@@ -8,12 +8,14 @@ import Constants exposing (..)
 import Contracts.Generated.ERC20Token as TokenContract
 import Contracts.Types as CTypes
 import Contracts.Wrappers
+import Create.PMWizard.State as PMWizard
 import Create.Types exposing (..)
 import Eth
 import Eth.Types exposing (Address)
 import EthHelpers
 import FiatValue exposing (FiatValue)
 import Flip exposing (flip)
+import Maybe.Extra
 import Routing
 import Time
 import TimeHelpers
@@ -28,6 +30,7 @@ init node userInfo =
             , userInfo = userInfo
             , inputs = initialInputs
             , showFiatTypeDropdown = False
+            , addPMModal = Nothing
             , createParameters = Nothing
             , busyWithTxChain = False
             }
@@ -147,20 +150,22 @@ update msg prevModel =
             in
             justModelUpdate (prevModel |> updateInputs { oldInputs | autoreleaseInterval = newTime })
 
-        AddPaymentMethod paymentMethod ->
-            let
-                oldInputs =
-                    prevModel.inputs
-            in
-            justModelUpdate
-                (prevModel
-                    |> updateInputs
-                        { oldInputs | paymentMethods = List.append oldInputs.paymentMethods [ paymentMethod ] }
-                )
-
+        -- AddPaymentMethod paymentMethod ->
+        --     let
+        --         oldInputs =
+        --             prevModel.inputs
+        --     in
+        --     justModelUpdate
+        --         (prevModel
+        --             |> updateInputs
+        --                 { oldInputs | paymentMethods = List.append oldInputs.paymentMethods [ paymentMethod ] }
+        --         )
         ShowCurrencyDropdown flag ->
             justModelUpdate
                 { prevModel | showFiatTypeDropdown = flag }
+
+        OpenPMWizard ->
+            justModelUpdate { prevModel | addPMModal = Just PMWizard.init }
 
         ClearDraft ->
             justModelUpdate { prevModel | inputs = initialInputs }
@@ -320,13 +325,52 @@ update msg prevModel =
                     in
                     justModelUpdate prevModel
 
+        PMWizardMsg pmMsg ->
+            case prevModel.addPMModal of
+                Just pmModel ->
+                    let
+                        updateResult =
+                            PMWizard.update pmMsg pmModel
+
+                        cmd =
+                            Cmd.map PMWizardMsg updateResult.cmd
+
+                        newPaymentMethods =
+                            List.append
+                                prevModel.inputs.paymentMethods
+                                (Maybe.Extra.values [ updateResult.newPaymentMethod ])
+
+                        model =
+                            let
+                                prevInputs =
+                                    prevModel.inputs
+                            in
+                            { prevModel
+                                | addPMModal = updateResult.model -- If nothing, will close modal
+                            }
+                                |> updateInputs
+                                    { prevInputs | paymentMethods = newPaymentMethods }
+                    in
+                    UpdateResult
+                        model
+                        cmd
+                        ChainCmd.none
+                        Nothing
+
+                Nothing ->
+                    let
+                        _ =
+                            Debug.log "Got a PMWizard message, but the modal is closed! That doesn't make sense! AHHHHH" ""
+                    in
+                    justModelUpdate prevModel
+
         NoOp ->
             justModelUpdate prevModel
 
 
 updateInputs : Inputs -> Model -> Model
-updateInputs newParameters model =
-    { model | inputs = newParameters }
+updateInputs newInputs model =
+    { model | inputs = newInputs }
         |> updateParameters
 
 

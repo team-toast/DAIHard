@@ -5,6 +5,7 @@ import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (UserInfo)
 import Contracts.Generated.DAIHardFactory as DHF
 import Contracts.Types as CTypes
+import Create.PMWizard.Types as PMWizard
 import Eth.Types exposing (Address, TxReceipt)
 import EthHelpers exposing (EthNode)
 import Http
@@ -19,6 +20,7 @@ type alias Model =
     , userInfo : Maybe UserInfo
     , inputs : Inputs
     , showFiatTypeDropdown : Bool
+    , addPMModal : Maybe PMWizard.Model
     , createParameters : Maybe CTypes.CreateParameters
     , busyWithTxChain : Bool
     }
@@ -50,7 +52,8 @@ type Msg
     | AutorecallIntervalChanged Time.Posix
     | AutoabortIntervalChanged Time.Posix
     | AutoreleaseIntervalChanged Time.Posix
-    | AddPaymentMethod PaymentMethod
+    | OpenPMWizard
+      --| AddPaymentMethod PaymentMethod
     | ClearDraft
     | PublishClicked
     | BeginCreateProcess
@@ -58,6 +61,7 @@ type Msg
     | ApproveMined (Result String TxReceipt)
     | CreateMined (Result String TxReceipt)
     | NoOp
+    | PMWizardMsg PMWizard.Msg
 
 
 type alias UpdateResult =

@@ -1,6 +1,7 @@
 module Create.View exposing (root)
 
 import Contracts.Types as CTypes
+import Create.PMWizard.View as PMWizard
 import Create.Types exposing (..)
 import Element exposing (Attribute, Element)
 import Element.Background
@@ -20,6 +21,8 @@ root model =
         [ Element.width Element.fill
         , Element.spacing 40
         , Element.Events.onClick <| ShowCurrencyDropdown False
+        , Element.inFront <|
+            getModalOrNone model
         ]
         [ mainInputElement model
         , phasesElement model
@@ -357,7 +360,11 @@ paymentMethodsHeaderElement model =
                 ++ ")"
 
         addMethodButton =
-            Images.toElement [] Images.addButton
+            Images.toElement
+                [ Element.pointer
+                , Element.Events.onClick OpenPMWizard
+                ]
+                Images.addButton
     in
     Element.row
         [ Element.spacing 8
@@ -373,3 +380,16 @@ paymentMethodsHeaderElement model =
 paymentMethodsElement : Model -> Element Msg
 paymentMethodsElement model =
     Element.none
+
+
+getModalOrNone : Model -> Element Msg
+getModalOrNone model =
+    case model.addPMModal of
+        Nothing ->
+            Element.none
+
+        Just pmModal ->
+            EH.modal <|
+                Element.map
+                    PMWizardMsg
+                    (PMWizard.root pmModal)
