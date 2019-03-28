@@ -15,12 +15,12 @@ import Eth.Types exposing (Address)
 import EthHelpers
 import FiatValue exposing (FiatValue)
 import Flip exposing (flip)
+import Margin
 import Maybe.Extra
 import Routing
 import Time
 import TimeHelpers
 import TokenValue exposing (TokenValue)
-import Utils
 
 
 init : EthHelpers.EthNode -> Maybe UserInfo -> ( Model, Cmd Msg, ChainCmd Msg )
@@ -345,7 +345,7 @@ update msg prevModel =
                     { model = prevModel
                     , cmd = Cmd.none
                     , chainCmd = ChainCmd.none
-                    , newRoute = Nothing --Just (Routing.Interact (Just id))
+                    , newRoute = Just (Routing.Trade (Just id))
                     }
 
                 Nothing ->
@@ -440,7 +440,7 @@ recalculateFiatAmountString daiAmountStr marginString fiatType =
                 Just ""
 
             else
-                case ( String.toFloat daiAmountStr, Utils.stringToMarginFloat marginString ) of
+                case ( String.toFloat daiAmountStr, Margin.stringToMarginFloat marginString ) of
                     ( Just daiAmount, Just marginFloat ) ->
                         Just
                             (daiAmount
@@ -461,10 +461,10 @@ recalculateMarginString daiAmountString fiatAmountString fiatType =
     case fiatType of
         "USD" ->
             Maybe.map2
-                Utils.marginFromFloats
+                Margin.marginFromFloats
                 (String.toFloat daiAmountString)
                 (String.toFloat fiatAmountString)
-                |> Maybe.map Utils.marginToString
+                |> Maybe.map Margin.marginToString
 
         _ ->
             Nothing

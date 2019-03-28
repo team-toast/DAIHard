@@ -1,4 +1,4 @@
-module Trade.Types exposing (ContractMsg(..), InitiatorOrResponder(..), Model, Msg(..), getUserRole)
+module Trade.Types exposing (ContractMsg(..), InitiatorOrResponder(..), Model, Msg(..), StatsModel(..), getUserRole)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
@@ -18,6 +18,7 @@ type alias Model =
     { ethNode : EthHelpers.EthNode
     , userInfo : Maybe UserInfo
     , trade : Contracts.Types.Trade
+    , stats : StatsModel
     , eventSentry : EventSentry Msg
     }
 
@@ -47,6 +48,12 @@ type ContractMsg
 type InitiatorOrResponder
     = Initiator
     | Responder
+
+
+type StatsModel
+    = Waiting
+    | Scanning
+    | Finished
 
 
 getUserRole : Contracts.Types.FullTradeInfo -> Address -> Maybe InitiatorOrResponder

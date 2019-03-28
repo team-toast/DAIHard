@@ -1,18 +1,189 @@
 module Trade.View exposing (root)
 
 import Array
-import Contracts.Types as CTypes
-import Element
+import CommonTypes exposing (UserInfo)
+import Contracts.Types as CTypes exposing (FullTradeInfo)
+import Element exposing (Attribute, Element)
 import Element.Background
 import Element.Border
 import Element.Font
 import Element.Input
 import ElementHelpers as EH
 import Eth.Utils
+import FiatValue exposing (FiatValue)
+import Images exposing (Image)
+import Margin
 import Time
+import TokenValue exposing (TokenValue)
 import Trade.Types exposing (..)
 
 
 root : Time.Posix -> Model -> Element.Element Msg
 root time model =
+    case model.trade of
+        CTypes.LoadedTrade tradeInfo ->
+            Element.column
+                [ Element.width Element.fill
+                , Element.spacing 40
+                ]
+                [ header tradeInfo model.stats model.userInfo
+                ]
+
+        CTypes.PartiallyLoadedTrade partialTradeInfo ->
+            Element.el
+                [ Element.centerX
+                , Element.centerY
+                , Element.Font.size 30
+                ]
+                (Element.text "Loading contract info...")
+
+
+header : FullTradeInfo -> StatsModel -> Maybe UserInfo -> Element Msg
+header trade stats maybeUserInfo =
+    EH.niceFloatingRow
+        [ tradeStatusElement trade
+        , daiAmountElement trade maybeUserInfo
+        , fiatElement trade
+        , marginElement trade maybeUserInfo
+        , statsElement stats
+        , case maybeUserInfo of
+            Just userInfo ->
+                actionButtonsElement trade userInfo
+
+            Nothing ->
+                Element.none
+        ]
+
+
+tradeStatusElement : FullTradeInfo -> Element Msg
+tradeStatusElement trade =
+    EH.withHeader
+        "Trade Status"
+        (Element.el
+            [ Element.Font.size 24
+            , Element.Font.medium
+            ]
+            (Element.text
+                (case trade.state.phase of
+                    CTypes.Created ->
+                        "Created (uninitialized)"
+
+                    CTypes.Open ->
+                        case trade.parameters.openMode of
+                            CTypes.BuyerOpened ->
+                                "Open Buy Offer"
+
+                            CTypes.SellerOpened ->
+                                "Open Sell Offer"
+
+                    CTypes.Committed ->
+                        "Committed"
+
+                    CTypes.Claimed ->
+                        "Claimed"
+
+                    CTypes.Closed ->
+                        "Closed"
+                )
+            )
+        )
+
+
+daiAmountElement : FullTradeInfo -> Maybe UserInfo -> Element Msg
+daiAmountElement trade maybeUserInfo =
+    let
+        userRole =
+            Maybe.andThen
+                (getUserRole trade)
+                (Maybe.map .address maybeUserInfo)
+    in
+    EH.withHeader
+        (case ( trade.parameters.openMode, userRole ) of
+            ( CTypes.BuyerOpened, Just Initiator ) ->
+                "You're Buying"
+
+            ( CTypes.BuyerOpened, _ ) ->
+                "Buying"
+
+            ( CTypes.SellerOpened, Just Initiator ) ->
+                "You're Selling"
+
+            ( CTypes.SellerOpened, _ ) ->
+                "Selling"
+        )
+        (renderDaiAmount trade.parameters.tradeAmount)
+
+
+renderDaiAmount : TokenValue -> Element Msg
+renderDaiAmount daiAmount =
+    Element.row
+        [ Element.spacing 8 ]
+        [ Images.toElement [] Images.daiSymbol
+        , Element.el
+            [ Element.Font.size 24
+            , Element.Font.medium
+            ]
+            (Element.text <| TokenValue.toConciseString daiAmount)
+        ]
+
+
+fiatElement : FullTradeInfo -> Element Msg
+fiatElement trade =
+    EH.withHeader
+        "For Fiat"
+        (renderFiatAmount trade.parameters.fiatPrice)
+
+
+renderFiatAmount : FiatValue -> Element Msg
+renderFiatAmount fiatValue =
+    Element.row
+        [ Element.spacing 5 ]
+        [ FiatValue.typeStringToSymbol fiatValue.fiatType
+        , Element.el
+            [ Element.Font.size 24
+            , Element.Font.medium
+            ]
+            (Element.text <| FiatValue.renderToString fiatValue)
+        ]
+
+
+marginElement : FullTradeInfo -> Maybe UserInfo -> Element Msg
+marginElement trade maybeUserInfo =
+    EH.withHeader
+        "At Margin"
+        (case trade.derived.margin of
+            Just marginFloat ->
+                renderMargin marginFloat maybeUserInfo
+
+            Nothing ->
+                EH.comingSoonMsg [] "Margin for non-USD currencies coming soon!"
+        )
+
+
+renderMargin : Float -> Maybe UserInfo -> Element Msg
+renderMargin marginFloat maybeUserInfo =
+    let
+        marginString =
+            Margin.marginToString marginFloat ++ "%"
+
+        image =
+            if marginFloat == 0 then
+                Images.none
+
+            else
+                Images.marginSymbol (marginFloat > 0) Nothing
+    in
+    Element.row [ Element.spacing 5 ]
+        [ Element.text marginString
+        , Images.toElement [] image
+        ]
+
+
+statsElement : StatsModel -> Element Msg
+statsElement stats =
+    Element.none
+
+
+actionButtonsElement : FullTradeInfo -> UserInfo -> Element Msg
+actionButtonsElement trade userInfo =
     Element.none

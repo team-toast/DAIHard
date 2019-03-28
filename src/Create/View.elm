@@ -35,14 +35,7 @@ root model =
 
 mainInputElement : Model -> Element Msg
 mainInputElement model =
-    Element.row
-        [ Element.width Element.fill
-        , Element.Background.color EH.white
-        , Element.Border.rounded 5
-        , Element.padding 20
-        , Element.spaceEvenly
-        , EH.subtleShadow
-        ]
+    EH.niceFloatingRow
         [ tradeTypeElement model
         , daiElement model
         , fiatElement model
@@ -53,7 +46,7 @@ mainInputElement model =
 
 tradeTypeElement : Model -> Element Msg
 tradeTypeElement model =
-    EH.inputWithHeader
+    EH.withHeader
         "Trade Type"
         (typeToggleElement model.inputs.openMode)
 
@@ -92,7 +85,7 @@ typeToggleElement openMode =
 daiElement : Model -> Element Msg
 daiElement model =
     EH.niceBottomBorderEl <|
-        EH.inputWithHeader
+        EH.withHeader
             (case model.inputs.openMode of
                 CTypes.BuyerOpened ->
                     "You're buying"
@@ -120,7 +113,7 @@ daiInputElement amountString =
 fiatElement : Model -> Element Msg
 fiatElement model =
     EH.niceBottomBorderEl <|
-        EH.inputWithHeader
+        EH.withHeader
             "For fiat"
             (fiatInputElement model.inputs.fiatType model.inputs.fiatAmount model.showFiatTypeDropdown)
 
@@ -148,7 +141,7 @@ marginElement model =
     case model.inputs.fiatType of
         "USD" ->
             EH.niceBottomBorderEl <|
-                EH.inputWithHeader
+                EH.withHeader
                     "At margin"
                     (marginInputElement model.inputs.margin (model.inputs.openMode == CTypes.SellerOpened))
 
@@ -166,10 +159,10 @@ marginInputElement marginString upIsGreen =
                         ( EH.black, Images.none )
 
                     else if xor (margin > 0) upIsGreen then
-                        ( EH.red, Images.marginSymbol (margin > 0) False )
+                        ( EH.red, Images.marginSymbol (margin > 0) (Just False) )
 
                     else
-                        ( EH.green, Images.marginSymbol (margin > 0) True )
+                        ( EH.green, Images.marginSymbol (margin > 0) (Just True) )
 
                 Nothing ->
                     ( EH.black, Images.qmarkCircle )

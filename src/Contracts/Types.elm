@@ -12,11 +12,11 @@ import Eth.Utils
 import EthHelpers
 import FiatValue exposing (FiatValue)
 import Json.Decode
+import Margin
 import PaymentMethods exposing (PaymentMethod)
 import Time
 import TimeHelpers
 import TokenValue exposing (TokenValue)
-import Utils
 
 
 type OpenMode
@@ -250,7 +250,7 @@ deriveValues parameters state =
             state.phaseStartTime
             currentPhaseInterval
     , margin =
-        Utils.margin parameters.tradeAmount parameters.fiatPrice
+        Margin.margin parameters.tradeAmount parameters.fiatPrice
     }
 
 

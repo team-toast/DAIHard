@@ -17,7 +17,6 @@ module ElementHelpers exposing
     , fiatValue
     , green
     , headerBackgroundColor
-    , inputWithHeader
     , interval
     , intervalInput
     , inverseBlueButton
@@ -27,6 +26,7 @@ module ElementHelpers exposing
     , mediumGray
     , modal
     , niceBottomBorderEl
+    , niceFloatingRow
     , pageBackgroundColor
     , permanentTextColor
     , red
@@ -39,6 +39,7 @@ module ElementHelpers exposing
     , textInputWithElement
     , tokenValue
     , white
+    , withHeader
     , yellow
     )
 
@@ -704,8 +705,8 @@ roundTopCorners r =
         }
 
 
-inputWithHeader : String -> Element msg -> Element msg
-inputWithHeader headerString element =
+withHeader : String -> Element msg -> Element msg
+withHeader headerString element =
     Element.column [ Element.spacing 10 ]
         [ Element.el
             [ Element.Font.size 17
@@ -778,7 +779,7 @@ marginSymbol : List (Attribute msg) -> Bool -> Bool -> Element msg
 marginSymbol attributes isUp isGreen =
     Images.toElement
         ((Element.height <| Element.px 34) :: attributes)
-        (Images.marginSymbol isUp isGreen)
+        (Images.marginSymbol isUp (Just isGreen))
 
 
 
@@ -861,3 +862,15 @@ comingSoonMsg attributes text =
             ++ attributes
         )
         [ Element.text text ]
+
+
+niceFloatingRow : List (Element msg) -> Element msg
+niceFloatingRow =
+    Element.row
+        [ Element.width Element.fill
+        , Element.Background.color white
+        , Element.Border.rounded 5
+        , Element.padding 20
+        , Element.spaceEvenly
+        , subtleShadow
+        ]

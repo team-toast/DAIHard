@@ -25,7 +25,7 @@ import PaymentMethods exposing (PaymentMethod)
 
 type Image
     = None
-    | Just
+    | JustImage
         { src : String
         , description : String
         }
@@ -37,7 +37,7 @@ toElement attributes image_ =
         None ->
             Element.none
 
-        Just img ->
+        JustImage img ->
             Element.image attributes img
 
 
@@ -46,32 +46,38 @@ none =
 
 
 image =
-    Just
+    JustImage
 
 
-marginSymbol : Bool -> Bool -> Image
-marginSymbol isUp isGreen =
-    Just
+marginSymbol : Bool -> Maybe Bool -> Image
+marginSymbol isUp maybeIsGreen =
+    JustImage
         { src =
-            case ( isUp, isGreen ) of
-                ( True, True ) ->
+            case ( isUp, maybeIsGreen ) of
+                ( True, Just True ) ->
                     "static/img/margin-up-green.svg"
 
-                ( True, False ) ->
+                ( True, Just False ) ->
                     "static/img/margin-up-red.svg"
 
-                ( False, True ) ->
+                ( True, Nothing ) ->
+                    "static/img/margin-up.svg"
+
+                ( False, Just True ) ->
                     "static/img/margin-down-green.svg"
 
-                ( False, False ) ->
+                ( False, Just False ) ->
                     "static/img/margin-down-red.svg"
+
+                ( False, Nothing ) ->
+                    "static/img/margin-down.svg"
         , description = ""
         }
 
 
 daiSymbol : Image
 daiSymbol =
-    Just
+    JustImage
         { src = "static/img/dai-symbol.png"
         , description = "DAI"
         }
@@ -79,7 +85,7 @@ daiSymbol =
 
 downArrow : Image
 downArrow =
-    Just
+    JustImage
         { src = "static/img/arrow-down.svg"
         , description = "down"
         }
@@ -87,7 +93,7 @@ downArrow =
 
 upArrow : Image
 upArrow =
-    Just
+    JustImage
         { src = "static/img/arrow-up.svg"
         , description = "up"
         }
@@ -95,7 +101,7 @@ upArrow =
 
 qmarkCircle : Image
 qmarkCircle =
-    Just
+    JustImage
         { src = "static/img/qmark-circle.svg"
         , description = ""
         }
@@ -103,7 +109,7 @@ qmarkCircle =
 
 openWindowIcon : Image
 openWindowIcon =
-    Just
+    JustImage
         { src = "static/img/open-window-icon.svg"
         , description = ""
         }
@@ -111,7 +117,7 @@ openWindowIcon =
 
 paymentWindowIcon : Image
 paymentWindowIcon =
-    Just
+    JustImage
         { src = "static/img/payment-window-icon.svg"
         , description = ""
         }
@@ -119,7 +125,7 @@ paymentWindowIcon =
 
 releaseWindowIcon : Image
 releaseWindowIcon =
-    Just
+    JustImage
         { src = "static/img/release-window-icon.svg"
         , description = ""
         }
@@ -127,7 +133,7 @@ releaseWindowIcon =
 
 addButton : Image
 addButton =
-    Just
+    JustImage
         { src = "static/img/add-button.svg"
         , description = "add"
         }
@@ -148,7 +154,7 @@ pmIcon pmType =
 
 pmCash : Image
 pmCash =
-    Just
+    JustImage
         { src = "static/img/pm-cash.svg"
         , description = "cash"
         }
@@ -156,7 +162,7 @@ pmCash =
 
 pmBank : Image
 pmBank =
-    Just
+    JustImage
         { src = "static/img/pm-bank.svg"
         , description = "bank"
         }
@@ -164,7 +170,7 @@ pmBank =
 
 pmCustom : Image
 pmCustom =
-    Just
+    JustImage
         { src = "static/img/pm-custom.svg"
         , description = "custom"
         }
@@ -172,7 +178,7 @@ pmCustom =
 
 backButton : Image
 backButton =
-    Just
+    JustImage
         { src = "static/img/back-button.svg"
         , description = "back"
         }

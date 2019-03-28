@@ -38,6 +38,7 @@ init ethNode userInfo tradeId =
     ( { ethNode = ethNode
       , userInfo = userInfo
       , trade = Contracts.Types.partialTradeInfo tradeId
+      , stats = Waiting
       , eventSentry = eventSentry
       }
     , Cmd.batch [ getCreationInfoCmd, eventSentryCmd ]
@@ -308,7 +309,36 @@ update msg model =
 
 handleNewLog : Eth.Types.Log -> Model -> ( Model, Cmd Msg )
 handleNewLog log model =
-    Debug.todo ""
+    let
+        decodedEventLog =
+            Eth.Decode.event Contracts.Types.eventDecoder log
+    in
+    case decodedEventLog.returnData of
+        Err err ->
+            let
+                _ =
+                    Debug.log "Error decoding contract event" err
+            in
+            ( model, Cmd.none )
+
+        Ok event ->
+            let
+                newModel =
+                    { model
+                        | trade =
+                            case event of
+                                Contracts.Types.OpenedEvent data ->
+                                    model.trade
+                                        |> Contracts.Types.updatePaymentMethods
+                                            (PaymentMethods.decodePaymentMethodList data.fiatTransferMethods)
+
+                                _ ->
+                                    model.trade
+                    }
+            in
+            ( newModel
+            , Cmd.none
+            )
 
 
 genericCustomSend =

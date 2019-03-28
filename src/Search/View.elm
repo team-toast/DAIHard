@@ -12,11 +12,11 @@ import Element.Input
 import ElementHelpers as EH
 import FiatValue exposing (FiatValue)
 import Html.Events.Extra
+import Margin
 import PaymentMethods exposing (PaymentMethod)
 import Search.Types exposing (..)
 import Time
 import TimeHelpers
-import Utils
 
 
 root : Time.Posix -> Model -> Element Msg

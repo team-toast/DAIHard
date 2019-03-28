@@ -1,4 +1,4 @@
-module Utils exposing (margin, marginFromFloats, marginToString, stringToMarginFloat)
+module Margin exposing (margin, marginFromFloats, marginToString, stringToMarginFloat)
 
 import FiatValue exposing (FiatValue)
 import TokenValue exposing (TokenValue)
