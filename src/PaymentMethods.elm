@@ -8,14 +8,22 @@ module PaymentMethods exposing
     , getTitle
     , stringToType
     , typeDecoder
+    , typeToIcon
     , typeToString
+    , viewList
     )
 
-import Element
+import Element exposing (Attribute, Element)
+import Element.Background
 import Element.Border
+import Element.Events
+import Element.Font
+import ElementHelpers as EH
+import Images exposing (Image)
 import Json.Decode
 import Json.Encode
 import Json.Encode.Extra
+import List.Extra
 import Maybe.Extra as Maybe
 
 
@@ -116,3 +124,131 @@ decodePaymentMethodList s =
         -- If the decode fails, we keep the undecodeable string to display to the user later
         |> Result.mapError
             (\_ -> s)
+
+
+viewList : List PaymentMethod -> Maybe msg -> Element msg
+viewList pmList maybeAddMsg =
+    Element.column
+        [ Element.spacing 40
+        , Element.width Element.fill
+        ]
+        [ paymentMethodsHeaderElement (List.length pmList) maybeAddMsg
+        , paymentMethodsElement pmList
+        ]
+
+
+paymentMethodsHeaderElement : Int -> Maybe msg -> Element msg
+paymentMethodsHeaderElement numMethods maybeAddMsg =
+    let
+        titleStr =
+            "Accepted Payment Methods ("
+                ++ String.fromInt numMethods
+                ++ ")"
+
+        addMethodButton =
+            case maybeAddMsg of
+                Just msg ->
+                    Images.toElement
+                        [ Element.pointer
+                        , Element.Events.onClick msg
+                        ]
+                        Images.addButton
+
+                Nothing ->
+                    Element.none
+    in
+    Element.row
+        [ Element.spacing 8
+        , Element.paddingXY 40 0
+        , Element.Font.size 23
+        , Element.Font.semiBold
+        ]
+        [ Element.text titleStr
+        , addMethodButton
+        ]
+
+
+paymentMethodsElement : List PaymentMethod -> Element msg
+paymentMethodsElement pmList =
+    Element.el
+        [ Element.paddingXY 40 0
+        , Element.width Element.fill
+        ]
+        (pmList
+            |> List.map pmElement
+            |> doubleColumn
+        )
+
+
+pmElement : PaymentMethod -> Element msg
+pmElement pm =
+    Element.column
+        [ Element.width Element.fill
+        , Element.height (Element.shrink |> Element.maximum 300)
+        , Element.spacing 1
+        ]
+        [ Element.el
+            [ Element.width Element.fill
+            , Element.height Element.shrink
+            , Element.paddingXY 60 40
+            , EH.roundTopCorners 8
+            , Element.Background.color EH.white
+            , Element.Font.size 22
+            , Element.Font.semiBold
+            ]
+            (Element.text <| getTitle pm.type_)
+        , Element.el
+            [ Element.width Element.fill
+            , Element.height Element.shrink
+            , Element.paddingXY 60 40
+            , EH.roundBottomCorners 8
+            , Element.Background.color EH.white
+            ]
+            (Element.paragraph
+                [ Element.Font.size 17
+                , Element.Font.medium
+                ]
+                [ Element.text pm.info ]
+            )
+        ]
+
+
+doubleColumn : List (Element msg) -> Element msg
+doubleColumn elList =
+    elList
+        |> List.Extra.greedyGroupsOf 2
+        |> List.map
+            (\row ->
+                if List.length row == 1 then
+                    List.append row [ Element.none ]
+
+                else
+                    row
+            )
+        |> List.map
+            (\row ->
+                Element.row
+                    [ Element.spacing 30
+                    , Element.width Element.fill
+                    ]
+                    (row
+                        |> List.map (Element.el [ Element.width Element.fill ])
+                    )
+            )
+        |> Element.column
+            [ Element.spacing 30
+            , Element.width Element.fill
+            ]
+
+
+typeToIcon : Type -> Image
+typeToIcon pmType =
+    case pmType of
+        Cash ->
+            Images.pmCash
+
+        Bank ->
+            Images.pmBank
+
+        Custom ->
+            Images.pmCustom

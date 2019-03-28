@@ -13,6 +13,7 @@ import Eth.Utils
 import FiatValue exposing (FiatValue)
 import Images exposing (Image)
 import Margin
+import PaymentMethods exposing (PaymentMethod)
 import Time
 import TokenValue exposing (TokenValue)
 import Trade.Types exposing (..)
@@ -27,6 +28,23 @@ root time model =
                 , Element.spacing 40
                 ]
                 [ header tradeInfo model.stats model.userInfo
+                , Element.column
+                    [ Element.width Element.fill
+                    , Element.paddingXY 40 0
+                    , Element.spacing 40
+                    ]
+                    [ phasesElement tradeInfo model.userInfo
+                    , case tradeInfo.paymentMethods of
+                        Err s ->
+                            Element.paragraph
+                                [ Element.Font.color EH.red
+                                , Element.Font.size 24
+                                ]
+                                [ Element.text "Error decoding paymentMethods. This Trade was probably created on a third-party tool." ]
+
+                        Ok paymentMethods ->
+                            PaymentMethods.viewList paymentMethods Nothing
+                    ]
                 ]
 
         CTypes.PartiallyLoadedTrade partialTradeInfo ->
@@ -219,3 +237,19 @@ actionButtonsElement trade userInfo =
                 []
         )
         |> Element.map ContractAction
+
+
+phasesElement : FullTradeInfo -> Maybe UserInfo -> Element Msg
+phasesElement trade maybeUserInfo =
+    Element.el
+        [ Element.width Element.fill
+        , Element.height <| Element.px 300
+        , Element.Background.color EH.white
+        , Element.Border.rounded 8
+        ]
+        (Element.el
+            [ Element.centerX
+            , Element.centerY
+            ]
+            (EH.comingSoonMsg [ Element.Font.size 30 ] "Phases info readout coming soon!")
+        )

@@ -117,7 +117,7 @@ pmTypeElement : PaymentMethods.Type -> CTypes.OpenMode -> Element Msg
 pmTypeElement pmType openMode =
     let
         icon =
-            Images.pmIcon pmType
+            PaymentMethods.typeToIcon pmType
 
         title =
             typeTitle pmType
