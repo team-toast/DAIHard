@@ -12,6 +12,7 @@ import Element.Input
 import ElementHelpers as EH
 import Routing
 import Search.View
+import Trade.View
 import Types exposing (..)
 
 
@@ -138,8 +139,9 @@ subModelElement model =
             CreateModel createModel ->
                 Element.map CreateMsg (Create.View.root createModel)
 
-            -- InteractModel interactModel ->
-            --     Element.map InteractMsg (Interact.View.root model.time interactModel)
+            TradeModel tradeModel ->
+                Element.map TradeMsg (Trade.View.root model.time tradeModel)
+
             SearchModel searchModel ->
                 Element.map SearchMsg (Search.View.root model.time searchModel)
         )

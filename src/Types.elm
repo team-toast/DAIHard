@@ -13,6 +13,7 @@ import Json.Decode
 import Routing
 import Search.Types
 import Time
+import Trade.Types
 import Url exposing (Url)
 
 
@@ -40,7 +41,7 @@ type alias ValidModel =
 type Submodel
     = HomeModel
     | CreateModel Create.Types.Model
-      --| InteractModel Interact.Types.Model
+    | TradeModel Trade.Types.Model
     | SearchModel Search.Types.Model
 
 
@@ -53,7 +54,7 @@ type Msg
     | TxSentryMsg TxSentry.Msg
     | UserPubkeySet Json.Decode.Value
     | CreateMsg Create.Types.Msg
-      --| InteractMsg Interact.Types.Msg
+    | TradeMsg Trade.Types.Msg
     | SearchMsg Search.Types.Msg
     | Fail String
     | NoOp

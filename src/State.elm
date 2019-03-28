@@ -18,6 +18,7 @@ import Json.Encode
 import Routing
 import Search.State
 import Time
+import Trade.State
 import Types exposing (..)
 import Url exposing (Url)
 
@@ -165,27 +166,30 @@ updateValidModel msg model =
                 _ ->
                     ( Running model, Cmd.none )
 
-        -- InteractMsg interactMsg ->
-        --     case model.submodel of
-        --         InteractModel interactModel ->
-        --             let
-        --                 ( newInteractModel, interactCmd, chainCmdOrder ) =
-        --                     Interact.State.update interactMsg interactModel
-        --                 ( newTxSentry, chainCmd ) =
-        --                     ChainCmd.execute model.txSentry (ChainCmd.map InteractMsg chainCmdOrder)
-        --             in
-        --             ( Running
-        --                 { model
-        --                     | submodel = InteractModel newInteractModel
-        --                     , txSentry = newTxSentry
-        --                 }
-        --             , Cmd.batch
-        --                 [ Cmd.map InteractMsg interactCmd
-        --                 , chainCmd
-        --                 ]
-        --             )
-        --         _ ->
-        --             ( Running model, Cmd.none )
+        TradeMsg tradeMsg ->
+            case model.submodel of
+                TradeModel tradeModel ->
+                    let
+                        ( newTradeModel, tradeCmd, chainCmdOrder ) =
+                            Trade.State.update tradeMsg tradeModel
+
+                        ( newTxSentry, chainCmd ) =
+                            ChainCmd.execute model.txSentry (ChainCmd.map TradeMsg chainCmdOrder)
+                    in
+                    ( Running
+                        { model
+                            | submodel = TradeModel newTradeModel
+                            , txSentry = newTxSentry
+                        }
+                    , Cmd.batch
+                        [ Cmd.map TradeMsg tradeCmd
+                        , chainCmd
+                        ]
+                    )
+
+                _ ->
+                    ( Running model, Cmd.none )
+
         SearchMsg searchMsg ->
             case model.submodel of
                 SearchModel searchModel ->
@@ -267,28 +271,31 @@ gotoRoute model route =
                 ]
             )
 
-        -- Routing.Interact maybeID ->
-        --     case maybeID of
-        --         Nothing ->
-        --             ( Failed "Error interpreting url", Browser.Navigation.pushUrl model.key newUrlString )
-        --         Just id ->
-        --             let
-        --                 ( interactModel, interactCmd, chainCmdOrder ) =
-        --                     Interact.State.init model.node model.userInfo id
-        --                 ( newTxSentry, chainCmd ) =
-        --                     ChainCmd.execute model.txSentry (ChainCmd.map InteractMsg chainCmdOrder)
-        --             in
-        --             ( Running
-        --                 { model
-        --                     | submodel = InteractModel interactModel
-        --                     , txSentry = newTxSentry
-        --                 }
-        --             , Cmd.batch
-        --                 [ Cmd.map InteractMsg interactCmd
-        --                 , chainCmd
-        --                 , Browser.Navigation.pushUrl model.key newUrlString
-        --                 ]
-        --             )
+        Routing.Trade maybeID ->
+            case maybeID of
+                Nothing ->
+                    ( Failed "Error interpreting url", Browser.Navigation.pushUrl model.key newUrlString )
+
+                Just id ->
+                    let
+                        ( tradeModel, tradeCmd, chainCmdOrder ) =
+                            Trade.State.init model.node model.userInfo id
+
+                        ( newTxSentry, chainCmd ) =
+                            ChainCmd.execute model.txSentry (ChainCmd.map TradeMsg chainCmdOrder)
+                    in
+                    ( Running
+                        { model
+                            | submodel = TradeModel tradeModel
+                            , txSentry = newTxSentry
+                        }
+                    , Cmd.batch
+                        [ Cmd.map TradeMsg tradeCmd
+                        , chainCmd
+                        , Browser.Navigation.pushUrl model.key newUrlString
+                        ]
+                    )
+
         Routing.Search openMode ->
             let
                 ( searchModel, searchCmd ) =
@@ -317,8 +324,9 @@ updateSubmodelUserInfo userInfo submodel =
         CreateModel createModel ->
             CreateModel (createModel |> Create.State.updateUserInfo userInfo)
 
-        -- InteractModel interactModel ->
-        --     InteractModel (interactModel |> Interact.State.updateUserInfo userInfo)
+        TradeModel tradeModel ->
+            TradeModel (tradeModel |> Trade.State.updateUserInfo userInfo)
+
         SearchModel searchModel ->
             SearchModel (searchModel |> Search.State.updateUserInfo userInfo)
 
@@ -349,8 +357,9 @@ submodelSubscriptions model =
         CreateModel createModel ->
             Sub.map CreateMsg <| Create.State.subscriptions createModel
 
-        -- InteractModel interactModel ->
-        --     Sub.map InteractMsg <| Interact.State.subscriptions interactModel
+        TradeModel tradeModel ->
+            Sub.map TradeMsg <| Trade.State.subscriptions tradeModel
+
         SearchModel searchModel ->
             Sub.map SearchMsg <| Search.State.subscriptions searchModel
 
