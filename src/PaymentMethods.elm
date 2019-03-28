@@ -5,6 +5,7 @@ module PaymentMethods exposing
     , decodePaymentMethodList
     , decoder
     , encode
+    , getTitle
     , stringToType
     , typeDecoder
     , typeToString
@@ -64,6 +65,19 @@ stringToType s =
 
         _ ->
             Nothing
+
+
+getTitle : Type -> String
+getTitle type_ =
+    case type_ of
+        Cash ->
+            "Cash Drop/Handoff"
+
+        Bank ->
+            "Bank Transfer"
+
+        Custom ->
+            "Custom Payment Method"
 
 
 encode : PaymentMethod -> Json.Encode.Value

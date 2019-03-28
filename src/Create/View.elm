@@ -12,6 +12,8 @@ import Element.Input
 import ElementHelpers as EH
 import FiatValue
 import Images exposing (Image)
+import List.Extra
+import PaymentMethods exposing (PaymentMethod)
 import Time
 
 
@@ -191,7 +193,7 @@ buttonsElement model =
     Element.row
         [ Element.spacing 10 ]
         [ EH.blueButton "Clear Draft" ClearDraft
-        , EH.redButton "Publish Offer" PublishClicked
+        , EH.redButton "Publish Offer" BeginCreateProcess
         ]
 
 
@@ -379,7 +381,75 @@ paymentMethodsHeaderElement model =
 
 paymentMethodsElement : Model -> Element Msg
 paymentMethodsElement model =
-    Element.none
+    Element.el
+        [ Element.paddingXY 40 0
+        , Element.width Element.fill
+        ]
+        (model.inputs.paymentMethods
+            |> List.map pmElement
+            |> doubleColumn
+        )
+
+
+pmElement : PaymentMethod -> Element Msg
+pmElement pm =
+    Element.column
+        [ Element.width Element.fill
+        , Element.height (Element.shrink |> Element.maximum 300)
+        , Element.spacing 1
+        ]
+        [ Element.el
+            [ Element.width Element.fill
+            , Element.height Element.shrink
+            , Element.paddingXY 60 40
+            , EH.roundTopCorners 8
+            , Element.Background.color EH.white
+            , Element.Font.size 22
+            , Element.Font.semiBold
+            ]
+            (Element.text <| PaymentMethods.getTitle pm.type_)
+        , Element.el
+            [ Element.width Element.fill
+            , Element.height Element.shrink
+            , Element.paddingXY 60 40
+            , EH.roundBottomCorners 8
+            , Element.Background.color EH.white
+            ]
+            (Element.paragraph
+                [ Element.Font.size 17
+                , Element.Font.medium
+                ]
+                [ Element.text pm.info ]
+            )
+        ]
+
+
+doubleColumn : List (Element Msg) -> Element Msg
+doubleColumn elList =
+    elList
+        |> List.Extra.greedyGroupsOf 2
+        |> List.map
+            (\row ->
+                if List.length row == 1 then
+                    List.append row [ Element.none ]
+
+                else
+                    row
+            )
+        |> List.map
+            (\row ->
+                Element.row
+                    [ Element.spacing 30
+                    , Element.width Element.fill
+                    ]
+                    (row
+                        |> List.map (Element.el [ Element.width Element.fill ])
+                    )
+            )
+        |> Element.column
+            [ Element.spacing 30
+            , Element.width Element.fill
+            ]
 
 
 getModalOrNone : Model -> Element Msg

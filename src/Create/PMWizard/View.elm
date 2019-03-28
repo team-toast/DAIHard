@@ -89,15 +89,7 @@ getTitle model =
             "Add Payment Method"
 
         Details paymentMethod ->
-            case paymentMethod.type_ of
-                PaymentMethods.Cash ->
-                    "Cash Drop/Handoff"
-
-                PaymentMethods.Bank ->
-                    "Bank Transfer"
-
-                PaymentMethods.Custom ->
-                    "Custom Payment Method"
+            PaymentMethods.getTitle paymentMethod.type_
 
 
 bodyElement : Model -> CTypes.OpenMode -> Element Msg

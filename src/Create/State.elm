@@ -150,16 +150,6 @@ update msg prevModel =
             in
             justModelUpdate (prevModel |> updateInputs { oldInputs | autoreleaseInterval = newTime })
 
-        -- AddPaymentMethod paymentMethod ->
-        --     let
-        --         oldInputs =
-        --             prevModel.inputs
-        --     in
-        --     justModelUpdate
-        --         (prevModel
-        --             |> updateInputs
-        --                 { oldInputs | paymentMethods = List.append oldInputs.paymentMethods [ paymentMethod ] }
-        --         )
         ShowCurrencyDropdown flag ->
             justModelUpdate
                 { prevModel | showFiatTypeDropdown = flag }
