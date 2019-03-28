@@ -27,6 +27,7 @@ module ElementHelpers exposing
     , modal
     , niceBottomBorderEl
     , niceFloatingRow
+    , orangeButton
     , pageBackgroundColor
     , permanentTextColor
     , red
@@ -481,6 +482,18 @@ redButton text msg =
         ( Element.rgba 1 0 0 1
         , Element.rgba 1 0 0 0.8
         , Element.rgba 1 0 0 0.6
+        )
+        white
+        text
+        msg
+
+
+orangeButton : String -> msg -> Element msg
+orangeButton text msg =
+    button
+        ( Element.rgba 1 0.6 0.2 1
+        , Element.rgba 1 0.6 0.2 0.8
+        , Element.rgba 1 0.6 0.2 0.6
         )
         white
         text

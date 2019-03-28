@@ -92,13 +92,13 @@ tradeStatusElement trade =
 daiAmountElement : FullTradeInfo -> Maybe UserInfo -> Element Msg
 daiAmountElement trade maybeUserInfo =
     let
-        userRole =
+        maybeInitiatorOrResponder =
             Maybe.andThen
-                (getUserRole trade)
+                (getInitiatorOrResponder trade)
                 (Maybe.map .address maybeUserInfo)
     in
     EH.withHeader
-        (case ( trade.parameters.openMode, userRole ) of
+        (case ( trade.parameters.openMode, maybeInitiatorOrResponder ) of
             ( CTypes.BuyerOpened, Just Initiator ) ->
                 "You're Buying"
 
@@ -181,9 +181,41 @@ renderMargin marginFloat maybeUserInfo =
 
 statsElement : StatsModel -> Element Msg
 statsElement stats =
-    Element.none
+    EH.withHeader
+        "Initiator Stats"
+        (EH.comingSoonMsg [] "Stats coming soon!")
 
 
 actionButtonsElement : FullTradeInfo -> UserInfo -> Element Msg
 actionButtonsElement trade userInfo =
-    Element.none
+    Element.row
+        [ Element.spacing 8 ]
+        (case
+            ( trade.state.phase
+            , getInitiatorOrResponder trade userInfo.address
+            , getBuyerOrSeller trade userInfo.address
+            )
+         of
+            ( CTypes.Created, _, _ ) ->
+                []
+
+            ( CTypes.Open, Just Initiator, _ ) ->
+                [ EH.blueButton "Remove and Refund this Trade" Recall ]
+
+            ( CTypes.Open, Nothing, _ ) ->
+                [ EH.redButton "Deposit and Commit to Trade" Commit ]
+
+            ( CTypes.Committed, _, Just Buyer ) ->
+                [ EH.orangeButton "Abort Trade" Abort
+                , EH.redButton "I Confirm I have Sent Payment" Claim
+                ]
+
+            ( CTypes.Claimed, _, Just Seller ) ->
+                [ EH.redButton "Burn it all" Burn
+                , EH.blueButton "Release Everything Now" Release
+                ]
+
+            _ ->
+                []
+        )
+        |> Element.map ContractAction

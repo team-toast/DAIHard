@@ -1,11 +1,20 @@
-module Trade.Types exposing (ContractMsg(..), InitiatorOrResponder(..), Model, Msg(..), StatsModel(..), getUserRole)
+module Trade.Types exposing
+    ( BuyerOrSeller(..)
+    , ContractMsg(..)
+    , InitiatorOrResponder(..)
+    , Model
+    , Msg(..)
+    , StatsModel(..)
+    , getBuyerOrSeller
+    , getInitiatorOrResponder
+    )
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
 import Contracts.Generated.DAIHardFactory as DHF
 import Contracts.Generated.DAIHardTrade as DHT
-import Contracts.Types
+import Contracts.Types as CTypes
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
 import EthHelpers
@@ -17,7 +26,7 @@ import Time
 type alias Model =
     { ethNode : EthHelpers.EthNode
     , userInfo : Maybe UserInfo
-    , trade : Contracts.Types.Trade
+    , trade : CTypes.Trade
     , stats : StatsModel
     , eventSentry : EventSentry Msg
     }
@@ -25,8 +34,8 @@ type alias Model =
 
 type Msg
     = CreationInfoFetched (Result Http.Error DHF.CreatedTrade)
-    | StateFetched (Result Http.Error (Maybe Contracts.Types.State))
-    | ParametersFetched (Result Http.Error (Result String Contracts.Types.TradeParameters))
+    | StateFetched (Result Http.Error (Maybe CTypes.State))
+    | ParametersFetched (Result Http.Error (Result String CTypes.TradeParameters))
     | ContractAction ContractMsg
     | PreCommitApproveMined (Result String Eth.Types.TxReceipt)
     | ContractActionMined (Result String Eth.Types.TxReceipt)
@@ -50,14 +59,19 @@ type InitiatorOrResponder
     | Responder
 
 
+type BuyerOrSeller
+    = Buyer
+    | Seller
+
+
 type StatsModel
     = Waiting
     | Scanning
     | Finished
 
 
-getUserRole : Contracts.Types.FullTradeInfo -> Address -> Maybe InitiatorOrResponder
-getUserRole tradeInfo userAddress =
+getInitiatorOrResponder : CTypes.FullTradeInfo -> Address -> Maybe InitiatorOrResponder
+getInitiatorOrResponder tradeInfo userAddress =
     if userAddress == tradeInfo.parameters.initiatorAddress then
         Just Initiator
 
@@ -71,3 +85,23 @@ getUserRole tradeInfo userAddress =
                     else
                         Nothing
                 )
+
+
+getBuyerOrSeller : CTypes.FullTradeInfo -> Address -> Maybe BuyerOrSeller
+getBuyerOrSeller tradeInfo userAddress =
+    getInitiatorOrResponder tradeInfo userAddress
+        |> Maybe.map
+            (\initiatorOrResponder ->
+                case ( initiatorOrResponder, tradeInfo.parameters.openMode ) of
+                    ( Initiator, CTypes.SellerOpened ) ->
+                        Seller
+
+                    ( Initiator, CTypes.BuyerOpened ) ->
+                        Buyer
+
+                    ( Responder, CTypes.SellerOpened ) ->
+                        Buyer
+
+                    ( Responder, CTypes.BuyerOpened ) ->
+                        Seller
+            )
