@@ -1,4 +1,4 @@
-module Create.PMWizard.Types exposing (Model(..), Msg(..), UpdateResult, getTitle, justModelUpdate)
+module Create.PMWizard.Types exposing (Model(..), Msg(..), UpdateResult, justModelUpdate)
 
 import PaymentMethods exposing (PaymentMethod)
 
@@ -11,6 +11,8 @@ type Model
 type Msg
     = SelectType PaymentMethods.Type
     | ChangeDetails String
+    | SaveAndAddAnother
+    | Save
     | Back
     | CloseClicked
     | NoOp
@@ -29,21 +31,3 @@ justModelUpdate model =
         (Just model)
         Cmd.none
         Nothing
-
-
-getTitle : Model -> String
-getTitle model =
-    case model of
-        ChooseType ->
-            "Choose Accepted Payment Methods"
-
-        Details paymentMethod ->
-            case paymentMethod.type_ of
-                PaymentMethods.Cash ->
-                    "Cash Drop/Handoff"
-
-                PaymentMethods.Bank ->
-                    "Bank Transfer"
-
-                PaymentMethods.Custom ->
-                    "Custom Payment Method"

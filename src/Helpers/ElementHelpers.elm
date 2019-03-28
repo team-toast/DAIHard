@@ -19,6 +19,7 @@ module ElementHelpers exposing
     , inputWithHeader
     , interval
     , intervalInput
+    , inverseBlueButton
     , lightBlue
     , lightGray
     , margin
@@ -431,28 +432,43 @@ elapsedBar ratio filledBarColor =
 -- INPUTS
 
 
-button : List (Attribute msg) -> String -> msg -> Element msg
-button attributes text msg =
+button : ( Element.Color, Element.Color, Element.Color ) -> Element.Color -> String -> msg -> Element msg
+button ( bgColor, bgHoverColor, bgPressedColor ) textColor text msg =
     Element.el
-        ([ Element.Border.rounded 4
-         , Element.pointer
-         , Element.Events.onClick msg
-         , Element.paddingXY 25 17
-         , Element.Font.color white
-         , Element.Font.size 18
-         , Element.Font.semiBold
-         , Element.mouseDown [ Element.alpha 0.6 ]
-         , Element.mouseOver [ Element.alpha 0.8 ]
-         ]
-            ++ attributes
-        )
+        [ Element.Border.rounded 4
+        , Element.pointer
+        , Element.Events.onClick msg
+        , Element.paddingXY 25 17
+        , Element.Font.color textColor
+        , Element.Font.size 18
+        , Element.Font.semiBold
+        , Element.Background.color bgColor
+        , Element.mouseDown [ Element.Background.color bgPressedColor ]
+        , Element.mouseOver [ Element.Background.color bgHoverColor ]
+        ]
         (Element.text text)
 
 
 blueButton : String -> msg -> Element msg
 blueButton text msg =
     button
-        [ Element.Background.color blue ]
+        ( Element.rgba 0 0 1 1
+        , Element.rgba 0 0 1 0.8
+        , Element.rgba 0 0 1 0.6
+        )
+        white
+        text
+        msg
+
+
+inverseBlueButton : String -> msg -> Element msg
+inverseBlueButton text msg =
+    button
+        ( Element.rgba 0 0 1 0.05
+        , Element.rgba 0 0 1 0.1
+        , Element.rgba 0 0 1 0.2
+        )
+        blue
         text
         msg
 
@@ -460,7 +476,11 @@ blueButton text msg =
 redButton : String -> msg -> Element msg
 redButton text msg =
     button
-        [ Element.Background.color red ]
+        ( Element.rgba 1 0 0 1
+        , Element.rgba 1 0 0 0.8
+        , Element.rgba 1 0 0 0.6
+        )
+        white
         text
         msg
 

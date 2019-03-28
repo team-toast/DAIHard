@@ -29,6 +29,36 @@ update msg prevModel =
                     in
                     justModelUpdate prevModel
 
+        SaveAndAddAnother ->
+            case prevModel of
+                Details paymentMethod ->
+                    UpdateResult
+                        (Just ChooseType)
+                        Cmd.none
+                        (Just paymentMethod)
+
+                ChooseType ->
+                    let
+                        _ =
+                            Debug.log "add a payment method, but no type selected!" ""
+                    in
+                    justModelUpdate prevModel
+
+        Save ->
+            case prevModel of
+                Details paymentMethod ->
+                    UpdateResult
+                        Nothing
+                        Cmd.none
+                        (Just paymentMethod)
+
+                ChooseType ->
+                    let
+                        _ =
+                            Debug.log "add a payment method, but no type selected!" ""
+                    in
+                    justModelUpdate prevModel
+
         Back ->
             justModelUpdate ChooseType
 

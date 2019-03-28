@@ -12,6 +12,7 @@ module Images exposing
     , pmBank
     , pmCash
     , pmCustom
+    , pmIcon
     , qmarkCircle
     , releaseWindowIcon
     , toElement
@@ -19,6 +20,7 @@ module Images exposing
     )
 
 import Element exposing (Attribute, Element)
+import PaymentMethods exposing (PaymentMethod)
 
 
 type Image
@@ -129,6 +131,19 @@ addButton =
         { src = "static/img/add-button.svg"
         , description = "add"
         }
+
+
+pmIcon : PaymentMethods.Type -> Image
+pmIcon pmType =
+    case pmType of
+        PaymentMethods.Cash ->
+            pmCash
+
+        PaymentMethods.Bank ->
+            pmBank
+
+        PaymentMethods.Custom ->
+            pmCustom
 
 
 pmCash : Image

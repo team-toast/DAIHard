@@ -82,6 +82,24 @@ headerElement model =
         ]
 
 
+getTitle : Model -> String
+getTitle model =
+    case model of
+        ChooseType ->
+            "Add Payment Method"
+
+        Details paymentMethod ->
+            case paymentMethod.type_ of
+                PaymentMethods.Cash ->
+                    "Cash Drop/Handoff"
+
+                PaymentMethods.Bank ->
+                    "Bank Transfer"
+
+                PaymentMethods.Custom ->
+                    "Custom Payment Method"
+
+
 bodyElement : Model -> CTypes.OpenMode -> Element Msg
 bodyElement model openMode =
     case model of
@@ -96,42 +114,28 @@ chooseTypeElement : CTypes.OpenMode -> Element Msg
 chooseTypeElement openMode =
     Element.column [ Element.spacing 32 ]
         [ Element.row [ Element.spacing 32 ]
-            [ cashTypeElement openMode
-            , bankTypeElement openMode
+            [ pmTypeElement PaymentMethods.Cash openMode
+            , pmTypeElement PaymentMethods.Bank openMode
             ]
-        , customTypeElement openMode
+        , pmTypeElement PaymentMethods.Custom openMode
         ]
 
 
-cashTypeElement : CTypes.OpenMode -> Element Msg
-cashTypeElement openMode =
-    pmTypeElement
-        Images.pmCash
-        "Cash Drop/Handoff"
-        "Indicate specific or general locations where you’re happy to meet with the buyer or drop of the cash."
-        (SelectType PaymentMethods.Cash)
+pmTypeElement : PaymentMethods.Type -> CTypes.OpenMode -> Element Msg
+pmTypeElement pmType openMode =
+    let
+        icon =
+            Images.pmIcon pmType
 
+        title =
+            typeTitle pmType
 
-bankTypeElement : CTypes.OpenMode -> Element Msg
-bankTypeElement openMode =
-    pmTypeElement
-        Images.pmBank
-        "Bank Transfer"
-        "Indicate where you will accept bank transfers from, either nationally or with specific banks."
-        (SelectType PaymentMethods.Bank)
+        summary =
+            typeSummary pmType openMode
 
-
-customTypeElement : CTypes.OpenMode -> Element Msg
-customTypeElement openMode =
-    pmTypeElement
-        Images.pmCustom
-        "Other"
-        "Indicate specific, custom terms for this trade."
-        (SelectType PaymentMethods.Custom)
-
-
-pmTypeElement : Image -> String -> String -> Msg -> Element Msg
-pmTypeElement icon title summary onClick =
+        onClick =
+            SelectType pmType
+    in
     Element.column
         [ Element.width <| Element.px 450
         , Element.height <| Element.px 250
@@ -171,7 +175,7 @@ detailsElement paymentMethod openMode =
         ]
         [ Element.column
             [ Element.spacing 5
-            , Element.padding 10
+            , Element.padding 20
             , Element.width Element.fill
             , Element.Background.color EH.white
             , EH.roundTopCorners 5
@@ -180,45 +184,92 @@ detailsElement paymentMethod openMode =
                 [ Element.Font.size 20
                 , Element.Font.semiBold
                 ]
-                (Element.text "Transfer Details")
+                (Element.text <| getTitle (Details paymentMethod) ++ " -  Details")
             , Element.el
                 [ Element.Font.size 17
                 , Element.Font.color EH.permanentTextColor
                 ]
-                (Element.text <| detailInputSubtitleText paymentMethod openMode)
+                (Element.text <| typeSummary paymentMethod.type_ openMode)
             ]
         , Element.el
-            [ Element.padding 10
+            [ Element.padding 20
             , Element.Background.color EH.white
             , Element.width Element.fill
             , Element.height Element.fill
+            , EH.roundBottomCorners 5
             ]
-            (Element.Input.multiline
-                [ Element.width Element.fill
+            (Element.column
+                [ Element.spacing 20
+                , Element.width Element.fill
                 , Element.height Element.fill
                 ]
-                { onChange = ChangeDetails
-                , text = paymentMethod.info
-                , placeholder =
-                    if paymentMethod.info == "" then
-                        Just <| inputPlaceholder paymentMethod openMode
+                [ Element.Input.multiline
+                    [ Element.width Element.fill
+                    , Element.height Element.fill
+                    ]
+                    { onChange = ChangeDetails
+                    , text = paymentMethod.info
+                    , placeholder =
+                        if paymentMethod.info == "" then
+                            Just <| inputPlaceholder paymentMethod openMode
 
-                    else
-                        Nothing
-                , label = Element.Input.labelHidden "details"
-                , spellcheck = True
-                }
+                        else
+                            Nothing
+                    , label = Element.Input.labelHidden "details"
+                    , spellcheck = True
+                    }
+                , Element.row
+                    [ Element.alignRight
+                    , Element.spacing 18
+                    ]
+                    [ EH.inverseBlueButton "Save and Add Another" SaveAndAddAnother
+                    , EH.blueButton "Save" Save
+                    ]
+                ]
             )
         ]
 
 
-detailInputSubtitleText : PaymentMethod -> CTypes.OpenMode -> String
-detailInputSubtitleText paymentMethod openMode =
-    "don't be dumb"
+typeTitle : PaymentMethods.Type -> String
+typeTitle pmType =
+    case pmType of
+        PaymentMethods.Cash ->
+            "Cash Drop/Handoff"
+
+        PaymentMethods.Bank ->
+            "Bank Transfer"
+
+        PaymentMethods.Custom ->
+            "Custom"
+
+
+typeSummary : PaymentMethods.Type -> CTypes.OpenMode -> String
+typeSummary pmType openMode =
+    case ( pmType, openMode ) of
+        ( PaymentMethods.Cash, CTypes.BuyerOpened ) ->
+            "Indicate specific or general locations where you’re happy to meet with the seller or drop off the cash."
+
+        ( PaymentMethods.Cash, CTypes.SellerOpened ) ->
+            "Indicate specific or general locations where you’re happy to meet with the buyer or pick up the cash."
+
+        ( PaymentMethods.Bank, CTypes.BuyerOpened ) ->
+            "Indicate where you can make bank transfers to, either nationally or with specific banks."
+
+        ( PaymentMethods.Bank, CTypes.SellerOpened ) ->
+            "Indicate where you will accept bank transfers from, either nationally or with specific banks."
+
+        ( PaymentMethods.Custom, _ ) ->
+            "Indicate specific, custom terms for this trade."
 
 
 inputPlaceholder : PaymentMethod -> CTypes.OpenMode -> Element.Input.Placeholder Msg
 inputPlaceholder paymentMethod openMode =
     Element.Input.placeholder
         []
-        (Element.text "i.e. hand it to me")
+        (Element.text """Put lots of details here!
+This text will be replaced later!
+
+For now I'm just putting a bunch of stuff here...
+
+Wowowowowow
+        """)
