@@ -221,7 +221,7 @@ updateTradeState id state model =
             model
 
 
-updateTradePaymentMethods : Int -> Result String (List PaymentMethod) -> Model -> Model
+updateTradePaymentMethods : Int -> List PaymentMethod -> Model -> Model
 updateTradePaymentMethods id methods model =
     case Array.get id model.trades of
         Just trade ->

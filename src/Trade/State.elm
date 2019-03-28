@@ -328,9 +328,18 @@ handleNewLog log model =
                         | trade =
                             case event of
                                 Contracts.Types.OpenedEvent data ->
-                                    model.trade
-                                        |> Contracts.Types.updatePaymentMethods
-                                            (PaymentMethods.decodePaymentMethodList data.fiatTransferMethods)
+                                    case PaymentMethods.decodePaymentMethodList data.fiatTransferMethods of
+                                        Ok paymentMethods ->
+                                            model.trade
+                                                |> Contracts.Types.updatePaymentMethods
+                                                    paymentMethods
+
+                                        Err errStr ->
+                                            let
+                                                _ =
+                                                    Debug.log "Couldn't decode payment methods!" errStr
+                                            in
+                                            model.trade
 
                                 _ ->
                                     model.trade
@@ -351,5 +360,5 @@ genericCustomSend =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Time.every 7000 Refresh
+        [ Time.every 3000 Refresh
         ]

@@ -118,12 +118,9 @@ typeDecoder =
             )
 
 
-decodePaymentMethodList : String -> Result String (List PaymentMethod)
+decodePaymentMethodList : String -> Result Json.Decode.Error (List PaymentMethod)
 decodePaymentMethodList s =
     Json.Decode.decodeString (Json.Decode.list decoder) s
-        -- If the decode fails, we keep the undecodeable string to display to the user later
-        |> Result.mapError
-            (\_ -> s)
 
 
 viewList : List PaymentMethod -> Maybe msg -> Element msg

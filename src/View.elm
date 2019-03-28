@@ -79,12 +79,57 @@ headerContent model =
         ]
         (Element.row
             [ Element.width Element.fill
-            , Element.spacing 75
+            , Element.spacing 30
+            , Element.paddingXY 0 9
             ]
             [ logoElement
-            , myOffersElement
+            , headerLink
+                "Marketplace"
+                (GotoRoute <| Routing.Search Nothing)
+                (case model.submodel of
+                    SearchModel _ ->
+                        True
+
+                    _ ->
+                        False
+                )
+            , headerLink
+                "Create a New Offer"
+                (GotoRoute Routing.Create)
+                (case model.submodel of
+                    CreateModel _ ->
+                        True
+
+                    _ ->
+                        False
+                )
             ]
         )
+
+
+headerLink : String -> Msg -> Bool -> Element Msg
+headerLink title onClick selected =
+    let
+        extraStyles =
+            if selected then
+                [ Element.Border.rounded 4
+                , Element.Background.color <| Element.rgba255 0 177 255 0.63
+                ]
+
+            else
+                []
+    in
+    Element.el
+        ([ Element.paddingXY 23 12
+         , Element.Font.size 20
+         , Element.Font.semiBold
+         , Element.Font.color EH.white
+         , Element.pointer
+         , Element.Events.onClick onClick
+         ]
+            ++ extraStyles
+        )
+        (Element.text title)
 
 
 logoElement : Element Msg

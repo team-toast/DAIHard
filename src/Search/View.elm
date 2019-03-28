@@ -12,6 +12,7 @@ import Element.Input
 import ElementHelpers as EH
 import FiatValue exposing (FiatValue)
 import Html.Events.Extra
+import Images exposing (Image)
 import Margin
 import PaymentMethods exposing (PaymentMethod)
 import Search.Types exposing (..)
@@ -350,20 +351,9 @@ viewMargin trade upIsGreen =
         |> Maybe.withDefault Element.none
 
 
-viewPaymentMethods : Result String (List PaymentMethod) -> Element Msg
-viewPaymentMethods paymentMethodsDecodeResult =
-    case paymentMethodsDecodeResult of
-        Ok paymentMethods ->
-            Element.row [ Element.padding 3 ]
-                (paymentMethods
-                    |> List.map (Debug.todo "")
-                )
-
-        Err undecoded ->
-            Element.paragraph [ Element.padding 3 ]
-                [ Element.el [ Element.Font.color EH.red ] <| Element.text "Could not decode into a list of payment methods! Here is the text: "
-                , Element.text undecoded
-                ]
+viewPaymentMethods : List PaymentMethod -> Element Msg
+viewPaymentMethods paymentMethods =
+    EH.comingSoonMsg [] "Payment method output coming soon!"
 
 
 viewAutoabortWindow : Bool -> Contracts.Types.FullTradeInfo -> Element Msg
@@ -443,14 +433,12 @@ sortableColumnHeader title colType sorting =
                 , Element.Events.onClick <|
                     SortBy colType True
                 ]
-                (Element.image
+                (Images.toElement
                     [ Element.width <| Element.px 8
                     , Element.centerX
                     , Element.centerY
                     ]
-                    { src = "static/img/sort-up-active.svg"
-                    , description = "sort up"
-                    }
+                    Images.upArrow
                 )
             , Element.el
                 [ Element.padding 4
@@ -458,14 +446,12 @@ sortableColumnHeader title colType sorting =
                 , Element.Events.onClick <|
                     SortBy colType False
                 ]
-                (Element.image
+                (Images.toElement
                     [ Element.width <| Element.px 8
                     , Element.centerX
                     , Element.centerY
                     ]
-                    { src = "static/img/sort-down-active.svg"
-                    , description = "sort down"
-                    }
+                    Images.downArrow
                 )
             ]
         ]

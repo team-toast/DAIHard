@@ -196,11 +196,19 @@ update msg model =
             case fetchResult of
                 Ok openedEventData ->
                     let
-                        paymentMethods =
-                            PaymentMethods.decodePaymentMethodList
-                                openedEventData.fiatTransferMethods
+                        newModel =
+                            case PaymentMethods.decodePaymentMethodList openedEventData.fiatTransferMethods of
+                                Ok paymentMethods ->
+                                    model |> updateTradePaymentMethods id paymentMethods
+
+                                Err e ->
+                                    let
+                                        _ =
+                                            Debug.log "Error decoding payment methods" e
+                                    in
+                                    model
                     in
-                    ( model |> updateTradePaymentMethods id paymentMethods
+                    ( newModel
                     , Cmd.none
                     , Nothing
                     )
@@ -322,9 +330,8 @@ update msg model =
             )
 
         TradeClicked id ->
-            ( model, Cmd.none, Nothing )
+            ( model, Cmd.none, Just (Routing.Trade (Just id)) )
 
-        -- ( model, Cmd.none, Just (Routing.Interact (Just id)) )
         SortBy colType ascending ->
             let
                 newSortFunc =
@@ -501,12 +508,13 @@ resetSearch model =
     }
 
 
-testTextMatch : List String -> Result String (List PaymentMethod) -> Bool
-testTextMatch terms paymentMethodsDecodeResult =
+testTextMatch : List String -> List PaymentMethod -> Bool
+testTextMatch terms paymentMethods =
     Debug.todo ""
 
 
 
+--Should be simple enough to simplify
 -- let
 --     searchForAllTerms searchable =
 --         terms

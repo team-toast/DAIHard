@@ -126,7 +126,7 @@ type alias PartialTradeInfo =
     , creationInfo : Maybe TradeCreationInfo
     , parameters : Maybe TradeParameters
     , state : Maybe State
-    , paymentMethods : Maybe (Result String (List PaymentMethod)) -- Here we use a Result to contain the undecoded string upon decode failure
+    , paymentMethods : Maybe (List PaymentMethod)
     }
 
 
@@ -142,7 +142,7 @@ type alias FullTradeInfo =
     , parameters : TradeParameters
     , state : State
     , derived : DerivedValues
-    , paymentMethods : Result String (List PaymentMethod) -- Here we use a Result to contain the undecoded string upon decode failure
+    , paymentMethods : List PaymentMethod
     }
 
 
@@ -192,7 +192,7 @@ updateState state trade =
             LoadedTrade { info | state = state }
 
 
-updatePaymentMethods : Result String (List PaymentMethod) -> Trade -> Trade
+updatePaymentMethods : List PaymentMethod -> Trade -> Trade
 updatePaymentMethods paymentMethods trade =
     case trade of
         PartiallyLoadedTrade pInfo ->
