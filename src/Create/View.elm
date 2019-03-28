@@ -145,10 +145,15 @@ fiatInputElement typeString amountString showFiatTypeDropdown =
 
 marginElement : Model -> Element Msg
 marginElement model =
-    EH.niceBottomBorderEl <|
-        EH.inputWithHeader
-            "At margin"
-            (marginInputElement model.inputs.margin (model.inputs.openMode == CTypes.SellerOpened))
+    case model.inputs.fiatType of
+        "USD" ->
+            EH.niceBottomBorderEl <|
+                EH.inputWithHeader
+                    "At margin"
+                    (marginInputElement model.inputs.margin (model.inputs.openMode == CTypes.SellerOpened))
+
+        _ ->
+            EH.comingSoonMsg [ Element.width <| Element.px 150 ] "Margin for non-USD currencies coming soon!"
 
 
 marginInputElement : String -> Bool -> Element Msg

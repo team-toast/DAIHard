@@ -3,6 +3,7 @@ module ElementHelpers exposing
     , blue
     , blueButton
     , bulletPointString
+    , comingSoonMsg
     , currencySelector
     , daiSymbol
     , daiSymbolAndLabel
@@ -849,3 +850,14 @@ modal =
         , Element.htmlAttribute <| Html.Attributes.style "width" "100%"
         , Element.htmlAttribute <| Html.Attributes.style "height" "100%"
         ]
+
+
+comingSoonMsg : List (Attribute msg) -> String -> Element msg
+comingSoonMsg attributes text =
+    Element.paragraph
+        ([ Element.Font.size 12
+         , Element.Font.color red
+         ]
+            ++ attributes
+        )
+        [ Element.text text ]

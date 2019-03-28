@@ -20,6 +20,7 @@ import Routing
 import Time
 import TimeHelpers
 import TokenValue exposing (TokenValue)
+import Utils
 
 
 init : EthHelpers.EthNode -> Maybe UserInfo -> ( Model, Cmd Msg, ChainCmd Msg )
@@ -75,22 +76,53 @@ update msg prevModel =
             let
                 oldInputs =
                     prevModel.inputs
+
+                newFiatAmountString =
+                    recalculateFiatAmountString newAmountStr oldInputs.margin oldInputs.fiatType
+                        |> Maybe.withDefault oldInputs.fiatAmount
             in
-            justModelUpdate (prevModel |> updateInputs { oldInputs | daiAmount = newAmountStr })
+            justModelUpdate
+                (prevModel
+                    |> updateInputs
+                        { oldInputs
+                            | daiAmount = newAmountStr
+                            , fiatAmount = newFiatAmountString
+                        }
+                )
 
         FiatAmountChanged newAmountStr ->
             let
                 oldInputs =
                     prevModel.inputs
+
+                newMarginString =
+                    recalculateMarginString oldInputs.daiAmount newAmountStr oldInputs.fiatType
+                        |> Maybe.withDefault oldInputs.margin
             in
-            justModelUpdate (prevModel |> updateInputs { oldInputs | fiatAmount = newAmountStr })
+            justModelUpdate
+                (prevModel
+                    |> updateInputs
+                        { oldInputs
+                            | fiatAmount = newAmountStr
+                            , margin = newMarginString
+                        }
+                )
 
         FiatTypeChanged newTypeStr ->
             let
                 oldInputs =
                     prevModel.inputs
             in
-            justModelUpdate (prevModel |> updateInputs { oldInputs | fiatType = newTypeStr })
+            justModelUpdate
+                (prevModel
+                    |> updateInputs
+                        { oldInputs
+                            | fiatType = newTypeStr
+                            , margin =
+                                recalculateMarginString oldInputs.daiAmount oldInputs.fiatAmount newTypeStr
+                                    |> Maybe.withDefault oldInputs.margin
+                        }
+                )
 
         FiatTypeLostFocus ->
             justModelUpdate
@@ -126,8 +158,19 @@ update msg prevModel =
             let
                 oldInputs =
                     prevModel.inputs
+
+                newFiatAmount =
+                    recalculateFiatAmountString oldInputs.daiAmount newString oldInputs.fiatType
+                        |> Maybe.withDefault oldInputs.fiatAmount
             in
-            justModelUpdate (prevModel |> updateInputs { oldInputs | margin = newString })
+            justModelUpdate
+                (prevModel
+                    |> updateInputs
+                        { oldInputs
+                            | margin = newString
+                            , fiatAmount = newFiatAmount
+                        }
+                )
 
         AutorecallIntervalChanged newTime ->
             let
@@ -159,9 +202,6 @@ update msg prevModel =
 
         ClearDraft ->
             justModelUpdate { prevModel | inputs = initialInputs }
-
-        PublishClicked ->
-            Debug.todo "Display warning modal"
 
         BeginCreateProcess ->
             case prevModel.createParameters of
@@ -390,6 +430,44 @@ validateInputs numDecimals inputs =
         )
         (TokenValue.fromString numDecimals inputs.daiAmount)
         (BigInt.fromString inputs.fiatAmount)
+
+
+recalculateFiatAmountString : String -> String -> String -> Maybe String
+recalculateFiatAmountString daiAmountStr marginString fiatType =
+    case fiatType of
+        "USD" ->
+            if String.isEmpty daiAmountStr then
+                Just ""
+
+            else
+                case ( String.toFloat daiAmountStr, Utils.stringToMarginFloat marginString ) of
+                    ( Just daiAmount, Just marginFloat ) ->
+                        Just
+                            (daiAmount
+                                + (daiAmount * marginFloat)
+                                |> round
+                                |> String.fromInt
+                            )
+
+                    _ ->
+                        Nothing
+
+        _ ->
+            Nothing
+
+
+recalculateMarginString : String -> String -> String -> Maybe String
+recalculateMarginString daiAmountString fiatAmountString fiatType =
+    case fiatType of
+        "USD" ->
+            Maybe.map2
+                Utils.marginFromFloats
+                (String.toFloat daiAmountString)
+                (String.toFloat fiatAmountString)
+                |> Maybe.map Utils.marginToString
+
+        _ ->
+            Nothing
 
 
 subscriptions : Model -> Sub Msg

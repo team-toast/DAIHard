@@ -53,9 +53,8 @@ type Msg
     | AutoabortIntervalChanged Time.Posix
     | AutoreleaseIntervalChanged Time.Posix
     | OpenPMWizard
-      --| AddPaymentMethod PaymentMethod
     | ClearDraft
-    | PublishClicked
+      --| PublishClicked
     | BeginCreateProcess
     | ExtraFeesFetched (Result Http.Error DHF.GetExtraFees)
     | ApproveMined (Result String TxReceipt)

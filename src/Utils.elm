@@ -1,4 +1,4 @@
-module Utils exposing (margin, marginToString)
+module Utils exposing (margin, marginFromFloats, marginToString, stringToMarginFloat)
 
 import FiatValue exposing (FiatValue)
 import TokenValue exposing (TokenValue)
@@ -15,20 +15,33 @@ margin tokens fiat =
     in
     case fiat.fiatType of
         "USD" ->
-            let
-                difference =
-                    fiatFloat - tokenFloat
-            in
-            Just <| difference / tokenFloat
+            Just <| marginFromFloats tokenFloat fiatFloat
 
         _ ->
             Nothing
 
 
+marginFromFloats : Float -> Float -> Float
+marginFromFloats tokens fiat =
+    (fiat - tokens) / tokens
+
+
+stringToMarginFloat : String -> Maybe Float
+stringToMarginFloat =
+    String.filter (\c -> c /= '%')
+        >> String.toFloat
+        >> Maybe.map (\f -> f / 100)
+
+
 marginToString : Float -> String
 marginToString margin_ =
-    (margin_
+    margin_
         * 100
         |> String.fromFloat
-    )
-        ++ "%"
+        |> (\s ->
+                if margin_ > 0 then
+                    "+" ++ s
+
+                else
+                    s
+           )
