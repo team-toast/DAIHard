@@ -17,7 +17,7 @@ const isProd = TARGET_ENV == prod;
 
 // entry and output path/filename variables
 const entryPath = path.join(__dirname, 'assets/static/index.js');
-const outputPath = path.join(__dirname, 'dist');
+const outputPath = path.join(__dirname, 'docs');
 const outputFilename = isProd ? '[name]-[hash].js' : '[name].js'
 
 console.log('WEBPACK GO! Building for ' + TARGET_ENV);
