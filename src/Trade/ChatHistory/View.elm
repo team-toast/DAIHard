@@ -28,8 +28,10 @@ window model =
 historyAndCommsElement : Model -> Element.Element Msg
 historyAndCommsElement model =
     Element.column [ Element.width Element.fill, Element.spacing 20 ]
-        [ Element.el [ Element.centerX, Element.Font.size 36 ]
-            (Element.text "Chat")
+        [ Element.column [ Element.centerX ]
+            [Element.el [ Element.Font.size 36] <| Element.text "Chat"
+            , EH.comingSoonMsg [] "Visual overhaul of chat coming soon!"
+            ]
         , Element.column [ Element.width Element.fill, Element.spacing 10, Element.Border.width 1, Element.Border.rounded 5, Element.padding 10 ]
             [ historyElement
                 model.userRole
