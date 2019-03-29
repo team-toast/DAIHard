@@ -18,12 +18,13 @@ type Route
 
 routeParser : Parser (Route -> a) a
 routeParser =
-    Url.Parser.oneOf
-        [ Url.Parser.map Home Url.Parser.top
-        , Url.Parser.map Create (Url.Parser.s "create")
-        , Url.Parser.map Trade (Url.Parser.s "trade" <?> Url.Parser.Query.int "id")
-        , Url.Parser.map Search (Url.Parser.s "search" <?> typeParser)
-        ]
+    Url.Parser.s "DAIHard"
+        </> Url.Parser.oneOf
+                [ Url.Parser.map Home Url.Parser.top
+                , Url.Parser.map Create (Url.Parser.s "create")
+                , Url.Parser.map Trade (Url.Parser.s "trade" <?> Url.Parser.Query.int "id")
+                , Url.Parser.map Search (Url.Parser.s "search" <?> typeParser)
+                ]
 
 
 typeParser : Url.Parser.Query.Parser (Maybe Contracts.Types.OpenMode)
