@@ -1,14 +1,14 @@
-module Trade.State exposing (init, subscriptions, update, updateUserInfo)
+port module Trade.State exposing (init, subscriptions, update, updateUserInfo)
 
-import Array
+import Array exposing (Array)
 import BigInt exposing (BigInt)
 import BigIntHelpers
 import ChainCmd exposing (ChainCmd)
-import CommonTypes exposing (UserInfo)
+import CommonTypes exposing (..)
 import Constants exposing (..)
 import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Generated.ERC20Token as TokenContract
-import Contracts.Types
+import Contracts.Types as CTypes
 import Contracts.Wrappers
 import Eth
 import Eth.Decode
@@ -23,6 +23,9 @@ import PaymentMethods exposing (PaymentMethod)
 import Result.Extra
 import Time
 import TokenValue
+import Trade.ChatHistory.SecureComm exposing (..)
+import Trade.ChatHistory.State as ChatHistory
+import Trade.ChatHistory.Types as ChatHistory
 import Trade.Types exposing (..)
 
 
@@ -37,9 +40,13 @@ init ethNode userInfo tradeId =
     in
     ( { ethNode = ethNode
       , userInfo = userInfo
-      , trade = Contracts.Types.partialTradeInfo tradeId
+      , trade = CTypes.partialTradeInfo tradeId
       , stats = Waiting
       , eventSentry = eventSentry
+      , chatHistoryModel = Nothing
+      , showChatHistory = False
+      , eventsWaitingForChatHistory = []
+      , secureCommInfo = partialCommInfo
       }
     , Cmd.batch [ getCreationInfoCmd, eventSentryCmd ]
     , ChainCmd.none
@@ -57,22 +64,40 @@ updateUserInfo userInfo model =
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, ChainCmd Msg )
-update msg model =
+update msg prevModel =
     case msg of
         Refresh time ->
-            case model.trade of
-                Contracts.Types.LoadedTrade tradeInfo ->
-                    ( model
-                    , Cmd.batch
-                        [ Contracts.Wrappers.getStateCmd model.ethNode tradeInfo.creationInfo.address StateFetched
+            let
+                ( newChatHistoryModel, shouldDecrypt ) =
+                    case prevModel.chatHistoryModel of
+                        Nothing ->
+                            tryInitChatHistory prevModel.trade prevModel.userInfo prevModel.eventsWaitingForChatHistory
 
-                        --, tryBuildDecryptCmd model
+                        _ ->
+                            ( prevModel.chatHistoryModel, False )
+
+                decryptCmd =
+                    if shouldDecrypt then
+                        tryBuildDecryptCmd prevModel
+
+                    else
+                        Cmd.none
+
+                newModel =
+                    { prevModel | chatHistoryModel = newChatHistoryModel }
+            in
+            case prevModel.trade of
+                CTypes.LoadedTrade tradeInfo ->
+                    ( newModel
+                    , Cmd.batch
+                        [ Contracts.Wrappers.getStateCmd prevModel.ethNode tradeInfo.creationInfo.address StateFetched
+                        , decryptCmd
                         ]
                     , ChainCmd.none
                     )
 
                 _ ->
-                    ( model, Cmd.none, ChainCmd.none )
+                    ( newModel, Cmd.none, ChainCmd.none )
 
         CreationInfoFetched fetchResult ->
             case fetchResult of
@@ -86,7 +111,7 @@ update msg model =
                         ( newSentry, sentryCmd, _ ) =
                             EventSentry.watch
                                 EventLogFetched
-                                model.eventSentry
+                                prevModel.eventSentry
                                 { address = newCreationInfo.address
                                 , fromBlock = Eth.Types.BlockNum newCreationInfo.blocknum
                                 , toBlock = Eth.Types.LatestBlock
@@ -94,8 +119,8 @@ update msg model =
                                 }
 
                         newModel =
-                            { model
-                                | trade = model.trade |> Contracts.Types.updateCreationInfo newCreationInfo
+                            { prevModel
+                                | trade = prevModel.trade |> CTypes.updateCreationInfo newCreationInfo
                                 , eventSentry = newSentry
                             }
 
@@ -115,20 +140,19 @@ update msg model =
                         _ =
                             Debug.log "can't fetch full state: " errstr
                     in
-                    ( model, Cmd.none, ChainCmd.none )
+                    ( prevModel, Cmd.none, ChainCmd.none )
 
         StateFetched fetchResult ->
             case fetchResult of
                 Ok (Just state) ->
                     let
                         newModel =
-                            { model
-                                | trade = model.trade |> Contracts.Types.updateState state
+                            { prevModel
+                                | trade = prevModel.trade |> CTypes.updateState state
                             }
                     in
                     ( newModel
-                    , Cmd.none
-                      --, tryBuildDecryptCmd newModel
+                    , tryBuildDecryptCmd newModel
                     , ChainCmd.none
                     )
 
@@ -137,20 +161,19 @@ update msg model =
                         _ =
                             EthHelpers.logBadFetchResultMaybe fetchResult
                     in
-                    ( model, Cmd.none, ChainCmd.none )
+                    ( prevModel, Cmd.none, ChainCmd.none )
 
         ParametersFetched fetchResult ->
             case fetchResult of
                 Ok (Ok parameters) ->
                     let
                         newModel =
-                            { model
-                                | trade = model.trade |> Contracts.Types.updateParameters parameters
+                            { prevModel
+                                | trade = prevModel.trade |> CTypes.updateParameters parameters
                             }
                     in
                     ( newModel
-                    , Cmd.none
-                      --, tryBuildDecryptCmd newModel
+                    , tryBuildDecryptCmd newModel
                     , ChainCmd.none
                     )
 
@@ -159,20 +182,34 @@ update msg model =
                         _ =
                             Debug.log "bad parametersFetched result" badResult
                     in
-                    ( model, Cmd.none, ChainCmd.none )
+                    ( prevModel, Cmd.none, ChainCmd.none )
 
         EventLogFetched log ->
             let
                 ( newModel, cmd ) =
-                    handleNewLog log model
+                    handleNewLog log prevModel
             in
             ( newModel, cmd, ChainCmd.none )
+
+        ToggleChat ->
+            let
+                showChat =
+                    if prevModel.showChatHistory then
+                        False
+
+                    else
+                        True
+            in
+            ( { prevModel | showChatHistory = showChat }
+            , Cmd.none
+            , ChainCmd.none
+            )
 
         ContractAction actionMsg ->
             let
                 chainCmd =
-                    case model.trade of
-                        Contracts.Types.LoadedTrade tradeInfo ->
+                    case prevModel.trade of
+                        CTypes.LoadedTrade tradeInfo ->
                             case actionMsg of
                                 Recall ->
                                     let
@@ -187,10 +224,10 @@ update msg model =
                                         fullDepositAmount =
                                             TokenValue.getBigInt <|
                                                 case tradeInfo.parameters.openMode of
-                                                    Contracts.Types.BuyerOpened ->
+                                                    CTypes.BuyerOpened ->
                                                         tradeInfo.parameters.tradeAmount
 
-                                                    Contracts.Types.SellerOpened ->
+                                                    CTypes.SellerOpened ->
                                                         tradeInfo.parameters.buyerDeposit
 
                                         txParams =
@@ -256,14 +293,14 @@ update msg model =
                             in
                             ChainCmd.none
             in
-            ( model, Cmd.none, chainCmd )
+            ( prevModel, Cmd.none, chainCmd )
 
         ContractActionMined _ ->
             let
                 _ =
                     Debug.log "mined!" ""
             in
-            ( model, Cmd.none, ChainCmd.none )
+            ( prevModel, Cmd.none, ChainCmd.none )
 
         PreCommitApproveMined txReceiptResult ->
             case txReceiptResult of
@@ -272,33 +309,33 @@ update msg model =
                         _ =
                             Debug.log "error mining transaction" s
                     in
-                    ( model, Cmd.none, ChainCmd.none )
+                    ( prevModel, Cmd.none, ChainCmd.none )
 
                 Ok txReceipt ->
-                    case ( model.trade, model.userInfo ) of
-                        ( Contracts.Types.LoadedTrade tradeInfo, Just userInfo ) ->
+                    case ( prevModel.trade, prevModel.userInfo ) of
+                        ( CTypes.LoadedTrade tradeInfo, Just userInfo ) ->
                             let
                                 txParams =
                                     DHT.commit tradeInfo.creationInfo.address userInfo.commPubkey
                                         |> Eth.toSend
                             in
-                            ( model, Cmd.none, ChainCmd.custom genericCustomSend txParams )
+                            ( prevModel, Cmd.none, ChainCmd.custom genericCustomSend txParams )
 
                         incomplete ->
                             let
                                 _ =
                                     Debug.log "Trying to handle PreCommitApproveMined, but missing crucial info" incomplete
                             in
-                            ( model, Cmd.none, ChainCmd.none )
+                            ( prevModel, Cmd.none, ChainCmd.none )
 
         EventSentryMsg eventMsg ->
             let
                 ( newEventSentry, cmd ) =
                     EventSentry.update
                         eventMsg
-                        model.eventSentry
+                        prevModel.eventSentry
             in
-            ( { model
+            ( { prevModel
                 | eventSentry =
                     newEventSentry
               }
@@ -306,12 +343,120 @@ update msg model =
             , ChainCmd.none
             )
 
+        ChatHistoryMsg chatHistoryMsg ->
+            case prevModel.chatHistoryModel of
+                Just prevChatHistoryModel ->
+                    let
+                        ( chatHistoryModel, shouldDecrypt, maybeMessageToSend ) =
+                            ChatHistory.update chatHistoryMsg prevChatHistoryModel
+
+                        encryptCmd =
+                            case maybeMessageToSend of
+                                Just chatMessage ->
+                                    case prevModel.secureCommInfo of
+                                        LoadedCommInfo commInfo ->
+                                            encryptToPubkeys (encodeEncryptionArgs chatMessage commInfo)
+
+                                        incomplete ->
+                                            let
+                                                _ =
+                                                    Debug.log "Incomplete data found when trying to build encryption cmd" incomplete
+                                            in
+                                            Cmd.none
+
+                                Nothing ->
+                                    Cmd.none
+
+                        model =
+                            { prevModel | chatHistoryModel = Just chatHistoryModel }
+
+                        decryptCmd =
+                            if shouldDecrypt then
+                                tryBuildDecryptCmd prevModel
+
+                            else
+                                Cmd.none
+                    in
+                    ( model
+                    , Cmd.batch
+                        [ decryptCmd
+                        , encryptCmd
+                        ]
+                    , ChainCmd.none
+                    )
+
+                Nothing ->
+                    let
+                        _ =
+                            Debug.log "Got a chat history message, but there is no chat history model!" ""
+                    in
+                    ( prevModel, Cmd.none, ChainCmd.none )
+
+        EncryptionFinished encryptedMessagesValue ->
+            let
+                encodedEncryptionMessages =
+                    decodeEncryptionResult encryptedMessagesValue
+                        |> Result.map
+                            (\( initiatorMessage, responderMessage ) ->
+                                ( encodeEncryptedMessage initiatorMessage
+                                , encodeEncryptedMessage responderMessage
+                                )
+                            )
+            in
+            case ( prevModel.userInfo, prevModel.trade, encodedEncryptionMessages ) of
+                ( Just userInfo, CTypes.LoadedTrade tradeInfo, Ok ( Ok initiatorMessage, Ok responderMessage ) ) ->
+                    case CTypes.getInitiatorOrResponder tradeInfo userInfo.address of
+                        Nothing ->
+                            let
+                                _ =
+                                    Debug.log "How did you click that button? You don't seem to be the Initiator or Responder..." ""
+                            in
+                            ( prevModel, Cmd.none, ChainCmd.none )
+
+                        Just userRole ->
+                            let
+                                txParams =
+                                    case userRole of
+                                        Initiator ->
+                                            DHT.initiatorStatement tradeInfo.creationInfo.address initiatorMessage responderMessage
+                                                |> Eth.toSend
+
+                                        Responder ->
+                                            DHT.responderStatement tradeInfo.creationInfo.address initiatorMessage responderMessage
+                                                |> Eth.toSend
+                            in
+                            ( prevModel
+                            , Cmd.none
+                            , ChainCmd.custom genericCustomSend txParams
+                            )
+
+                problematicBullshit ->
+                    let
+                        _ =
+                            Debug.log "MessageSubmit called, but something has gone terribly wrong" problematicBullshit
+                    in
+                    ( prevModel, Cmd.none, ChainCmd.none )
+
+        MessageSubmitMined (Ok txReceipt) ->
+            let
+                _ =
+                    Debug.log "Message submit mined!" ""
+            in
+            ( prevModel, Cmd.none, ChainCmd.none )
+
+        MessageSubmitMined (Err errstr) ->
+            let
+                _ =
+                    Debug.log "Error mining message submit" errstr
+            in
+            ( prevModel, Cmd.none, ChainCmd.none )
+
 
 handleNewLog : Eth.Types.Log -> Model -> ( Model, Cmd Msg )
-handleNewLog log model =
+handleNewLog log prevModel =
     let
         decodedEventLog =
-            Eth.Decode.event Contracts.Types.eventDecoder log
+            Eth.Decode.event CTypes.eventDecoder log
     in
     case decodedEventLog.returnData of
         Err err ->
@@ -319,35 +464,164 @@ handleNewLog log model =
                 _ =
                     Debug.log "Error decoding contract event" err
             in
-            ( model, Cmd.none )
+            ( prevModel, Cmd.none )
 
         Ok event ->
             let
+                newTrade =
+                    case event of
+                        CTypes.OpenedEvent data ->
+                            case PaymentMethods.decodePaymentMethodList data.fiatTransferMethods of
+                                Ok paymentMethods ->
+                                    prevModel.trade
+                                        |> CTypes.updatePaymentMethods
+                                            paymentMethods
+
+                                Err errStr ->
+                                    let
+                                        _ =
+                                            Debug.log "Couldn't decode payment methods!" errStr
+                                    in
+                                    prevModel.trade
+
+                        _ ->
+                            prevModel.trade
+
+                newSecureCommInfo =
+                    case event of
+                        CTypes.OpenedEvent data ->
+                            prevModel.secureCommInfo
+                                |> updateInitiatorPubkey data.commPubkey
+
+                        CTypes.CommittedEvent data ->
+                            prevModel.secureCommInfo
+                                |> updateResponderPubkey data.commPubkey
+
+                        _ ->
+                            prevModel.secureCommInfo
+
+                ( newChatHistoryModel, shouldDecrypt ) =
+                    case prevModel.chatHistoryModel of
+                        Just prevChatHistoryModel ->
+                            ChatHistory.handleNewEvent
+                                decodedEventLog.blockNumber
+                                event
+                                prevChatHistoryModel
+                                |> Tuple.mapFirst Just
+
+                        Nothing ->
+                            -- chat is uninitialized; initialize if we can
+                            tryInitChatHistory newTrade prevModel.userInfo prevModel.eventsWaitingForChatHistory
+
+                eventsToSave =
+                    case newChatHistoryModel of
+                        Nothing ->
+                            List.append
+                                prevModel.eventsWaitingForChatHistory
+                                [ ( decodedEventLog.blockNumber, event ) ]
+
+                        Just _ ->
+                            []
+
                 newModel =
-                    { model
-                        | trade =
-                            case event of
-                                Contracts.Types.OpenedEvent data ->
-                                    case PaymentMethods.decodePaymentMethodList data.fiatTransferMethods of
-                                        Ok paymentMethods ->
-                                            model.trade
-                                                |> Contracts.Types.updatePaymentMethods
-                                                    paymentMethods
-
-                                        Err errStr ->
-                                            let
-                                                _ =
-                                                    Debug.log "Couldn't decode payment methods!" errStr
-                                            in
-                                            model.trade
-
-                                _ ->
-                                    model.trade
+                    { prevModel
+                        | trade = newTrade
+                        , chatHistoryModel = newChatHistoryModel
+                        , secureCommInfo = newSecureCommInfo
+                        , eventsWaitingForChatHistory = eventsToSave
                     }
+
+                cmd =
+                    if shouldDecrypt then
+                        tryBuildDecryptCmd newModel
+
+                    else
+                        Cmd.none
             in
             ( newModel
-            , Cmd.none
+            , cmd
             )
+
+
+tryInitChatHistory : CTypes.Trade -> Maybe UserInfo -> List ( Int, CTypes.DAIHardEvent ) -> ( Maybe ChatHistory.Model, Bool )
+tryInitChatHistory maybeTrade maybeUserInfo pendingEvents =
+    case ( maybeTrade, maybeUserInfo ) of
+        ( CTypes.LoadedTrade tradeInfo, Just userInfo ) ->
+            let
+                maybeBuyerOrSeller =
+                    CTypes.getBuyerOrSeller tradeInfo userInfo.address
+            in
+            case maybeBuyerOrSeller of
+                Just buyerOrSeller ->
+                    ChatHistory.init
+                        userInfo
+                        buyerOrSeller
+                        tradeInfo.parameters.openMode
+                        pendingEvents
+                        |> Tuple.mapFirst Just
+
+                Nothing ->
+                    ( Nothing, False )
+
+        _ ->
+            ( Nothing, False )
+
+
+tryBuildDecryptCmd : Model -> Cmd Msg
+tryBuildDecryptCmd model =
+    let
+        userRole =
+            Maybe.map2
+                CTypes.getInitiatorOrResponder
+                (case model.trade of
+                    CTypes.LoadedTrade tradeInfo ->
+                        Just tradeInfo
+
+                    _ ->
+                        Nothing
+                )
+                (model.userInfo
+                    |> Maybe.map (\i -> i.address)
+                )
+                |> Maybe.Extra.join
+    in
+    case ( model.chatHistoryModel, userRole ) of
+        ( Just chatHistoryModel, Just role ) ->
+            decryptNewMessagesCmd chatHistoryModel role
+
+        _ ->
+            Cmd.none
+
+
+decryptNewMessagesCmd : ChatHistory.Model -> InitiatorOrResponder -> Cmd Msg
+decryptNewMessagesCmd model userRole =
+    model.history
+        |> Array.toIndexedList
+        |> List.map
+            (\( id, historyEvent ) ->
+                case historyEvent.eventInfo of
+                    ChatHistory.Statement commMessage ->
+                        case commMessage.message of
+                            ChatHistory.Encrypted messages ->
+                                let
+                                    encryptedMessage =
+                                        case userRole of
+                                            Initiator ->
+                                                Tuple.first messages
+
+                                            Responder ->
+                                                Tuple.second messages
+                                in
+                                encodeDecryptionArgs id encryptedMessage
+                                    |> decryptMessage
+
+                            _ ->
+                                Cmd.none
+
+                    _ ->
+                        Cmd.none
+            )
+        |> Cmd.batch
 
 
 genericCustomSend =
@@ -361,4 +635,18 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ Time.every 3000 Refresh
+        , encryptionFinished EncryptionFinished
+        , decryptionFinished <| \res -> ChatHistoryMsg (ChatHistory.DecryptionFinished res)
         ]
+
+
+port encryptToPubkeys : Json.Encode.Value -> Cmd msg
+
+
+port encryptionFinished : (Json.Decode.Value -> msg) -> Sub msg
+
+
+port decryptMessage : Json.Encode.Value -> Cmd msg
+
+
+port decryptionFinished : (Json.Decode.Value -> msg) -> Sub msg

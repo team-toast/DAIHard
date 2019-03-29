@@ -2,6 +2,7 @@ module Images exposing
     ( Image
     , addButton
     , backButton
+    , chatIcon
     , daiSymbol
     , downArrow
     , image
@@ -166,4 +167,12 @@ backButton =
     JustImage
         { src = "static/img/back-button.svg"
         , description = "back"
+        }
+
+
+chatIcon : Image
+chatIcon =
+    JustImage
+        { src = "static/img/chat-icon.svg"
+        , description = "chat"
         }
