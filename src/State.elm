@@ -33,20 +33,20 @@ init flags url key =
         txSentry =
             TxSentry.init ( txOut, txIn ) TxSentryMsg node.http
     in
-    ( Failed (Url.toString url), Cmd.none )
+        updateFromUrl
+            { key = key
+            , time = Time.millisToPosix 0
+            , node = node
+            , txSentry = txSentry
+            , userAddress = Nothing
+            , userInfo = Nothing
+            , submodel = HomeModel
+            }
+            url
 
 
 
--- updateFromUrl
---     { key = key
---     , time = Time.millisToPosix 0
---     , node = node
---     , txSentry = txSentry
---     , userAddress = Nothing
---     , userInfo = Nothing
---     , submodel = HomeModel
---     }
---     url
+
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
