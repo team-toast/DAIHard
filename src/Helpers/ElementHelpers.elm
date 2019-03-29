@@ -10,6 +10,7 @@ module ElementHelpers exposing
     , daiValue
     , darkGray
     , disabledTextColor
+    , elOnCircle
     , errorMessage
     , fakeLink
     , fancyInput
@@ -45,6 +46,9 @@ module ElementHelpers exposing
     )
 
 import Browser.Dom
+import Collage exposing (Collage)
+import Collage.Render
+import Color exposing (Color)
 import CommonTypes exposing (..)
 import Css
 import Dict
@@ -595,8 +599,8 @@ textInputWithElement attributes inputAttributes addedElement labelStr value plac
         ]
 
 
-currencySelector : Bool -> String -> msg -> (String -> msg) -> (Bool -> msg) -> msg -> Element msg
-currencySelector showDropdown typeStringInput openCurrencySelectorMsg typeStringChangedMsgConstructor showHideDropdownMsgConstructor arrowClickedMsg =
+currencySelector : Bool -> String -> msg -> (String -> msg) -> Element msg
+currencySelector showDropdown typeStringInput openCurrencySelectorMsg typeStringChangedMsgConstructor =
     let
         gotCurrency =
             Dict.get typeStringInput FiatValue.currencyTypes
@@ -656,12 +660,6 @@ currencySelector showDropdown typeStringInput openCurrencySelectorMsg typeString
         ]
         [ FiatValue.typeStringToSymbol typeStringInput
         , inputElement
-        , Images.toElement
-            [ Element.paddingXY 0 8
-            , Element.pointer
-            , Element.Events.onClick arrowClickedMsg
-            ]
-            Images.downArrow
         ]
 
 
@@ -887,3 +885,29 @@ niceFloatingRow =
         , Element.spaceEvenly
         , subtleShadow
         ]
+
+
+elOnCircle : List (Attribute msg) -> Int -> Element.Color -> Element msg -> Element msg
+elOnCircle attributes width color el =
+    let
+        circleElement =
+            Collage.circle (toFloat width / 2)
+                |> Collage.filled (Collage.uniform (elementColorToAvh4Color color))
+                |> Collage.Render.svg
+                |> Element.html
+    in
+    Element.el
+        ([ Element.inFront el ] ++ attributes)
+        circleElement
+
+
+elementColorToAvh4Color : Element.Color -> Color
+elementColorToAvh4Color c =
+    Element.toRgb c
+        |> (\rgba ->
+                Color.rgba
+                    rgba.red
+                    rgba.green
+                    rgba.blue
+                    rgba.alpha
+           )

@@ -5,7 +5,7 @@ import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
 import Contracts.Generated.DAIHardFactory as DHF
 import Contracts.Generated.DAIHardTrade as DHT
-import Contracts.Types
+import Contracts.Types as CTypes
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
 import EthHelpers exposing (EthNode)
@@ -23,34 +23,33 @@ type alias Model =
     , eventSentry : EventSentry Msg
     , userInfo : Maybe UserInfo
     , numTrades : Maybe Int
-    , openMode : Contracts.Types.OpenMode
+    , openMode : CTypes.OpenMode
     , inputs : SearchInputs
     , showCurrencyDropdown : Bool
     , query : SearchQuery
-    , trades : Array Contracts.Types.Trade
-    , filterFunc : Time.Posix -> Contracts.Types.FullTradeInfo -> Bool
-    , sortFunc : Contracts.Types.FullTradeInfo -> Contracts.Types.FullTradeInfo -> Order
+    , trades : Array CTypes.Trade
+    , filterFunc : Time.Posix -> CTypes.FullTradeInfo -> Bool
+    , sortFunc : CTypes.FullTradeInfo -> CTypes.FullTradeInfo -> Order
     }
 
 
 type Msg
     = NumTradesFetched (Result Http.Error BigInt)
     | CreationInfoFetched Int (Result Http.Error DHF.CreatedTrade)
-    | ParametersFetched Int (Result Http.Error (Result String Contracts.Types.TradeParameters))
-    | StateFetched Int (Result Http.Error (Maybe Contracts.Types.State))
+    | ParametersFetched Int (Result Http.Error (Result String CTypes.TradeParameters))
+    | StateFetched Int (Result Http.Error (Maybe CTypes.State))
     | OpenedEventDataFetched Int (Result Json.Decode.Error DHT.Opened)
     | EventSentryMsg EventSentry.Msg
     | Refresh Time.Posix
+    | ChangeOfferType CTypes.OpenMode
     | MinDaiChanged String
     | MaxDaiChanged String
     | FiatTypeInputChanged String
-    | FiatTypeArrowClicked
-    | FiatTypeLostFocus
-    | OpenCurrencySelector
     | MinFiatChanged String
     | MaxFiatChanged String
     | PaymentMethodInputChanged String
     | ShowCurrencyDropdown Bool
+    | FiatTypeLostFocus
     | AddSearchTerm
     | RemoveTerm String
     | ApplyInputs
@@ -152,13 +151,13 @@ type ResultColumnType
     | AutoreleaseWindow
 
 
-updateTradeCreationInfo : Int -> Contracts.Types.TradeCreationInfo -> Model -> Model
+updateTradeCreationInfo : Int -> CTypes.TradeCreationInfo -> Model -> Model
 updateTradeCreationInfo id creationInfo model =
     case Array.get id model.trades of
         Just trade ->
             let
                 newTrade =
-                    Contracts.Types.updateCreationInfo creationInfo trade
+                    CTypes.updateCreationInfo creationInfo trade
 
                 newTradeArray =
                     Array.set id
@@ -175,13 +174,13 @@ updateTradeCreationInfo id creationInfo model =
             model
 
 
-updateTradeParameters : Int -> Contracts.Types.TradeParameters -> Model -> Model
+updateTradeParameters : Int -> CTypes.TradeParameters -> Model -> Model
 updateTradeParameters id parameters model =
     case Array.get id model.trades of
         Just trade ->
             let
                 newTrade =
-                    Contracts.Types.updateParameters parameters trade
+                    CTypes.updateParameters parameters trade
 
                 newTradeArray =
                     Array.set id
@@ -198,13 +197,13 @@ updateTradeParameters id parameters model =
             model
 
 
-updateTradeState : Int -> Contracts.Types.State -> Model -> Model
+updateTradeState : Int -> CTypes.State -> Model -> Model
 updateTradeState id state model =
     case Array.get id model.trades of
         Just trade ->
             let
                 newTrade =
-                    Contracts.Types.updateState state trade
+                    CTypes.updateState state trade
 
                 newTradeArray =
                     Array.set id
@@ -227,7 +226,7 @@ updateTradePaymentMethods id methods model =
         Just trade ->
             let
                 newTrade =
-                    Contracts.Types.updatePaymentMethods methods trade
+                    CTypes.updatePaymentMethods methods trade
 
                 newTradeArray =
                     Array.set id

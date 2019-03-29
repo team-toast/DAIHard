@@ -1,12 +1,8 @@
 module Trade.Types exposing
-    ( BuyerOrSeller(..)
-    , ContractMsg(..)
-    , InitiatorOrResponder(..)
+    ( ContractMsg(..)
     , Model
     , Msg(..)
     , StatsModel(..)
-    , getBuyerOrSeller
-    , getInitiatorOrResponder
     )
 
 import Array exposing (Array)
@@ -21,6 +17,8 @@ import EthHelpers
 import Http
 import Json.Decode
 import Time
+import Trade.ChatHistory.SecureComm exposing (..)
+import Trade.ChatHistory.Types as ChatHistory
 
 
 type alias Model =
@@ -29,6 +27,10 @@ type alias Model =
     , trade : CTypes.Trade
     , stats : StatsModel
     , eventSentry : EventSentry Msg
+    , chatHistoryModel : Maybe ChatHistory.Model
+    , eventsWaitingForChatHistory : List ( Int, CTypes.DAIHardEvent )
+    , showChatHistory : Bool
+    , secureCommInfo : SecureCommInfo
     }
 
 
@@ -40,8 +42,12 @@ type Msg
     | PreCommitApproveMined (Result String Eth.Types.TxReceipt)
     | ContractActionMined (Result String Eth.Types.TxReceipt)
     | Refresh Time.Posix
+    | ToggleChat
     | EventLogFetched Eth.Types.Log
     | EventSentryMsg EventSentry.Msg
+    | ChatHistoryMsg ChatHistory.Msg
+    | MessageSubmitMined (Result String Eth.Types.TxReceipt)
+    | EncryptionFinished Json.Decode.Value
 
 
 type ContractMsg
@@ -54,54 +60,7 @@ type ContractMsg
     | Burn
 
 
-type InitiatorOrResponder
-    = Initiator
-    | Responder
-
-
-type BuyerOrSeller
-    = Buyer
-    | Seller
-
-
 type StatsModel
     = Waiting
     | Scanning
     | Finished
-
-
-getInitiatorOrResponder : CTypes.FullTradeInfo -> Address -> Maybe InitiatorOrResponder
-getInitiatorOrResponder tradeInfo userAddress =
-    if userAddress == tradeInfo.parameters.initiatorAddress then
-        Just Initiator
-
-    else
-        tradeInfo.state.responder
-            |> Maybe.andThen
-                (\responder ->
-                    if userAddress == responder then
-                        Just Responder
-
-                    else
-                        Nothing
-                )
-
-
-getBuyerOrSeller : CTypes.FullTradeInfo -> Address -> Maybe BuyerOrSeller
-getBuyerOrSeller tradeInfo userAddress =
-    getInitiatorOrResponder tradeInfo userAddress
-        |> Maybe.map
-            (\initiatorOrResponder ->
-                case ( initiatorOrResponder, tradeInfo.parameters.openMode ) of
-                    ( Initiator, CTypes.SellerOpened ) ->
-                        Seller
-
-                    ( Initiator, CTypes.BuyerOpened ) ->
-                        Buyer
-
-                    ( Responder, CTypes.SellerOpened ) ->
-                        Buyer
-
-                    ( Responder, CTypes.BuyerOpened ) ->
-                        Seller
-            )

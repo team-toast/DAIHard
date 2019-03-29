@@ -1,11 +1,12 @@
 module Trade.View exposing (root)
 
 import Array
-import CommonTypes exposing (UserInfo)
+import CommonTypes exposing (..)
 import Contracts.Types as CTypes exposing (FullTradeInfo)
 import Element exposing (Attribute, Element)
 import Element.Background
 import Element.Border
+import Element.Events
 import Element.Font
 import Element.Input
 import ElementHelpers as EH
@@ -16,6 +17,7 @@ import Margin
 import PaymentMethods exposing (PaymentMethod)
 import Time
 import TokenValue exposing (TokenValue)
+import Trade.ChatHistory.View as ChatHistory
 import Trade.Types exposing (..)
 
 
@@ -25,7 +27,9 @@ root time model =
         CTypes.LoadedTrade tradeInfo ->
             Element.column
                 [ Element.width Element.fill
+                , Element.height Element.fill
                 , Element.spacing 40
+                , Element.inFront <| chatOverlayElement model
                 ]
                 [ header tradeInfo model.stats model.userInfo
                 , Element.column
@@ -103,7 +107,7 @@ daiAmountElement trade maybeUserInfo =
     let
         maybeInitiatorOrResponder =
             Maybe.andThen
-                (getInitiatorOrResponder trade)
+                (CTypes.getInitiatorOrResponder trade)
                 (Maybe.map .address maybeUserInfo)
     in
     EH.withHeader
@@ -201,8 +205,8 @@ actionButtonsElement trade userInfo =
         [ Element.spacing 8 ]
         (case
             ( trade.state.phase
-            , getInitiatorOrResponder trade userInfo.address
-            , getBuyerOrSeller trade userInfo.address
+            , CTypes.getInitiatorOrResponder trade userInfo.address
+            , CTypes.getBuyerOrSeller trade userInfo.address
             )
          of
             ( CTypes.Created, _, _ ) ->
@@ -244,3 +248,47 @@ phasesElement trade maybeUserInfo =
             ]
             (EH.comingSoonMsg [ Element.Font.size 30 ] "Phases info readout coming soon!")
         )
+
+
+chatOverlayElement : Model -> Element Msg
+chatOverlayElement model =
+    let
+        openChatButton =
+            EH.elOnCircle
+                [ Element.pointer
+                , Element.Events.onClick ToggleChat
+                ]
+                80
+                (Element.rgb 1 1 1)
+                (Images.toElement
+                    [ Element.centerX
+                    , Element.centerY
+                    , Element.moveRight 5
+                    ]
+                    Images.chatIcon
+                )
+
+        chatWindow =
+            Maybe.map
+                ChatHistory.window
+                model.chatHistoryModel
+                |> Maybe.withDefault Element.none
+    in
+    if model.showChatHistory then
+        EH.modal
+            (Element.row
+                [ Element.height Element.fill
+                , Element.spacing 50
+                , Element.alignRight
+                ]
+                [ Element.map ChatHistoryMsg chatWindow
+                , Element.el [ Element.alignBottom ] openChatButton
+                ]
+            )
+
+    else
+        Element.el
+            [ Element.alignRight
+            , Element.alignBottom
+            ]
+            openChatButton

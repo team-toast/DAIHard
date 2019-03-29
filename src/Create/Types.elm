@@ -44,17 +44,14 @@ type Msg
     | TradeAmountChanged String
     | FiatTypeChanged String
     | FiatAmountChanged String
-    | FiatTypeArrowClicked
     | FiatTypeLostFocus
     | ShowCurrencyDropdown Bool
-    | OpenCurrencySelector
     | MarginStringChanged String
     | AutorecallIntervalChanged Time.Posix
     | AutoabortIntervalChanged Time.Posix
     | AutoreleaseIntervalChanged Time.Posix
     | OpenPMWizard
     | ClearDraft
-      --| PublishClicked
     | BeginCreateProcess
     | ExtraFeesFetched (Result Http.Error DHF.GetExtraFees)
     | ApproveMined (Result String TxReceipt)

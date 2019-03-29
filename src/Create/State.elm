@@ -130,30 +130,6 @@ update msg prevModel =
                     | showFiatTypeDropdown = False
                 }
 
-        OpenCurrencySelector ->
-            let
-                oldInputs =
-                    prevModel.inputs
-            in
-            justModelUpdate
-                ({ prevModel
-                    | showFiatTypeDropdown = True
-                 }
-                    |> updateInputs { oldInputs | fiatType = "" }
-                )
-
-        FiatTypeArrowClicked ->
-            let
-                oldInputs =
-                    prevModel.inputs
-            in
-            justModelUpdate
-                ({ prevModel
-                    | showFiatTypeDropdown = True
-                 }
-                    |> updateInputs { oldInputs | fiatType = "" }
-                )
-
         MarginStringChanged newString ->
             let
                 oldInputs =
@@ -194,8 +170,21 @@ update msg prevModel =
             justModelUpdate (prevModel |> updateInputs { oldInputs | autoreleaseInterval = newTime })
 
         ShowCurrencyDropdown flag ->
+            let
+                oldInputs =
+                    prevModel.inputs
+            in
             justModelUpdate
-                { prevModel | showFiatTypeDropdown = flag }
+                ({ prevModel
+                    | showFiatTypeDropdown = flag
+                 }
+                    |> (if flag then
+                            updateInputs { oldInputs | fiatType = "" }
+
+                        else
+                            identity
+                       )
+                )
 
         OpenPMWizard ->
             justModelUpdate { prevModel | addPMModal = Just PMWizard.init }

@@ -1,4 +1,4 @@
-module CommonTypes exposing (UserInfo)
+module CommonTypes exposing (BuyerOrSeller(..), InitiatorOrResponder(..), UserInfo)
 
 import Eth.Types exposing (Address)
 import Json.Decode
@@ -10,3 +10,13 @@ type alias UserInfo =
     { address : Address
     , commPubkey : String
     }
+
+
+type InitiatorOrResponder
+    = Initiator
+    | Responder
+
+
+type BuyerOrSeller
+    = Buyer
+    | Seller

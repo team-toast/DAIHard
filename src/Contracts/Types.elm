@@ -1,4 +1,4 @@
-module Contracts.Types exposing (CreateParameters, FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), State, ToastytradeEvent(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, initiatorIsBuyerToOpenMode, openModeToInitiatorIsBuyer, partialTradeInfo, phaseToString, txReceiptToCreatedToastytradeSellId, updateCreationInfo, updateParameters, updatePaymentMethods, updateState)
+module Contracts.Types exposing (CreateParameters, DAIHardEvent(..), FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), State, Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, getBuyerOrSeller, getInitiatorOrResponder, initiatorIsBuyerToOpenMode, initiatorOrResponderToBuyerOrSeller, openModeToInitiatorIsBuyer, partialTradeInfo, phaseToString, txReceiptToCreatedToastytradeSellId, updateCreationInfo, updateParameters, updatePaymentMethods, updateState)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
@@ -103,7 +103,7 @@ type alias DerivedValues =
     }
 
 
-type ToastytradeEvent
+type DAIHardEvent
     = OpenedEvent DHT.Opened
     | CommittedEvent DHT.Committed
     | RecalledEvent
@@ -254,7 +254,44 @@ deriveValues parameters state =
     }
 
 
-eventDecoder : Json.Decode.Decoder ToastytradeEvent
+getInitiatorOrResponder : FullTradeInfo -> Address -> Maybe InitiatorOrResponder
+getInitiatorOrResponder tradeInfo userAddress =
+    if userAddress == tradeInfo.parameters.initiatorAddress then
+        Just Initiator
+
+    else
+        tradeInfo.state.responder
+            |> Maybe.andThen
+                (\responder ->
+                    if userAddress == responder then
+                        Just Responder
+
+                    else
+                        Nothing
+                )
+
+
+getBuyerOrSeller : FullTradeInfo -> Address -> Maybe BuyerOrSeller
+getBuyerOrSeller tradeInfo userAddress =
+    getInitiatorOrResponder tradeInfo userAddress
+        |> Maybe.map
+            (\initiatorOrResponder ->
+                case ( initiatorOrResponder, tradeInfo.parameters.openMode ) of
+                    ( Initiator, SellerOpened ) ->
+                        Seller
+
+                    ( Initiator, BuyerOpened ) ->
+                        Buyer
+
+                    ( Responder, SellerOpened ) ->
+                        Buyer
+
+                    ( Responder, BuyerOpened ) ->
+                        Seller
+            )
+
+
+eventDecoder : Json.Decode.Decoder DAIHardEvent
 eventDecoder =
     eventSigDecoder
         |> Json.Decode.andThen
@@ -402,3 +439,19 @@ decodeState numDecimals encodedState =
         )
         maybePhase
         maybePhaseStartTime
+
+
+initiatorOrResponderToBuyerOrSeller : OpenMode -> InitiatorOrResponder -> BuyerOrSeller
+initiatorOrResponderToBuyerOrSeller openMode initiatorOrResponder =
+    case ( initiatorOrResponder, openMode ) of
+        ( Initiator, BuyerOpened ) ->
+            Buyer
+
+        ( Initiator, SellerOpened ) ->
+            Seller
+
+        ( Responder, BuyerOpened ) ->
+            Seller
+
+        ( Responder, SellerOpened ) ->
+            Buyer
