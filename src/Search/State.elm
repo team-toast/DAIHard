@@ -5,7 +5,7 @@ import BigInt exposing (BigInt)
 import BigIntHelpers
 import CommonTypes exposing (UserInfo)
 import Constants exposing (..)
-import Contracts.Types
+import Contracts.Types as CTypes
 import Contracts.Wrappers
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
@@ -20,11 +20,11 @@ import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
-init : EthHelpers.EthNode -> Maybe Contracts.Types.OpenMode -> Maybe UserInfo -> ( Model, Cmd Msg )
+init : EthHelpers.EthNode -> Maybe CTypes.OpenMode -> Maybe UserInfo -> ( Model, Cmd Msg )
 init ethNode maybeOpenMode userInfo =
     let
         openMode =
-            maybeOpenMode |> Maybe.withDefault Contracts.Types.SellerOpened
+            maybeOpenMode |> Maybe.withDefault CTypes.SellerOpened
 
         ( eventSentry, sentryCmd ) =
             EventSentry.init
@@ -50,15 +50,15 @@ init ethNode maybeOpenMode userInfo =
     )
 
 
-initialFilterFunc : Contracts.Types.OpenMode -> (Time.Posix -> Contracts.Types.FullTradeInfo -> Bool)
+initialFilterFunc : CTypes.OpenMode -> (Time.Posix -> CTypes.FullTradeInfo -> Bool)
 initialFilterFunc openMode =
     \time trade ->
-        (trade.state.phase == Contracts.Types.Open)
+        (trade.state.phase == CTypes.Open)
             && (trade.parameters.openMode == openMode)
             && (TimeHelpers.compare trade.derived.phaseEndTime time == GT)
 
 
-initialSortFunc : Contracts.Types.FullTradeInfo -> Contracts.Types.FullTradeInfo -> Order
+initialSortFunc : CTypes.FullTradeInfo -> CTypes.FullTradeInfo -> Order
 initialSortFunc a b =
     compare a.creationInfo.blocknum b.creationInfo.blocknum
 
@@ -103,7 +103,7 @@ update msg model =
 
                                 trades =
                                     List.range 0 (numTrades - 1)
-                                        |> List.map Contracts.Types.partialTradeInfo
+                                        |> List.map CTypes.partialTradeInfo
                                         |> Array.fromList
                             in
                             ( { model
@@ -133,7 +133,7 @@ update msg model =
                 Ok encodedCreationInfo ->
                     let
                         creationInfo =
-                            Contracts.Types.TradeCreationInfo
+                            CTypes.TradeCreationInfo
                                 encodedCreationInfo.address_
                                 (BigIntHelpers.toIntWithWarning encodedCreationInfo.blocknum)
 
@@ -231,10 +231,10 @@ update msg model =
                         |> List.indexedMap
                             (\id trade ->
                                 case trade of
-                                    Contracts.Types.PartiallyLoadedTrade _ ->
+                                    CTypes.PartiallyLoadedTrade _ ->
                                         Cmd.none
 
-                                    Contracts.Types.LoadedTrade info ->
+                                    CTypes.LoadedTrade info ->
                                         let
                                             address =
                                                 info.creationInfo.address
@@ -245,6 +245,12 @@ update msg model =
             in
             ( model
             , cmd
+            , Nothing
+            )
+
+        ChangeOfferType openMode ->
+            ( { model | openMode = openMode } |> applyInputs
+            , Cmd.none
             , Nothing
             )
 

@@ -18,16 +18,16 @@ ethNode : NetworkId -> EthNode
 ethNode networkId =
     case networkId of
         Mainnet ->
-            EthNode "https://mainnet.infura.io/e3eef0e2435349bf9164e6f465bd7cf9" "wss://mainnet.infura.io/ws"
+            EthNode "https://mainnet.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9" "wss://mainnet.infura.io/ws"
 
         Ropsten ->
-            EthNode "https://ropsten.infura.io/e3eef0e2435349bf9164e6f465bd7cf9" "wss://ropsten.infura.io/ws"
+            EthNode "https://ropsten.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9" "wss://ropsten.infura.io/ws"
 
         Kovan ->
-            EthNode "https://kovan.infura.io/e3eef0e2435349bf9164e6f465bd7cf9" "wss://kovan.infura.io/ws"
+            EthNode "https://kovan.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9" "wss://kovan.infura.io/ws"
 
         Rinkeby ->
-            EthNode "https://rinkeby.infura.io/e3eef0e2435349bf9164e6f465bd7cf9" "wss://rinkeby.infura.io/ws"
+            EthNode "https://rinkeby.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9" "wss://rinkeby.infura.io/ws"
 
         _ ->
             EthNode "UnknownEthNetwork" "UnknownEthNetwork"

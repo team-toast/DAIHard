@@ -2,7 +2,7 @@ module Search.View exposing (root)
 
 import Array exposing (Array)
 import CommonTypes exposing (..)
-import Contracts.Types
+import Contracts.Types as CTypes
 import Element exposing (Attribute, Element)
 import Element.Background
 import Element.Border
@@ -29,7 +29,20 @@ root time model =
         , Element.height Element.fill
         , Element.Events.onClick (ShowCurrencyDropdown False)
         ]
-        [ searchInputElement model.inputs model.showCurrencyDropdown
+        [ Element.row
+            [ Element.width Element.fill
+            , Element.spacing 10
+            , Element.padding 30
+            ]
+            [ Element.el
+                [ Element.alignTop
+                ]
+                (EH.withHeader
+                    "Offer Type"
+                    (typeToggleElement model.openMode)
+                )
+            , searchInputElement model.inputs model.showCurrencyDropdown
+            ]
         , resultsElement time model
         ]
 
@@ -38,7 +51,6 @@ searchInputElement : SearchInputs -> Bool -> Element Msg
 searchInputElement inputs showCurrencyDropdown =
     Element.column
         [ Element.spacing 10
-        , Element.padding 30
         , Element.width Element.shrink
         , Element.centerX
         ]
@@ -73,6 +85,37 @@ searchInputElement inputs showCurrencyDropdown =
                 [ applyButton, resetButton ]
                 |> withInputHeader " "
             ]
+        ]
+
+
+typeToggleElement : CTypes.OpenMode -> Element Msg
+typeToggleElement openMode =
+    let
+        baseStyles =
+            [ Element.Font.size 24
+            , Element.Font.medium
+            , Element.pointer
+            ]
+
+        ( buyStyles, sellStyles ) =
+            case openMode of
+                CTypes.BuyerOpened ->
+                    ( baseStyles
+                    , baseStyles ++ [ Element.Font.color EH.disabledTextColor ]
+                    )
+
+                CTypes.SellerOpened ->
+                    ( baseStyles ++ [ Element.Font.color EH.disabledTextColor ]
+                    , baseStyles
+                    )
+    in
+    Element.row [ Element.spacing 20 ]
+        [ Element.el
+            ([ Element.Events.onClick <| ChangeOfferType CTypes.SellerOpened ] ++ sellStyles)
+            (Element.text "Selling DAI")
+        , Element.el
+            ([ Element.Events.onClick <| ChangeOfferType CTypes.BuyerOpened ] ++ buyStyles)
+            (Element.text "Buying DAI")
         ]
 
 
@@ -124,10 +167,10 @@ resultsElement time model =
 
         buyingOrSellingString =
             case model.openMode of
-                Contracts.Types.BuyerOpened ->
+                CTypes.BuyerOpened ->
                     "Buying"
 
-                Contracts.Types.SellerOpened ->
+                CTypes.SellerOpened ->
                     "Selling"
     in
     Element.column
@@ -158,7 +201,7 @@ resultsElement time model =
             ]
             (visibleTrades
                 |> List.map
-                    (viewTradeRow time (model.openMode == Contracts.Types.SellerOpened))
+                    (viewTradeRow time (model.openMode == CTypes.SellerOpened))
             )
         ]
 
@@ -287,7 +330,7 @@ withInputHeader title element =
         ]
 
 
-viewTradeRow : Time.Posix -> Bool -> Contracts.Types.FullTradeInfo -> Element Msg
+viewTradeRow : Time.Posix -> Bool -> CTypes.FullTradeInfo -> Element Msg
 viewTradeRow time asBuyer trade =
     Element.row
         [ Element.width Element.fill
@@ -323,7 +366,7 @@ cellMaker ( portion, cellElement ) =
             cellElement
 
 
-viewExpiring : Time.Posix -> Contracts.Types.FullTradeInfo -> Element Msg
+viewExpiring : Time.Posix -> CTypes.FullTradeInfo -> Element Msg
 viewExpiring time trade =
     let
         interval =
@@ -334,17 +377,17 @@ viewExpiring time trade =
     EH.smallIntervalWithElapsedBar interval trade.parameters.autorecallInterval Element.fill
 
 
-viewTradeAmount : Contracts.Types.FullTradeInfo -> Element Msg
+viewTradeAmount : CTypes.FullTradeInfo -> Element Msg
 viewTradeAmount trade =
     EH.daiValue trade.parameters.tradeAmount
 
 
-viewFiat : Contracts.Types.FullTradeInfo -> Element Msg
+viewFiat : CTypes.FullTradeInfo -> Element Msg
 viewFiat trade =
     EH.fiatValue trade.parameters.fiatPrice
 
 
-viewMargin : Contracts.Types.FullTradeInfo -> Bool -> Element Msg
+viewMargin : CTypes.FullTradeInfo -> Bool -> Element Msg
 viewMargin trade upIsGreen =
     trade.derived.margin
         |> Maybe.map (EH.margin upIsGreen)
@@ -353,10 +396,10 @@ viewMargin trade upIsGreen =
 
 viewPaymentMethods : List PaymentMethod -> Element Msg
 viewPaymentMethods paymentMethods =
-    EH.comingSoonMsg [] "Payment method output coming soon!"
+    EH.comingSoonMsg [] "Payment method summary coming soon! For now, click \"View offer\" ---> "
 
 
-viewAutoabortWindow : Bool -> Contracts.Types.FullTradeInfo -> Element Msg
+viewAutoabortWindow : Bool -> CTypes.FullTradeInfo -> Element Msg
 viewAutoabortWindow viewAsBuyer trade =
     let
         color =
@@ -369,7 +412,7 @@ viewAutoabortWindow viewAsBuyer trade =
     EH.interval False color trade.parameters.autoabortInterval
 
 
-viewAutoreleaseWindow : Bool -> Contracts.Types.FullTradeInfo -> Element Msg
+viewAutoreleaseWindow : Bool -> CTypes.FullTradeInfo -> Element Msg
 viewAutoreleaseWindow viewAsBuyer trade =
     let
         color =
@@ -397,12 +440,12 @@ viewTradeButton factoryID =
         }
 
 
-getLoadedTrades : List Contracts.Types.Trade -> List Contracts.Types.FullTradeInfo
+getLoadedTrades : List CTypes.Trade -> List CTypes.FullTradeInfo
 getLoadedTrades =
     List.filterMap
         (\trade ->
             case trade of
-                Contracts.Types.LoadedTrade tradeInfo ->
+                CTypes.LoadedTrade tradeInfo ->
                     Just tradeInfo
 
                 _ ->
@@ -412,10 +455,10 @@ getLoadedTrades =
 
 filterAndSortTrades :
     Time.Posix
-    -> (Time.Posix -> Contracts.Types.FullTradeInfo -> Bool)
-    -> (Contracts.Types.FullTradeInfo -> Contracts.Types.FullTradeInfo -> Order)
-    -> List Contracts.Types.FullTradeInfo
-    -> List Contracts.Types.FullTradeInfo
+    -> (Time.Posix -> CTypes.FullTradeInfo -> Bool)
+    -> (CTypes.FullTradeInfo -> CTypes.FullTradeInfo -> Order)
+    -> List CTypes.FullTradeInfo
+    -> List CTypes.FullTradeInfo
 filterAndSortTrades time filterFunc sortFunc =
     List.filter (filterFunc time)
         >> List.sortWith sortFunc
