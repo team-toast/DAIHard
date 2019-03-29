@@ -59,13 +59,13 @@ routeToString : Route -> String
 routeToString route =
     case route of
         Home ->
-            Url.Builder.absolute [] []
+            Url.Builder.absolute ["DAIHard"] []
 
         Create ->
-            Url.Builder.absolute [ "create" ] []
+            Url.Builder.absolute ["DAIHard", "create" ] []
 
         Trade maybeId ->
-            Url.Builder.absolute [ "trade" ]
+            Url.Builder.absolute ["DAIHard", "trade" ]
                 (case maybeId of
                     Nothing ->
                         []
@@ -75,7 +75,7 @@ routeToString route =
                 )
 
         Search maybeOpenMode ->
-            Url.Builder.absolute [ "search" ] <| buildMaybeOpenModeQueryParameters maybeOpenMode
+            Url.Builder.absolute ["DAIHard", "search" ] <| buildMaybeOpenModeQueryParameters maybeOpenMode
 
         NotFound ->
             Url.Builder.absolute [] []
