@@ -599,8 +599,8 @@ textInputWithElement attributes inputAttributes addedElement labelStr value plac
         ]
 
 
-currencySelector : Bool -> String -> msg -> (String -> msg) -> (Bool -> msg) -> msg -> Element msg
-currencySelector showDropdown typeStringInput openCurrencySelectorMsg typeStringChangedMsgConstructor showHideDropdownMsgConstructor arrowClickedMsg =
+currencySelector : Bool -> String -> msg -> (String -> msg) -> Element msg
+currencySelector showDropdown typeStringInput openCurrencySelectorMsg typeStringChangedMsgConstructor =
     let
         gotCurrency =
             Dict.get typeStringInput FiatValue.currencyTypes
@@ -660,12 +660,6 @@ currencySelector showDropdown typeStringInput openCurrencySelectorMsg typeString
         ]
         [ FiatValue.typeStringToSymbol typeStringInput
         , inputElement
-        , Images.toElement
-            [ Element.paddingXY 0 8
-            , Element.pointer
-            , Element.Events.onClick arrowClickedMsg
-            ]
-            Images.downArrow
         ]
 
 

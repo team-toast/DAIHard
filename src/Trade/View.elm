@@ -27,6 +27,7 @@ root time model =
         CTypes.LoadedTrade tradeInfo ->
             Element.column
                 [ Element.width Element.fill
+                , Element.height Element.fill
                 , Element.spacing 40
                 , Element.inFront <| chatOverlayElement model
                 ]

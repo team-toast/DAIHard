@@ -284,23 +284,28 @@ update msg model =
             , Nothing
             )
 
-        FiatTypeArrowClicked ->
+        ShowCurrencyDropdown flag ->
+            let
+                oldInputs =
+                    model.inputs
+            in
             ( { model
-                | inputs = model.inputs |> updateFiatTypeInput ""
-                , showCurrencyDropdown = True
+                | showCurrencyDropdown = flag
+                , inputs =
+                    model.inputs
+                        |> (if flag then
+                                updateFiatTypeInput ""
+
+                            else
+                                identity
+                           )
               }
             , Cmd.none
             , Nothing
             )
 
         FiatTypeLostFocus ->
-            Debug.todo ""
-
-        OpenCurrencySelector ->
-            Debug.todo ""
-
-        ShowCurrencyDropdown flag ->
-            ( { model | showCurrencyDropdown = flag }
+            ( { model | showCurrencyDropdown = False }
             , Cmd.none
             , Nothing
             )
@@ -516,38 +521,19 @@ resetSearch model =
 
 testTextMatch : List String -> List PaymentMethod -> Bool
 testTextMatch terms paymentMethods =
-    Debug.todo ""
-
-
-
---Should be simple enough to simplify
--- let
---     searchForAllTerms searchable =
---         terms
---             |> List.all
---                 (\term ->
---                     String.contains term searchable
---                 )
--- in
--- case paymentMethodsDecodeResult of
---     Err searchable ->
---         -- Here we use a Result to contain the undecoded string upon decode failure
---         searchForAllTerms searchable
---     Ok paymentMethods ->
---         paymentMethods
---             |> List.any
---                 (\method ->
---                     searchForAllTerms <|
---                         case method of
---                             PaymentMethods.CashDrop s ->
---                                 s
---                             PaymentMethods.CashHandoff s ->
---                                 s
---                             PaymentMethods.BankTransfer identifier ->
---                                 identifier.info
---                             PaymentMethods.Custom s ->
---                                 s
---                 )
+    let
+        searchForAllTerms searchable =
+            terms
+                |> List.all
+                    (\term ->
+                        String.contains term searchable
+                    )
+    in
+    paymentMethods
+        |> List.any
+            (\method ->
+                searchForAllTerms method.info
+            )
 
 
 noUpdate : Model -> ( Model, Cmd Msg, Maybe Routing.Route )

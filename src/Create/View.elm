@@ -128,7 +128,7 @@ fiatInputElement typeString amountString showFiatTypeDropdown =
         , Element.Font.medium
         , Element.Font.size 24
         ]
-        ( Just fiatCharElement, Just <| EH.currencySelector showFiatTypeDropdown typeString OpenCurrencySelector FiatTypeChanged ShowCurrencyDropdown FiatTypeArrowClicked )
+        ( Just fiatCharElement, Just <| EH.currencySelector showFiatTypeDropdown typeString (ShowCurrencyDropdown True) FiatTypeChanged )
         "fiat input"
         Nothing
         amountString

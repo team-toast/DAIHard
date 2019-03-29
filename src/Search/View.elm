@@ -71,6 +71,12 @@ searchInputElement inputs showCurrencyDropdown =
               <|
                 fiatInput showCurrencyDropdown inputs.fiatType inputs.minFiat inputs.maxFiat
             , Element.column
+                [ Element.spacing 5
+                , Element.width Element.shrink
+                ]
+                [ applyButton, resetButton ]
+                |> withInputHeader " "
+            , Element.column
                 [ Element.width Element.shrink
                 , Element.alignTop
                 , Element.spacing 5
@@ -78,12 +84,6 @@ searchInputElement inputs showCurrencyDropdown =
                 [ paymentMethodsInput inputs.paymentMethod
                 , searchTermsDisplayElement inputs.paymentMethodTerms
                 ]
-            , Element.column
-                [ Element.spacing 5
-                , Element.width Element.shrink
-                ]
-                [ applyButton, resetButton ]
-                |> withInputHeader " "
             ]
         ]
 
@@ -251,7 +251,7 @@ fiatInput showTypeDropdown fiatType minFiat maxFiat =
     in
     Element.row [ Element.spacing 5, Element.width Element.shrink ]
         [ Element.el [ Element.alignTop, Element.width <| Element.px 120 ] <|
-            EH.currencySelector showTypeDropdown fiatType OpenCurrencySelector FiatTypeInputChanged ShowCurrencyDropdown FiatTypeArrowClicked
+            EH.currencySelector showTypeDropdown fiatType (ShowCurrencyDropdown True) FiatTypeInputChanged
         , Element.column [ Element.spacing 5, Element.alignTop, Element.width <| Element.px 200 ]
             [ EH.textInputWithElement [] [ Element.Events.onFocus (ShowCurrencyDropdown False) ] minElement "min" minFiat Nothing Nothing MinFiatChanged
             , EH.textInputWithElement [] [ Element.Events.onFocus (ShowCurrencyDropdown False) ] maxElement "max" maxFiat Nothing Nothing MaxFiatChanged

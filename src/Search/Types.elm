@@ -45,13 +45,11 @@ type Msg
     | MinDaiChanged String
     | MaxDaiChanged String
     | FiatTypeInputChanged String
-    | FiatTypeArrowClicked
-    | FiatTypeLostFocus
-    | OpenCurrencySelector
     | MinFiatChanged String
     | MaxFiatChanged String
     | PaymentMethodInputChanged String
     | ShowCurrencyDropdown Bool
+    | FiatTypeLostFocus
     | AddSearchTerm
     | RemoveTerm String
     | ApplyInputs
