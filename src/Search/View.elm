@@ -34,13 +34,18 @@ root time model =
             , Element.spacing 10
             , Element.padding 30
             ]
-            [ Element.el
-                [ Element.alignTop
-                ]
-                (EH.withHeader
-                    "Offer Type"
-                    (typeToggleElement model.openMode)
-                )
+            [ case model.searchProfile of
+                OpenOffers openMode ->
+                    Element.el
+                        [ Element.alignTop
+                        ]
+                        (EH.withHeader
+                            "Offer Type"
+                            (typeToggleElement openMode)
+                        )
+
+                _ ->
+                    Element.none
             , searchInputElement model.inputs model.showCurrencyDropdown
             ]
         , resultsElement time model
@@ -166,12 +171,15 @@ resultsElement time model =
                 |> filterAndSortTrades time model.filterFunc model.sortFunc
 
         buyingOrSellingString =
-            case model.openMode of
-                CTypes.BuyerOpened ->
+            case model.searchProfile of
+                OpenOffers CTypes.BuyerOpened ->
                     "Buying"
 
-                CTypes.SellerOpened ->
+                OpenOffers CTypes.SellerOpened ->
                     "Selling"
+
+                AgentHistory address ->
+                    "Trading"
     in
     Element.column
         [ Element.width Element.fill
@@ -201,7 +209,17 @@ resultsElement time model =
             ]
             (visibleTrades
                 |> List.map
-                    (viewTradeRow time (model.openMode == CTypes.SellerOpened))
+                    (let
+                        asBuyer =
+                            case model.searchProfile of
+                                OpenOffers openMode ->
+                                    openMode == CTypes.SellerOpened
+
+                                _ ->
+                                    False
+                     in
+                     viewTradeRow time asBuyer
+                    )
             )
         ]
 

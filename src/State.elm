@@ -296,10 +296,10 @@ gotoRoute model route =
                         ]
                     )
 
-        Routing.Search openMode ->
+        Routing.Search searchProfile ->
             let
                 ( searchModel, searchCmd ) =
-                    Search.State.init model.node openMode model.userInfo
+                    Search.State.init model.node searchProfile model.userInfo
             in
             ( Running
                 { model

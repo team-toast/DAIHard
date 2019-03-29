@@ -2,6 +2,8 @@ module Routing exposing (Route(..), routeToString, urlToRoute)
 
 import BigInt exposing (BigInt)
 import Contracts.Types
+import Eth.Utils
+import Search.Types
 import Url exposing (Url)
 import Url.Builder
 import Url.Parser exposing ((</>), (<?>), Parser)
@@ -12,7 +14,7 @@ type Route
     = Home
     | Create
     | Trade (Maybe Int)
-    | Search (Maybe Contracts.Types.OpenMode)
+    | Search Search.Types.SearchProfile
     | NotFound
 
 
@@ -27,26 +29,26 @@ routeParser =
                 ]
 
 
-typeParser : Url.Parser.Query.Parser (Maybe Contracts.Types.OpenMode)
+typeParser : Url.Parser.Query.Parser Search.Types.SearchProfile
 typeParser =
     Url.Parser.Query.custom "type"
         (\l ->
             case l of
                 [] ->
-                    Nothing
+                    Search.Types.OpenOffers Contracts.Types.BuyerOpened
 
                 s :: [] ->
                     if s == "buys" then
-                        Just Contracts.Types.BuyerOpened
+                        Search.Types.OpenOffers Contracts.Types.BuyerOpened
 
                     else if s == "sells" then
-                        Just Contracts.Types.SellerOpened
+                        Search.Types.OpenOffers Contracts.Types.SellerOpened
 
                     else
-                        Nothing
+                        Search.Types.AgentHistory <| Eth.Utils.unsafeToAddress "0xc835c3dCfD49Bb7b3E4E90532Db48e270160f946"
 
                 multiple ->
-                    Nothing
+                    Search.Types.OpenOffers Contracts.Types.BuyerOpened
         )
 
 
@@ -59,13 +61,13 @@ routeToString : Route -> String
 routeToString route =
     case route of
         Home ->
-            Url.Builder.absolute ["DAIHard"] []
+            Url.Builder.absolute [ "DAIHard" ] []
 
         Create ->
-            Url.Builder.absolute ["DAIHard", "create" ] []
+            Url.Builder.absolute [ "DAIHard", "create" ] []
 
         Trade maybeId ->
-            Url.Builder.absolute ["DAIHard", "trade" ]
+            Url.Builder.absolute [ "DAIHard", "trade" ]
                 (case maybeId of
                     Nothing ->
                         []
@@ -74,21 +76,21 @@ routeToString route =
                         [ Url.Builder.string "id" <| String.fromInt id ]
                 )
 
-        Search maybeOpenMode ->
-            Url.Builder.absolute ["DAIHard", "search" ] <| buildMaybeOpenModeQueryParameters maybeOpenMode
+        Search searchProfile ->
+            Url.Builder.absolute [ "DAIHard", "search" ] <| buildSearchQueryParameters searchProfile
 
         NotFound ->
             Url.Builder.absolute [] []
 
 
-buildMaybeOpenModeQueryParameters : Maybe Contracts.Types.OpenMode -> List Url.Builder.QueryParameter
-buildMaybeOpenModeQueryParameters maybeOpenMode =
-    case maybeOpenMode of
-        Just Contracts.Types.BuyerOpened ->
+buildSearchQueryParameters : Search.Types.SearchProfile -> List Url.Builder.QueryParameter
+buildSearchQueryParameters searchProfile =
+    case searchProfile of
+        Search.Types.OpenOffers Contracts.Types.BuyerOpened ->
             [ Url.Builder.string "type" "buys" ]
 
-        Just Contracts.Types.SellerOpened ->
+        Search.Types.OpenOffers Contracts.Types.SellerOpened ->
             [ Url.Builder.string "type" "sells" ]
 
-        Nothing ->
+        _ ->
             []

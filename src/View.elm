@@ -1,7 +1,7 @@
 module View exposing (root)
 
 import Browser
-import Contracts.Types
+import Contracts.Types as CTypes
 import Create.View
 import Element exposing (Attribute, Element)
 import Element.Background
@@ -11,6 +11,7 @@ import Element.Font
 import Element.Input
 import ElementHelpers as EH
 import Routing
+import Search.Types
 import Search.View
 import Trade.View
 import Types exposing (..)
@@ -85,7 +86,7 @@ headerContent model =
             [ logoElement
             , headerLink
                 "Marketplace"
-                (GotoRoute <| Routing.Search Nothing)
+                (GotoRoute <| Routing.Search <| Search.Types.OpenOffers CTypes.SellerOpened)
                 (case model.submodel of
                     SearchModel _ ->
                         True
@@ -93,6 +94,15 @@ headerContent model =
                     _ ->
                         False
                 )
+            , case model.userInfo of
+                Just userInfo ->
+                    headerLink
+                        "My Offers"
+                        (GotoRoute <| Routing.Search <| Search.Types.AgentHistory userInfo.address)
+                        False
+
+                Nothing ->
+                    Element.none
             , headerLink
                 "Create a New Offer"
                 (GotoRoute Routing.Create)
