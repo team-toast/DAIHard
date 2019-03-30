@@ -94,15 +94,6 @@ headerContent model =
                     _ ->
                         False
                 )
-            , case model.userInfo of
-                Just userInfo ->
-                    headerLink
-                        "My Offers"
-                        (GotoRoute <| Routing.Search <| Search.Types.AgentHistory userInfo.address)
-                        False
-
-                Nothing ->
-                    Element.none
             , headerLink
                 "Create a New Offer"
                 (GotoRoute Routing.Create)
@@ -113,6 +104,15 @@ headerContent model =
                     _ ->
                         False
                 )
+            , case model.userInfo of
+                Just userInfo ->
+                    headerLink
+                        "My Offers"
+                        (GotoRoute <| Routing.Search <| Search.Types.AgentHistory userInfo.address)
+                        False
+
+                Nothing ->
+                    Element.none
             ]
         )
 

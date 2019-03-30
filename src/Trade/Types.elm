@@ -2,6 +2,7 @@ module Trade.Types exposing
     ( ContractMsg(..)
     , Model
     , Msg(..)
+    , PhaseState(..)
     , StatsModel(..)
     )
 
@@ -63,4 +64,10 @@ type ContractMsg
 type StatsModel
     = Waiting
     | Scanning
+    | DoneLoading
+
+
+type PhaseState
+    = NotStarted
+    | Active
     | Finished

@@ -1,5 +1,6 @@
 module ElementHelpers exposing
-    ( black
+    ( activePhaseBackgroundColor
+    , black
     , blue
     , blueButton
     , bulletPointString
@@ -114,6 +115,10 @@ mediumGray =
 
 darkGray =
     Element.rgb255 150 150 150
+
+
+activePhaseBackgroundColor =
+    Element.rgb255 9 32 107
 
 
 permanentTextColor =
