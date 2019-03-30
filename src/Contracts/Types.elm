@@ -1,4 +1,4 @@
-module Contracts.Types exposing (CreateParameters, DAIHardEvent(..), FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), State, Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, getBuyerOrSeller, getInitiatorOrResponder, initiatorIsBuyerToOpenMode, initiatorOrResponderToBuyerOrSeller, openModeToInitiatorIsBuyer, partialTradeInfo, phaseToString, txReceiptToCreatedToastytradeSellId, updateCreationInfo, updateParameters, updatePaymentMethods, updateState)
+module Contracts.Types exposing (CreateParameters, DAIHardEvent(..), FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), State, Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, getBuyerOrSeller, getInitiatorOrResponder, initiatorIsBuyerToOpenMode, initiatorOrResponderToBuyerOrSeller, openModeToInitiatorIsBuyer, partialTradeInfo, phaseToInt, phaseToString, txReceiptToCreatedToastytradeSellId, updateCreationInfo, updateParameters, updatePaymentMethods, updateState)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
@@ -378,6 +378,25 @@ bigIntToPhase phase =
 
         _ ->
             Nothing
+
+
+phaseToInt : Phase -> Int
+phaseToInt phase =
+    case phase of
+        Created ->
+            0
+
+        Open ->
+            1
+
+        Committed ->
+            2
+
+        Claimed ->
+            3
+
+        Closed ->
+            4
 
 
 phaseToString : Phase -> String

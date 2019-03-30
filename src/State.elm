@@ -100,7 +100,7 @@ updateValidModel msg model =
                     genPrivkey <|
                         encodeGenPrivkeyArgs
                             address
-                            "Deriving keypair for encrypted communication on TOASTYTRADE. Never sign this on any other site!"
+                            "Deriving keypair for encrypted communication on DAIHARD. Never sign this on any other site!"
             )
 
         UserPubkeySet commPubkeyValue ->
@@ -296,10 +296,10 @@ gotoRoute model route =
                         ]
                     )
 
-        Routing.Search openMode ->
+        Routing.Search searchProfile ->
             let
                 ( searchModel, searchCmd ) =
-                    Search.State.init model.node openMode model.userInfo
+                    Search.State.init model.node searchProfile model.userInfo
             in
             ( Running
                 { model

@@ -16,6 +16,7 @@ import Images exposing (Image)
 import Margin
 import PaymentMethods exposing (PaymentMethod)
 import Time
+import TimeHelpers
 import TokenValue exposing (TokenValue)
 import Trade.ChatHistory.View as ChatHistory
 import Trade.Types exposing (..)
@@ -37,7 +38,7 @@ root time model =
                     , Element.paddingXY 40 0
                     , Element.spacing 40
                     ]
-                    [ phasesElement tradeInfo model.userInfo
+                    [ phasesElement tradeInfo model.expandedPhase model.userInfo time
                     , PaymentMethods.viewList tradeInfo.paymentMethods Nothing
                     ]
                 ]
@@ -234,20 +235,242 @@ actionButtonsElement trade userInfo =
         |> Element.map ContractAction
 
 
-phasesElement : FullTradeInfo -> Maybe UserInfo -> Element Msg
-phasesElement trade maybeUserInfo =
-    Element.el
+phasesElement : FullTradeInfo -> CTypes.Phase -> Maybe UserInfo -> Time.Posix -> Element Msg
+phasesElement trade expandedPhase maybeUserInfo currentTime =
+    Element.row
         [ Element.width Element.fill
-        , Element.height <| Element.px 300
-        , Element.Background.color EH.white
-        , Element.Border.rounded 8
+        , Element.height <| Element.px 360
+        , Element.spacing 20
         ]
-        (Element.el
+    <|
+        case trade.state.phase of
+            CTypes.Closed ->
+                [ Element.el
+                    (commonPhaseAttributes
+                        ++ [ Element.width Element.fill
+                           , Element.Background.color EH.activePhaseBackgroundColor
+                           ]
+                    )
+                    (Element.el
+                        [ Element.centerX
+                        , Element.centerY
+                        , Element.Font.size 20
+                        , Element.Font.semiBold
+                        , Element.Font.color EH.white
+                        ]
+                        (Element.text "Trade Closed")
+                    )
+                ]
+
+            _ ->
+                [ phaseElement CTypes.Open trade maybeUserInfo (expandedPhase == CTypes.Open) currentTime
+                , phaseElement CTypes.Committed trade maybeUserInfo (expandedPhase == CTypes.Committed) currentTime
+                , phaseElement CTypes.Claimed trade maybeUserInfo (expandedPhase == CTypes.Claimed) currentTime
+                ]
+
+
+activePhaseAttributes =
+    [ Element.Background.color EH.activePhaseBackgroundColor
+    , Element.Font.color EH.white
+    ]
+
+
+inactivePhaseAttributes =
+    [ Element.Background.color EH.white
+    ]
+
+
+commonPhaseAttributes =
+    [ Element.Border.rounded 12
+    , Element.height Element.fill
+    ]
+
+
+phaseElement : CTypes.Phase -> FullTradeInfo -> Maybe UserInfo -> Bool -> Time.Posix -> Element Msg
+phaseElement viewPhase trade maybeUserInfo expanded currentTime =
+    let
+        ( viewPhaseInt, tradePhaseInt ) =
+            ( CTypes.phaseToInt viewPhase
+            , CTypes.phaseToInt trade.state.phase
+            )
+
+        phaseState =
+            if viewPhaseInt > tradePhaseInt then
+                NotStarted
+
+            else if viewPhaseInt == tradePhaseInt then
+                Active
+
+            else
+                Finished
+
+        fullInterval =
+            case viewPhase of
+                CTypes.Open ->
+                    trade.parameters.autorecallInterval
+
+                CTypes.Committed ->
+                    trade.parameters.autoabortInterval
+
+                CTypes.Claimed ->
+                    trade.parameters.autoreleaseInterval
+
+                _ ->
+                    Time.millisToPosix 0
+
+        displayInterval =
+            case phaseState of
+                NotStarted ->
+                    fullInterval
+
+                Active ->
+                    TimeHelpers.sub
+                        (TimeHelpers.add trade.state.phaseStartTime fullInterval)
+                        currentTime
+
+                Finished ->
+                    Time.millisToPosix 0
+
+        titleElement =
+            case viewPhase of
+                CTypes.Open ->
+                    "Open Window"
+
+                CTypes.Committed ->
+                    "Payment Window"
+
+                CTypes.Claimed ->
+                    "Release Window"
+
+                CTypes.Closed ->
+                    "Closed"
+
+                CTypes.Created ->
+                    "ERROR! You shouldn't be seeing this!"
+
+        firstEl =
+            Element.el
+                [ Element.padding 30 ]
+            <|
+                phaseStatusElement
+                    Images.none
+                    titleElement
+                    displayInterval
+                    phaseState
+
+        secondEl =
+            Element.el
+                [ Element.padding 30
+                , Element.width Element.fill
+                , Element.height Element.fill
+                ]
+                (EH.comingSoonMsg [Element.Font.size 16 ] "Phase description coming soon!")
+
+        borderEl =
+            Element.el
+                [ Element.height Element.fill
+                , Element.width <| Element.px 1
+                , Element.Background.color <|
+                    case phaseState of
+                        Active ->
+                            Element.rgb 0 0 1
+
+                        _ ->
+                            EH.lightGray
+                ]
+                Element.none
+    in
+    if expanded then
+        Element.row
+            (commonPhaseAttributes
+                ++ (if phaseState == Active then
+                        activePhaseAttributes
+
+                    else
+                        inactivePhaseAttributes
+                   )
+                ++ [ Element.width Element.fill ]
+            )
+            [ firstEl, borderEl, secondEl ]
+
+    else
+        Element.row
+            (commonPhaseAttributes
+                ++ (if phaseState == Active then
+                        activePhaseAttributes
+
+                    else
+                        inactivePhaseAttributes
+                   )
+                ++ [ Element.pointer
+                   , Element.Events.onClick <| ExpandPhase viewPhase
+                   ]
+            )
+            [ firstEl ]
+
+
+phaseStatusElement : Image -> String -> Time.Posix -> PhaseState -> Element Msg
+phaseStatusElement icon title interval phaseState =
+    let
+        titleColor =
+            case phaseState of
+                Active ->
+                    Element.rgb255 0 226 255
+
+                _ ->
+                    EH.black
+
+        titleElement =
+            Element.el
+                [ Element.Font.color titleColor
+                , Element.Font.size 20
+                , Element.Font.semiBold
+                , Element.centerX
+                ]
+                (Element.text title)
+
+        intervalElement =
+            Element.el [ Element.centerX ]
+                (EH.interval False Nothing interval)
+
+        phaseStateElement =
+            Element.el
+                [ Element.centerX
+                , Element.Font.italic
+                , Element.Font.semiBold
+                , Element.Font.size 16
+                ]
+                (Element.text <| phaseStateString phaseState)
+    in
+    Element.el
+        [ Element.height <| Element.px 360
+        , Element.width <| Element.px 270
+        , Element.padding 30
+        ]
+    <|
+        Element.column
             [ Element.centerX
-            , Element.centerY
+            , Element.height Element.fill
+            , Element.spaceEvenly
             ]
-            (EH.comingSoonMsg [ Element.Font.size 30 ] "Phases info readout coming soon!")
-        )
+            [ Element.none -- add icon!
+            , titleElement
+            , intervalElement
+            , phaseStateElement
+            ]
+
+
+phaseStateString : PhaseState -> String
+phaseStateString status =
+    case status of
+        NotStarted ->
+            "Not Started"
+
+        Active ->
+            "Active"
+
+        Finished ->
+            "Finished"
 
 
 chatOverlayElement : Model -> Element Msg

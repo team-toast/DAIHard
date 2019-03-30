@@ -16,6 +16,7 @@ import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
 import Eth.Utils
 import EthHelpers
+import Http
 import Json.Decode
 import Json.Encode
 import Maybe.Extra
@@ -42,11 +43,12 @@ init ethNode userInfo tradeId =
       , userInfo = userInfo
       , trade = CTypes.partialTradeInfo tradeId
       , stats = Waiting
-      , eventSentry = eventSentry
+      , expandedPhase = CTypes.Open
       , chatHistoryModel = Nothing
       , showChatHistory = False
       , eventsWaitingForChatHistory = []
       , secureCommInfo = partialCommInfo
+      , eventSentry = eventSentry
       }
     , Cmd.batch [ getCreationInfoCmd, eventSentryCmd ]
     , ChainCmd.none
@@ -135,10 +137,13 @@ update msg prevModel =
                     , ChainCmd.none
                     )
 
-                Err errstr ->
+                Err (Http.BadBody errstr) ->
+                    Debug.todo "Should reload after some delay"
+
+                Err otherErr ->
                     let
                         _ =
-                            Debug.log "can't fetch full state: " errstr
+                            Debug.log "can't fetch full state: " otherErr
                     in
                     ( prevModel, Cmd.none, ChainCmd.none )
 
@@ -190,6 +195,12 @@ update msg prevModel =
                     handleNewLog log prevModel
             in
             ( newModel, cmd, ChainCmd.none )
+
+        ExpandPhase phase ->
+            ( { prevModel | expandedPhase = phase }
+            , Cmd.none
+            , ChainCmd.none
+            )
 
         ToggleChat ->
             let

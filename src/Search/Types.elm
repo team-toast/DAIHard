@@ -1,4 +1,4 @@
-module Search.Types exposing (FiatTypeAndRange, Model, Msg(..), ResultColumnType(..), SearchInputs, SearchQuery, TokenRange, inputsToQuery, updateFiatTypeInput, updateMaxDaiInput, updateMaxFiatInput, updateMinDaiInput, updateMinFiatInput, updatePaymentMethodInput, updatePaymentMethodTerms, updateTradeCreationInfo, updateTradeParameters, updateTradePaymentMethods, updateTradeState)
+module Search.Types exposing (FiatTypeAndRange, Model, Msg(..), ResultColumnType(..), SearchInputs, SearchProfile(..), SearchQuery, TokenRange, inputsToQuery, updateFiatTypeInput, updateMaxDaiInput, updateMaxFiatInput, updateMinDaiInput, updateMinFiatInput, updatePaymentMethodInput, updatePaymentMethodTerms, updateTradeCreationInfo, updateTradeParameters, updateTradePaymentMethods, updateTradeState)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
@@ -18,12 +18,17 @@ import Time
 import TokenValue exposing (TokenValue)
 
 
+type SearchProfile
+    = OpenOffers CTypes.OpenMode
+    | AgentHistory Address
+
+
 type alias Model =
     { ethNode : EthNode
     , eventSentry : EventSentry Msg
     , userInfo : Maybe UserInfo
     , numTrades : Maybe Int
-    , openMode : CTypes.OpenMode
+    , searchProfile : SearchProfile
     , inputs : SearchInputs
     , showCurrencyDropdown : Bool
     , query : SearchQuery
