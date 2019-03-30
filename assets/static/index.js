@@ -22,7 +22,7 @@ window.addEventListener('load', function () {
         window.app = Elm.App.init({
             node: document.getElementById('elm'),
             flags: {
-                networkId: parseInt(networkId)
+                networkId: parseInt(1)
             }
         });
         console.log("Metamask not detected.");

@@ -10,6 +10,7 @@ import Element.Events
 import Element.Font
 import Element.Input
 import ElementHelpers as EH
+import EthHelpers
 import FiatValue
 import Images exposing (Image)
 import List.Extra
@@ -352,12 +353,69 @@ phaseElement icon title summary interval lowIntervalColor newIntervalMsg =
 
 getModalOrNone : Model -> Element Msg
 getModalOrNone model =
-    case model.addPMModal of
-        Nothing ->
-            Element.none
+    case model.txChainStatus of
+        NoTx ->
+            case model.addPMModal of
+                Nothing ->
+                    Element.none
 
-        Just pmModal ->
-            EH.modal <|
-                Element.map
-                    PMWizardMsg
-                    (PMWizard.root pmModal model.inputs.openMode)
+                Just pmModal ->
+                    EH.modal (Element.rgba 0 0 0 0.6) <|
+                        Element.map
+                            PMWizardMsg
+                            (PMWizard.root pmModal model.inputs.openMode)
+
+        _ ->
+            txChainStatusModal model.txChainStatus
+
+
+txChainStatusModal : TxChainStatus -> Element Msg
+txChainStatusModal txChainStatus =
+    EH.txProcessModal <|
+        case txChainStatus of
+            NoTx ->
+                [ Element.text "Something broke!"
+                , Element.text "You shouldn't be seeing this!"
+                , Element.text "This is not helpful probably!"
+                , Element.text "I'm so sorry!!!"
+                ]
+
+            FetchingFees ->
+                [ Element.text "Fetching exact fees from Factory contract..." ]
+
+            ApproveNeedsSig ->
+                [ Element.text "Waiting for user signature for the approve call."
+                , Element.text "(check Metamask!)"
+                , Element.text "Note that there will be a second transaction to sign after this."
+                ]
+
+            ApproveMining txHash ->
+                [ Element.text "Mining the initial approve transaction..."
+
+                -- , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
+                --     { url = EthHelpers.makeEtherscanTxUrl txHash
+                --     , label = Element.text "See the transaction on Etherscan"
+                --     }
+                , Element.text "Funds will not be sent until you sign the next transaction."
+                , Element.text "Please do not leave the page or change the gas price of the mining transaction."
+                ]
+
+            CreateNeedsSig ->
+                [ Element.text "Waiting for user signature for the create call."
+                , Element.text "(check Metamask!)"
+                ]
+
+            CreateMining txHash ->
+                [ Element.text "Mining the final create call..."
+
+                -- , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
+                --     { url = EthHelpers.makeEtherscanTxUrl txHash
+                --     , label = Element.text "See the transaction on Etherscan"
+                --     }
+                , Element.text "You will be redirected when it's mined."
+                ]
+
+            TxError s ->
+                [ Element.text "Something has gone terribly wrong"
+                , Element.text s
+                ]
