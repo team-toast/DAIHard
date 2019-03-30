@@ -6,6 +6,7 @@ module Images exposing
     , daiSymbol
     , downArrow
     , image
+    , loadingArrows
     , marginSymbol
     , none
     , openWindowIcon
@@ -20,6 +21,7 @@ module Images exposing
     )
 
 import Element exposing (Attribute, Element)
+import Time
 
 
 type Image
@@ -175,4 +177,12 @@ chatIcon =
     JustImage
         { src = "static/img/chat-icon.svg"
         , description = "chat"
+        }
+
+
+loadingArrows : Image
+loadingArrows =
+    JustImage
+        { src = "static/img/loading-arrows.svg"
+        , description = "waiting"
         }

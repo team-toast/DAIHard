@@ -33,7 +33,7 @@ init node userInfo =
             , showFiatTypeDropdown = False
             , addPMModal = Nothing
             , createParameters = Nothing
-            , busyWithTxChain = False
+            , txChainStatus = NoTx
             }
     in
     ( model |> updateInputs initialInputs
@@ -195,7 +195,7 @@ update msg prevModel =
         BeginCreateProcess ->
             case prevModel.createParameters of
                 Just parameters ->
-                    { model = prevModel
+                    { model = { prevModel | txChainStatus = FetchingFees }
                     , cmd =
                         Contracts.Wrappers.getExtraFeesCmd
                             prevModel.node
@@ -238,12 +238,12 @@ update msg prevModel =
 
                         customSend =
                             { onMined = Just ( ApproveMined, Nothing )
-                            , onSign = Nothing
+                            , onSign = Just ApproveSigned
                             , onBroadcast = Nothing
                             }
 
                         newModel =
-                            { prevModel | busyWithTxChain = True }
+                            { prevModel | txChainStatus = ApproveNeedsSig }
                     in
                     { model = newModel
                     , cmd = Cmd.none
@@ -272,6 +272,18 @@ update msg prevModel =
                     in
                     justModelUpdate prevModel
 
+        ApproveSigned result ->
+            case result of
+                Ok txHash ->
+                    justModelUpdate { prevModel | txChainStatus = ApproveMining txHash }
+
+                Err e ->
+                    let
+                        _ =
+                            Debug.log "Error encountered when getting sig from user" e
+                    in
+                    justModelUpdate { prevModel | txChainStatus = TxError e }
+
         ApproveMined (Err errstr) ->
             let
                 _ =
@@ -280,40 +292,47 @@ update msg prevModel =
             justModelUpdate prevModel
 
         ApproveMined (Ok txReceipt) ->
-            if not prevModel.busyWithTxChain then
-                let
-                    _ =
-                        Debug.log "Not ready to catch this mined tx. Did you somehow cancel the tx chain?" ""
-                in
-                justModelUpdate prevModel
+            case prevModel.createParameters of
+                Nothing ->
+                    let
+                        _ =
+                            Debug.log "Can't find valid contract parameters. What the heck?????" ""
+                    in
+                    justModelUpdate prevModel
 
-            else
-                case prevModel.createParameters of
-                    Nothing ->
-                        let
-                            _ =
-                                Debug.log "Can't find valid contract parameters. What the heck?????" ""
-                        in
-                        justModelUpdate prevModel
+                Just createParameters ->
+                    let
+                        txParams =
+                            Contracts.Wrappers.openTrade
+                                createParameters
+                                |> Eth.toSend
 
-                    Just createParameters ->
-                        let
-                            txParams =
-                                Contracts.Wrappers.openTrade
-                                    createParameters
-                                    |> Eth.toSend
+                        customSend =
+                            { onMined = Just ( CreateMined, Nothing )
+                            , onSign = Just CreateSigned
+                            , onBroadcast = Nothing
+                            }
 
-                            customSend =
-                                { onMined = Just ( CreateMined, Nothing )
-                                , onSign = Nothing
-                                , onBroadcast = Nothing
-                                }
-                        in
-                        { model = prevModel
-                        , cmd = Cmd.none
-                        , chainCmd = ChainCmd.custom customSend txParams
-                        , newRoute = Nothing
-                        }
+                        newModel =
+                            { prevModel | txChainStatus = CreateNeedsSig }
+                    in
+                    { model = newModel
+                    , cmd = Cmd.none
+                    , chainCmd = ChainCmd.custom customSend txParams
+                    , newRoute = Nothing
+                    }
+
+        CreateSigned result ->
+            case result of
+                Ok txHash ->
+                    justModelUpdate { prevModel | txChainStatus = CreateMining txHash }
+
+                Err e ->
+                    let
+                        _ =
+                            Debug.log "Error encountered when getting sig from user" e
+                    in
+                    justModelUpdate { prevModel | txChainStatus = TxError e }
 
         CreateMined (Err errstr) ->
             let

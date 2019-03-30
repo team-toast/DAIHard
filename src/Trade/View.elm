@@ -364,7 +364,7 @@ phaseElement viewPhase trade maybeUserInfo expanded currentTime =
                 , Element.width Element.fill
                 , Element.height Element.fill
                 ]
-                (EH.comingSoonMsg [Element.Font.size 16 ] "Phase description coming soon!")
+                (EH.comingSoonMsg [ Element.Font.size 16 ] "Phase description coming soon!")
 
         borderEl =
             Element.el
@@ -499,6 +499,7 @@ chatOverlayElement model =
     in
     if model.showChatHistory then
         EH.modal
+            (Element.rgba 0 0 0 0.6)
             (Element.row
                 [ Element.height Element.fill
                 , Element.spacing 50
