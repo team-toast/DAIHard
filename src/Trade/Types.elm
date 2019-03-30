@@ -27,11 +27,12 @@ type alias Model =
     , userInfo : Maybe UserInfo
     , trade : CTypes.Trade
     , stats : StatsModel
-    , eventSentry : EventSentry Msg
+    , expandedPhase : CTypes.Phase
     , chatHistoryModel : Maybe ChatHistory.Model
     , eventsWaitingForChatHistory : List ( Int, CTypes.DAIHardEvent )
     , showChatHistory : Bool
     , secureCommInfo : SecureCommInfo
+    , eventSentry : EventSentry Msg
     }
 
 
@@ -43,6 +44,7 @@ type Msg
     | PreCommitApproveMined (Result String Eth.Types.TxReceipt)
     | ContractActionMined (Result String Eth.Types.TxReceipt)
     | Refresh Time.Posix
+    | ExpandPhase CTypes.Phase
     | ToggleChat
     | EventLogFetched Eth.Types.Log
     | EventSentryMsg EventSentry.Msg

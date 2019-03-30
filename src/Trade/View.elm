@@ -38,7 +38,7 @@ root time model =
                     , Element.paddingXY 40 0
                     , Element.spacing 40
                     ]
-                    [ phasesElement tradeInfo model.userInfo time
+                    [ phasesElement tradeInfo model.expandedPhase model.userInfo time
                     , PaymentMethods.viewList tradeInfo.paymentMethods Nothing
                     ]
                 ]
@@ -235,8 +235,8 @@ actionButtonsElement trade userInfo =
         |> Element.map ContractAction
 
 
-phasesElement : FullTradeInfo -> Maybe UserInfo -> Time.Posix -> Element Msg
-phasesElement trade maybeUserInfo currentTime =
+phasesElement : FullTradeInfo -> CTypes.Phase -> Maybe UserInfo -> Time.Posix -> Element Msg
+phasesElement trade expandedPhase maybeUserInfo currentTime =
     Element.row
         [ Element.width Element.fill
         , Element.height <| Element.px 360
@@ -263,9 +263,9 @@ phasesElement trade maybeUserInfo currentTime =
                 ]
 
             _ ->
-                [ phaseElement CTypes.Open trade maybeUserInfo currentTime
-                , phaseElement CTypes.Committed trade maybeUserInfo currentTime
-                , phaseElement CTypes.Claimed trade maybeUserInfo currentTime
+                [ phaseElement CTypes.Open trade maybeUserInfo (expandedPhase == CTypes.Open) currentTime
+                , phaseElement CTypes.Committed trade maybeUserInfo (expandedPhase == CTypes.Committed) currentTime
+                , phaseElement CTypes.Claimed trade maybeUserInfo (expandedPhase == CTypes.Claimed) currentTime
                 ]
 
 
@@ -286,8 +286,8 @@ commonPhaseAttributes =
     ]
 
 
-phaseElement : CTypes.Phase -> FullTradeInfo -> Maybe UserInfo -> Time.Posix -> Element Msg
-phaseElement viewPhase trade maybeUserInfo currentTime =
+phaseElement : CTypes.Phase -> FullTradeInfo -> Maybe UserInfo -> Bool -> Time.Posix -> Element Msg
+phaseElement viewPhase trade maybeUserInfo expanded currentTime =
     let
         ( viewPhaseInt, tradePhaseInt ) =
             ( CTypes.phaseToInt viewPhase
@@ -347,12 +347,66 @@ phaseElement viewPhase trade maybeUserInfo currentTime =
 
                 CTypes.Created ->
                     "ERROR! You shouldn't be seeing this!"
+
+        firstEl =
+            Element.el
+                [ Element.padding 30 ]
+            <|
+                phaseStatusElement
+                    Images.none
+                    titleElement
+                    displayInterval
+                    phaseState
+
+        secondEl =
+            Element.el
+                [ Element.padding 30
+                , Element.width Element.fill
+                , Element.height Element.fill
+                ]
+                (EH.comingSoonMsg [Element.Font.size 16 ] "Phase description coming soon!")
+
+        borderEl =
+            Element.el
+                [ Element.height Element.fill
+                , Element.width <| Element.px 1
+                , Element.Background.color <|
+                    case phaseState of
+                        Active ->
+                            Element.rgb 0 0 1
+
+                        _ ->
+                            EH.lightGray
+                ]
+                Element.none
     in
-    phaseStatusElement
-        Images.none
-        titleElement
-        displayInterval
-        phaseState
+    if expanded then
+        Element.row
+            (commonPhaseAttributes
+                ++ (if phaseState == Active then
+                        activePhaseAttributes
+
+                    else
+                        inactivePhaseAttributes
+                   )
+                ++ [ Element.width Element.fill ]
+            )
+            [ firstEl, borderEl, secondEl ]
+
+    else
+        Element.row
+            (commonPhaseAttributes
+                ++ (if phaseState == Active then
+                        activePhaseAttributes
+
+                    else
+                        inactivePhaseAttributes
+                   )
+                ++ [ Element.pointer
+                   , Element.Events.onClick <| ExpandPhase viewPhase
+                   ]
+            )
+            [ firstEl ]
 
 
 phaseStatusElement : Image -> String -> Time.Posix -> PhaseState -> Element Msg
@@ -389,18 +443,10 @@ phaseStatusElement icon title interval phaseState =
                 (Element.text <| phaseStateString phaseState)
     in
     Element.el
-        ([ Element.height <| Element.px 360
-         , Element.width <| Element.px 270
-         , Element.padding 30
-         ]
-            ++ commonPhaseAttributes
-            ++ (if phaseState == Active then
-                    activePhaseAttributes
-
-                else
-                    inactivePhaseAttributes
-               )
-        )
+        [ Element.height <| Element.px 360
+        , Element.width <| Element.px 270
+        , Element.padding 30
+        ]
     <|
         Element.column
             [ Element.centerX
