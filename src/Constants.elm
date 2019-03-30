@@ -1,5 +1,6 @@
 module Constants exposing (daiAddress, factoryAddress, tokenDecimals)
 
+import Eth.Net
 import Eth.Types exposing (Address)
 import Eth.Utils
 
@@ -14,3 +15,8 @@ tokenDecimals =
 
 factoryAddress =
     Eth.Utils.unsafeToAddress "0x54382c6528e55b812117c1b54e04d149585e462d"
+
+
+
+-- networkId =
+--     Eth.Net.Mainnet

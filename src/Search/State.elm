@@ -20,12 +20,9 @@ import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
-init : EthHelpers.EthNode -> Maybe CTypes.OpenMode -> Maybe UserInfo -> ( Model, Cmd Msg )
-init ethNode maybeOpenMode userInfo =
+init : EthHelpers.EthNode -> SearchProfile -> Maybe UserInfo -> ( Model, Cmd Msg )
+init ethNode searchProfile userInfo =
     let
-        openMode =
-            maybeOpenMode |> Maybe.withDefault CTypes.SellerOpened
-
         ( eventSentry, sentryCmd ) =
             EventSentry.init
                 EventSentryMsg
@@ -35,12 +32,12 @@ init ethNode maybeOpenMode userInfo =
       , eventSentry = eventSentry
       , userInfo = userInfo
       , numTrades = Nothing
-      , openMode = openMode
+      , searchProfile = searchProfile
       , trades = Array.empty
       , inputs = initialInputs
       , showCurrencyDropdown = False
       , query = initialQuery
-      , filterFunc = initialFilterFunc openMode
+      , filterFunc = initialFilterFunc searchProfile
       , sortFunc = initialSortFunc
       }
     , Cmd.batch
@@ -50,12 +47,18 @@ init ethNode maybeOpenMode userInfo =
     )
 
 
-initialFilterFunc : CTypes.OpenMode -> (Time.Posix -> CTypes.FullTradeInfo -> Bool)
-initialFilterFunc openMode =
-    \time trade ->
-        (trade.state.phase == CTypes.Open)
-            && (trade.parameters.openMode == openMode)
-            && (TimeHelpers.compare trade.derived.phaseEndTime time == GT)
+initialFilterFunc : SearchProfile -> (Time.Posix -> CTypes.FullTradeInfo -> Bool)
+initialFilterFunc searchProfile =
+    case searchProfile of
+        OpenOffers openMode ->
+            \time trade ->
+                (trade.state.phase == CTypes.Open)
+                    && (trade.parameters.openMode == openMode)
+                    && (TimeHelpers.compare trade.derived.phaseEndTime time == GT)
+
+        AgentHistory address ->
+            \time trade ->
+                trade.parameters.initiatorAddress == address || trade.state.responder == Just address
 
 
 initialSortFunc : CTypes.FullTradeInfo -> CTypes.FullTradeInfo -> Order
@@ -248,11 +251,20 @@ update msg model =
             , Nothing
             )
 
-        ChangeOfferType openMode ->
-            ( { model | openMode = openMode } |> applyInputs
-            , Cmd.none
-            , Nothing
-            )
+        ChangeOfferType newOpenMode ->
+            case model.searchProfile of
+                OpenOffers openMode ->
+                    ( { model | searchProfile = OpenOffers openMode } |> applyInputs
+                    , Cmd.none
+                    , Nothing
+                    )
+
+                AgentHistory _ ->
+                    let
+                        _ =
+                            Debug.log "Can't change the openMode while looking at an agent's history." ""
+                    in
+                    ( model, Cmd.none, Nothing )
 
         MinDaiChanged input ->
             ( { model | inputs = model.inputs |> updateMinDaiInput input }
@@ -498,7 +510,7 @@ applyInputs model =
                    )
 
         newFilterFunc time trade =
-            initialFilterFunc model.openMode time trade
+            initialFilterFunc model.searchProfile time trade
                 && searchTest time trade
                 && daiTest trade
                 && fiatTest trade
@@ -513,7 +525,7 @@ resetSearch : Model -> Model
 resetSearch model =
     { model
         | sortFunc = initialSortFunc
-        , filterFunc = initialFilterFunc model.openMode
+        , filterFunc = initialFilterFunc model.searchProfile
         , inputs = initialInputs
         , query = initialQuery
     }

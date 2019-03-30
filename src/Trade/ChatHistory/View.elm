@@ -20,17 +20,34 @@ window model =
         , Element.Border.rounded 8
         , EH.subtleShadow
         , Element.padding 20
-        , Element.width Element.fill
+        , Element.width <| Element.px 600
+        , Element.height <| Element.shrink
         ]
         (historyAndCommsElement model)
 
 
 historyAndCommsElement : Model -> Element.Element Msg
 historyAndCommsElement model =
-    Element.column [ Element.width Element.fill, Element.spacing 20 ]
-        [ Element.el [ Element.centerX, Element.Font.size 36 ]
-            (Element.text "Chat")
-        , Element.column [ Element.width Element.fill, Element.spacing 10, Element.Border.width 1, Element.Border.rounded 5, Element.padding 10 ]
+    Element.column
+        [ Element.width Element.fill
+        , Element.height Element.shrink
+        , Element.spacing 20
+        ]
+        [ Element.column
+            [ Element.centerX
+            , Element.height Element.fill
+            ]
+            [ Element.el [ Element.Font.size 36 ] <| Element.text "Chat"
+            , EH.comingSoonMsg [] "Visual overhaul of chat coming soon!"
+            ]
+        , Element.column
+            [ Element.width Element.fill
+            , Element.height Element.shrink
+            , Element.spacing 10
+            , Element.Border.width 1
+            , Element.Border.rounded 5
+            , Element.padding 10
+            ]
             [ historyElement
                 model.userRole
                 (model.history |> Array.toList |> List.sortBy .blocknum)
@@ -43,11 +60,22 @@ historyElement : BuyerOrSeller -> List Event -> Element.Element Msg
 historyElement userRole messages =
     case messages of
         [] ->
-            Element.el [ Element.centerX, Element.Font.color (Element.rgb 0.5 0.5 0.5), Element.Font.italic ]
+            Element.el
+                [ Element.width Element.fill
+                , Element.height <| Element.px 600
+                , Element.centerX
+                , Element.Font.color (Element.rgb 0.5 0.5 0.5)
+                , Element.Font.italic
+                ]
                 (Element.text "no messages found.")
 
         messageList ->
-            Element.column [ Element.width Element.fill, Element.spacing 10 ]
+            Element.column
+                [ Element.width Element.fill
+                , Element.height <| Element.px 600
+                , Element.spacing 10
+                , Element.scrollbarY
+                ]
                 (messageList
                     |> List.map (renderEvent userRole)
                 )

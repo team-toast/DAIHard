@@ -1,10 +1,11 @@
-module EthHelpers exposing (EthNode, addressIfNot0x0, ethNode, getLogAt, logBadFetchResultMaybe)
+module EthHelpers exposing (EthNode, addressIfNot0x0, ethNode, getLogAt, logBadFetchResultMaybe, makeEtherscanTxUrl)
 
 import Array
 import BigInt exposing (BigInt)
+import Constants exposing (..)
 import Eth.Net as Net exposing (NetworkId(..))
 import Eth.Sentry.Tx as TxSentry
-import Eth.Types exposing (Address, HttpProvider, WebsocketProvider)
+import Eth.Types exposing (Address, HttpProvider, TxHash, WebsocketProvider)
 import Eth.Utils
 
 
@@ -59,3 +60,22 @@ logBadFetchResultMaybe fetchResult =
 
         Err _ ->
             Debug.log "can't fetch from Ethereum: " fetchResult
+
+
+makeEtherscanTxUrl : NetworkId -> TxHash -> String
+makeEtherscanTxUrl networkId txHash =
+    case networkId of
+        Mainnet ->
+            "https://etherscan.io/tx/" ++ Eth.Utils.txHashToString txHash
+
+        Ropsten ->
+            "https://ropsten.etherscan.io/tx/" ++ Eth.Utils.txHashToString txHash
+
+        Kovan ->
+            "https://kovan.etherscan.io/tx/" ++ Eth.Utils.txHashToString txHash
+
+        Rinkeby ->
+            "https://rinkeby.etherscan.io/tx/" ++ Eth.Utils.txHashToString txHash
+
+        _ ->
+            "Don't recognize that networkId..."

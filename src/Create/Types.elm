@@ -1,4 +1,4 @@
-module Create.Types exposing (Inputs, Model, Msg(..), UpdateResult, interpretMarginString, justModelUpdate)
+module Create.Types exposing (Inputs, Model, Msg(..), TxChainStatus(..), UpdateResult, interpretMarginString, justModelUpdate)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -6,7 +6,7 @@ import CommonTypes exposing (UserInfo)
 import Contracts.Generated.DAIHardFactory as DHF
 import Contracts.Types as CTypes
 import Create.PMWizard.Types as PMWizard
-import Eth.Types exposing (Address, TxReceipt)
+import Eth.Types exposing (Address, TxHash, TxReceipt)
 import EthHelpers exposing (EthNode)
 import Http
 import PaymentMethods exposing (PaymentMethod)
@@ -22,20 +22,7 @@ type alias Model =
     , showFiatTypeDropdown : Bool
     , addPMModal : Maybe PMWizard.Model
     , createParameters : Maybe CTypes.CreateParameters
-    , busyWithTxChain : Bool
-    }
-
-
-type alias Inputs =
-    { openMode : CTypes.OpenMode
-    , daiAmount : String
-    , fiatType : String
-    , fiatAmount : String
-    , margin : String
-    , paymentMethods : List PaymentMethod
-    , autorecallInterval : Time.Posix
-    , autoabortInterval : Time.Posix
-    , autoreleaseInterval : Time.Posix
+    , txChainStatus : TxChainStatus
     }
 
 
@@ -54,10 +41,35 @@ type Msg
     | ClearDraft
     | BeginCreateProcess
     | ExtraFeesFetched (Result Http.Error DHF.GetExtraFees)
+    | ApproveSigned (Result String TxHash)
     | ApproveMined (Result String TxReceipt)
+    | CreateSigned (Result String TxHash)
     | CreateMined (Result String TxReceipt)
     | NoOp
     | PMWizardMsg PMWizard.Msg
+
+
+type TxChainStatus
+    = NoTx
+    | FetchingFees
+    | ApproveNeedsSig
+    | ApproveMining TxHash
+    | CreateNeedsSig
+    | CreateMining TxHash
+    | TxError String
+
+
+type alias Inputs =
+    { openMode : CTypes.OpenMode
+    , daiAmount : String
+    , fiatType : String
+    , fiatAmount : String
+    , margin : String
+    , paymentMethods : List PaymentMethod
+    , autorecallInterval : Time.Posix
+    , autoabortInterval : Time.Posix
+    , autoreleaseInterval : Time.Posix
+    }
 
 
 type alias UpdateResult =

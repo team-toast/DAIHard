@@ -33,20 +33,16 @@ init flags url key =
         txSentry =
             TxSentry.init ( txOut, txIn ) TxSentryMsg node.http
     in
-        updateFromUrl
-            { key = key
-            , time = Time.millisToPosix 0
-            , node = node
-            , txSentry = txSentry
-            , userAddress = Nothing
-            , userInfo = Nothing
-            , submodel = HomeModel
-            }
-            url
-
-
-
-
+    updateFromUrl
+        { key = key
+        , time = Time.millisToPosix 0
+        , node = node
+        , txSentry = txSentry
+        , userAddress = Nothing
+        , userInfo = Nothing
+        , submodel = HomeModel
+        }
+        url
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -104,7 +100,7 @@ updateValidModel msg model =
                     genPrivkey <|
                         encodeGenPrivkeyArgs
                             address
-                            "Deriving keypair for encrypted communication on TOASTYTRADE. Never sign this on any other site!"
+                            "Deriving keypair for encrypted communication on DAIHARD. Never sign this on any other site!"
             )
 
         UserPubkeySet commPubkeyValue ->
@@ -300,10 +296,10 @@ gotoRoute model route =
                         ]
                     )
 
-        Routing.Search openMode ->
+        Routing.Search searchProfile ->
             let
                 ( searchModel, searchCmd ) =
-                    Search.State.init model.node openMode model.userInfo
+                    Search.State.init model.node searchProfile model.userInfo
             in
             ( Running
                 { model

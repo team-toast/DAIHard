@@ -1,5 +1,6 @@
 module ElementHelpers exposing
-    ( black
+    ( activePhaseBackgroundColor
+    , black
     , blue
     , blueButton
     , bulletPointString
@@ -40,6 +41,7 @@ module ElementHelpers exposing
     , testBorderStyles
     , textInputWithElement
     , tokenValue
+    , txProcessModal
     , white
     , withHeader
     , yellow
@@ -114,6 +116,10 @@ mediumGray =
 
 darkGray =
     Element.rgb255 150 150 150
+
+
+activePhaseBackgroundColor =
+    Element.rgb255 9 32 107
 
 
 permanentTextColor =
@@ -851,10 +857,10 @@ marginFloatToConciseUnsignedString f =
     preDecimalString ++ decimalString ++ "%"
 
 
-modal : Element msg -> Element msg
-modal =
+modal : Element.Color -> Element msg -> Element msg
+modal overlayColor =
     Element.el
-        [ Element.Background.color <| Element.rgba 0.0 0.0 0.0 0.6
+        [ Element.Background.color overlayColor --<| Element.rgba 0.0 0.0 0.0 0.6
         , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
         , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
         , Element.htmlAttribute <| Html.Attributes.style "top" "0"
@@ -862,6 +868,33 @@ modal =
         , Element.htmlAttribute <| Html.Attributes.style "width" "100%"
         , Element.htmlAttribute <| Html.Attributes.style "height" "100%"
         ]
+
+
+txProcessModal : List (Element msg) -> Element msg
+txProcessModal textLines =
+    (modal <| Element.rgba 0 0 0.3 0.6)
+        (textLines
+            |> List.map
+                (\line ->
+                    Element.paragraph
+                        [ Element.centerX
+                        , Element.centerY
+                        , Element.Font.size 20
+                        , Element.Font.semiBold
+                        , Element.Font.color white
+                        , Element.Font.center
+                        ]
+                        [ line ]
+                )
+            |> Element.column
+                [ Element.spacing 10
+                , Element.centerX
+                , Element.centerY
+                , Element.Background.color <| Element.rgba 0 0 0 0.5
+                , Element.Border.rounded 8
+                , Element.padding 20
+                ]
+        )
 
 
 comingSoonMsg : List (Attribute msg) -> String -> Element msg
