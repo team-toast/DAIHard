@@ -33,16 +33,15 @@ init flags url key =
         txSentry =
             TxSentry.init ( txOut, txIn ) TxSentryMsg node.http
     in
-    updateFromUrl
-        { key = key
-        , time = Time.millisToPosix 0
-        , node = node
-        , txSentry = txSentry
-        , userAddress = Nothing
-        , userInfo = Nothing
-        , submodel = HomeModel
-        }
-        url
+    { key = key
+    , time = Time.millisToPosix 0
+    , node = node
+    , txSentry = txSentry
+    , userAddress = Nothing
+    , userInfo = Nothing
+    , submodel = HomeModel
+    }
+        |> updateFromUrl url
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -79,10 +78,16 @@ updateValidModel msg model =
             ( Running model, cmd )
 
         UrlChanged url ->
-            ( Running model, Cmd.none )
+            model |> updateFromUrl url
 
         GotoRoute route ->
-            gotoRoute model route
+            let
+                urlString =
+                    Routing.routeToString route
+            in
+            ( Running model
+            , Browser.Navigation.pushUrl model.key urlString
+            )
 
         Tick newTime ->
             ( Running { model | time = newTime }, Cmd.none )
@@ -231,8 +236,8 @@ encodeGenPrivkeyArgs address signMsg =
         ]
 
 
-updateFromUrl : ValidModel -> Url -> ( Model, Cmd Msg )
-updateFromUrl model url =
+updateFromUrl : Url -> ValidModel -> ( Model, Cmd Msg )
+updateFromUrl url model =
     gotoRoute model (Routing.urlToRoute url)
 
 
@@ -248,7 +253,7 @@ gotoRoute model route =
                 { model
                     | submodel = HomeModel
                 }
-            , Browser.Navigation.pushUrl model.key newUrlString
+            , Cmd.none
             )
 
         Routing.Create ->
@@ -267,14 +272,15 @@ gotoRoute model route =
             , Cmd.batch
                 [ Cmd.map CreateMsg createCmd
                 , chainCmd
-                , Browser.Navigation.pushUrl model.key newUrlString
                 ]
             )
 
         Routing.Trade maybeID ->
             case maybeID of
                 Nothing ->
-                    ( Failed "Error interpreting url", Browser.Navigation.pushUrl model.key newUrlString )
+                    ( Failed "Error interpreting url"
+                    , Cmd.none
+                    )
 
                 Just id ->
                     let
@@ -292,7 +298,6 @@ gotoRoute model route =
                     , Cmd.batch
                         [ Cmd.map TradeMsg tradeCmd
                         , chainCmd
-                        , Browser.Navigation.pushUrl model.key newUrlString
                         ]
                     )
 
@@ -307,7 +312,6 @@ gotoRoute model route =
                 }
             , Cmd.batch
                 [ Cmd.map SearchMsg searchCmd
-                , Browser.Navigation.pushUrl model.key newUrlString
                 ]
             )
 
