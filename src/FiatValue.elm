@@ -27,7 +27,7 @@ currencyTypes =
                 ( typeString
                 , ( typeChar
                   , Images.image
-                        { src = "static/img/currencies/" ++ typeString ++ ".png"
+                        { src = "/static/img/currencies/" ++ typeString ++ ".png"
                         , description = typeString
                         }
                   )

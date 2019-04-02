@@ -10,9 +10,9 @@ import Element.Events
 import Element.Font
 import Element.Input
 import ElementHelpers as EH
+import Marketplace.Types
+import Marketplace.View
 import Routing
-import Search.Types
-import Search.View
 import Trade.View
 import Types exposing (..)
 
@@ -86,9 +86,9 @@ headerContent model =
             [ logoElement
             , headerLink
                 "Marketplace"
-                (GotoRoute <| Routing.Search <| Search.Types.OpenOffers CTypes.SellerOpened)
+                (GotoRoute <| Routing.Marketplace CTypes.SellerOpened)
                 (case model.submodel of
-                    SearchModel _ ->
+                    MarketplaceModel _ ->
                         True
 
                     _ ->
@@ -104,15 +104,15 @@ headerContent model =
                     _ ->
                         False
                 )
-            , case model.userInfo of
-                Just userInfo ->
-                    headerLink
-                        "My Offers"
-                        (GotoRoute <| Routing.Search <| Search.Types.AgentHistory userInfo.address)
-                        False
 
-                Nothing ->
-                    Element.none
+            -- , case model.userInfo of
+            --     Just userInfo ->
+            --         headerLink
+            --             "My Offers"
+            --             (GotoRoute <| Routing.Marketplace <| Marketplace.Types.AgentHistory userInfo.address)
+            --             False
+            --     Nothing ->
+            --         Element.none
             ]
         )
 
@@ -197,6 +197,6 @@ subModelElement model =
             TradeModel tradeModel ->
                 Element.map TradeMsg (Trade.View.root model.time tradeModel)
 
-            SearchModel searchModel ->
-                Element.map SearchMsg (Search.View.root model.time searchModel)
+            MarketplaceModel marketplaceModel ->
+                Element.map MarketplaceMsg (Marketplace.View.root model.time marketplaceModel)
         )

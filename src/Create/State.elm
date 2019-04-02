@@ -353,7 +353,7 @@ update msg prevModel =
                     { model = prevModel
                     , cmd = Cmd.none
                     , chainCmd = ChainCmd.none
-                    , newRoute = Just (Routing.Trade (Just id))
+                    , newRoute = Just (Routing.Trade id)
                     }
 
                 Nothing ->
