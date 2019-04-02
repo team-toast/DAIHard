@@ -81,12 +81,8 @@ updateValidModel msg model =
             model |> updateFromUrl url
 
         GotoRoute route ->
-            let
-                urlString =
-                    Routing.routeToString route
-            in
             ( Running model
-            , Browser.Navigation.pushUrl model.key urlString
+            , beginRouteChange model.key route
             )
 
         Tick newTime ->
@@ -166,7 +162,9 @@ updateValidModel msg model =
                             )
 
                         Just route ->
-                            gotoRoute model route
+                            ( Running model
+                            , beginRouteChange model.key route
+                            )
 
                 _ ->
                     ( Running model, Cmd.none )
@@ -209,7 +207,9 @@ updateValidModel msg model =
                             )
 
                         Just route ->
-                            gotoRoute model route
+                            ( Running model
+                            , beginRouteChange model.key route
+                            )
 
                 _ ->
                     ( Running model, Cmd.none )
@@ -234,6 +234,11 @@ encodeGenPrivkeyArgs address signMsg =
         [ ( "address", Json.Encode.string <| Eth.Utils.addressToString address )
         , ( "signSeedMsg", Json.Encode.string signMsg )
         ]
+
+
+beginRouteChange : Browser.Navigation.Key -> Routing.Route -> Cmd Msg
+beginRouteChange key route =
+    Browser.Navigation.pushUrl key (Routing.routeToString route)
 
 
 updateFromUrl : Url -> ValidModel -> ( Model, Cmd Msg )
