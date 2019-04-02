@@ -97,12 +97,6 @@ type alias State =
     }
 
 
-type alias DerivedValues =
-    { phaseEndTime : Time.Posix
-    , margin : Maybe Float
-    }
-
-
 type DAIHardEvent
     = OpenedEvent DHT.Opened
     | CommittedEvent DHT.Committed
@@ -143,6 +137,12 @@ type alias FullTradeInfo =
     , state : State
     , derived : DerivedValues
     , paymentMethods : List PaymentMethod
+    }
+
+
+type alias DerivedValues =
+    { phaseEndTime : Time.Posix
+    , margin : Maybe Float
     }
 
 

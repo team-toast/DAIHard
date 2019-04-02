@@ -1,20 +1,20 @@
 module Routing exposing (Route(..), routeToString, urlToRoute)
 
 import BigInt exposing (BigInt)
-import Contracts.Types
+import Contracts.Types as CTypes
 import Eth.Utils
-import Search.Types
+import Marketplace.Types
 import Url exposing (Url)
 import Url.Builder
 import Url.Parser exposing ((</>), (<?>), Parser)
-import Url.Parser.Query
 
 
 type Route
     = Home
     | Create
-    | Trade (Maybe Int)
-    | Search Search.Types.SearchProfile
+    | Trade Int
+    | Marketplace CTypes.OpenMode
+    | MyTrades
     | NotFound
 
 
@@ -24,32 +24,18 @@ routeParser =
         </> Url.Parser.oneOf
                 [ Url.Parser.map Home Url.Parser.top
                 , Url.Parser.map Create (Url.Parser.s "create")
-                , Url.Parser.map Trade (Url.Parser.s "trade" <?> Url.Parser.Query.int "id")
-                , Url.Parser.map Search (Url.Parser.s "search" <?> typeParser)
+                , Url.Parser.map Trade (Url.Parser.s "trade" </> Url.Parser.int)
+                , Url.Parser.map Marketplace (Url.Parser.s "marketplace" </> openModeParser)
+                , Url.Parser.map MyTrades (Url.Parser.s "myoffers")
                 ]
 
 
-typeParser : Url.Parser.Query.Parser Search.Types.SearchProfile
-typeParser =
-    Url.Parser.Query.custom "type"
-        (\l ->
-            case l of
-                [] ->
-                    Search.Types.OpenOffers Contracts.Types.BuyerOpened
-
-                s :: [] ->
-                    if s == "buys" then
-                        Search.Types.OpenOffers Contracts.Types.BuyerOpened
-
-                    else if s == "sells" then
-                        Search.Types.OpenOffers Contracts.Types.SellerOpened
-
-                    else
-                        Search.Types.AgentHistory <| Eth.Utils.unsafeToAddress "0xc835c3dCfD49Bb7b3E4E90532Db48e270160f946"
-
-                multiple ->
-                    Search.Types.OpenOffers Contracts.Types.BuyerOpened
-        )
+openModeParser : Parser (CTypes.OpenMode -> a) a
+openModeParser =
+    Url.Parser.oneOf
+        [ Url.Parser.map CTypes.BuyerOpened (Url.Parser.s "buys")
+        , Url.Parser.map CTypes.SellerOpened (Url.Parser.s "sells")
+        ]
 
 
 urlToRoute : Url -> Route
@@ -66,31 +52,24 @@ routeToString route =
         Create ->
             Url.Builder.absolute [ "DAIHard", "create" ] []
 
-        Trade maybeId ->
-            Url.Builder.absolute [ "DAIHard", "trade" ]
-                (case maybeId of
-                    Nothing ->
-                        []
+        Trade id ->
+            Url.Builder.absolute [ "DAIHard", "trade", String.fromInt id ] []
 
-                    Just id ->
-                        [ Url.Builder.string "id" <| String.fromInt id ]
-                )
+        Marketplace openMode ->
+            Url.Builder.absolute [ "DAIHard", "marketplace", openModeBuilder openMode ] []
 
-        Search searchProfile ->
-            Url.Builder.absolute [ "DAIHard", "search" ] <| buildSearchQueryParameters searchProfile
+        MyTrades ->
+            Url.Builder.absolute [ "DAIHard", "myoffers" ] []
 
         NotFound ->
             Url.Builder.absolute [] []
 
 
-buildSearchQueryParameters : Search.Types.SearchProfile -> List Url.Builder.QueryParameter
-buildSearchQueryParameters searchProfile =
-    case searchProfile of
-        Search.Types.OpenOffers Contracts.Types.BuyerOpened ->
-            [ Url.Builder.string "type" "buys" ]
+openModeBuilder : CTypes.OpenMode -> String
+openModeBuilder openMode =
+    case openMode of
+        CTypes.BuyerOpened ->
+            "buys"
 
-        Search.Types.OpenOffers Contracts.Types.SellerOpened ->
-            [ Url.Builder.string "type" "sells" ]
-
-        _ ->
-            []
+        CTypes.SellerOpened ->
+            "sells"

@@ -1,4 +1,4 @@
-module Search.View exposing (root)
+module Marketplace.View exposing (root)
 
 import Array exposing (Array)
 import CommonTypes exposing (..)
@@ -14,10 +14,11 @@ import FiatValue exposing (FiatValue)
 import Html.Events.Extra
 import Images exposing (Image)
 import Margin
+import Marketplace.Types exposing (..)
 import PaymentMethods exposing (PaymentMethod)
-import Search.Types exposing (..)
 import Time
 import TimeHelpers
+import TradeCache.State as TradeCache
 
 
 root : Time.Posix -> Model -> Element Msg
@@ -34,18 +35,13 @@ root time model =
             , Element.spacing 10
             , Element.padding 30
             ]
-            [ case model.searchProfile of
-                OpenOffers openMode ->
-                    Element.el
-                        [ Element.alignTop
-                        ]
-                        (EH.withHeader
-                            "Offer Type"
-                            (typeToggleElement openMode)
-                        )
-
-                _ ->
-                    Element.none
+            [ Element.el
+                [ Element.alignTop
+                ]
+                (EH.withHeader
+                    "Offer Type"
+                    (typeToggleElement model.inputs.openMode)
+                )
             , searchInputElement model.inputs model.showCurrencyDropdown
             ]
         , resultsElement time model
@@ -165,21 +161,16 @@ resultsElement : Time.Posix -> Model -> Element Msg
 resultsElement time model =
     let
         visibleTrades =
-            model.trades
-                |> Array.toList
-                |> getLoadedTrades
+            TradeCache.loadedTrades model.tradeCache
                 |> filterAndSortTrades time model.filterFunc model.sortFunc
 
         buyingOrSellingString =
-            case model.searchProfile of
-                OpenOffers CTypes.BuyerOpened ->
+            case model.inputs.openMode of
+                CTypes.BuyerOpened ->
                     "Buying"
 
-                OpenOffers CTypes.SellerOpened ->
+                CTypes.SellerOpened ->
                     "Selling"
-
-                AgentHistory address ->
-                    "Trading"
     in
     Element.column
         [ Element.width Element.fill
@@ -209,17 +200,7 @@ resultsElement time model =
             ]
             (visibleTrades
                 |> List.map
-                    (let
-                        asBuyer =
-                            case model.searchProfile of
-                                OpenOffers openMode ->
-                                    openMode == CTypes.SellerOpened
-
-                                _ ->
-                                    False
-                     in
-                     viewTradeRow time asBuyer
-                    )
+                    (viewTradeRow time (model.inputs.openMode == CTypes.SellerOpened))
             )
         ]
 

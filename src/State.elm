@@ -15,8 +15,8 @@ import Eth.Utils
 import EthHelpers exposing (EthNode)
 import Json.Decode
 import Json.Encode
+import Marketplace.State
 import Routing
-import Search.State
 import Time
 import Trade.State
 import Types exposing (..)
@@ -195,17 +195,17 @@ updateValidModel msg model =
                 _ ->
                     ( Running model, Cmd.none )
 
-        SearchMsg searchMsg ->
+        MarketplaceMsg marketplaceMsg ->
             case model.submodel of
-                SearchModel searchModel ->
+                MarketplaceModel marketplaceModel ->
                     let
-                        ( newSearchModel, searchCmd, newRoute ) =
-                            Search.State.update searchMsg searchModel
+                        ( newMarketplaceModel, marketplaceCmd, newRoute ) =
+                            Marketplace.State.update marketplaceMsg marketplaceModel
                     in
                     case newRoute of
                         Nothing ->
-                            ( Running { model | submodel = SearchModel newSearchModel }
-                            , Cmd.map SearchMsg searchCmd
+                            ( Running { model | submodel = MarketplaceModel newMarketplaceModel }
+                            , Cmd.map MarketplaceMsg marketplaceCmd
                             )
 
                         Just route ->
@@ -275,45 +275,41 @@ gotoRoute model route =
                 ]
             )
 
-        Routing.Trade maybeID ->
-            case maybeID of
-                Nothing ->
-                    ( Failed "Error interpreting url"
-                    , Cmd.none
-                    )
-
-                Just id ->
-                    let
-                        ( tradeModel, tradeCmd, chainCmdOrder ) =
-                            Trade.State.init model.node model.userInfo id
-
-                        ( newTxSentry, chainCmd ) =
-                            ChainCmd.execute model.txSentry (ChainCmd.map TradeMsg chainCmdOrder)
-                    in
-                    ( Running
-                        { model
-                            | submodel = TradeModel tradeModel
-                            , txSentry = newTxSentry
-                        }
-                    , Cmd.batch
-                        [ Cmd.map TradeMsg tradeCmd
-                        , chainCmd
-                        ]
-                    )
-
-        Routing.Search searchProfile ->
+        Routing.Trade id ->
             let
-                ( searchModel, searchCmd ) =
-                    Search.State.init model.node searchProfile model.userInfo
+                ( tradeModel, tradeCmd, chainCmdOrder ) =
+                    Trade.State.init model.node model.userInfo id
+
+                ( newTxSentry, chainCmd ) =
+                    ChainCmd.execute model.txSentry (ChainCmd.map TradeMsg chainCmdOrder)
             in
             ( Running
                 { model
-                    | submodel = SearchModel searchModel
+                    | submodel = TradeModel tradeModel
+                    , txSentry = newTxSentry
                 }
             , Cmd.batch
-                [ Cmd.map SearchMsg searchCmd
+                [ Cmd.map TradeMsg tradeCmd
+                , chainCmd
                 ]
             )
+
+        Routing.Marketplace openMode ->
+            let
+                ( marketplaceModel, marketplaceCmd ) =
+                    Marketplace.State.init model.node model.userInfo openMode
+            in
+            ( Running
+                { model
+                    | submodel = MarketplaceModel marketplaceModel
+                }
+            , Cmd.batch
+                [ Cmd.map MarketplaceMsg marketplaceCmd
+                ]
+            )
+
+        Routing.MyTrades ->
+            ( Running model, Cmd.none )
 
         Routing.NotFound ->
             ( Failed "Don't understand that url...", Browser.Navigation.pushUrl model.key newUrlString )
@@ -331,8 +327,8 @@ updateSubmodelUserInfo userInfo submodel =
         TradeModel tradeModel ->
             TradeModel (tradeModel |> Trade.State.updateUserInfo userInfo)
 
-        SearchModel searchModel ->
-            SearchModel (searchModel |> Search.State.updateUserInfo userInfo)
+        MarketplaceModel marketplaceModel ->
+            MarketplaceModel (marketplaceModel |> Marketplace.State.updateUserInfo userInfo)
 
 
 subscriptions : Model -> Sub Msg
@@ -364,8 +360,8 @@ submodelSubscriptions model =
         TradeModel tradeModel ->
             Sub.map TradeMsg <| Trade.State.subscriptions tradeModel
 
-        SearchModel searchModel ->
-            Sub.map SearchMsg <| Search.State.subscriptions searchModel
+        MarketplaceModel marketplaceModel ->
+            Sub.map MarketplaceMsg <| Marketplace.State.subscriptions marketplaceModel
 
 
 port walletSentryPort : (Json.Decode.Value -> msg) -> Sub msg

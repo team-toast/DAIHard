@@ -10,8 +10,8 @@ import Eth.Sentry.Wallet as WalletSentry exposing (WalletSentry)
 import Eth.Types exposing (Address)
 import EthHelpers exposing (EthNode)
 import Json.Decode
+import Marketplace.Types
 import Routing
-import Search.Types
 import Time
 import Trade.Types
 import Url exposing (Url)
@@ -42,7 +42,7 @@ type Submodel
     = HomeModel
     | CreateModel Create.Types.Model
     | TradeModel Trade.Types.Model
-    | SearchModel Search.Types.Model
+    | MarketplaceModel Marketplace.Types.Model
 
 
 type Msg
@@ -55,6 +55,6 @@ type Msg
     | UserPubkeySet Json.Decode.Value
     | CreateMsg Create.Types.Msg
     | TradeMsg Trade.Types.Msg
-    | SearchMsg Search.Types.Msg
+    | MarketplaceMsg Marketplace.Types.Msg
     | Fail String
     | NoOp
