@@ -345,7 +345,7 @@ update msg prevModel =
         CreateMined (Ok txReceipt) ->
             let
                 maybeId =
-                    CTypes.txReceiptToCreatedToastytradeSellId prevModel.node.network txReceipt
+                    CTypes.txReceiptToCreatedTradeSellId prevModel.node.network txReceipt
                         |> Result.toMaybe
                         |> Maybe.andThen BigIntHelpers.toInt
             in

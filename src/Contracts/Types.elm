@@ -1,4 +1,4 @@
-module Contracts.Types exposing (CreateParameters, DAIHardEvent(..), FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), State, Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, getBuyerOrSeller, getInitiatorOrResponder, initiatorIsBuyerToOpenMode, initiatorOrResponderToBuyerOrSeller, openModeToInitiatorIsBuyer, partialTradeInfo, phaseToInt, phaseToString, txReceiptToCreatedToastytradeSellId, updateCreationInfo, updateParameters, updatePaymentMethods, updateState)
+module Contracts.Types exposing (CreateParameters, DAIHardEvent(..), FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), State, Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, getBuyerOrSeller, getInitiatorOrResponder, initiatorIsBuyerToOpenMode, initiatorOrResponderToBuyerOrSeller, openModeToInitiatorIsBuyer, partialTradeInfo, phaseToInt, phaseToString, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePaymentMethods, updateState)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
@@ -332,8 +332,8 @@ eventSigDecoder =
     Json.Decode.field "topics" (Json.Decode.index 0 Eth.Decode.hex)
 
 
-txReceiptToCreatedToastytradeSellId : Network -> Eth.Types.TxReceipt -> Result String BigInt
-txReceiptToCreatedToastytradeSellId network txReceipt =
+txReceiptToCreatedTradeSellId : Network -> Eth.Types.TxReceipt -> Result String BigInt
+txReceiptToCreatedTradeSellId network txReceipt =
     txReceipt.logs
         |> List.filter
             (\log ->

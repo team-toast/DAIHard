@@ -20,7 +20,7 @@ import Types exposing (..)
 
 root : Model -> Browser.Document Msg
 root maybeValidModel =
-    { title = "Toastytrade"
+    { title = "DAIHard"
     , body =
         [ let
             mainElementAttributes =
