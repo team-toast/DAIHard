@@ -22,12 +22,15 @@ type alias Model =
     , showFiatTypeDropdown : Bool
     , addPMModal : Maybe PMWizard.Model
     , createParameters : Maybe CTypes.CreateParameters
+    , depositAmount : Maybe BigInt
+    , allowance : Maybe BigInt
     , txChainStatus : TxChainStatus
     }
 
 
 type Msg
-    = ChangeType CTypes.OpenMode
+    = Refresh Time.Posix
+    | ChangeType CTypes.OpenMode
     | TradeAmountChanged String
     | FiatTypeChanged String
     | FiatAmountChanged String
@@ -40,9 +43,9 @@ type Msg
     | OpenPMWizard
     | ClearDraft
     | BeginCreateProcess
+    | AllowanceFetched (Result Http.Error BigInt)
     | ExtraFeesFetched (Result Http.Error DHF.GetExtraFees)
     | ApproveSigned (Result String TxHash)
-    | ApproveMined (Result String TxReceipt)
     | CreateSigned (Result String TxHash)
     | CreateMined (Result String TxReceipt)
     | NoOp

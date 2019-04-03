@@ -34,6 +34,8 @@ init node userInfo =
             , addPMModal = Nothing
             , createParameters = Nothing
             , txChainStatus = NoTx
+            , depositAmount = Nothing
+            , allowance = Nothing
             }
     in
     ( model |> updateInputs initialInputs
@@ -55,15 +57,44 @@ initialInputs =
     }
 
 
-updateUserInfo : Maybe UserInfo -> Model -> Model
+updateUserInfo : Maybe UserInfo -> Model -> ( Model, Cmd Msg )
 updateUserInfo userInfo model =
-    { model | userInfo = userInfo }
+    ( { model | userInfo = userInfo }
         |> updateInputs model.inputs
+    , case userInfo of
+        Just uInfo ->
+            Contracts.Wrappers.getAllowanceCmd
+                model.node
+                uInfo.address
+                AllowanceFetched
+
+        Nothing ->
+            Cmd.none
+    )
 
 
 update : Msg -> Model -> UpdateResult
 update msg prevModel =
     case msg of
+        Refresh time ->
+            case prevModel.userInfo of
+                Just userInfo ->
+                    let
+                        cmd =
+                            Contracts.Wrappers.getAllowanceCmd
+                                prevModel.node
+                                userInfo.address
+                                AllowanceFetched
+                    in
+                    UpdateResult
+                        prevModel
+                        cmd
+                        ChainCmd.none
+                        Nothing
+
+                _ ->
+                    justModelUpdate prevModel
+
         ChangeType openMode ->
             let
                 oldInputs =
@@ -237,13 +268,16 @@ update msg prevModel =
                                 |> Eth.toSend
 
                         customSend =
-                            { onMined = Just ( ApproveMined, Nothing )
+                            { onMined = Nothing
                             , onSign = Just ApproveSigned
                             , onBroadcast = Nothing
                             }
 
                         newModel =
-                            { prevModel | txChainStatus = ApproveNeedsSig }
+                            { prevModel
+                                | txChainStatus = ApproveNeedsSig
+                                , depositAmount = Just fullDepositAmount
+                            }
                     in
                     { model = newModel
                     , cmd = Cmd.none
@@ -284,44 +318,32 @@ update msg prevModel =
                     in
                     justModelUpdate { prevModel | txChainStatus = TxError e }
 
-        ApproveMined (Err errstr) ->
-            let
-                _ =
-                    Debug.log "'approve' call mining error" errstr
-            in
-            justModelUpdate prevModel
+        AllowanceFetched fetchResult ->
+            case fetchResult of
+                Ok allowance ->
+                    let
+                        newModel =
+                            { prevModel
+                                | allowance = Just allowance
+                            }
+                    in
+                    case ( newModel.txChainStatus, newModel.depositAmount ) of
+                        ( ApproveMining _, Just depositAmount ) ->
+                            if BigInt.compare allowance depositAmount /= LT then
+                                initiateCreateCall newModel
 
-        ApproveMined (Ok txReceipt) ->
-            case prevModel.createParameters of
-                Nothing ->
+                            else
+                                justModelUpdate newModel
+
+                        _ ->
+                            justModelUpdate newModel
+
+                Err e ->
                     let
                         _ =
-                            Debug.log "Can't find valid contract parameters. What the heck?????" ""
+                            Debug.log "Error fecthing allowance" e
                     in
                     justModelUpdate prevModel
-
-                Just createParameters ->
-                    let
-                        txParams =
-                            Contracts.Wrappers.openTrade
-                                prevModel.node.network
-                                createParameters
-                                |> Eth.toSend
-
-                        customSend =
-                            { onMined = Just ( CreateMined, Nothing )
-                            , onSign = Just CreateSigned
-                            , onBroadcast = Nothing
-                            }
-
-                        newModel =
-                            { prevModel | txChainStatus = CreateNeedsSig }
-                    in
-                    { model = newModel
-                    , cmd = Cmd.none
-                    , chainCmd = ChainCmd.custom customSend txParams
-                    , newRoute = Nothing
-                    }
 
         CreateSigned result ->
             case result of
@@ -407,6 +429,40 @@ update msg prevModel =
             justModelUpdate prevModel
 
 
+initiateCreateCall : Model -> UpdateResult
+initiateCreateCall model =
+    case model.createParameters of
+        Nothing ->
+            let
+                _ =
+                    Debug.log "Can't find valid contract parameters. What the heck?????" ""
+            in
+            justModelUpdate model
+
+        Just createParameters ->
+            let
+                txParams =
+                    Contracts.Wrappers.openTrade
+                        model.node.network
+                        createParameters
+                        |> Eth.toSend
+
+                customSend =
+                    { onMined = Just ( CreateMined, Nothing )
+                    , onSign = Just CreateSigned
+                    , onBroadcast = Nothing
+                    }
+
+                newModel =
+                    { model | txChainStatus = CreateNeedsSig }
+            in
+            { model = newModel
+            , cmd = Cmd.none
+            , chainCmd = ChainCmd.custom customSend txParams
+            , newRoute = Nothing
+            }
+
+
 updateInputs : Inputs -> Model -> Model
 updateInputs newInputs model =
     { model | inputs = newInputs }
@@ -481,4 +537,4 @@ recalculateMarginString daiAmountString fiatAmountString fiatType =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    Time.every 2000 Refresh
