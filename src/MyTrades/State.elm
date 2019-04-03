@@ -3,7 +3,7 @@ module MyTrades.State exposing (init, subscriptions, update, updateUserInfo)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import BigIntHelpers
-import CommonTypes exposing (UserInfo)
+import CommonTypes exposing (..)
 import Constants exposing (..)
 import Contracts.Types as CTypes
 import Contracts.Wrappers
@@ -31,31 +31,45 @@ init ethNode userInfo =
     ( { ethNode = ethNode
       , userInfo = userInfo
       , tradeCache = tradeCache
+      , viewUserRole = Seller
+      , viewPhase = CTypes.Committed
       }
     , tcCmd |> Cmd.map TradeCacheMsg
     )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, Maybe Routing.Route )
-update msg model =
+update msg prevModel =
     case msg of
+        ViewUserRoleChanged role ->
+            ( { prevModel | viewUserRole = role }
+            , Cmd.none
+            , Nothing
+            )
+
+        ViewPhaseChanged phase ->
+            ( { prevModel | viewPhase = phase }
+            , Cmd.none
+            , Nothing
+            )
+
         TradeClicked id ->
-            ( model, Cmd.none, Just (Routing.Trade id) )
+            ( prevModel, Cmd.none, Just (Routing.Trade id) )
 
         TradeCacheMsg tradeCacheMsg ->
             let
                 ( newTradeCache, tcCmd ) =
                     TradeCache.update
                         tradeCacheMsg
-                        model.tradeCache
+                        prevModel.tradeCache
             in
-            ( { model | tradeCache = newTradeCache }
+            ( { prevModel | tradeCache = newTradeCache }
             , tcCmd |> Cmd.map TradeCacheMsg
             , Nothing
             )
 
         NoOp ->
-            noUpdate model
+            noUpdate prevModel
 
 
 noUpdate : Model -> ( Model, Cmd Msg, Maybe Routing.Route )

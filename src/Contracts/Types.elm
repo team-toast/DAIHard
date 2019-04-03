@@ -44,8 +44,7 @@ initiatorIsBuyerToOpenMode initiatorIsBuyer =
 
 
 type Phase
-    = Created
-    | Open
+    = Open
     | Committed
     | Claimed
     | Closed
@@ -230,9 +229,6 @@ deriveValues parameters state =
     let
         currentPhaseInterval =
             case state.phase of
-                Created ->
-                    Time.millisToPosix 0
-
                 Open ->
                     parameters.autorecallInterval
 
@@ -361,9 +357,6 @@ bigIntToPhase phase =
             Maybe.withDefault 99 (BigInt.toString phase |> String.toInt)
     in
     case phaseInt of
-        0 ->
-            Just Created
-
         1 ->
             Just Open
 
@@ -383,9 +376,6 @@ bigIntToPhase phase =
 phaseToInt : Phase -> Int
 phaseToInt phase =
     case phase of
-        Created ->
-            0
-
         Open ->
             1
 
@@ -402,9 +392,6 @@ phaseToInt phase =
 phaseToString : Phase -> String
 phaseToString phase =
     case phase of
-        Created ->
-            "Created"
-
         Open ->
             "Open"
 

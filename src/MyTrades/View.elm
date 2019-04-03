@@ -10,6 +10,7 @@ import Element.Events
 import Element.Font
 import Element.Input
 import ElementHelpers as EH
+import Eth.Types exposing (Address)
 import FiatValue exposing (FiatValue)
 import Html.Events.Extra
 import Images exposing (Image)
@@ -28,67 +29,165 @@ root time model =
         , Element.Background.color EH.white
         , Element.width Element.fill
         , Element.height Element.fill
+        , Element.paddingXY 0 20
         ]
-        [ EH.comingSoonMsg [ Element.Font.size 20 ] "Sorted and filtered views coming soon!"
+        [ viewTypeElement model
+        , phaseElement model
         , resultsElement time model
         ]
 
 
-basicFilterFunc : Model -> (Time.Posix -> CTypes.FullTradeInfo -> Bool)
-basicFilterFunc model =
-    \time trade ->
-        case model.userInfo of
-            Just userInfo ->
-                (trade.parameters.initiatorAddress == userInfo.address)
-                    || (trade.state.responder == Just userInfo.address)
-
-            Nothing ->
-                False
+viewTypeElement : Model -> Element Msg
+viewTypeElement model =
+    Element.el
+        [ Element.paddingXY 30 10 ]
+        (userRoleToggle model.viewUserRole)
 
 
-basicSortFunc : Model -> (CTypes.FullTradeInfo -> CTypes.FullTradeInfo -> Order)
-basicSortFunc model =
-    \a b ->
-        let
-            phaseOrder =
-                compare
-                    (CTypes.phaseToInt a.state.phase)
-                    (CTypes.phaseToInt b.state.phase)
-        in
-        if phaseOrder == EQ then
-            phaseOrder
+userRoleToggle : BuyerOrSeller -> Element Msg
+userRoleToggle buyerOrSeller =
+    let
+        baseStyles =
+            [ Element.Font.size 24
+            , Element.Font.semiBold
+            , Element.pointer
+            ]
 
-        else
-            TimeHelpers.compare
-                a.derived.phaseEndTime
-                b.derived.phaseEndTime
+        ( asBuyerStyles, asSellerStyles ) =
+            case buyerOrSeller of
+                Buyer ->
+                    ( baseStyles
+                    , baseStyles ++ [ Element.Font.color EH.disabledTextColor ]
+                    )
+
+                Seller ->
+                    ( baseStyles ++ [ Element.Font.color EH.disabledTextColor ]
+                    , baseStyles
+                    )
+    in
+    Element.row [ Element.spacing 20 ]
+        [ Element.el
+            ([ Element.Events.onClick <| ViewUserRoleChanged Seller ] ++ asSellerStyles)
+            (Element.text "As the Seller")
+        , Element.el
+            ([ Element.Events.onClick <| ViewUserRoleChanged Buyer ] ++ asBuyerStyles)
+            (Element.text "As the Buyer")
+        ]
+
+
+phaseElement : Model -> Element Msg
+phaseElement model =
+    Element.el
+        [ Element.paddingXY 30 10 ]
+        (choosePhaseElement model.viewPhase)
+
+
+choosePhaseElement : CTypes.Phase -> Element Msg
+choosePhaseElement activePhase =
+    let
+        baseStyles =
+            [ Element.Font.size 20
+            , Element.Font.bold
+            , Element.pointer
+            ]
+
+        phaseButtonStyles isActive =
+            if isActive then
+                baseStyles ++ [ Element.Font.color EH.blue ]
+
+            else
+                baseStyles
+    in
+    Element.row [ Element.spacing 30 ]
+        [ Element.el
+            ([ Element.Events.onClick <| ViewPhaseChanged CTypes.Open ]
+                ++ phaseButtonStyles (activePhase == CTypes.Open)
+            )
+            (Element.text "Open")
+        , Element.el
+            ([ Element.Events.onClick <| ViewPhaseChanged CTypes.Committed ]
+                ++ phaseButtonStyles (activePhase == CTypes.Committed)
+            )
+            (Element.text "Payment Due")
+        , Element.el
+            ([ Element.Events.onClick <| ViewPhaseChanged CTypes.Claimed ]
+                ++ phaseButtonStyles (activePhase == CTypes.Claimed)
+            )
+            (Element.text "Release Due")
+        , Element.el
+            ([ Element.Events.onClick <| ViewPhaseChanged CTypes.Closed ]
+                ++ phaseButtonStyles (activePhase == CTypes.Closed)
+            )
+            (Element.text "Closed")
+        ]
+
+
+tradeMatchesUserRole : CTypes.FullTradeInfo -> BuyerOrSeller -> Address -> Bool
+tradeMatchesUserRole trade role userAddress =
+    CTypes.getBuyerOrSeller trade userAddress == Just role
 
 
 resultsElement : Time.Posix -> Model -> Element Msg
 resultsElement time model =
     let
-        visibleTrades =
+        userTrades =
             TradeCache.loadedTrades model.tradeCache
                 |> filterAndSortTrades
-                    time
                     (basicFilterFunc model)
                     (basicSortFunc model)
+
+        visibleTrades =
+            case model.userInfo of
+                Just userInfo ->
+                    userTrades
+                        |> List.filter
+                            (\trade ->
+                                tradeMatchesUserRole trade model.viewUserRole userInfo.address
+                                    && (trade.state.phase == model.viewPhase)
+                            )
+
+                Nothing ->
+                    []
+
+        amountTitleString =
+            case model.viewUserRole of
+                Buyer ->
+                    "Buying"
+
+                Seller ->
+                    "Selling"
+
+        phaseCountdownTitleString =
+            case model.viewPhase of
+                CTypes.Open ->
+                    "Expires in"
+
+                CTypes.Committed ->
+                    "Payment Due"
+
+                CTypes.Claimed ->
+                    "Auto-Release"
+
+                CTypes.Closed ->
+                    ""
     in
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
-        , Element.padding 30
+        , Element.paddingXY 30 10
         , Element.spacing 5
         ]
         [ Element.row
             [ Element.width Element.fill ]
-            [ cellMaker ( 1, columnHeader "Expires" )
-            , cellMaker ( 1, columnHeader "Trading" )
+            [ if model.viewPhase /= CTypes.Closed then
+                cellMaker ( 1, columnHeader phaseCountdownTitleString )
+
+              else
+                Element.none
+            , cellMaker ( 1, columnHeader amountTitleString )
             , cellMaker ( 2, columnHeader "For Fiat" )
             , cellMaker ( 1, columnHeader "Margin" )
-            , cellMaker ( 6, columnHeader "Accepted Payment Methods" )
-            , cellMaker ( 2, columnHeader "Payment Window" )
-            , cellMaker ( 2, columnHeader "Auto-Release" )
+            , cellMaker ( 6, columnHeader "Payment Methods" )
             , cellMaker ( 2, Element.none )
             ]
         , Element.column
@@ -219,16 +318,45 @@ getLoadedTrades =
 
 
 filterAndSortTrades :
-    Time.Posix
-    -> (Time.Posix -> CTypes.FullTradeInfo -> Bool)
+    (CTypes.FullTradeInfo -> Bool)
     -> (CTypes.FullTradeInfo -> CTypes.FullTradeInfo -> Order)
     -> List CTypes.FullTradeInfo
     -> List CTypes.FullTradeInfo
-filterAndSortTrades time filterFunc sortFunc =
-    List.filter (filterFunc time)
+filterAndSortTrades filterFunc sortFunc =
+    List.filter filterFunc
         >> List.sortWith sortFunc
 
 
 columnHeader : String -> Element Msg
 columnHeader title =
     Element.el [ Element.Font.medium, Element.Font.size 17 ] <| Element.text title
+
+
+basicFilterFunc : Model -> (CTypes.FullTradeInfo -> Bool)
+basicFilterFunc model =
+    \trade ->
+        case model.userInfo of
+            Just userInfo ->
+                (trade.parameters.initiatorAddress == userInfo.address)
+                    || (trade.state.responder == Just userInfo.address)
+
+            Nothing ->
+                False
+
+
+basicSortFunc : Model -> (CTypes.FullTradeInfo -> CTypes.FullTradeInfo -> Order)
+basicSortFunc model =
+    \a b ->
+        let
+            phaseOrder =
+                compare
+                    (CTypes.phaseToInt a.state.phase)
+                    (CTypes.phaseToInt b.state.phase)
+        in
+        if phaseOrder == EQ then
+            phaseOrder
+
+        else
+            TimeHelpers.compare
+                a.derived.phaseEndTime
+                b.derived.phaseEndTime

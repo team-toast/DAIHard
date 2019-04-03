@@ -24,10 +24,14 @@ type alias Model =
     { ethNode : EthNode
     , userInfo : Maybe UserInfo
     , tradeCache : TradeCache
+    , viewUserRole : BuyerOrSeller
+    , viewPhase : CTypes.Phase
     }
 
 
 type Msg
-    = TradeClicked Int
+    = ViewUserRoleChanged BuyerOrSeller
+    | ViewPhaseChanged CTypes.Phase
+    | TradeClicked Int
     | TradeCacheMsg TradeCache.Msg
     | NoOp

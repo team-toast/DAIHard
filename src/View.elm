@@ -228,10 +228,6 @@ subModelElement maybeValidModel =
                         Element.map MarketplaceMsg (Marketplace.View.root model.time marketplaceModel)
 
                     MyTradesModel myTradesModel ->
-                        let
-                            _ =
-                                Debug.log "hi " ""
-                        in
                         Element.map MyTradesMsg (MyTrades.View.root model.time myTradesModel)
 
             Failed errorMessageString ->
