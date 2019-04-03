@@ -31,6 +31,7 @@ root time model =
                 , Element.height Element.fill
                 , Element.spacing 40
                 , Element.inFront <| chatOverlayElement model
+                , Element.inFront <| getModalOrNone model
                 ]
                 [ header tradeInfo model.stats model.userInfo
                 , Element.column
@@ -226,7 +227,7 @@ actionButtonsElement trade userInfo =
             _ ->
                 []
         )
-        |> Element.map ContractAction
+        |> Element.map StartContractAction
 
 
 phasesElement : FullTradeInfo -> CTypes.Phase -> Maybe UserInfo -> Time.Posix -> Element Msg
@@ -507,3 +508,73 @@ chatOverlayElement model =
             , Element.alignBottom
             ]
             openChatButton
+
+
+getModalOrNone : Model -> Element Msg
+getModalOrNone model =
+    Maybe.map
+        EH.txProcessModal
+        (case model.txChainStatus of
+            NoTx ->
+                Nothing
+
+            ApproveNeedsSig ->
+                Just
+                    [ Element.text "Waiting for user signature for the approve call."
+                    , Element.text "(check Metamask!)"
+                    , Element.text "Note that there will be a second transaction to sign after this."
+                    ]
+
+            ApproveMining txHash ->
+                Just
+                    [ Element.text "Mining the initial approve transaction..."
+
+                    -- , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
+                    --     { url = EthHelpers.makeEtherscanTxUrl txHash
+                    --     , label = Element.text "See the transaction on Etherscan"
+                    --     }
+                    , Element.text "Funds will not be sent until you sign the next transaction."
+                    , Element.text "Please do not leave the page or change the gas price of the mining transaction."
+                    ]
+
+            ActionNeedsSig action ->
+                Just
+                    [ Element.text <| "Waiting for user signature for the " ++ actionName action ++ " call."
+                    , Element.text "(check Metamask!)"
+                    ]
+
+            ActionMining action txHash ->
+                Nothing
+
+            TxError s ->
+                Just
+                    [ Element.text "Something has gone terribly wrong"
+                    , Element.text s
+                    ]
+        )
+        |> Maybe.withDefault Element.none
+
+
+actionName : ContractAction -> String
+actionName action =
+    case action of
+        Poke ->
+            "poke"
+
+        Commit ->
+            "commit"
+
+        Recall ->
+            "recall"
+
+        Claim ->
+            "claim"
+
+        Abort ->
+            "abort"
+
+        Release ->
+            "release"
+
+        Burn ->
+            "burn"

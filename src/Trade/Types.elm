@@ -1,9 +1,10 @@
 module Trade.Types exposing
-    ( ContractMsg(..)
+    ( ContractAction(..)
     , Model
     , Msg(..)
     , PhaseState(..)
     , StatsModel(..)
+    , TxChainStatus(..)
     )
 
 import Array exposing (Array)
@@ -13,7 +14,7 @@ import Contracts.Generated.DAIHardFactory as DHF
 import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Types as CTypes
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
-import Eth.Types exposing (Address)
+import Eth.Types exposing (Address, TxHash, TxReceipt)
 import EthHelpers
 import Http
 import Json.Decode
@@ -33,6 +34,7 @@ type alias Model =
     , showChatHistory : Bool
     , secureCommInfo : SecureCommInfo
     , eventSentry : EventSentry Msg
+    , txChainStatus : TxChainStatus
     }
 
 
@@ -40,20 +42,31 @@ type Msg
     = CreationInfoFetched (Result Http.Error DHF.CreatedTrade)
     | StateFetched (Result Http.Error (Maybe CTypes.State))
     | ParametersFetched (Result Http.Error (Result String CTypes.TradeParameters))
-    | ContractAction ContractMsg
-    | PreCommitApproveMined (Result String Eth.Types.TxReceipt)
-    | ContractActionMined (Result String Eth.Types.TxReceipt)
+    | StartContractAction ContractAction
+    | PreCommitApproveMined (Result String TxReceipt)
+    | ActionMined ContractAction (Result String TxReceipt)
+    | ActionSigned ContractAction (Result String TxHash)
+    | ApproveSigned (Result String TxHash)
     | Refresh Time.Posix
     | ExpandPhase CTypes.Phase
     | ToggleChat
     | EventLogFetched Eth.Types.Log
     | EventSentryMsg EventSentry.Msg
     | ChatHistoryMsg ChatHistory.Msg
-    | MessageSubmitMined (Result String Eth.Types.TxReceipt)
+    | MessageSubmitMined (Result String TxReceipt)
     | EncryptionFinished Json.Decode.Value
 
 
-type ContractMsg
+type TxChainStatus
+    = NoTx
+    | ApproveNeedsSig
+    | ApproveMining TxHash
+    | ActionNeedsSig ContractAction
+    | ActionMining ContractAction TxHash
+    | TxError String
+
+
+type ContractAction
     = Poke
     | Commit
     | Recall
