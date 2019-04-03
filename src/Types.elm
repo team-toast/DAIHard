@@ -40,7 +40,7 @@ type alias ValidModel =
 
 
 type Submodel
-    = HomeModel
+    = BetaLandingPage
     | CreateModel Create.Types.Model
     | TradeModel Trade.Types.Model
     | MarketplaceModel Marketplace.Types.Model
