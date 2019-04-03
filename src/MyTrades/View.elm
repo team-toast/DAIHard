@@ -219,7 +219,7 @@ viewTradeRow time userRole viewPhase trade =
             Element.none
         , cellMaker ( 1, viewTradeAmount trade )
         , cellMaker ( 2, viewFiat trade )
-        , cellMaker ( 1, viewMargin trade )
+        , cellMaker ( 1, viewMargin trade (userRole == Seller) )
         , cellMaker ( 6, viewPaymentMethods trade.paymentMethods )
         , cellMaker ( 2, viewTradeButton trade.factoryID )
         ]
@@ -315,15 +315,11 @@ viewFiat trade =
     EH.fiatValue trade.parameters.fiatPrice
 
 
-viewMargin : CTypes.FullTradeInfo -> Element Msg
-viewMargin trade =
-    EH.comingSoonMsg [] "):<"
-
-
-
--- trade.derived.margin
---     |> Maybe.map (EH.margin upIsGreen)
---     |> Maybe.withDefault Element.none
+viewMargin : CTypes.FullTradeInfo -> Bool -> Element Msg
+viewMargin trade upIsGreen =
+    trade.derived.margin
+        |> Maybe.map (EH.margin upIsGreen)
+        |> Maybe.withDefault Element.none
 
 
 viewPaymentMethods : List PaymentMethod -> Element Msg
