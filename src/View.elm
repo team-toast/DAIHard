@@ -12,6 +12,7 @@ import Element.Input
 import ElementHelpers as EH
 import Marketplace.Types
 import Marketplace.View
+import MyTrades.View
 import Routing
 import Trade.View
 import Types exposing (..)
@@ -21,35 +22,29 @@ root : Model -> Browser.Document Msg
 root maybeValidModel =
     { title = "Toastytrade"
     , body =
-        [ case maybeValidModel of
-            Running model ->
-                let
-                    mainElementAttributes =
-                        [ Element.width Element.fill
-                        , Element.height Element.fill
-                        , Element.scrollbarY
-                        , Element.Font.family
-                            [ Element.Font.typeface "Soleil"
-                            , Element.Font.sansSerif
-                            ]
-                        ]
-                in
-                Element.layout
-                    mainElementAttributes
-                    (pageElement model)
-
-            Failed str ->
-                Element.layout []
-                    (Element.text ("ERROR: " ++ str))
+        [ let
+            mainElementAttributes =
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                , Element.scrollbarY
+                , Element.Font.family
+                    [ Element.Font.typeface "Soleil"
+                    , Element.Font.sansSerif
+                    ]
+                ]
+          in
+          Element.layout
+            mainElementAttributes
+            (pageElement maybeValidModel)
         ]
     }
 
 
-pageElement : ValidModel -> Element Msg
-pageElement model =
+pageElement : Model -> Element Msg
+pageElement maybeValidModel =
     Element.column
         [ Element.behindContent <| headerBackground
-        , Element.inFront <| headerContent model
+        , Element.inFront <| headerContent maybeValidModel
         , Element.width Element.fill
         , Element.height Element.fill
         , Element.Background.color EH.pageBackgroundColor
@@ -59,7 +54,7 @@ pageElement model =
         [ Element.el
             [ Element.height (Element.px 50) ]
             Element.none
-        , subModelElement model
+        , subModelElement maybeValidModel
         ]
 
 
@@ -73,8 +68,17 @@ headerBackground =
         Element.none
 
 
-headerContent : ValidModel -> Element Msg
-headerContent model =
+headerContent : Model -> Element Msg
+headerContent maybeValidModel =
+    let
+        ( maybeCurrentSubmodel, maybeUserInfo ) =
+            case maybeValidModel of
+                Running model ->
+                    ( Just model.submodel, model.userInfo )
+
+                Failed _ ->
+                    ( Nothing, Nothing )
+    in
     Element.el
         [ Element.width Element.fill
         ]
@@ -87,32 +91,53 @@ headerContent model =
             , headerLink
                 "Marketplace"
                 (GotoRoute <| Routing.Marketplace CTypes.SellerOpened)
-                (case model.submodel of
-                    MarketplaceModel _ ->
-                        True
+                (Maybe.map
+                    (\submodel ->
+                        case submodel of
+                            MarketplaceModel _ ->
+                                True
 
-                    _ ->
-                        False
+                            _ ->
+                                False
+                    )
+                    maybeCurrentSubmodel
+                    |> Maybe.withDefault False
                 )
             , headerLink
                 "Create a New Offer"
                 (GotoRoute Routing.Create)
-                (case model.submodel of
-                    CreateModel _ ->
-                        True
+                (Maybe.map
+                    (\submodel ->
+                        case submodel of
+                            CreateModel _ ->
+                                True
 
-                    _ ->
-                        False
+                            _ ->
+                                False
+                    )
+                    maybeCurrentSubmodel
+                    |> Maybe.withDefault False
                 )
+            , case maybeUserInfo of
+                Just userInfo ->
+                    headerLink
+                        "My Trades"
+                        (GotoRoute <| Routing.MyTrades)
+                        (Maybe.map
+                            (\submodel ->
+                                case submodel of
+                                    MyTradesModel _ ->
+                                        True
 
-            -- , case model.userInfo of
-            --     Just userInfo ->
-            --         headerLink
-            --             "My Offers"
-            --             (GotoRoute <| Routing.Marketplace <| Marketplace.Types.AgentHistory userInfo.address)
-            --             False
-            --     Nothing ->
-            --         Element.none
+                                    _ ->
+                                        False
+                            )
+                            maybeCurrentSubmodel
+                            |> Maybe.withDefault False
+                        )
+
+                Nothing ->
+                    Element.none
             ]
         )
 
@@ -180,23 +205,42 @@ headerMenuAttributes =
     ]
 
 
-subModelElement : ValidModel -> Element.Element Msg
-subModelElement model =
+subModelElement : Model -> Element.Element Msg
+subModelElement maybeValidModel =
     Element.el
         [ Element.width Element.fill
         , Element.height Element.fill
         , Element.Border.rounded 10
         ]
-        (case model.submodel of
-            HomeModel ->
-                Element.none
+        (case maybeValidModel of
+            Running model ->
+                case model.submodel of
+                    HomeModel ->
+                        Element.none
 
-            CreateModel createModel ->
-                Element.map CreateMsg (Create.View.root createModel)
+                    CreateModel createModel ->
+                        Element.map CreateMsg (Create.View.root createModel)
 
-            TradeModel tradeModel ->
-                Element.map TradeMsg (Trade.View.root model.time tradeModel)
+                    TradeModel tradeModel ->
+                        Element.map TradeMsg (Trade.View.root model.time tradeModel)
 
-            MarketplaceModel marketplaceModel ->
-                Element.map MarketplaceMsg (Marketplace.View.root model.time marketplaceModel)
+                    MarketplaceModel marketplaceModel ->
+                        Element.map MarketplaceMsg (Marketplace.View.root model.time marketplaceModel)
+
+                    MyTradesModel myTradesModel ->
+                        let
+                            _ =
+                                Debug.log "hi " ""
+                        in
+                        Element.map MyTradesMsg (MyTrades.View.root model.time myTradesModel)
+
+            Failed errorMessageString ->
+                Element.el
+                    [ Element.centerX
+                    , Element.centerY
+                    ]
+                    (Element.paragraph
+                        []
+                        [ Element.text errorMessageString ]
+                    )
         )

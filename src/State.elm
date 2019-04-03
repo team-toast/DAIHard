@@ -16,6 +16,7 @@ import EthHelpers exposing (EthNode)
 import Json.Decode
 import Json.Encode
 import Marketplace.State
+import MyTrades.State
 import Routing
 import Time
 import Trade.State
@@ -214,6 +215,27 @@ updateValidModel msg model =
                 _ ->
                     ( Running model, Cmd.none )
 
+        MyTradesMsg myTradesMsg ->
+            case model.submodel of
+                MyTradesModel myTradesModel ->
+                    let
+                        ( newMyTradesModel, myTradesCmd, newRoute ) =
+                            MyTrades.State.update myTradesMsg myTradesModel
+                    in
+                    case newRoute of
+                        Nothing ->
+                            ( Running { model | submodel = MyTradesModel newMyTradesModel }
+                            , Cmd.map MyTradesMsg myTradesCmd
+                            )
+
+                        Just route ->
+                            ( Running model
+                            , beginRouteChange model.key route
+                            )
+
+                _ ->
+                    ( Running model, Cmd.none )
+
         TxSentryMsg subMsg ->
             let
                 ( submodel, subCmd ) =
@@ -314,7 +336,23 @@ gotoRoute model route =
             )
 
         Routing.MyTrades ->
-            ( Running model, Cmd.none )
+            case model.userInfo of
+                Just userInfo ->
+                    let
+                        ( myTradesModel, myTradesCmd ) =
+                            MyTrades.State.init model.node userInfo
+                    in
+                    ( Running
+                        { model
+                            | submodel = MyTradesModel myTradesModel
+                        }
+                    , Cmd.batch
+                        [ Cmd.map MyTradesMsg myTradesCmd
+                        ]
+                    )
+
+                Nothing ->
+                    ( Failed "Can't find the user address. Try unlocking Metamask, and refresh.", Browser.Navigation.pushUrl model.key newUrlString )
 
         Routing.NotFound ->
             ( Failed "Don't understand that url...", Browser.Navigation.pushUrl model.key newUrlString )
@@ -334,6 +372,14 @@ updateSubmodelUserInfo userInfo submodel =
 
         MarketplaceModel marketplaceModel ->
             MarketplaceModel (marketplaceModel |> Marketplace.State.updateUserInfo userInfo)
+
+        MyTradesModel myTradesModel ->
+            case userInfo of
+                Just uInfo ->
+                    MyTradesModel (myTradesModel |> MyTrades.State.updateUserInfo uInfo)
+
+                Nothing ->
+                    HomeModel
 
 
 subscriptions : Model -> Sub Msg
@@ -367,6 +413,9 @@ submodelSubscriptions model =
 
         MarketplaceModel marketplaceModel ->
             Sub.map MarketplaceMsg <| Marketplace.State.subscriptions marketplaceModel
+
+        MyTradesModel myTradesModel ->
+            Sub.map MyTradesMsg <| MyTrades.State.subscriptions myTradesModel
 
 
 port walletSentryPort : (Json.Decode.Value -> msg) -> Sub msg

@@ -26,7 +26,7 @@ routeParser =
                 , Url.Parser.map Create (Url.Parser.s "create")
                 , Url.Parser.map Trade (Url.Parser.s "trade" </> Url.Parser.int)
                 , Url.Parser.map Marketplace (Url.Parser.s "marketplace" </> openModeParser)
-                , Url.Parser.map MyTrades (Url.Parser.s "myoffers")
+                , Url.Parser.map MyTrades (Url.Parser.s "mytrades")
                 ]
 
 
@@ -59,7 +59,7 @@ routeToString route =
             Url.Builder.absolute [ "DAIHard", "marketplace", openModeBuilder openMode ] []
 
         MyTrades ->
-            Url.Builder.absolute [ "DAIHard", "myoffers" ] []
+            Url.Builder.absolute [ "DAIHard", "mytrades" ] []
 
         NotFound ->
             Url.Builder.absolute [] []
