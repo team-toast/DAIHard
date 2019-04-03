@@ -56,22 +56,22 @@ marginSymbol isUp maybeIsGreen =
         { src =
             case ( isUp, maybeIsGreen ) of
                 ( True, Just True ) ->
-                    "/static/img/margin-up-green.svg"
+                    "/DAIHard/static/img/margin-up-green.svg"
 
                 ( True, Just False ) ->
-                    "/static/img/margin-up-red.svg"
+                    "/DAIHard/static/img/margin-up-red.svg"
 
                 ( True, Nothing ) ->
-                    "/static/img/margin-up.svg"
+                    "/DAIHard/static/img/margin-up.svg"
 
                 ( False, Just True ) ->
-                    "/static/img/margin-down-green.svg"
+                    "/DAIHard/static/img/margin-down-green.svg"
 
                 ( False, Just False ) ->
-                    "/static/img/margin-down-red.svg"
+                    "/DAIHard/static/img/margin-down-red.svg"
 
                 ( False, Nothing ) ->
-                    "/static/img/margin-down.svg"
+                    "/DAIHard/static/img/margin-down.svg"
         , description = ""
         }
 
@@ -79,7 +79,7 @@ marginSymbol isUp maybeIsGreen =
 daiSymbol : Image
 daiSymbol =
     JustImage
-        { src = "/static/img/dai-symbol.png"
+        { src = "/DAIHard/static/img/dai-symbol.png"
         , description = "DAI"
         }
 
@@ -87,7 +87,7 @@ daiSymbol =
 downArrow : Image
 downArrow =
     JustImage
-        { src = "/static/img/arrow-down.svg"
+        { src = "/DAIHard/static/img/arrow-down.svg"
         , description = "down"
         }
 
@@ -95,7 +95,7 @@ downArrow =
 upArrow : Image
 upArrow =
     JustImage
-        { src = "/static/img/arrow-up.svg"
+        { src = "/DAIHard/static/img/arrow-up.svg"
         , description = "up"
         }
 
@@ -103,7 +103,7 @@ upArrow =
 qmarkCircle : Image
 qmarkCircle =
     JustImage
-        { src = "/static/img/qmark-circle.svg"
+        { src = "/DAIHard/static/img/qmark-circle.svg"
         , description = ""
         }
 
@@ -111,7 +111,7 @@ qmarkCircle =
 openWindowIcon : Image
 openWindowIcon =
     JustImage
-        { src = "/static/img/open-window-icon.svg"
+        { src = "/DAIHard/static/img/open-window-icon.svg"
         , description = ""
         }
 
@@ -119,7 +119,7 @@ openWindowIcon =
 paymentWindowIcon : Image
 paymentWindowIcon =
     JustImage
-        { src = "/static/img/payment-window-icon.svg"
+        { src = "/DAIHard/static/img/payment-window-icon.svg"
         , description = ""
         }
 
@@ -127,7 +127,7 @@ paymentWindowIcon =
 releaseWindowIcon : Image
 releaseWindowIcon =
     JustImage
-        { src = "/static/img/release-window-icon.svg"
+        { src = "/DAIHard/static/img/release-window-icon.svg"
         , description = ""
         }
 
@@ -135,7 +135,7 @@ releaseWindowIcon =
 addButton : Image
 addButton =
     JustImage
-        { src = "/static/img/add-button.svg"
+        { src = "/DAIHard/static/img/add-button.svg"
         , description = "add"
         }
 
@@ -143,7 +143,7 @@ addButton =
 pmCash : Image
 pmCash =
     JustImage
-        { src = "/static/img/pm-cash.svg"
+        { src = "/DAIHard/static/img/pm-cash.svg"
         , description = "cash"
         }
 
@@ -151,7 +151,7 @@ pmCash =
 pmBank : Image
 pmBank =
     JustImage
-        { src = "/static/img/pm-bank.svg"
+        { src = "/DAIHard/static/img/pm-bank.svg"
         , description = "bank"
         }
 
@@ -159,7 +159,7 @@ pmBank =
 pmCustom : Image
 pmCustom =
     JustImage
-        { src = "/static/img/pm-custom.svg"
+        { src = "/DAIHard/static/img/pm-custom.svg"
         , description = "custom"
         }
 
@@ -167,7 +167,7 @@ pmCustom =
 backButton : Image
 backButton =
     JustImage
-        { src = "/static/img/back-button.svg"
+        { src = "/DAIHard/static/img/back-button.svg"
         , description = "back"
         }
 
@@ -175,7 +175,7 @@ backButton =
 chatIcon : Image
 chatIcon =
     JustImage
-        { src = "/static/img/chat-icon.svg"
+        { src = "/DAIHard/static/img/chat-icon.svg"
         , description = "chat"
         }
 
@@ -183,6 +183,6 @@ chatIcon =
 loadingArrows : Image
 loadingArrows =
     JustImage
-        { src = "/static/img/loading-arrows.svg"
+        { src = "/DAIHard/static/img/loading-arrows.svg"
         , description = "waiting"
         }
