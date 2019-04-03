@@ -278,9 +278,9 @@ betaLandingPage =
                     , [ Element.text "Just a few notes for this beta version:" ]
                     ]
                 )
-            , [ "Mobile is not supported."
+            , [ "You can't create an offer with a fractional amount of fiat (i.e. $1.20)--only whole numbers!"
               , "Make sure Metamask is unlocked, and its network is set to Kovan or Mainnet."
-              , "You can't create an offer with a fractional amount of fiat (i.e. $1.20)--only whole numbers!"
+              , "Mobile is not supported."
               , "If the create page doesn't work, make sure all inputs are valid and non-blank."
               , "The tool does not indicate when waiting for most transactions to mine, so after performing some action, watch the transaction in Metamask or on etherscan."
               ]
