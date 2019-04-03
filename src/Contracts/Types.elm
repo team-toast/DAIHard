@@ -3,7 +3,6 @@ module Contracts.Types exposing (CreateParameters, DAIHardEvent(..), FullTradeIn
 import Abi.Decode
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
-import Constants exposing (..)
 import Contracts.Generated.DAIHardFactory as DHF
 import Contracts.Generated.DAIHardTrade as DHT
 import Eth.Decode
@@ -13,6 +12,7 @@ import EthHelpers
 import FiatValue exposing (FiatValue)
 import Json.Decode
 import Margin
+import Network exposing (..)
 import PaymentMethods exposing (PaymentMethod)
 import Time
 import TimeHelpers
@@ -332,13 +332,13 @@ eventSigDecoder =
     Json.Decode.field "topics" (Json.Decode.index 0 Eth.Decode.hex)
 
 
-txReceiptToCreatedToastytradeSellId : Eth.Types.TxReceipt -> Result String BigInt
-txReceiptToCreatedToastytradeSellId txReceipt =
+txReceiptToCreatedToastytradeSellId : Network -> Eth.Types.TxReceipt -> Result String BigInt
+txReceiptToCreatedToastytradeSellId network txReceipt =
     txReceipt.logs
         |> List.filter
             (\log ->
                 (Eth.Utils.addressToString >> String.toLower) log.address
-                    == (Eth.Utils.addressToString >> String.toLower) factoryAddress
+                    == (Eth.Utils.addressToString >> String.toLower) (factoryAddress network)
             )
         |> List.head
         |> Result.fromMaybe "No log found from that factoryAddress in that txReceipt"

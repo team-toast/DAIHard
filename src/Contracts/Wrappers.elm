@@ -2,7 +2,6 @@ module Contracts.Wrappers exposing (decodeParameters, getCreationInfoFromIdCmd, 
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
-import Constants exposing (..)
 import Contracts.Generated.DAIHardFactory as DHF
 import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Types exposing (..)
@@ -17,6 +16,7 @@ import Flip exposing (flip)
 import Http
 import Json.Decode
 import Json.Encode
+import Network exposing (..)
 import PaymentMethods
 import Task
 import Time
@@ -24,8 +24,8 @@ import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
-openTrade : CreateParameters -> Call Address
-openTrade parameters =
+openTrade : Network -> CreateParameters -> Call Address
+openTrade network parameters =
     let
         encodedPaymentMethods =
             Json.Encode.list PaymentMethods.encode
@@ -37,7 +37,7 @@ openTrade parameters =
                 |> Json.Encode.encode 0
     in
     DHF.openDAIHardTrade
-        factoryAddress
+        (factoryAddress network)
         parameters.initiatorAddress
         (openModeToInitiatorIsBuyer parameters.openMode)
         (TokenValue.getBigInt parameters.tradeAmount)
@@ -52,25 +52,25 @@ openTrade parameters =
 
 getDevFeeCmd : EthHelpers.EthNode -> BigInt -> (Result Http.Error BigInt -> msg) -> Cmd msg
 getDevFeeCmd ethNode tradeAmount msgConstructor =
-    Eth.call ethNode.http (DHF.getDevFee factoryAddress tradeAmount)
+    Eth.call ethNode.http (DHF.getDevFee (factoryAddress ethNode.network) tradeAmount)
         |> Task.attempt msgConstructor
 
 
 getExtraFeesCmd : EthHelpers.EthNode -> BigInt -> (Result Http.Error DHF.GetExtraFees -> msg) -> Cmd msg
 getExtraFeesCmd ethNode tradeAmount msgConstructor =
-    Eth.call ethNode.http (DHF.getExtraFees factoryAddress tradeAmount)
+    Eth.call ethNode.http (DHF.getExtraFees (factoryAddress ethNode.network) tradeAmount)
         |> Task.attempt msgConstructor
 
 
 getNumTradesCmd : EthHelpers.EthNode -> (Result Http.Error BigInt -> msg) -> Cmd msg
 getNumTradesCmd ethNode msgConstructor =
-    Eth.call ethNode.http (DHF.getNumTrades factoryAddress)
+    Eth.call ethNode.http (DHF.getNumTrades (factoryAddress ethNode.network))
         |> Task.attempt msgConstructor
 
 
 getCreationInfoFromIdCmd : EthHelpers.EthNode -> BigInt -> (Result Http.Error DHF.CreatedTrade -> msg) -> Cmd msg
 getCreationInfoFromIdCmd ethNode ttId msgConstructor =
-    Eth.call ethNode.http (DHF.createdTrades factoryAddress ttId)
+    Eth.call ethNode.http (DHF.createdTrades (factoryAddress ethNode.network) ttId)
         |> Task.attempt msgConstructor
 
 
