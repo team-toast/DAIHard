@@ -336,23 +336,18 @@ gotoRoute model route =
             )
 
         Routing.MyTrades ->
-            case model.userInfo of
-                Just userInfo ->
-                    let
-                        ( myTradesModel, myTradesCmd ) =
-                            MyTrades.State.init model.node userInfo
-                    in
-                    ( Running
-                        { model
-                            | submodel = MyTradesModel myTradesModel
-                        }
-                    , Cmd.batch
-                        [ Cmd.map MyTradesMsg myTradesCmd
-                        ]
-                    )
-
-                Nothing ->
-                    ( Failed "Can't find the user address. Try unlocking Metamask, and refresh.", Browser.Navigation.pushUrl model.key newUrlString )
+            let
+                ( myTradesModel, myTradesCmd ) =
+                    MyTrades.State.init model.node model.userInfo
+            in
+            ( Running
+                { model
+                    | submodel = MyTradesModel myTradesModel
+                }
+            , Cmd.batch
+                [ Cmd.map MyTradesMsg myTradesCmd
+                ]
+            )
 
         Routing.NotFound ->
             ( Failed "Don't understand that url...", Browser.Navigation.pushUrl model.key newUrlString )
@@ -374,12 +369,7 @@ updateSubmodelUserInfo userInfo submodel =
             MarketplaceModel (marketplaceModel |> Marketplace.State.updateUserInfo userInfo)
 
         MyTradesModel myTradesModel ->
-            case userInfo of
-                Just uInfo ->
-                    MyTradesModel (myTradesModel |> MyTrades.State.updateUserInfo uInfo)
-
-                Nothing ->
-                    HomeModel
+            MyTradesModel (myTradesModel |> MyTrades.State.updateUserInfo userInfo)
 
 
 subscriptions : Model -> Sub Msg

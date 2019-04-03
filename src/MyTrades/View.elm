@@ -23,10 +23,6 @@ import TradeCache.State as TradeCache
 
 root : Time.Posix -> Model -> Element Msg
 root time model =
-    let
-        _ =
-            Debug.log "hi@@@@!!" ""
-    in
     Element.column
         [ Element.Border.rounded 5
         , Element.Background.color EH.white
@@ -38,26 +34,34 @@ root time model =
         ]
 
 
-basicFilterFunc : Time.Posix -> CTypes.FullTradeInfo -> Bool
-basicFilterFunc now trade =
-    True
+basicFilterFunc : Model -> (Time.Posix -> CTypes.FullTradeInfo -> Bool)
+basicFilterFunc model =
+    \time trade ->
+        case model.userInfo of
+            Just userInfo ->
+                (trade.parameters.initiatorAddress == userInfo.address)
+                    || (trade.state.responder == Just userInfo.address)
+
+            Nothing ->
+                False
 
 
-basicSortFunc : CTypes.FullTradeInfo -> CTypes.FullTradeInfo -> Order
-basicSortFunc a b =
-    let
-        phaseOrder =
-            compare
-                (CTypes.phaseToInt a.state.phase)
-                (CTypes.phaseToInt b.state.phase)
-    in
-    if phaseOrder == EQ then
-        phaseOrder
+basicSortFunc : Model -> (CTypes.FullTradeInfo -> CTypes.FullTradeInfo -> Order)
+basicSortFunc model =
+    \a b ->
+        let
+            phaseOrder =
+                compare
+                    (CTypes.phaseToInt a.state.phase)
+                    (CTypes.phaseToInt b.state.phase)
+        in
+        if phaseOrder == EQ then
+            phaseOrder
 
-    else
-        TimeHelpers.compare
-            a.derived.phaseEndTime
-            b.derived.phaseEndTime
+        else
+            TimeHelpers.compare
+                a.derived.phaseEndTime
+                b.derived.phaseEndTime
 
 
 resultsElement : Time.Posix -> Model -> Element Msg
@@ -65,7 +69,10 @@ resultsElement time model =
     let
         visibleTrades =
             TradeCache.loadedTrades model.tradeCache
-                |> filterAndSortTrades time basicFilterFunc basicSortFunc
+                |> filterAndSortTrades
+                    time
+                    (basicFilterFunc model)
+                    (basicSortFunc model)
     in
     Element.column
         [ Element.width Element.fill

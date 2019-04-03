@@ -22,7 +22,7 @@ import TokenValue exposing (TokenValue)
 import TradeCache.State as TradeCache
 
 
-init : EthHelpers.EthNode -> UserInfo -> ( Model, Cmd Msg )
+init : EthHelpers.EthNode -> Maybe UserInfo -> ( Model, Cmd Msg )
 init ethNode userInfo =
     let
         ( tradeCache, tcCmd ) =
@@ -63,7 +63,7 @@ noUpdate model =
     ( model, Cmd.none, Nothing )
 
 
-updateUserInfo : UserInfo -> Model -> Model
+updateUserInfo : Maybe UserInfo -> Model -> Model
 updateUserInfo userInfo model =
     { model | userInfo = userInfo }
 
