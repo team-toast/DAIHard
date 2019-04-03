@@ -201,28 +201,28 @@ resultsElement time model =
             ]
             (visibleTrades
                 |> List.map
-                    (viewTradeRow time)
+                    (viewTradeRow time model.viewUserRole model.viewPhase)
             )
         ]
 
 
-viewTradeRow : Time.Posix -> CTypes.FullTradeInfo -> Element Msg
-viewTradeRow time trade =
+viewTradeRow : Time.Posix -> BuyerOrSeller -> CTypes.Phase -> CTypes.FullTradeInfo -> Element Msg
+viewTradeRow time userRole viewPhase trade =
     Element.row
         [ Element.width Element.fill
         , Element.spacing 1
         ]
-        (List.map cellMaker
-            [ ( 1, viewExpiring time trade )
-            , ( 1, viewTradeAmount trade )
-            , ( 2, viewFiat trade )
-            , ( 1, viewMargin trade )
-            , ( 6, viewPaymentMethods trade.paymentMethods )
-            , ( 2, viewAutoabortWindow trade )
-            , ( 2, viewAutoreleaseWindow trade )
-            , ( 2, viewTradeButton trade.factoryID )
-            ]
-        )
+        [ if viewPhase /= CTypes.Closed then
+            cellMaker ( 1, phaseCountdown time trade )
+
+          else
+            Element.none
+        , cellMaker ( 1, viewTradeAmount trade )
+        , cellMaker ( 2, viewFiat trade )
+        , cellMaker ( 1, viewMargin trade )
+        , cellMaker ( 6, viewPaymentMethods trade.paymentMethods )
+        , cellMaker ( 2, viewTradeButton trade.factoryID )
+        ]
 
 
 cellMaker : ( Int, Element Msg ) -> Element Msg
@@ -242,15 +242,67 @@ cellMaker ( portion, cellElement ) =
             cellElement
 
 
-viewExpiring : Time.Posix -> CTypes.FullTradeInfo -> Element Msg
-viewExpiring time trade =
+phaseCountdown : Time.Posix -> CTypes.FullTradeInfo -> Element Msg
+phaseCountdown time trade =
     let
         interval =
             TimeHelpers.sub
                 (TimeHelpers.add trade.state.phaseStartTime trade.parameters.autorecallInterval)
                 time
     in
-    EH.smallIntervalWithElapsedBar interval trade.parameters.autorecallInterval Element.fill
+    if Time.posixToMillis interval > 0 then
+        EH.smallIntervalWithElapsedBar interval trade.parameters.autorecallInterval Element.fill
+
+    else
+        let
+            text =
+                case trade.state.phase of
+                    CTypes.Open ->
+                        "Expiring..."
+
+                    CTypes.Committed ->
+                        "Aborting..."
+
+                    CTypes.Claimed ->
+                        "Releasing..."
+
+                    CTypes.Closed ->
+                        ""
+        in
+        Element.column
+            [ Element.spacing 4
+            , Element.width Element.fill
+            ]
+            [ Element.el
+                [ Element.centerX
+                , Element.Font.size 14
+                ]
+                (Element.text text)
+            , Element.el
+                [ Element.centerX ]
+                (pokeButton trade.creationInfo.address)
+            ]
+
+
+pokeButton : Address -> Element Msg
+pokeButton address =
+    Element.Input.button
+        [ Element.Background.color <| Element.rgba255 16 7 234 0.2
+        , Element.padding 5
+        , Element.Border.rounded 4
+        , Element.width Element.fill
+        , Element.mouseOver [ Element.Background.color <| Element.rgba255 16 7 234 0.4 ]
+        ]
+        { onPress = Just <| Poke address
+        , label =
+            Element.el
+                [ Element.centerX
+                , Element.Font.color <| Element.rgb255 16 7 234
+                , Element.Font.medium
+                , Element.Font.size 14
+                ]
+                (Element.text "Poke")
+        }
 
 
 viewTradeAmount : CTypes.FullTradeInfo -> Element Msg

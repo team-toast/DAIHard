@@ -3,10 +3,13 @@ module MyTrades.State exposing (init, subscriptions, update, updateUserInfo)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import BigIntHelpers
+import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
 import Constants exposing (..)
+import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Types as CTypes
 import Contracts.Wrappers
+import Eth
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
 import EthHelpers
@@ -38,23 +41,53 @@ init ethNode userInfo =
     )
 
 
-update : Msg -> Model -> ( Model, Cmd Msg, Maybe Routing.Route )
+update : Msg -> Model -> UpdateResult
 update msg prevModel =
     case msg of
         ViewUserRoleChanged role ->
-            ( { prevModel | viewUserRole = role }
-            , Cmd.none
-            , Nothing
-            )
+            UpdateResult
+                { prevModel | viewUserRole = role }
+                Cmd.none
+                ChainCmd.none
+                Nothing
 
         ViewPhaseChanged phase ->
-            ( { prevModel | viewPhase = phase }
-            , Cmd.none
-            , Nothing
-            )
+            UpdateResult
+                { prevModel | viewPhase = phase }
+                Cmd.none
+                ChainCmd.none
+                Nothing
+
+        Poke address ->
+            let
+                txParams =
+                    DHT.poke
+                        address
+                        |> Eth.toSend
+
+                customSend =
+                    { onMined = Nothing
+                    , onSign = Nothing
+                    , onBroadcast = Nothing
+                    }
+
+                chainCmd =
+                    ChainCmd.custom
+                        customSend
+                        txParams
+            in
+            UpdateResult
+                prevModel
+                Cmd.none
+                chainCmd
+                Nothing
 
         TradeClicked id ->
-            ( prevModel, Cmd.none, Just (Routing.Trade id) )
+            UpdateResult
+                prevModel
+                Cmd.none
+                ChainCmd.none
+                (Just (Routing.Trade id))
 
         TradeCacheMsg tradeCacheMsg ->
             let
@@ -63,18 +96,23 @@ update msg prevModel =
                         tradeCacheMsg
                         prevModel.tradeCache
             in
-            ( { prevModel | tradeCache = newTradeCache }
-            , tcCmd |> Cmd.map TradeCacheMsg
-            , Nothing
-            )
+            UpdateResult
+                { prevModel | tradeCache = newTradeCache }
+                (tcCmd |> Cmd.map TradeCacheMsg)
+                ChainCmd.none
+                Nothing
 
         NoOp ->
             noUpdate prevModel
 
 
-noUpdate : Model -> ( Model, Cmd Msg, Maybe Routing.Route )
+noUpdate : Model -> UpdateResult
 noUpdate model =
-    ( model, Cmd.none, Nothing )
+    UpdateResult
+        model
+        Cmd.none
+        ChainCmd.none
+        Nothing
 
 
 updateUserInfo : Maybe UserInfo -> Model -> Model

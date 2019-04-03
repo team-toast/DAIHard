@@ -219,13 +219,23 @@ updateValidModel msg model =
             case model.submodel of
                 MyTradesModel myTradesModel ->
                     let
-                        ( newMyTradesModel, myTradesCmd, newRoute ) =
+                        updateResult =
                             MyTrades.State.update myTradesMsg myTradesModel
+
+                        ( newTxSentry, chainCmd ) =
+                            ChainCmd.execute model.txSentry (ChainCmd.map MyTradesMsg updateResult.chainCmd)
                     in
-                    case newRoute of
+                    case updateResult.newRoute of
                         Nothing ->
-                            ( Running { model | submodel = MyTradesModel newMyTradesModel }
-                            , Cmd.map MyTradesMsg myTradesCmd
+                            ( Running
+                                { model
+                                    | submodel = MyTradesModel updateResult.model
+                                    , txSentry = newTxSentry
+                                }
+                            , Cmd.batch
+                                [ Cmd.map MyTradesMsg updateResult.cmd
+                                , chainCmd
+                                ]
                             )
 
                         Just route ->
