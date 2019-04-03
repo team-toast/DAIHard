@@ -70,6 +70,19 @@ update msg prevModel =
     case msg of
         Refresh time ->
             let
+                fetchCreationInfoCmd =
+                    case prevModel.trade of
+                        CTypes.PartiallyLoadedTrade pInfo ->
+                            case pInfo.creationInfo of
+                                Nothing ->
+                                    getContractCreationInfoCmd prevModel.ethNode pInfo.factoryID
+
+                                _ ->
+                                    Cmd.none
+
+                        _ ->
+                            Cmd.none
+
                 ( newChatHistoryModel, shouldDecrypt ) =
                     case prevModel.chatHistoryModel of
                         Nothing ->
@@ -94,6 +107,7 @@ update msg prevModel =
                     , Cmd.batch
                         [ Contracts.Wrappers.getStateCmd prevModel.ethNode tradeInfo.creationInfo.address StateFetched
                         , decryptCmd
+                        , fetchCreationInfoCmd
                         ]
                     , ChainCmd.none
                     )
