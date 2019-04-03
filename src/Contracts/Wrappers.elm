@@ -1,9 +1,10 @@
-module Contracts.Wrappers exposing (decodeParameters, getCreationInfoFromIdCmd, getDevFeeCmd, getExtraFeesCmd, getNumTradesCmd, getOpenedEventDataSentryCmd, getParametersAndStateCmd, getParametersCmd, getStateCmd, openTrade)
+module Contracts.Wrappers exposing (decodeParameters, getAllowanceCmd, getCreationInfoFromIdCmd, getDevFeeCmd, getExtraFeesCmd, getNumTradesCmd, getOpenedEventDataSentryCmd, getParametersAndStateCmd, getParametersCmd, getStateCmd, openTrade)
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
 import Contracts.Generated.DAIHardFactory as DHF
 import Contracts.Generated.DAIHardTrade as DHT
+import Contracts.Generated.ERC20Token as TokenContract
 import Contracts.Types exposing (..)
 import Eth
 import Eth.Decode
@@ -48,6 +49,18 @@ openTrade network parameters =
         encodedFiatData
         encodedPaymentMethods
         parameters.initiatorCommPubkey
+
+
+getAllowanceCmd : EthHelpers.EthNode -> Address -> (Result Http.Error BigInt -> msg) -> Cmd msg
+getAllowanceCmd ethNode user msgConstructor =
+    Eth.call
+        ethNode.http
+        (TokenContract.allowance
+            (daiAddress ethNode.network)
+            user
+            (factoryAddress ethNode.network)
+        )
+        |> Task.attempt msgConstructor
 
 
 getDevFeeCmd : EthHelpers.EthNode -> BigInt -> (Result Http.Error BigInt -> msg) -> Cmd msg

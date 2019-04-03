@@ -15,19 +15,55 @@ type alias FiatValue =
     }
 
 
-currencyTypes : Dict String ( Char, Image )
+currencyTypes : Dict String ( String, Image )
 currencyTypes =
-    [ ( "USD", '$' )
-    , ( "EUR", '€' )
-    , ( "ZAR", 'R' )
-    , ( "GBP", '£' )
+    [ ( "AUD", "$" )
+    , ( "CLP", "$" )
+    , ( "EUR", "€" )
+    , ( "IDR", "Rp" )
+    , ( "KRW", "₩" )
+    , ( "NZD", "$" )
+    , ( "RUB", "₽" )
+    , ( "TRY", "₺" )
+    , ( "BRL", "R$" )
+    , ( "CNY", "¥" )
+    , ( "GBP", "£" )
+    , ( "ILS", "₪" )
+    , ( "MXN", "$" )
+    , ( "PHP", "₱" )
+    , ( "SEK", "kr" )
+    , ( "TWD", "NT$" )
+    , ( "CAD", "$" )
+    , ( "CZK", "Kč" )
+    , ( "HKD", "$" )
+    , ( "INR", "₹" )
+    , ( "MYR", "RM" )
+    , ( "PKR", "₨" )
+    , ( "SGD", "$" )
+    , ( "USD", "$" )
+    , ( "CHF", "Fr" )
+    , ( "DKK", "kr" )
+    , ( "HUF", "Ft" )
+    , ( "JPY", "¥" )
+    , ( "NOK", "kr" )
+    , ( "PLN", "zł" )
+    , ( "THB", "฿" )
+    , ( "ZAR", "R" )
     ]
         |> List.map
             (\( typeString, typeChar ) ->
+                let
+                    extension =
+                        if typeString == "CNY" || typeString == "EUR" then
+                            ".png"
+
+                        else
+                            ".svg"
+                in
                 ( typeString
                 , ( typeChar
                   , Images.image
-                        { src = "/static/img/currencies/" ++ typeString ++ ".png"
+                        { src = "/static/img/currencies/" ++ typeString ++ extension
                         , description = typeString
                         }
                   )
@@ -36,7 +72,7 @@ currencyTypes =
         |> Dict.fromList
 
 
-searchTypes : String -> Dict String ( Char, Image )
+searchTypes : String -> Dict String ( String, Image )
 searchTypes input =
     currencyTypes
         |> Dict.filter
@@ -74,7 +110,6 @@ typeStringToCharStringDefaultEmpty : String -> String
 typeStringToCharStringDefaultEmpty typeString =
     Dict.get typeString currencyTypes
         |> Maybe.map Tuple.first
-        |> Maybe.map String.fromChar
         |> Maybe.withDefault ""
 
 

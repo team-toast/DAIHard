@@ -122,13 +122,16 @@ updateValidModel msg model =
                                         { address = userAddress
                                         , commPubkey = commPubkey
                                         }
+
+                                ( submodel, cmd ) =
+                                    model.submodel |> updateSubmodelUserInfo userInfo
                             in
                             ( Running
                                 { model
                                     | userInfo = userInfo
-                                    , submodel = model.submodel |> updateSubmodelUserInfo userInfo
+                                    , submodel = submodel
                                 }
-                            , Cmd.none
+                            , cmd
                             )
 
                         Nothing ->
@@ -369,23 +372,37 @@ gotoRoute model route =
             ( Failed "Don't understand that url...", Browser.Navigation.pushUrl model.key newUrlString )
 
 
-updateSubmodelUserInfo : Maybe UserInfo -> Submodel -> Submodel
+updateSubmodelUserInfo : Maybe UserInfo -> Submodel -> ( Submodel, Cmd Msg )
 updateSubmodelUserInfo userInfo submodel =
     case submodel of
         BetaLandingPage ->
-            submodel
+            ( submodel
+            , Cmd.none
+            )
 
         CreateModel createModel ->
-            CreateModel (createModel |> Create.State.updateUserInfo userInfo)
+            let
+                ( newCreateModel, createCmd ) =
+                    createModel |> Create.State.updateUserInfo userInfo
+            in
+            ( CreateModel newCreateModel
+            , Cmd.map CreateMsg createCmd
+            )
 
         TradeModel tradeModel ->
-            TradeModel (tradeModel |> Trade.State.updateUserInfo userInfo)
+            ( TradeModel (tradeModel |> Trade.State.updateUserInfo userInfo)
+            , Cmd.none
+            )
 
         MarketplaceModel marketplaceModel ->
-            MarketplaceModel (marketplaceModel |> Marketplace.State.updateUserInfo userInfo)
+            ( MarketplaceModel (marketplaceModel |> Marketplace.State.updateUserInfo userInfo)
+            , Cmd.none
+            )
 
         MyTradesModel myTradesModel ->
-            MyTradesModel (myTradesModel |> MyTrades.State.updateUserInfo userInfo)
+            ( MyTradesModel (myTradesModel |> MyTrades.State.updateUserInfo userInfo)
+            , Cmd.none
+            )
 
 
 subscriptions : Model -> Sub Msg
