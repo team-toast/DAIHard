@@ -79,9 +79,6 @@ tradeStatusElement trade =
             ]
             (Element.text
                 (case trade.state.phase of
-                    CTypes.Created ->
-                        "Created (uninitialized)"
-
                     CTypes.Open ->
                         case trade.parameters.openMode of
                             CTypes.BuyerOpened ->
@@ -210,9 +207,6 @@ actionButtonsElement trade userInfo =
             , CTypes.getBuyerOrSeller trade userInfo.address
             )
          of
-            ( CTypes.Created, _, _ ) ->
-                []
-
             ( CTypes.Open, Just Initiator, _ ) ->
                 [ EH.blueButton "Remove and Refund this Trade" Recall ]
 
@@ -344,9 +338,6 @@ phaseElement viewPhase trade maybeUserInfo expanded currentTime =
 
                 CTypes.Closed ->
                     "Closed"
-
-                CTypes.Created ->
-                    "ERROR! You shouldn't be seeing this!"
 
         firstEl =
             Element.el

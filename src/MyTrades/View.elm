@@ -1,0 +1,410 @@
+module MyTrades.View exposing (root)
+
+import Array exposing (Array)
+import CommonTypes exposing (..)
+import Contracts.Types as CTypes
+import Element exposing (Attribute, Element)
+import Element.Background
+import Element.Border
+import Element.Events
+import Element.Font
+import Element.Input
+import ElementHelpers as EH
+import Eth.Types exposing (Address)
+import FiatValue exposing (FiatValue)
+import Html.Events.Extra
+import Images exposing (Image)
+import Margin
+import MyTrades.Types exposing (..)
+import PaymentMethods exposing (PaymentMethod)
+import Time
+import TimeHelpers
+import TradeCache.State as TradeCache
+
+
+root : Time.Posix -> Model -> Element Msg
+root time model =
+    Element.column
+        [ Element.Border.rounded 5
+        , Element.Background.color EH.white
+        , Element.width Element.fill
+        , Element.height Element.fill
+        , Element.paddingXY 0 20
+        ]
+        [ viewTypeElement model
+        , phaseElement model
+        , resultsElement time model
+        ]
+
+
+viewTypeElement : Model -> Element Msg
+viewTypeElement model =
+    Element.el
+        [ Element.paddingXY 30 10 ]
+        (userRoleToggle model.viewUserRole)
+
+
+userRoleToggle : BuyerOrSeller -> Element Msg
+userRoleToggle buyerOrSeller =
+    let
+        baseStyles =
+            [ Element.Font.size 24
+            , Element.Font.semiBold
+            , Element.pointer
+            ]
+
+        ( asBuyerStyles, asSellerStyles ) =
+            case buyerOrSeller of
+                Buyer ->
+                    ( baseStyles
+                    , baseStyles ++ [ Element.Font.color EH.disabledTextColor ]
+                    )
+
+                Seller ->
+                    ( baseStyles ++ [ Element.Font.color EH.disabledTextColor ]
+                    , baseStyles
+                    )
+    in
+    Element.row [ Element.spacing 20 ]
+        [ Element.el
+            ([ Element.Events.onClick <| ViewUserRoleChanged Seller ] ++ asSellerStyles)
+            (Element.text "As the Seller")
+        , Element.el
+            ([ Element.Events.onClick <| ViewUserRoleChanged Buyer ] ++ asBuyerStyles)
+            (Element.text "As the Buyer")
+        ]
+
+
+phaseElement : Model -> Element Msg
+phaseElement model =
+    Element.el
+        [ Element.paddingXY 30 10 ]
+        (choosePhaseElement model.viewPhase)
+
+
+choosePhaseElement : CTypes.Phase -> Element Msg
+choosePhaseElement activePhase =
+    let
+        baseStyles =
+            [ Element.Font.size 20
+            , Element.Font.bold
+            , Element.pointer
+            ]
+
+        phaseButtonStyles isActive =
+            if isActive then
+                baseStyles ++ [ Element.Font.color EH.blue ]
+
+            else
+                baseStyles
+    in
+    Element.row [ Element.spacing 30 ]
+        [ Element.el
+            ([ Element.Events.onClick <| ViewPhaseChanged CTypes.Open ]
+                ++ phaseButtonStyles (activePhase == CTypes.Open)
+            )
+            (Element.text "Open")
+        , Element.el
+            ([ Element.Events.onClick <| ViewPhaseChanged CTypes.Committed ]
+                ++ phaseButtonStyles (activePhase == CTypes.Committed)
+            )
+            (Element.text "Payment Due")
+        , Element.el
+            ([ Element.Events.onClick <| ViewPhaseChanged CTypes.Claimed ]
+                ++ phaseButtonStyles (activePhase == CTypes.Claimed)
+            )
+            (Element.text "Release Due")
+        , Element.el
+            ([ Element.Events.onClick <| ViewPhaseChanged CTypes.Closed ]
+                ++ phaseButtonStyles (activePhase == CTypes.Closed)
+            )
+            (Element.text "Closed")
+        ]
+
+
+tradeMatchesUserRole : CTypes.FullTradeInfo -> BuyerOrSeller -> Address -> Bool
+tradeMatchesUserRole trade role userAddress =
+    CTypes.getBuyerOrSeller trade userAddress == Just role
+
+
+resultsElement : Time.Posix -> Model -> Element Msg
+resultsElement time model =
+    let
+        userTrades =
+            TradeCache.loadedTrades model.tradeCache
+                |> filterAndSortTrades
+                    (basicFilterFunc model)
+                    (basicSortFunc model)
+
+        visibleTrades =
+            case model.userInfo of
+                Just userInfo ->
+                    userTrades
+                        |> List.filter
+                            (\trade ->
+                                tradeMatchesUserRole trade model.viewUserRole userInfo.address
+                                    && (trade.state.phase == model.viewPhase)
+                            )
+
+                Nothing ->
+                    []
+
+        amountTitleString =
+            case model.viewUserRole of
+                Buyer ->
+                    "Buying"
+
+                Seller ->
+                    "Selling"
+
+        phaseCountdownTitleString =
+            case model.viewPhase of
+                CTypes.Open ->
+                    "Expires in"
+
+                CTypes.Committed ->
+                    "Payment Due"
+
+                CTypes.Claimed ->
+                    "Auto-Release"
+
+                CTypes.Closed ->
+                    ""
+    in
+    Element.column
+        [ Element.width Element.fill
+        , Element.height Element.fill
+        , Element.paddingXY 30 10
+        , Element.spacing 5
+        ]
+        [ Element.row
+            [ Element.width Element.fill ]
+            [ if model.viewPhase /= CTypes.Closed then
+                cellMaker ( 1, columnHeader phaseCountdownTitleString )
+
+              else
+                Element.none
+            , cellMaker ( 1, columnHeader amountTitleString )
+            , cellMaker ( 2, columnHeader "For Fiat" )
+            , cellMaker ( 1, columnHeader "Margin" )
+            , cellMaker ( 6, columnHeader "Payment Methods" )
+            , cellMaker ( 2, Element.none )
+            ]
+        , Element.column
+            [ Element.width Element.fill
+            , Element.Border.width 1
+            , Element.Border.rounded 8
+            , Element.Border.color EH.lightGray
+            , Element.spacing 1
+            , Element.Background.color EH.lightGray
+            , Element.clip
+            ]
+            (visibleTrades
+                |> List.map
+                    (viewTradeRow time model.viewUserRole model.viewPhase)
+            )
+        ]
+
+
+viewTradeRow : Time.Posix -> BuyerOrSeller -> CTypes.Phase -> CTypes.FullTradeInfo -> Element Msg
+viewTradeRow time userRole viewPhase trade =
+    Element.row
+        [ Element.width Element.fill
+        , Element.spacing 1
+        ]
+        [ if viewPhase /= CTypes.Closed then
+            cellMaker ( 1, phaseCountdown time trade )
+
+          else
+            Element.none
+        , cellMaker ( 1, viewTradeAmount trade )
+        , cellMaker ( 2, viewFiat trade )
+        , cellMaker ( 1, viewMargin trade (userRole == Seller) )
+        , cellMaker ( 6, viewPaymentMethods trade.paymentMethods )
+        , cellMaker ( 2, viewTradeButton trade.factoryID )
+        ]
+
+
+cellMaker : ( Int, Element Msg ) -> Element Msg
+cellMaker ( portion, cellElement ) =
+    Element.el
+        [ Element.width <| Element.fillPortion portion
+        , Element.height <| Element.px 60
+        , Element.clip
+        , Element.Background.color EH.white
+        ]
+    <|
+        Element.el
+            [ Element.padding 12
+            , Element.centerY
+            , Element.width Element.fill
+            ]
+            cellElement
+
+
+phaseCountdown : Time.Posix -> CTypes.FullTradeInfo -> Element Msg
+phaseCountdown time trade =
+    let
+        interval =
+            TimeHelpers.sub
+                (TimeHelpers.add trade.state.phaseStartTime trade.parameters.autorecallInterval)
+                time
+    in
+    if Time.posixToMillis interval > 0 then
+        EH.smallIntervalWithElapsedBar interval trade.parameters.autorecallInterval Element.fill
+
+    else
+        let
+            text =
+                case trade.state.phase of
+                    CTypes.Open ->
+                        "Expiring..."
+
+                    CTypes.Committed ->
+                        "Aborting..."
+
+                    CTypes.Claimed ->
+                        "Releasing..."
+
+                    CTypes.Closed ->
+                        ""
+        in
+        Element.column
+            [ Element.spacing 4
+            , Element.width Element.fill
+            ]
+            [ Element.el
+                [ Element.centerX
+                , Element.Font.size 14
+                ]
+                (Element.text text)
+            , Element.el
+                [ Element.centerX ]
+                (pokeButton trade.creationInfo.address)
+            ]
+
+
+pokeButton : Address -> Element Msg
+pokeButton address =
+    Element.Input.button
+        [ Element.Background.color <| Element.rgba255 16 7 234 0.2
+        , Element.padding 5
+        , Element.Border.rounded 4
+        , Element.width Element.fill
+        , Element.mouseOver [ Element.Background.color <| Element.rgba255 16 7 234 0.4 ]
+        ]
+        { onPress = Just <| Poke address
+        , label =
+            Element.el
+                [ Element.centerX
+                , Element.Font.color <| Element.rgb255 16 7 234
+                , Element.Font.medium
+                , Element.Font.size 14
+                ]
+                (Element.text "Poke")
+        }
+
+
+viewTradeAmount : CTypes.FullTradeInfo -> Element Msg
+viewTradeAmount trade =
+    EH.daiValue trade.parameters.tradeAmount
+
+
+viewFiat : CTypes.FullTradeInfo -> Element Msg
+viewFiat trade =
+    EH.fiatValue trade.parameters.fiatPrice
+
+
+viewMargin : CTypes.FullTradeInfo -> Bool -> Element Msg
+viewMargin trade upIsGreen =
+    trade.derived.margin
+        |> Maybe.map (EH.margin upIsGreen)
+        |> Maybe.withDefault Element.none
+
+
+viewPaymentMethods : List PaymentMethod -> Element Msg
+viewPaymentMethods paymentMethods =
+    EH.comingSoonMsg [] "Payment method summary coming soon! For now, click \"View offer\" ---> "
+
+
+viewAutoabortWindow : CTypes.FullTradeInfo -> Element Msg
+viewAutoabortWindow trade =
+    EH.interval False (Just EH.red) trade.parameters.autoabortInterval
+
+
+viewAutoreleaseWindow : CTypes.FullTradeInfo -> Element Msg
+viewAutoreleaseWindow trade =
+    EH.interval False (Just EH.red) trade.parameters.autoreleaseInterval
+
+
+viewTradeButton : Int -> Element Msg
+viewTradeButton factoryID =
+    Element.Input.button
+        [ Element.Background.color <| Element.rgba255 16 7 234 0.2
+        , Element.padding 11
+        , Element.Border.rounded 4
+        , Element.width Element.fill
+        , Element.mouseOver [ Element.Background.color <| Element.rgba255 16 7 234 0.4 ]
+        ]
+        { onPress = Just <| TradeClicked factoryID
+        , label =
+            Element.el [ Element.centerX, Element.Font.color <| Element.rgb255 16 7 234, Element.Font.medium ] <| Element.text "View Offer"
+        }
+
+
+getLoadedTrades : List CTypes.Trade -> List CTypes.FullTradeInfo
+getLoadedTrades =
+    List.filterMap
+        (\trade ->
+            case trade of
+                CTypes.LoadedTrade tradeInfo ->
+                    Just tradeInfo
+
+                _ ->
+                    Nothing
+        )
+
+
+filterAndSortTrades :
+    (CTypes.FullTradeInfo -> Bool)
+    -> (CTypes.FullTradeInfo -> CTypes.FullTradeInfo -> Order)
+    -> List CTypes.FullTradeInfo
+    -> List CTypes.FullTradeInfo
+filterAndSortTrades filterFunc sortFunc =
+    List.filter filterFunc
+        >> List.sortWith sortFunc
+
+
+columnHeader : String -> Element Msg
+columnHeader title =
+    Element.el [ Element.Font.medium, Element.Font.size 17 ] <| Element.text title
+
+
+basicFilterFunc : Model -> (CTypes.FullTradeInfo -> Bool)
+basicFilterFunc model =
+    \trade ->
+        case model.userInfo of
+            Just userInfo ->
+                (trade.parameters.initiatorAddress == userInfo.address)
+                    || (trade.state.responder == Just userInfo.address)
+
+            Nothing ->
+                False
+
+
+basicSortFunc : Model -> (CTypes.FullTradeInfo -> CTypes.FullTradeInfo -> Order)
+basicSortFunc model =
+    \a b ->
+        let
+            phaseOrder =
+                compare
+                    (CTypes.phaseToInt a.state.phase)
+                    (CTypes.phaseToInt b.state.phase)
+        in
+        if phaseOrder == EQ then
+            phaseOrder
+
+        else
+            TimeHelpers.compare
+                a.derived.phaseEndTime
+                b.derived.phaseEndTime
