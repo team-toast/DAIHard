@@ -63,7 +63,7 @@ currencyTypes =
                 ( typeString
                 , ( typeChar
                   , Images.image
-                        { src = "/static/img/currencies/" ++ typeString ++ extension
+                        { src = "/DAIHard/static/img/currencies/" ++ typeString ++ extension
                         , description = typeString
                         }
                   )
