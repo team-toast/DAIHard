@@ -205,7 +205,7 @@ headerMenuAttributes =
     ]
 
 
-subModelElement : Model -> Element.Element Msg
+subModelElement : Model -> Element Msg
 subModelElement maybeValidModel =
     Element.el
         [ Element.width Element.fill
@@ -215,8 +215,8 @@ subModelElement maybeValidModel =
         (case maybeValidModel of
             Running model ->
                 case model.submodel of
-                    HomeModel ->
-                        Element.none
+                    BetaLandingPage ->
+                        betaLandingPage
 
                     CreateModel createModel ->
                         Element.map CreateMsg (Create.View.root createModel)
@@ -240,3 +240,71 @@ subModelElement maybeValidModel =
                         [ Element.text errorMessageString ]
                     )
         )
+
+
+betaLandingPage : Element Msg
+betaLandingPage =
+    Element.column
+        [ Element.centerX ]
+        [ Element.el
+            [ Element.height (Element.px 100) ]
+            Element.none
+        , Element.column
+            [ Element.centerX
+            , Element.width <| Element.px 800
+            , Element.Background.color <| Element.rgba 0.9 0.9 0.5 0.5
+            , Element.Border.width 1
+            , Element.Border.color <| Element.rgba 0.5 0.5 0.3 0.5
+            , Element.Border.shadow
+                { offset = ( 0, 3 )
+                , size = 0
+                , blur = 20
+                , color = Element.rgba255 0 0 0 0.1
+                }
+            , Element.padding 20
+            , Element.Border.rounded 10
+            , Element.spacing 20
+            , Element.paddingXY 50 30
+            ]
+            [ Element.column [ Element.width Element.fill ]
+                (List.map
+                    (Element.paragraph
+                        [ Element.Font.center
+                        , Element.Font.size 24
+                        , Element.Font.semiBold
+                        ]
+                    )
+                    [ [ Element.text "Welcome to DAIHard!" ]
+                    , [ Element.text "Just a few notes for this beta version:" ]
+                    ]
+                )
+            , [ "Mobile is not supported."
+              , "Make sure Metamask is unlocked, and its network is set to Kovan or Mainnet."
+              , "You can't create an offer with a fractional amount of fiat (i.e. $1.20)--only whole numbers!"
+              , "If the create page doesn't work, make sure all inputs are valid and non-blank."
+              , "The tool does not indicate when waiting for most transactions to mine, so after performing some action, watch the transaction in Metamask or on etherscan."
+              ]
+                |> (\lines ->
+                        Element.column
+                            [ Element.width Element.fill
+                            , Element.spacing 20
+                            ]
+                            (lines
+                                |> List.map
+                                    (\line ->
+                                        Element.row
+                                            [ Element.spacing 20 ]
+                                            [ Element.el
+                                                [ Element.Font.size 30
+                                                , Element.centerY
+                                                ]
+                                                (Element.text EH.bulletPointString)
+                                            , Element.paragraph [] [ Element.text line ]
+                                            ]
+                                    )
+                            )
+                   )
+            , Element.el [ Element.centerX ]
+                (EH.blueButton "Okay, let's go!" (GotoRoute <| Routing.Marketplace CTypes.SellerOpened))
+            ]
+        ]

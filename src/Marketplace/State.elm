@@ -4,7 +4,7 @@ import Array exposing (Array)
 import BigInt exposing (BigInt)
 import BigIntHelpers
 import CommonTypes exposing (UserInfo)
-import Constants exposing (..)
+import Network exposing (..)
 import Contracts.Types as CTypes
 import Contracts.Wrappers
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)

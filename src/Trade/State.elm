@@ -5,7 +5,6 @@ import BigInt exposing (BigInt)
 import BigIntHelpers
 import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
-import Constants exposing (..)
 import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Generated.ERC20Token as TokenContract
 import Contracts.Types as CTypes
@@ -21,6 +20,7 @@ import Http
 import Json.Decode
 import Json.Encode
 import Maybe.Extra
+import Network exposing (..)
 import PaymentMethods exposing (PaymentMethod)
 import Result.Extra
 import Time
@@ -261,7 +261,7 @@ update msg prevModel =
 
                                         txParams =
                                             TokenContract.approve
-                                                daiAddress
+                                                (daiAddress prevModel.ethNode.network)
                                                 tradeInfo.creationInfo.address
                                                 fullDepositAmount
                                                 |> Eth.toSend

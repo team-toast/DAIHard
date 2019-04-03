@@ -5,7 +5,7 @@ import BigInt exposing (BigInt)
 import BigIntHelpers
 import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
-import Constants exposing (..)
+import Network exposing (..)
 import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Types as CTypes
 import Contracts.Wrappers

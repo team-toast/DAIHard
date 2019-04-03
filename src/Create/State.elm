@@ -4,7 +4,6 @@ import BigInt
 import BigIntHelpers
 import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
-import Constants exposing (..)
 import Contracts.Generated.ERC20Token as TokenContract
 import Contracts.Types as CTypes
 import Contracts.Wrappers
@@ -17,6 +16,7 @@ import FiatValue exposing (FiatValue)
 import Flip exposing (flip)
 import Margin
 import Maybe.Extra
+import Network exposing (..)
 import Routing
 import Time
 import TimeHelpers
@@ -231,8 +231,8 @@ update msg prevModel =
 
                         txParams =
                             TokenContract.approve
-                                daiAddress
-                                factoryAddress
+                                (daiAddress prevModel.node.network)
+                                (factoryAddress prevModel.node.network)
                                 fullDepositAmount
                                 |> Eth.toSend
 
@@ -304,6 +304,7 @@ update msg prevModel =
                     let
                         txParams =
                             Contracts.Wrappers.openTrade
+                                prevModel.node.network
                                 createParameters
                                 |> Eth.toSend
 
@@ -344,7 +345,7 @@ update msg prevModel =
         CreateMined (Ok txReceipt) ->
             let
                 maybeId =
-                    CTypes.txReceiptToCreatedToastytradeSellId txReceipt
+                    CTypes.txReceiptToCreatedToastytradeSellId prevModel.node.network txReceipt
                         |> Result.toMaybe
                         |> Maybe.andThen BigIntHelpers.toInt
             in

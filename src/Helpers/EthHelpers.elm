@@ -1,37 +1,57 @@
-module EthHelpers exposing (EthNode, addressIfNot0x0, ethNode, getLogAt, logBadFetchResultMaybe, makeEtherscanTxUrl)
+module EthHelpers exposing (EthNode, addressIfNot0x0, ethNode, getLogAt, intToNetwork, logBadFetchResultMaybe, makeEtherscanTxUrl)
 
 import Array
 import BigInt exposing (BigInt)
-import Constants exposing (..)
-import Eth.Net as Net exposing (NetworkId(..))
+import Eth.Net as Net
 import Eth.Sentry.Tx as TxSentry
 import Eth.Types exposing (Address, HttpProvider, TxHash, WebsocketProvider)
 import Eth.Utils
+import Network exposing (..)
 
 
 type alias EthNode =
-    { http : HttpProvider
+    { network : Network
+    , http : HttpProvider
     , ws : WebsocketProvider
     }
 
 
-ethNode : NetworkId -> EthNode
-ethNode networkId =
-    case networkId of
-        Mainnet ->
-            EthNode "https://mainnet.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9" "wss://mainnet.infura.io/ws"
+intToNetwork : Int -> Maybe Network
+intToNetwork i =
+    case Net.toNetworkId i of
+        Net.Mainnet ->
+            Just Mainnet
 
-        Ropsten ->
-            EthNode "https://ropsten.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9" "wss://ropsten.infura.io/ws"
-
-        Kovan ->
-            EthNode "https://kovan.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9" "wss://kovan.infura.io/ws"
-
-        Rinkeby ->
-            EthNode "https://rinkeby.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9" "wss://rinkeby.infura.io/ws"
+        Net.Kovan ->
+            Just Kovan
 
         _ ->
-            EthNode "UnknownEthNetwork" "UnknownEthNetwork"
+            Nothing
+
+
+ethNode : Network -> EthNode
+ethNode network =
+    case network of
+        Mainnet ->
+            EthNode
+                network
+                "https://mainnet.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9"
+                "wss://mainnet.infura.io/ws"
+
+        -- Ropsten ->
+        --     EthNode "https://ropsten.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9" "wss://ropsten.infura.io/ws"
+        Kovan ->
+            EthNode
+                network
+                "https://kovan.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9"
+                "wss://kovan.infura.io/ws"
+
+
+
+-- Rinkeby ->
+--     EthNode "https://rinkeby.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9" "wss://rinkeby.infura.io/ws"
+-- _ ->
+--     EthNode "UnknownEthNetwork" "UnknownEthNetwork"
 
 
 addressIfNot0x0 : Address -> Maybe Address
@@ -62,20 +82,18 @@ logBadFetchResultMaybe fetchResult =
             Debug.log "can't fetch from Ethereum: " fetchResult
 
 
-makeEtherscanTxUrl : NetworkId -> TxHash -> String
+makeEtherscanTxUrl : Network -> TxHash -> String
 makeEtherscanTxUrl networkId txHash =
     case networkId of
         Mainnet ->
             "https://etherscan.io/tx/" ++ Eth.Utils.txHashToString txHash
 
-        Ropsten ->
-            "https://ropsten.etherscan.io/tx/" ++ Eth.Utils.txHashToString txHash
-
+        -- Ropsten ->
+        --     "https://ropsten.etherscan.io/tx/" ++ Eth.Utils.txHashToString txHash
         Kovan ->
             "https://kovan.etherscan.io/tx/" ++ Eth.Utils.txHashToString txHash
 
-        Rinkeby ->
-            "https://rinkeby.etherscan.io/tx/" ++ Eth.Utils.txHashToString txHash
 
-        _ ->
-            "Don't recognize that networkId..."
+
+-- Rinkeby ->
+--     "https://rinkeby.etherscan.io/tx/" ++ Eth.Utils.txHashToString txHash

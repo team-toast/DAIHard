@@ -5,7 +5,6 @@ import Browser
 import Browser.Navigation
 import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (UserInfo)
-import Constants exposing (..)
 import Create.State
 import Eth.Net
 import Eth.Sentry.Tx as TxSentry
@@ -17,6 +16,7 @@ import Json.Decode
 import Json.Encode
 import Marketplace.State
 import MyTrades.State
+import Network exposing (..)
 import Routing
 import Time
 import Trade.State
@@ -26,23 +26,29 @@ import Url exposing (Url)
 
 init : Flags -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init flags url key =
-    let
-        node =
-            Eth.Net.toNetworkId flags.networkId
-                |> EthHelpers.ethNode
+    case EthHelpers.intToNetwork flags.networkId of
+        Nothing ->
+            ( Failed "Your provider (Metamask?) is set to an unsupported network. Switch to mainnet (or Kovan for testing) and refresh."
+            , Cmd.none
+            )
 
-        txSentry =
-            TxSentry.init ( txOut, txIn ) TxSentryMsg node.http
-    in
-    { key = key
-    , time = Time.millisToPosix 0
-    , node = node
-    , txSentry = txSentry
-    , userAddress = Nothing
-    , userInfo = Nothing
-    , submodel = HomeModel
-    }
-        |> updateFromUrl url
+        Just network ->
+            let
+                node =
+                    EthHelpers.ethNode network
+
+                txSentry =
+                    TxSentry.init ( txOut, txIn ) TxSentryMsg node.http
+            in
+            { key = key
+            , time = Time.millisToPosix 0
+            , node = node
+            , txSentry = txSentry
+            , userAddress = Nothing
+            , userInfo = Nothing
+            , submodel = BetaLandingPage
+            }
+                |> updateFromUrl url
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -288,7 +294,7 @@ gotoRoute model route =
         Routing.Home ->
             ( Running
                 { model
-                    | submodel = HomeModel
+                    | submodel = BetaLandingPage
                 }
             , Cmd.none
             )
@@ -366,7 +372,7 @@ gotoRoute model route =
 updateSubmodelUserInfo : Maybe UserInfo -> Submodel -> Submodel
 updateSubmodelUserInfo userInfo submodel =
     case submodel of
-        HomeModel ->
+        BetaLandingPage ->
             submodel
 
         CreateModel createModel ->
@@ -402,7 +408,7 @@ subscriptions maybeValidModel =
 submodelSubscriptions : ValidModel -> Sub Msg
 submodelSubscriptions model =
     case model.submodel of
-        HomeModel ->
+        BetaLandingPage ->
             Sub.none
 
         CreateModel createModel ->

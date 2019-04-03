@@ -1,34 +1,22 @@
-module Constants exposing (daiAddress, factoryAddress, networkId, tokenDecimals)
+module Network exposing (Network(..), daiAddress, factoryAddress, tokenDecimals)
 
 import Eth.Net
 import Eth.Types exposing (Address)
 import Eth.Utils
 
 
-type NetSetting
-    = Mainnet
-    | Kovan
-
-
 tokenDecimals =
     18
 
 
-netSetting =
-    Kovan
+type Network
+    = Mainnet
+    | Kovan
 
 
-networkId =
-    case netSetting of
-        Mainnet ->
-            Eth.Net.Mainnet
-
-        Kovan ->
-            Eth.Net.Kovan
-
-
-daiAddress =
-    case netSetting of
+daiAddress : Network -> Address
+daiAddress network =
+    case network of
         Mainnet ->
             Eth.Utils.unsafeToAddress "0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359"
 
@@ -36,8 +24,9 @@ daiAddress =
             Eth.Utils.unsafeToAddress "0xC4375B7De8af5a38a93548eb8453a498222C4fF2"
 
 
-factoryAddress =
-    case netSetting of
+factoryAddress : Network -> Address
+factoryAddress network =
+    case network of
         Mainnet ->
             Eth.Utils.unsafeToAddress "0x54382c6528e55b812117c1b54e04d149585e462d"
 
