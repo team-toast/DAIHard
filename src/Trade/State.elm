@@ -13,6 +13,7 @@ import Contracts.Wrappers
 import Eth
 import Eth.Decode
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
+import Eth.Sentry.Tx exposing (CustomSend)
 import Eth.Types exposing (Address)
 import Eth.Utils
 import EthHelpers
@@ -49,6 +50,7 @@ init ethNode userInfo tradeId =
       , eventsWaitingForChatHistory = []
       , secureCommInfo = partialCommInfo
       , eventSentry = eventSentry
+      , txChainStatus = NoTx
       }
     , Cmd.batch [ getCreationInfoCmd, eventSentryCmd ]
     , ChainCmd.none
@@ -230,9 +232,9 @@ update msg prevModel =
             , ChainCmd.none
             )
 
-        ContractAction actionMsg ->
+        StartContractAction actionMsg ->
             let
-                chainCmd =
+                ( chainCmd, txChainStatus ) =
                     case prevModel.trade of
                         CTypes.LoadedTrade tradeInfo ->
                             case actionMsg of
@@ -242,7 +244,9 @@ update msg prevModel =
                                             DHT.recall tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
-                                    ChainCmd.custom genericCustomSend txParams
+                                    ( ChainCmd.custom (contractActionSend Recall) txParams
+                                    , ActionNeedsSig Recall
+                                    )
 
                                 Commit ->
                                     let
@@ -264,12 +268,13 @@ update msg prevModel =
 
                                         customSend =
                                             { onMined = Just ( PreCommitApproveMined, Nothing )
-                                            , onSign = Nothing
+                                            , onSign = Just ApproveSigned
                                             , onBroadcast = Nothing
                                             }
                                     in
-                                    ChainCmd.custom customSend
-                                        txParams
+                                    ( ChainCmd.custom customSend txParams
+                                    , ApproveNeedsSig
+                                    )
 
                                 Claim ->
                                     let
@@ -277,7 +282,9 @@ update msg prevModel =
                                             DHT.claim tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
-                                    ChainCmd.custom genericCustomSend txParams
+                                    ( ChainCmd.custom (contractActionSend Claim) txParams
+                                    , ActionNeedsSig Claim
+                                    )
 
                                 Abort ->
                                     let
@@ -285,7 +292,9 @@ update msg prevModel =
                                             DHT.abort tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
-                                    ChainCmd.custom genericCustomSend txParams
+                                    ( ChainCmd.custom (contractActionSend Abort) txParams
+                                    , ActionNeedsSig Abort
+                                    )
 
                                 Release ->
                                     let
@@ -293,7 +302,9 @@ update msg prevModel =
                                             DHT.release tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
-                                    ChainCmd.custom genericCustomSend txParams
+                                    ( ChainCmd.custom (contractActionSend Release) txParams
+                                    , ActionNeedsSig Release
+                                    )
 
                                 Burn ->
                                     let
@@ -301,7 +312,9 @@ update msg prevModel =
                                             DHT.burn tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
-                                    ChainCmd.custom genericCustomSend txParams
+                                    ( ChainCmd.custom (contractActionSend Burn) txParams
+                                    , ActionNeedsSig Burn
+                                    )
 
                                 Poke ->
                                     let
@@ -309,23 +322,59 @@ update msg prevModel =
                                             DHT.poke tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
-                                    ChainCmd.custom genericCustomSend txParams
+                                    ( ChainCmd.custom (contractActionSend Poke) txParams
+                                    , ActionNeedsSig Poke
+                                    )
 
                         tradeInfoNotYetLoaded ->
                             let
                                 _ =
-                                    Debug.log "Trying to handle ContractAction msg, but contract info is not yet loaded :/" tradeInfoNotYetLoaded
+                                    Debug.log "Trying to handle StartContractAction msg, but contract info is not yet loaded :/" tradeInfoNotYetLoaded
                             in
-                            ChainCmd.none
+                            ( ChainCmd.none
+                            , prevModel.txChainStatus
+                            )
             in
-            ( prevModel, Cmd.none, chainCmd )
+            ( { prevModel
+                | txChainStatus = txChainStatus
+              }
+            , Cmd.none
+            , chainCmd
+            )
 
-        ContractActionMined _ ->
-            let
-                _ =
-                    Debug.log "mined!" ""
-            in
-            ( prevModel, Cmd.none, ChainCmd.none )
+        ApproveSigned txHashResult ->
+            case txHashResult of
+                Ok txHash ->
+                    ( { prevModel | txChainStatus = ApproveMining txHash }
+                    , Cmd.none
+                    , ChainCmd.none
+                    )
+
+                Err errstr ->
+                    ( { prevModel | txChainStatus = TxError errstr }
+                    , Cmd.none
+                    , ChainCmd.none
+                    )
+
+        ActionSigned action txHashResult ->
+            case txHashResult of
+                Ok txHash ->
+                    ( { prevModel | txChainStatus = ActionMining action txHash }
+                    , Cmd.none
+                    , ChainCmd.none
+                    )
+
+                Err errstr ->
+                    ( { prevModel | txChainStatus = TxError errstr }
+                    , Cmd.none
+                    , ChainCmd.none
+                    )
+
+        ActionMined action _ ->
+            ( { prevModel | txChainStatus = NoTx }
+            , Cmd.none
+            , ChainCmd.none
+            )
 
         PreCommitApproveMined txReceiptResult ->
             case txReceiptResult of
@@ -344,7 +393,13 @@ update msg prevModel =
                                     DHT.commit tradeInfo.creationInfo.address userInfo.commPubkey
                                         |> Eth.toSend
                             in
-                            ( prevModel, Cmd.none, ChainCmd.custom genericCustomSend txParams )
+                            ( { prevModel
+                                | txChainStatus =
+                                    ActionNeedsSig Commit
+                              }
+                            , Cmd.none
+                            , ChainCmd.custom (contractActionSend Commit) txParams
+                            )
 
                         incomplete ->
                             let
@@ -452,7 +507,12 @@ update msg prevModel =
                             in
                             ( prevModel
                             , Cmd.none
-                            , ChainCmd.custom genericCustomSend txParams
+                            , ChainCmd.custom
+                                { onMined = Nothing
+                                , onSign = Nothing
+                                , onBroadcast = Nothing
+                                }
+                                txParams
                             )
 
                 problematicBullshit ->
@@ -649,9 +709,10 @@ decryptNewMessagesCmd model userRole =
         |> Cmd.batch
 
 
-genericCustomSend =
-    { onMined = Just ( ContractActionMined, Nothing )
-    , onSign = Nothing
+contractActionSend : ContractAction -> CustomSend Msg
+contractActionSend action =
+    { onMined = Just ( ActionMined action, Nothing )
+    , onSign = Just <| ActionSigned action
     , onBroadcast = Nothing
     }
 
