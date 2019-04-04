@@ -66,6 +66,7 @@ updateUserInfo userInfo model =
             Contracts.Wrappers.getAllowanceCmd
                 model.node
                 uInfo.address
+                (factoryAddress model.node.network)
                 AllowanceFetched
 
         Nothing ->
@@ -84,6 +85,7 @@ update msg prevModel =
                             Contracts.Wrappers.getAllowanceCmd
                                 prevModel.node
                                 userInfo.address
+                                (factoryAddress prevModel.node.network)
                                 AllowanceFetched
                     in
                     UpdateResult
@@ -260,28 +262,44 @@ update msg prevModel =
                                 |> BigInt.add fees.devFee
                                 |> BigInt.add (TokenValue.getBigInt parameters.pokeReward)
 
-                        txParams =
-                            TokenContract.approve
-                                (daiAddress prevModel.node.network)
-                                (factoryAddress prevModel.node.network)
-                                fullDepositAmount
-                                |> Eth.toSend
+                        approveChainCmd =
+                            let
+                                txParams =
+                                    TokenContract.approve
+                                        (daiAddress prevModel.node.network)
+                                        (factoryAddress prevModel.node.network)
+                                        fullDepositAmount
+                                        |> Eth.toSend
 
-                        customSend =
-                            { onMined = Nothing
-                            , onSign = Just ApproveSigned
-                            , onBroadcast = Nothing
-                            }
+                                customSend =
+                                    { onMined = Nothing
+                                    , onSign = Just ApproveSigned
+                                    , onBroadcast = Nothing
+                                    }
+                            in
+                            ChainCmd.custom customSend txParams
+
+                        ( txChainStatus, chainCmd ) =
+                            case prevModel.allowance of
+                                Just allowance ->
+                                    if BigInt.compare allowance fullDepositAmount /= LT then
+                                        initiateCreateCall prevModel
+
+                                    else
+                                        ( ApproveNeedsSig, approveChainCmd )
+
+                                Nothing ->
+                                    ( ApproveNeedsSig, approveChainCmd )
 
                         newModel =
                             { prevModel
-                                | txChainStatus = ApproveNeedsSig
+                                | txChainStatus = txChainStatus
                                 , depositAmount = Just fullDepositAmount
                             }
                     in
                     { model = newModel
                     , cmd = Cmd.none
-                    , chainCmd = ChainCmd.custom customSend txParams
+                    , chainCmd = chainCmd
                     , newRoute = Nothing
                     }
 
@@ -330,7 +348,15 @@ update msg prevModel =
                     case ( newModel.txChainStatus, newModel.depositAmount ) of
                         ( ApproveMining _, Just depositAmount ) ->
                             if BigInt.compare allowance depositAmount /= LT then
-                                initiateCreateCall newModel
+                                let
+                                    ( txChainStatus, chainCmd ) =
+                                        initiateCreateCall newModel
+                                in
+                                UpdateResult
+                                    { newModel | txChainStatus = txChainStatus }
+                                    Cmd.none
+                                    chainCmd
+                                    Nothing
 
                             else
                                 justModelUpdate newModel
@@ -429,7 +455,7 @@ update msg prevModel =
             justModelUpdate prevModel
 
 
-initiateCreateCall : Model -> UpdateResult
+initiateCreateCall : Model -> ( TxChainStatus, ChainCmd Msg )
 initiateCreateCall model =
     case model.createParameters of
         Nothing ->
@@ -437,7 +463,7 @@ initiateCreateCall model =
                 _ =
                     Debug.log "Can't find valid contract parameters. What the heck?????" ""
             in
-            justModelUpdate model
+            ( model.txChainStatus, ChainCmd.none )
 
         Just createParameters ->
             let
@@ -452,15 +478,10 @@ initiateCreateCall model =
                     , onSign = Just CreateSigned
                     , onBroadcast = Nothing
                     }
-
-                newModel =
-                    { model | txChainStatus = CreateNeedsSig }
             in
-            { model = newModel
-            , cmd = Cmd.none
-            , chainCmd = ChainCmd.custom customSend txParams
-            , newRoute = Nothing
-            }
+            ( CreateNeedsSig
+            , ChainCmd.custom customSend txParams
+            )
 
 
 updateInputs : Inputs -> Model -> Model

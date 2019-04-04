@@ -51,14 +51,14 @@ openTrade network parameters =
         parameters.initiatorCommPubkey
 
 
-getAllowanceCmd : EthHelpers.EthNode -> Address -> (Result Http.Error BigInt -> msg) -> Cmd msg
-getAllowanceCmd ethNode user msgConstructor =
+getAllowanceCmd : EthHelpers.EthNode -> Address -> Address -> (Result Http.Error BigInt -> msg) -> Cmd msg
+getAllowanceCmd ethNode owner spender msgConstructor =
     Eth.call
         ethNode.http
         (TokenContract.allowance
             (daiAddress ethNode.network)
-            user
-            (factoryAddress ethNode.network)
+            owner
+            spender
         )
         |> Task.attempt msgConstructor
 

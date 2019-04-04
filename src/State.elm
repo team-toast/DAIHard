@@ -390,8 +390,12 @@ updateSubmodelUserInfo userInfo submodel =
             )
 
         TradeModel tradeModel ->
-            ( TradeModel (tradeModel |> Trade.State.updateUserInfo userInfo)
-            , Cmd.none
+            let
+                ( newTradeModel, tradeCmd ) =
+                    tradeModel |> Trade.State.updateUserInfo userInfo
+            in
+            ( TradeModel newTradeModel
+            , Cmd.map TradeMsg tradeCmd
             )
 
         MarketplaceModel marketplaceModel ->

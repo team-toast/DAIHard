@@ -34,6 +34,7 @@ type alias Model =
     , showChatHistory : Bool
     , secureCommInfo : SecureCommInfo
     , eventSentry : EventSentry Msg
+    , allowance : Maybe BigInt
     , txChainStatus : TxChainStatus
     }
 
@@ -42,8 +43,8 @@ type Msg
     = CreationInfoFetched (Result Http.Error DHF.CreatedTrade)
     | StateFetched (Result Http.Error (Maybe CTypes.State))
     | ParametersFetched (Result Http.Error (Result String CTypes.TradeParameters))
+    | AllowanceFetched (Result Http.Error BigInt)
     | StartContractAction ContractAction
-    | PreCommitApproveMined (Result String TxReceipt)
     | ActionMined ContractAction (Result String TxReceipt)
     | ActionSigned ContractAction (Result String TxHash)
     | ApproveSigned (Result String TxHash)
