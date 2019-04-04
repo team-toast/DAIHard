@@ -1,4 +1,4 @@
-module EthHelpers exposing (EthNode, addressIfNot0x0, ethNode, getLogAt, intToNetwork, logBadFetchResultMaybe, makeEtherscanTxUrl)
+module EthHelpers exposing (EthNode, addressIfNot0x0, ethNode, getLogAt, intToNetwork, logBadFetchResultMaybe, makeEtherscanAddressUrl, makeEtherscanTxUrl)
 
 import Array
 import BigInt exposing (BigInt)
@@ -83,8 +83,8 @@ logBadFetchResultMaybe fetchResult =
 
 
 makeEtherscanTxUrl : Network -> TxHash -> String
-makeEtherscanTxUrl networkId txHash =
-    case networkId of
+makeEtherscanTxUrl network txHash =
+    case network of
         Mainnet ->
             "https://etherscan.io/tx/" ++ Eth.Utils.txHashToString txHash
 
@@ -92,6 +92,16 @@ makeEtherscanTxUrl networkId txHash =
         --     "https://ropsten.etherscan.io/tx/" ++ Eth.Utils.txHashToString txHash
         Kovan ->
             "https://kovan.etherscan.io/tx/" ++ Eth.Utils.txHashToString txHash
+
+
+makeEtherscanAddressUrl : Network -> Address -> String
+makeEtherscanAddressUrl network address =
+    case network of
+        Mainnet ->
+            "https://etherscan.io/address/" ++ Eth.Utils.addressToString address
+
+        Kovan ->
+            "https://kovan.etherscan.io/address/" ++ Eth.Utils.addressToString address
 
 
 
