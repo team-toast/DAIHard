@@ -53,9 +53,9 @@ initialInputs =
     , fiatAmount = ""
     , margin = "0"
     , paymentMethods = []
-    , autorecallInterval = Time.millisToPosix <| 1000 * 60 * 60 * 2
-    , autoabortInterval = Time.millisToPosix <| 1000 * 60 * 30
-    , autoreleaseInterval = Time.millisToPosix <| 1000 * 60 * 60 * 12
+    , autorecallInterval = Time.millisToPosix <| 1000 * 60 * 60 * 24
+    , autoabortInterval = Time.millisToPosix <| 1000 * 60 * 60 * 24
+    , autoreleaseInterval = Time.millisToPosix <| 1000 * 60 * 60 * 24
     }
 
 

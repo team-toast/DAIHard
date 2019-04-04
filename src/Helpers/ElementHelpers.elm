@@ -334,6 +334,13 @@ intervalInput maybeLowValColor i newIntervalMsg =
                                 newIntervalMsg <|
                                     (TimeHelpers.sub i incAmount
                                         |> TimeHelpers.negativeToZero
+                                        |> (\t ->
+                                                if Time.posixToMillis t == 0 then
+                                                    Time.millisToPosix <| 1000 * 60 * 5
+
+                                                else
+                                                    t
+                                           )
                                     )
                             ]
                             (Images.toElement
