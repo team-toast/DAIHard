@@ -636,26 +636,36 @@ currencySelector showDropdown typeStringInput openCurrencySelectorMsg typeString
                     Element.none
 
                 ( True, Nothing ) ->
-                    Element.column
-                        [ Element.width <| Element.fill
+                    Element.wrappedRow
+                        [ Element.width <| Element.px 350
                         , Element.Border.color black
                         , Element.Border.width 1
                         , Element.Background.color white
-                        , Element.padding 5
-                        , Element.width Element.fill
+                        , Element.padding 10
+                        , Element.centerX
                         ]
                         (FiatValue.searchTypes typeStringInput
                             |> Dict.toList
                             |> List.map
                                 (\( typeString, ( _, image ) ) ->
                                     Element.row
-                                        [ Element.width Element.fill
+                                        [ Element.width <| Element.px 80
                                         , Element.spacing 9
                                         , Element.paddingXY 0 5
                                         , onClickNoPropagation <| typeStringChangedMsgConstructor typeString
                                         , Element.mouseOver [ Element.Background.color <| Element.rgb 0.8 0.8 1 ]
                                         ]
-                                        [ Images.toElement [ Element.height <| Element.px 26 ] image
+                                        [ Images.toElement
+                                            [ Element.height <| Element.px 26
+
+                                            -- , Element.Border.shadow
+                                            --     { offset = ( 0, 0 )
+                                            --     , size = 3
+                                            --     , blur = 5
+                                            --     , color = Element.rgba 0 0 0 0.5
+                                            --     }
+                                            ]
+                                            image
                                         , Element.el [ Element.Font.size 16, Element.Font.semiBold ] <| textWithoutTextCursor typeString
                                         ]
                                 )
