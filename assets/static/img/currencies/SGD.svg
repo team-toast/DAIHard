@@ -1,1 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="87" height="87" viewBox="0 0 87 87"><defs><style>.a,.c,.g{fill:#fff;}.a{stroke:#707070;}.b{fill:rgba(0,0,0,0.67);}.d{clip-path:url(#c);}.e{clip-path:url(#d);}.f{fill:#df0000;}.g{fill-rule:evenodd;}.h{filter:url(#a);}</style><filter id="a" x="0" y="0" width="87" height="87" filterUnits="userSpaceOnUse"><feOffset dy="3" input="SourceAlpha"/><feGaussianBlur stdDeviation="10" result="b"/><feFlood flood-opacity="0.051"/><feComposite operator="in" in2="b"/><feComposite in="SourceGraphic"/></filter><clipPath id="c"><ellipse class="a" cx="13.5" cy="13.5" rx="13.5" ry="13.5"/></clipPath><clipPath id="d"><rect class="b" width="36" height="27"/></clipPath></defs><g transform="translate(-81 -603)"><g class="h" transform="matrix(1, 0, 0, 1, 81, 603)"><ellipse class="c" cx="13.5" cy="13.5" rx="13.5" ry="13.5" transform="translate(30 27)"/></g><g class="d" transform="translate(111 630)"><g class="e" transform="translate(-1.865)"><g transform="translate(-0.07)"><rect class="c" width="40.5" height="27" transform="translate(-1.055)"/><rect class="f" width="40.5" height="13.5" transform="translate(-1.055)"/><path class="g" d="M8.286,2.263a4.748,4.748,0,0,0,.043,9.292A4.832,4.832,0,1,1,5.655,2.268a4.621,4.621,0,0,1,2.631-.005Z"/><path class="g" d="M18.326,36.5l.275.85h0l-.727-.519-.724.524.269-.852-.722-.526.893-.008.277-.85.283.848h.894Z" transform="translate(-10.775 -30.311)"/><path class="g" d="M18.326,36.5l.275.85h0l-.727-.519-.724.524.269-.852-.722-.526.893-.008.277-.85.283.848h.894Z" transform="translate(-9.788 -27.383)"/><path class="g" d="M18.326,36.5l.275.85h0l-.727-.519-.724.524.269-.852-.722-.526.893-.008.277-.85.283.848h.894Z" transform="translate(-6.501 -27.404)"/><path class="g" d="M18.326,36.5l.275.85h0l-.727-.519-.724.524.269-.852-.722-.526.893-.008.277-.85.283.848h.894Z" transform="translate(-5.521 -30.309)"/><path class="g" d="M18.326,36.5l.275.85h0l-.727-.519-.724.524.269-.852-.722-.526.893-.008.277-.85.283.848h.894Z" transform="translate(-8.123 -32.235)"/></g></g></g></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="29" height="29" viewBox="0 0 29 29">
+  <defs>
+    <clipPath id="clip-path">
+      <ellipse id="Ellipse_29" data-name="Ellipse 29" cx="13.5" cy="13.5" rx="13.5" ry="13.5" fill="#fff" stroke="#707070" stroke-width="1"/>
+    </clipPath>
+    <clipPath id="clip-path-2">
+      <rect id="rect15253" width="36" height="27" fill="rgba(0,0,0,0.67)"/>
+    </clipPath>
+  </defs>
+  <g id="SGD" transform="translate(-110 -629)">
+    <circle id="Ellipse_41" data-name="Ellipse 41" cx="14.5" cy="14.5" r="14.5" transform="translate(110 629)" opacity="0.05"/>
+    <g id="Mask_Group_25" data-name="Mask Group 25" transform="translate(111 630)" clip-path="url(#clip-path)">
+      <g id="sgp" transform="translate(-1.865)" clip-path="url(#clip-path-2)">
+        <g id="g15168" transform="translate(-0.07)">
+          <rect id="rect149" width="40.5" height="27" transform="translate(-1.055)" fill="#fff"/>
+          <rect id="rect148" width="40.5" height="13.5" transform="translate(-1.055)" fill="#df0000"/>
+          <path id="path141" d="M8.286,2.263a4.748,4.748,0,0,0,.043,9.292A4.832,4.832,0,1,1,5.655,2.268a4.621,4.621,0,0,1,2.631-.005Z" fill="#fff" fill-rule="evenodd"/>
+          <path id="polygon142" d="M18.326,36.5l.275.85h0l-.727-.519-.724.524.269-.852-.722-.526.893-.008.277-.85.283.848h.894Z" transform="translate(-10.775 -30.311)" fill="#fff" fill-rule="evenodd"/>
+          <path id="polygon144" d="M18.326,36.5l.275.85h0l-.727-.519-.724.524.269-.852-.722-.526.893-.008.277-.85.283.848h.894Z" transform="translate(-9.788 -27.383)" fill="#fff" fill-rule="evenodd"/>
+          <path id="polygon145" d="M18.326,36.5l.275.85h0l-.727-.519-.724.524.269-.852-.722-.526.893-.008.277-.85.283.848h.894Z" transform="translate(-6.501 -27.404)" fill="#fff" fill-rule="evenodd"/>
+          <path id="polygon146" d="M18.326,36.5l.275.85h0l-.727-.519-.724.524.269-.852-.722-.526.893-.008.277-.85.283.848h.894Z" transform="translate(-5.521 -30.309)" fill="#fff" fill-rule="evenodd"/>
+          <path id="polygon147" d="M18.326,36.5l.275.85h0l-.727-.519-.724.524.269-.852-.722-.526.893-.008.277-.85.283.848h.894Z" transform="translate(-8.123 -32.235)" fill="#fff" fill-rule="evenodd"/>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

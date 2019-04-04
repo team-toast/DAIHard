@@ -1,1 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="87" height="87" viewBox="0 0 87 87"><defs><style>.a,.b{fill:#fff;}.a{stroke:#707070;}.c{clip-path:url(#c);}.d{fill:#001b9a;}.e{fill:#e70000;}.f{filter:url(#a);}</style><filter id="a" x="0" y="0" width="87" height="87" filterUnits="userSpaceOnUse"><feOffset dy="3" input="SourceAlpha"/><feGaussianBlur stdDeviation="10" result="b"/><feFlood flood-opacity="0.051"/><feComposite operator="in" in2="b"/><feComposite in="SourceGraphic"/></filter><clipPath id="c"><ellipse class="a" cx="13.5" cy="13.5" rx="13.5" ry="13.5"/></clipPath></defs><g transform="translate(-239 -603)"><g class="f" transform="matrix(1, 0, 0, 1, 239, 603)"><ellipse class="b" cx="13.5" cy="13.5" rx="13.5" ry="13.5" transform="translate(30 27)"/></g><g class="c" transform="translate(269 630)"><g transform="translate(-4.865)"><rect class="b" width="36" height="27"/><rect class="d" width="36" height="9" transform="translate(0 9.143)"/><rect class="e" width="36" height="4.641" transform="translate(0 0.002)"/><rect class="e" width="36" height="4.5" transform="translate(0 22.5)"/></g></g></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="29" height="29" viewBox="0 0 29 29">
+  <defs>
+    <clipPath id="clip-path">
+      <ellipse id="Ellipse_11" data-name="Ellipse 11" cx="13.5" cy="13.5" rx="13.5" ry="13.5" fill="#fff" stroke="#707070" stroke-width="1"/>
+    </clipPath>
+  </defs>
+  <g id="THB" transform="translate(-268 -629)">
+    <circle id="Ellipse_52" data-name="Ellipse 52" cx="14.5" cy="14.5" r="14.5" transform="translate(268 629)" opacity="0.05"/>
+    <g id="Mask_Group_9" data-name="Mask Group 9" transform="translate(269 630)" clip-path="url(#clip-path)">
+      <g id="tha" transform="translate(-4.865)">
+        <g id="g7387">
+          <rect id="rect171" width="36" height="27" fill="#fff"/>
+          <rect id="rect403" width="36" height="9" transform="translate(0 9.143)" fill="#001b9a"/>
+          <rect id="rect135" width="36" height="4.641" transform="translate(0 0.002)" fill="#e70000"/>
+          <rect id="rect136" width="36" height="4.5" transform="translate(0 22.5)" fill="#e70000"/>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
