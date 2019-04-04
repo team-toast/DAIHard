@@ -12,7 +12,9 @@ window.addEventListener('load', function () {
             window.app = Elm.App.init({
                 node: document.getElementById('elm'),
                 flags: {
-                    networkId: parseInt(networkId)
+                    networkId: parseInt(networkId),
+                    width: window.innerWidth,
+                    height: window.innerHeight
                 }
             });
             portStuff(app);
@@ -22,7 +24,9 @@ window.addEventListener('load', function () {
         window.app = Elm.App.init({
             node: document.getElementById('elm'),
             flags: {
-                networkId: parseInt(1)
+                networkId: parseInt(1),
+                width: window.innerWidth,
+                height: window.innerHeight
             }
         });
         console.log("Metamask not detected.");

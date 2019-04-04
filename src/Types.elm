@@ -20,6 +20,8 @@ import Url exposing (Url)
 
 type alias Flags =
     { networkId : Int
+    , width : Int
+    , height : Int
     }
 
 
