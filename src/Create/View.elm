@@ -29,7 +29,17 @@ root model =
         ]
         [ mainInputElement model
         , phasesElement model
-        , PaymentMethods.viewList model.inputs.paymentMethods (Just OpenPMWizard)
+        , Element.el
+            [ Element.below <|
+                EH.maybeErrorElement
+                    [ Element.moveDown 5
+                    , Element.padding 10
+                    , Element.Font.size 20
+                    , Element.width <| Element.px 400
+                    ]
+                    model.errors.paymentMethods
+            ]
+            (PaymentMethods.viewList model.inputs.paymentMethods (Just OpenPMWizard))
         ]
 
 
@@ -93,15 +103,19 @@ daiElement model =
                 CTypes.SellerOpened ->
                     "You're selling"
             )
-            (daiInputElement model.inputs.daiAmount)
+            (daiInputElement model.inputs.daiAmount model.errors.daiAmount)
 
 
-daiInputElement : String -> Element Msg
-daiInputElement amountString =
+daiInputElement : String -> Maybe String -> Element Msg
+daiInputElement amountString maybeError =
     EH.fancyInput
         [ Element.width <| Element.px 250
         , Element.Font.medium
         , Element.Font.size 24
+        , Element.below <|
+            EH.maybeErrorElement
+                [ Element.moveDown 5 ]
+                maybeError
         ]
         ( Nothing, Just <| EH.daiSymbolAndLabel )
         "dai input"
@@ -115,11 +129,16 @@ fiatElement model =
     EH.niceBottomBorderEl <|
         EH.withHeader
             "For fiat"
-            (fiatInputElement model.inputs.fiatType model.inputs.fiatAmount model.showFiatTypeDropdown)
+            (fiatInputElement
+                model.inputs.fiatType
+                model.inputs.fiatAmount
+                model.showFiatTypeDropdown
+                model.errors.fiat
+            )
 
 
-fiatInputElement : String -> String -> Bool -> Element Msg
-fiatInputElement typeString amountString showFiatTypeDropdown =
+fiatInputElement : String -> String -> Bool -> Maybe String -> Element Msg
+fiatInputElement typeString amountString showFiatTypeDropdown maybeError =
     let
         fiatCharElement =
             Element.text <| FiatValue.typeStringToCharStringDefaultEmpty typeString
@@ -128,6 +147,10 @@ fiatInputElement typeString amountString showFiatTypeDropdown =
         [ Element.width <| Element.px 250
         , Element.Font.medium
         , Element.Font.size 24
+        , Element.below <|
+            EH.maybeErrorElement
+                [ Element.moveDown 5 ]
+                maybeError
         ]
         ( Just fiatCharElement, Just <| EH.currencySelector showFiatTypeDropdown typeString (ShowCurrencyDropdown True) FiatTypeChanged )
         "fiat input"
@@ -143,14 +166,18 @@ marginElement model =
             EH.niceBottomBorderEl <|
                 EH.withHeader
                     "At margin"
-                    (marginInputElement model.inputs.margin (model.inputs.openMode == CTypes.SellerOpened))
+                    (marginInputElement
+                        model.inputs.margin
+                        (model.inputs.openMode == CTypes.SellerOpened)
+                        model.errors.margin
+                    )
 
         _ ->
             EH.comingSoonMsg [ Element.width <| Element.px 150 ] "Margin for non-USD currencies coming soon!"
 
 
-marginInputElement : String -> Bool -> Element Msg
-marginInputElement marginString upIsGreen =
+marginInputElement : String -> Bool -> Maybe String -> Element Msg
+marginInputElement marginString upIsGreen maybeError =
     let
         ( color, arrowImage ) =
             case interpretMarginString marginString of
@@ -178,6 +205,10 @@ marginInputElement marginString upIsGreen =
         , Element.Font.medium
         , Element.Font.size 24
         , Element.Font.color color
+        , Element.below <|
+            EH.maybeErrorElement
+                [ Element.moveDown 5 ]
+                maybeError
         ]
         ( Nothing, Just percentAndArrowElement )
         "margin input"

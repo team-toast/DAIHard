@@ -50,6 +50,7 @@ init ethNode userInfo tradeId =
       , eventsWaitingForChatHistory = []
       , secureCommInfo = partialCommInfo
       , eventSentry = eventSentry
+      , allowance = Nothing
       , txChainStatus = NoTx
       }
     , Cmd.batch [ getCreationInfoCmd, eventSentryCmd ]
@@ -62,9 +63,20 @@ getContractCreationInfoCmd ethNode id =
     Contracts.Wrappers.getCreationInfoFromIdCmd ethNode (BigInt.fromInt id) CreationInfoFetched
 
 
-updateUserInfo : Maybe UserInfo -> Model -> Model
+updateUserInfo : Maybe UserInfo -> Model -> ( Model, Cmd Msg )
 updateUserInfo userInfo model =
-    { model | userInfo = userInfo }
+    ( { model | userInfo = userInfo }
+    , case ( userInfo, model.trade ) of
+        ( Just uInfo, CTypes.LoadedTrade trade ) ->
+            Contracts.Wrappers.getAllowanceCmd
+                model.ethNode
+                uInfo.address
+                trade.creationInfo.address
+                AllowanceFetched
+
+        _ ->
+            Cmd.none
+    )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, ChainCmd Msg )
@@ -100,6 +112,18 @@ update msg prevModel =
                     else
                         Cmd.none
 
+                fetchAllowanceCmd =
+                    case ( prevModel.userInfo, prevModel.trade ) of
+                        ( Just userInfo, CTypes.LoadedTrade trade ) ->
+                            Contracts.Wrappers.getAllowanceCmd
+                                prevModel.ethNode
+                                userInfo.address
+                                trade.creationInfo.address
+                                AllowanceFetched
+
+                        _ ->
+                            Cmd.none
+
                 newModel =
                     { prevModel | chatHistoryModel = newChatHistoryModel }
             in
@@ -110,12 +134,56 @@ update msg prevModel =
                         [ Contracts.Wrappers.getStateCmd prevModel.ethNode tradeInfo.creationInfo.address StateFetched
                         , decryptCmd
                         , fetchCreationInfoCmd
+                        , fetchAllowanceCmd
                         ]
                     , ChainCmd.none
                     )
 
                 _ ->
                     ( newModel, Cmd.none, ChainCmd.none )
+
+        AllowanceFetched fetchResult ->
+            case fetchResult of
+                Ok allowance ->
+                    let
+                        newModel =
+                            { prevModel
+                                | allowance = Just allowance
+                            }
+                    in
+                    case ( newModel.txChainStatus, newModel.trade, newModel.userInfo ) of
+                        ( ApproveMining _, CTypes.LoadedTrade trade, Just userInfo ) ->
+                            if BigInt.compare allowance (CTypes.responderDeposit trade.parameters |> TokenValue.getBigInt) /= LT then
+                                let
+                                    ( txChainStatus, chainCmd ) =
+                                        initiateCommitCall trade.creationInfo.address userInfo.commPubkey
+                                in
+                                ( { newModel | txChainStatus = txChainStatus }
+                                , Cmd.none
+                                , chainCmd
+                                )
+
+                            else
+                                ( newModel
+                                , Cmd.none
+                                , ChainCmd.none
+                                )
+
+                        _ ->
+                            ( newModel
+                            , Cmd.none
+                            , ChainCmd.none
+                            )
+
+                Err e ->
+                    let
+                        _ =
+                            Debug.log "Error fecthing allowance" e
+                    in
+                    ( prevModel
+                    , Cmd.none
+                    , ChainCmd.none
+                    )
 
         CreationInfoFetched fetchResult ->
             case fetchResult of
@@ -234,7 +302,7 @@ update msg prevModel =
 
         StartContractAction actionMsg ->
             let
-                ( chainCmd, txChainStatus ) =
+                ( txChainStatus, chainCmd ) =
                     case prevModel.trade of
                         CTypes.LoadedTrade tradeInfo ->
                             case actionMsg of
@@ -244,37 +312,43 @@ update msg prevModel =
                                             DHT.recall tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
-                                    ( ChainCmd.custom (contractActionSend Recall) txParams
-                                    , ActionNeedsSig Recall
+                                    ( ActionNeedsSig Recall
+                                    , ChainCmd.custom (contractActionSend Recall) txParams
                                     )
 
                                 Commit ->
                                     let
                                         fullDepositAmount =
                                             TokenValue.getBigInt <|
-                                                case tradeInfo.parameters.openMode of
-                                                    CTypes.BuyerOpened ->
-                                                        tradeInfo.parameters.tradeAmount
+                                                CTypes.responderDeposit tradeInfo.parameters
 
-                                                    CTypes.SellerOpened ->
-                                                        tradeInfo.parameters.buyerDeposit
+                                        approveChainCmd =
+                                            let
+                                                txParams =
+                                                    TokenContract.approve
+                                                        (daiAddress prevModel.ethNode.network)
+                                                        tradeInfo.creationInfo.address
+                                                        fullDepositAmount
+                                                        |> Eth.toSend
 
-                                        txParams =
-                                            TokenContract.approve
-                                                (daiAddress prevModel.ethNode.network)
-                                                tradeInfo.creationInfo.address
-                                                fullDepositAmount
-                                                |> Eth.toSend
-
-                                        customSend =
-                                            { onMined = Just ( PreCommitApproveMined, Nothing )
-                                            , onSign = Just ApproveSigned
-                                            , onBroadcast = Nothing
-                                            }
+                                                customSend =
+                                                    { onMined = Nothing
+                                                    , onSign = Just ApproveSigned
+                                                    , onBroadcast = Nothing
+                                                    }
+                                            in
+                                            ChainCmd.custom customSend txParams
                                     in
-                                    ( ChainCmd.custom customSend txParams
-                                    , ApproveNeedsSig
-                                    )
+                                    case ( prevModel.allowance, prevModel.userInfo ) of
+                                        ( Just allowance, Just userInfo ) ->
+                                            if BigInt.compare allowance (CTypes.responderDeposit tradeInfo.parameters |> TokenValue.getBigInt) /= LT then
+                                                initiateCommitCall tradeInfo.creationInfo.address userInfo.commPubkey
+
+                                            else
+                                                ( ApproveNeedsSig, approveChainCmd )
+
+                                        _ ->
+                                            ( ApproveNeedsSig, approveChainCmd )
 
                                 Claim ->
                                     let
@@ -282,8 +356,8 @@ update msg prevModel =
                                             DHT.claim tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
-                                    ( ChainCmd.custom (contractActionSend Claim) txParams
-                                    , ActionNeedsSig Claim
+                                    ( ActionNeedsSig Claim
+                                    , ChainCmd.custom (contractActionSend Claim) txParams
                                     )
 
                                 Abort ->
@@ -292,8 +366,8 @@ update msg prevModel =
                                             DHT.abort tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
-                                    ( ChainCmd.custom (contractActionSend Abort) txParams
-                                    , ActionNeedsSig Abort
+                                    ( ActionNeedsSig Abort
+                                    , ChainCmd.custom (contractActionSend Abort) txParams
                                     )
 
                                 Release ->
@@ -302,8 +376,8 @@ update msg prevModel =
                                             DHT.release tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
-                                    ( ChainCmd.custom (contractActionSend Release) txParams
-                                    , ActionNeedsSig Release
+                                    ( ActionNeedsSig Release
+                                    , ChainCmd.custom (contractActionSend Release) txParams
                                     )
 
                                 Burn ->
@@ -312,8 +386,8 @@ update msg prevModel =
                                             DHT.burn tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
-                                    ( ChainCmd.custom (contractActionSend Burn) txParams
-                                    , ActionNeedsSig Burn
+                                    ( ActionNeedsSig Burn
+                                    , ChainCmd.custom (contractActionSend Burn) txParams
                                     )
 
                                 Poke ->
@@ -322,8 +396,8 @@ update msg prevModel =
                                             DHT.poke tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
-                                    ( ChainCmd.custom (contractActionSend Poke) txParams
-                                    , ActionNeedsSig Poke
+                                    ( ActionNeedsSig Poke
+                                    , ChainCmd.custom (contractActionSend Poke) txParams
                                     )
 
                         tradeInfoNotYetLoaded ->
@@ -331,8 +405,8 @@ update msg prevModel =
                                 _ =
                                     Debug.log "Trying to handle StartContractAction msg, but contract info is not yet loaded :/" tradeInfoNotYetLoaded
                             in
-                            ( ChainCmd.none
-                            , prevModel.txChainStatus
+                            ( prevModel.txChainStatus
+                            , ChainCmd.none
                             )
             in
             ( { prevModel
@@ -375,38 +449,6 @@ update msg prevModel =
             , Cmd.none
             , ChainCmd.none
             )
-
-        PreCommitApproveMined txReceiptResult ->
-            case txReceiptResult of
-                Err s ->
-                    let
-                        _ =
-                            Debug.log "error mining transaction" s
-                    in
-                    ( prevModel, Cmd.none, ChainCmd.none )
-
-                Ok txReceipt ->
-                    case ( prevModel.trade, prevModel.userInfo ) of
-                        ( CTypes.LoadedTrade tradeInfo, Just userInfo ) ->
-                            let
-                                txParams =
-                                    DHT.commit tradeInfo.creationInfo.address userInfo.commPubkey
-                                        |> Eth.toSend
-                            in
-                            ( { prevModel
-                                | txChainStatus =
-                                    ActionNeedsSig Commit
-                              }
-                            , Cmd.none
-                            , ChainCmd.custom (contractActionSend Commit) txParams
-                            )
-
-                        incomplete ->
-                            let
-                                _ =
-                                    Debug.log "Trying to handle PreCommitApproveMined, but missing crucial info" incomplete
-                            in
-                            ( prevModel, Cmd.none, ChainCmd.none )
 
         EventSentryMsg eventMsg ->
             let
@@ -535,6 +577,18 @@ update msg prevModel =
                     Debug.log "Error mining message submit" errstr
             in
             ( prevModel, Cmd.none, ChainCmd.none )
+
+
+initiateCommitCall : Address -> String -> ( TxChainStatus, ChainCmd Msg )
+initiateCommitCall tradeAddress commPubkey =
+    let
+        txParams =
+            DHT.commit tradeAddress commPubkey
+                |> Eth.toSend
+    in
+    ( ActionNeedsSig Commit
+    , ChainCmd.custom (contractActionSend Commit) txParams
+    )
 
 
 handleNewLog : Eth.Types.Log -> Model -> ( Model, Cmd Msg )

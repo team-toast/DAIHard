@@ -3,6 +3,7 @@ module View exposing (root)
 import Browser
 import Contracts.Types as CTypes
 import Create.View
+import Dict
 import Element exposing (Attribute, Element)
 import Element.Background
 import Element.Border
@@ -10,6 +11,7 @@ import Element.Events
 import Element.Font
 import Element.Input
 import ElementHelpers as EH
+import FiatValue
 import Marketplace.Types
 import Marketplace.View
 import MyTrades.View
@@ -306,5 +308,11 @@ betaLandingPage =
                    )
             , Element.el [ Element.centerX ]
                 (EH.blueButton "Okay, let's go!" (GotoRoute <| Routing.Marketplace CTypes.SellerOpened))
+            -- , FiatValue.currencyTypes
+            --     |> Dict.toList
+            --     |> List.map Tuple.second
+            --     |> List.map Tuple.first
+            --     |> List.map (\s -> Element.text <| " " ++ s ++ " ")
+            --     |> Element.paragraph [ Element.centerX, Element.Font.center ]
             ]
         ]

@@ -25,6 +25,7 @@ module ElementHelpers exposing
     , lightBlue
     , lightGray
     , margin
+    , maybeErrorElement
     , mediumGray
     , modal
     , niceBottomBorderEl
@@ -944,3 +945,29 @@ elementColorToAvh4Color c =
                     rgba.blue
                     rgba.alpha
            )
+
+
+maybeErrorElement : List (Attribute msg) -> Maybe String -> Element msg
+maybeErrorElement attributes maybeError =
+    case maybeError of
+        Nothing ->
+            Element.none
+
+        Just errorString ->
+            Element.el
+                ([ Element.Border.rounded 5
+                 , Element.Border.color <| Element.rgb 0.9 0 0
+                 , Element.Border.width 1
+                 , Element.Background.color <| Element.rgb 1 0.4 0.4
+                 , Element.padding 5
+                 , Element.centerX
+                 , Element.centerY
+                 , Element.width (Element.shrink |> Element.maximum 200)
+                 , Element.Font.size 14
+                 ]
+                    ++ attributes
+                )
+                (Element.paragraph
+                    []
+                    [ Element.text errorString ]
+                )

@@ -4,7 +4,6 @@ import Array exposing (Array)
 import BigInt exposing (BigInt)
 import BigIntHelpers
 import CommonTypes exposing (UserInfo)
-import Network exposing (..)
 import Contracts.Types as CTypes
 import Contracts.Wrappers
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
@@ -13,6 +12,7 @@ import EthHelpers
 import FiatValue exposing (FiatValue)
 import Flip exposing (flip)
 import Marketplace.Types exposing (..)
+import Network exposing (..)
 import PaymentMethods exposing (PaymentMethod)
 import Routing
 import String.Extra
@@ -31,6 +31,7 @@ init ethNode userInfo openMode =
     ( { ethNode = ethNode
       , userInfo = userInfo
       , inputs = initialInputs openMode
+      , errors = noErrors
       , showCurrencyDropdown = False
       , filterFunc = baseFilterFunc
       , sortFunc = initialSortFunc
@@ -276,12 +277,8 @@ applyInputs prevModel =
             prevModel |> addPaymentInputTerm
     in
     case inputsToQuery model.inputs of
-        Err errstr ->
-            let
-                _ =
-                    Debug.log "Error applying inputs" errstr
-            in
-            prevModel
+        Err errors ->
+            { prevModel | errors = errors }
 
         Ok query ->
             let
@@ -343,7 +340,7 @@ applyInputs prevModel =
             }
 
 
-inputsToQuery : SearchInputs -> Result String Query
+inputsToQuery : SearchInputs -> Result Errors Query
 inputsToQuery inputs =
     Result.map4
         (\minDai maxDai fiatMin fiatMax ->
@@ -365,32 +362,46 @@ inputsToQuery inputs =
             , openMode = inputs.openMode
             }
         )
-        (convertIfNonEmpty
-            (TokenValue.fromString 18 >> Result.fromMaybe "")
-            inputs.minDai
+        (interpretDaiAmount inputs.minDai
+            |> Result.mapError (\e -> { noErrors | minDai = Just e })
         )
-        (convertIfNonEmpty
-            (TokenValue.fromString 18 >> Result.fromMaybe "")
-            inputs.maxDai
+        (interpretDaiAmount inputs.maxDai
+            |> Result.mapError (\e -> { noErrors | maxDai = Just e })
         )
-        (convertIfNonEmpty
-            (BigInt.fromString >> Result.fromMaybe "")
-            inputs.minFiat
+        (interpretFiatAmount inputs.minFiat
+            |> Result.mapError (\e -> { noErrors | minFiat = Just e })
         )
-        (convertIfNonEmpty
-            (BigInt.fromString >> Result.fromMaybe "")
-            inputs.maxFiat
+        (interpretFiatAmount inputs.maxFiat
+            |> Result.mapError (\e -> { noErrors | maxFiat = Just e })
         )
 
 
-convertIfNonEmpty : (String -> Result String converted) -> String -> Result String (Maybe converted)
-convertIfNonEmpty converter s =
-    if s == "" then
+interpretDaiAmount : String -> Result String (Maybe TokenValue)
+interpretDaiAmount input =
+    if input == "" then
         Ok Nothing
 
     else
-        converter s
-            |> Result.map Just
+        case TokenValue.fromString tokenDecimals input of
+            Nothing ->
+                Err "I can't interpret this number"
+
+            Just value ->
+                Ok <| Just value
+
+
+interpretFiatAmount : String -> Result String (Maybe BigInt)
+interpretFiatAmount input =
+    if input == "" then
+        Ok Nothing
+
+    else
+        case BigInt.fromString input of
+            Nothing ->
+                Err "I don't understand this number."
+
+            Just value ->
+                Ok <| Just value
 
 
 resetSearch : Model -> Model

@@ -81,7 +81,7 @@ getFloatValueWithWarning tokens =
         Nothing ->
             let
                 _ =
-                    Debug.log "Error converting tokenValue to float--string -> float failed!" tokens
+                    Debug.log "Error converting tokenValue to float: string -> float failed" tokens
             in
             0
 
