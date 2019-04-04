@@ -42,14 +42,14 @@ root time model =
                     "Offer Type"
                     (typeToggleElement model.inputs.openMode)
                 )
-            , searchInputElement model.inputs model.showCurrencyDropdown
+            , searchInputElement model.inputs model.errors model.showCurrencyDropdown
             ]
         , resultsElement time model
         ]
 
 
-searchInputElement : SearchInputs -> Bool -> Element Msg
-searchInputElement inputs showCurrencyDropdown =
+searchInputElement : SearchInputs -> Errors -> Bool -> Element Msg
+searchInputElement inputs errors showCurrencyDropdown =
     Element.column
         [ Element.spacing 10
         , Element.width Element.shrink
@@ -64,13 +64,13 @@ searchInputElement inputs showCurrencyDropdown =
                 , Element.alignTop
                 ]
               <|
-                daiRangeInput inputs.minDai inputs.maxDai
+                daiRangeInput inputs.minDai inputs.maxDai errors
             , Element.el
                 [ Element.width Element.shrink
                 , Element.alignTop
                 ]
               <|
-                fiatInput showCurrencyDropdown inputs.fiatType inputs.minFiat inputs.maxFiat
+                fiatInput showCurrencyDropdown inputs.fiatType inputs.minFiat inputs.maxFiat errors
             , Element.column
                 [ Element.spacing 5
                 , Element.width Element.shrink
@@ -205,8 +205,8 @@ resultsElement time model =
         ]
 
 
-daiRangeInput : String -> String -> Element Msg
-daiRangeInput minDai maxDai =
+daiRangeInput : String -> String -> Errors -> Element Msg
+daiRangeInput minDai maxDai errors =
     let
         daiLabelElement =
             EH.daiSymbol [ Element.centerY ]
@@ -224,14 +224,38 @@ daiRangeInput minDai maxDai =
                 ]
     in
     Element.column [ Element.spacing 5, Element.width <| Element.px 200 ]
-        [ EH.textInputWithElement [] [ Element.Events.onFocus (ShowCurrencyDropdown False) ] minElement "min dai" minDai Nothing Nothing MinDaiChanged
-        , EH.textInputWithElement [] [ Element.Events.onFocus (ShowCurrencyDropdown False) ] maxElement "max dai" maxDai Nothing Nothing MaxDaiChanged
+        [ EH.textInputWithElement
+            [ Element.onLeft <|
+                EH.maybeErrorElement
+                    [ Element.moveLeft 5, Element.width <| Element.px 200 ]
+                    errors.minDai
+            ]
+            [ Element.Events.onFocus (ShowCurrencyDropdown False) ]
+            minElement
+            "min dai"
+            minDai
+            Nothing
+            Nothing
+            MinDaiChanged
+        , EH.textInputWithElement
+            [ Element.onLeft <|
+                EH.maybeErrorElement
+                    [ Element.moveLeft 5, Element.width <| Element.px 200 ]
+                    errors.maxDai
+            ]
+            [ Element.Events.onFocus (ShowCurrencyDropdown False) ]
+            maxElement
+            "max dai"
+            maxDai
+            Nothing
+            Nothing
+            MaxDaiChanged
         ]
         |> withInputHeader "Dai Range"
 
 
-fiatInput : Bool -> String -> String -> String -> Element Msg
-fiatInput showTypeDropdown fiatType minFiat maxFiat =
+fiatInput : Bool -> String -> String -> String -> Errors -> Element Msg
+fiatInput showTypeDropdown fiatType minFiat maxFiat errors =
     let
         fiatLabelElement =
             EH.fiatTypeToSymbolElement fiatType
@@ -252,8 +276,32 @@ fiatInput showTypeDropdown fiatType minFiat maxFiat =
         [ Element.el [ Element.alignTop, Element.width <| Element.px 120 ] <|
             EH.currencySelector showTypeDropdown fiatType (ShowCurrencyDropdown True) FiatTypeInputChanged
         , Element.column [ Element.spacing 5, Element.alignTop, Element.width <| Element.px 200 ]
-            [ EH.textInputWithElement [] [ Element.Events.onFocus (ShowCurrencyDropdown False) ] minElement "min" minFiat Nothing Nothing MinFiatChanged
-            , EH.textInputWithElement [] [ Element.Events.onFocus (ShowCurrencyDropdown False) ] maxElement "max" maxFiat Nothing Nothing MaxFiatChanged
+            [ EH.textInputWithElement
+                [ Element.above <|
+                    EH.maybeErrorElement
+                        [ Element.moveUp 5, Element.width (Element.shrink |> Element.maximum 200) ]
+                        errors.minFiat
+                ]
+                [ Element.Events.onFocus (ShowCurrencyDropdown False) ]
+                minElement
+                "min"
+                minFiat
+                Nothing
+                Nothing
+                MinFiatChanged
+            , EH.textInputWithElement
+                [ Element.below <|
+                    EH.maybeErrorElement
+                        [ Element.moveDown 5, Element.width (Element.shrink |> Element.maximum 200) ]
+                        errors.maxFiat
+                ]
+                [ Element.Events.onFocus (ShowCurrencyDropdown False) ]
+                maxElement
+                "max"
+                maxFiat
+                Nothing
+                Nothing
+                MaxFiatChanged
             ]
         ]
         |> withInputHeader "Fiat Type"

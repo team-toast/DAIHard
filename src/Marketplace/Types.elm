@@ -1,4 +1,4 @@
-module Marketplace.Types exposing (FiatTypeAndRange, Model, Msg(..), Query, ResultColumnType(..), SearchInputs, TokenRange, updateFiatTypeInput, updateMaxDaiInput, updateMaxFiatInput, updateMinDaiInput, updateMinFiatInput, updateOpenMode, updatePaymentMethodInput, updatePaymentMethodTerms)
+module Marketplace.Types exposing (Errors, FiatTypeAndRange, Model, Msg(..), Query, ResultColumnType(..), SearchInputs, TokenRange, noErrors, updateFiatTypeInput, updateMaxDaiInput, updateMaxFiatInput, updateMinDaiInput, updateMinFiatInput, updateOpenMode, updatePaymentMethodInput, updatePaymentMethodTerms)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
@@ -24,6 +24,7 @@ type alias Model =
     { ethNode : EthNode
     , userInfo : Maybe UserInfo
     , inputs : SearchInputs
+    , errors : Errors
     , showCurrencyDropdown : Bool
     , filterFunc : Time.Posix -> CTypes.FullTradeInfo -> Bool
     , sortFunc : CTypes.FullTradeInfo -> CTypes.FullTradeInfo -> Order
@@ -66,6 +67,18 @@ type alias SearchInputs =
     , paymentMethodTerms : List String
     , openMode : CTypes.OpenMode
     }
+
+
+type alias Errors =
+    { minDai : Maybe String
+    , maxDai : Maybe String
+    , minFiat : Maybe String
+    , maxFiat : Maybe String
+    }
+
+
+noErrors =
+    Errors Nothing Nothing Nothing Nothing
 
 
 type alias Query =

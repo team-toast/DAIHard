@@ -1,6 +1,6 @@
 module Create.State exposing (init, subscriptions, update, updateUserInfo)
 
-import BigInt
+import BigInt exposing (BigInt)
 import BigIntHelpers
 import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
@@ -17,6 +17,7 @@ import Flip exposing (flip)
 import Margin
 import Maybe.Extra
 import Network exposing (..)
+import PaymentMethods exposing (PaymentMethod)
 import Routing
 import Time
 import TimeHelpers
@@ -30,6 +31,7 @@ init node userInfo =
             { node = node
             , userInfo = userInfo
             , inputs = initialInputs
+            , errors = noErrors
             , showFiatTypeDropdown = False
             , addPMModal = Nothing
             , createParameters = Nothing
@@ -226,8 +228,8 @@ update msg prevModel =
             justModelUpdate { prevModel | inputs = initialInputs }
 
         BeginCreateProcess ->
-            case prevModel.createParameters of
-                Just parameters ->
+            case validateInputs prevModel.inputs of
+                Ok parameters ->
                     { model = { prevModel | txChainStatus = FetchingFees }
                     , cmd =
                         Contracts.Wrappers.getExtraFeesCmd
@@ -238,12 +240,8 @@ update msg prevModel =
                     , newRoute = Nothing
                     }
 
-                Nothing ->
-                    let
-                        _ =
-                            Debug.log "Trying to form fetchDevFee cmd, but can't find the contract parameters!" ""
-                    in
-                    justModelUpdate prevModel
+                Err errors ->
+                    justModelUpdate { prevModel | errors = errors }
 
         ExtraFeesFetched fetchResult ->
             case ( fetchResult, prevModel.userInfo, prevModel.createParameters ) of
@@ -492,30 +490,102 @@ updateInputs newInputs model =
 
 updateParameters : Model -> Model
 updateParameters model =
+    let
+        validateResult =
+            validateInputs model.inputs
+
+        -- Don't log errors right away (wait until the user tries to submit)
+        -- But if there are already errors displaying, update them accordingly
+        newErrors =
+            if model.errors == noErrors then
+                noErrors
+
+            else
+                case validateResult of
+                    Ok _ ->
+                        noErrors
+
+                    Err errors ->
+                        errors
+    in
     { model
         | createParameters =
             Maybe.map2
                 CTypes.buildCreateParameters
                 model.userInfo
-                (validateInputs tokenDecimals model.inputs)
+                (Result.toMaybe <| validateResult)
+        , errors = newErrors
     }
 
 
-validateInputs : Int -> Inputs -> Maybe CTypes.UserParameters
-validateInputs numDecimals inputs =
-    Maybe.map2
-        (\daiAmount fiatAmount ->
+validateInputs : Inputs -> Result Errors CTypes.UserParameters
+validateInputs inputs =
+    Result.map3
+        (\daiAmount fiatAmount paymentMethods ->
             { openMode = inputs.openMode
             , tradeAmount = daiAmount
             , fiatPrice = { fiatType = inputs.fiatType, amount = fiatAmount }
             , autorecallInterval = inputs.autorecallInterval
             , autoabortInterval = inputs.autoabortInterval
             , autoreleaseInterval = inputs.autoreleaseInterval
-            , paymentMethods = inputs.paymentMethods
+            , paymentMethods = paymentMethods
             }
         )
-        (TokenValue.fromString numDecimals inputs.daiAmount)
-        (BigInt.fromString inputs.fiatAmount)
+        (interpretDaiAmount inputs.daiAmount
+            |> Result.mapError (\e -> { noErrors | daiAmount = Just e })
+        )
+        (interpretFiatAmount inputs.fiatAmount
+            |> Result.mapError (\e -> { noErrors | fiat = Just e })
+        )
+        (interpretPaymentMethods inputs.paymentMethods
+            |> Result.mapError (\e -> { noErrors | paymentMethods = Just e })
+        )
+
+
+interpretDaiAmount : String -> Result String TokenValue
+interpretDaiAmount input =
+    if input == "" then
+        Err "You must specify a trade amount."
+
+    else
+        case TokenValue.fromString tokenDecimals input of
+            Nothing ->
+                Err "I don't understand this number."
+
+            Just value ->
+                if TokenValue.getFloatValueWithWarning value < 1 then
+                    Err "Trade amount must be a least 1 DAI."
+
+                else
+                    Ok value
+
+
+interpretFiatAmount : String -> Result String BigInt
+interpretFiatAmount input =
+    if input == "" then
+        Err "You must specify a fiat price."
+
+    else
+        case BigInt.fromString input of
+            Nothing ->
+                case String.toFloat input of
+                    Just _ ->
+                        Err "Fractional fiat amounts (i.e. $1.20) are not supported. Use a whole number."
+
+                    _ ->
+                        Err "I don't understand this number."
+
+            Just value ->
+                Ok value
+
+
+interpretPaymentMethods : List PaymentMethod -> Result String (List PaymentMethod)
+interpretPaymentMethods paymentMethods =
+    if paymentMethods == [] then
+        Err "Must include at least one payment method."
+
+    else
+        Ok paymentMethods
 
 
 recalculateFiatAmountString : String -> String -> String -> Maybe String

@@ -1,4 +1,4 @@
-module Create.Types exposing (Inputs, Model, Msg(..), TxChainStatus(..), UpdateResult, interpretMarginString, justModelUpdate)
+module Create.Types exposing (Errors, Inputs, Model, Msg(..), TxChainStatus(..), UpdateResult, interpretMarginString, justModelUpdate, noErrors)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -19,6 +19,7 @@ type alias Model =
     { node : EthNode
     , userInfo : Maybe UserInfo
     , inputs : Inputs
+    , errors : Errors
     , showFiatTypeDropdown : Bool
     , addPMModal : Maybe PMWizard.Model
     , createParameters : Maybe CTypes.CreateParameters
@@ -73,6 +74,18 @@ type alias Inputs =
     , autoabortInterval : Time.Posix
     , autoreleaseInterval : Time.Posix
     }
+
+
+type alias Errors =
+    { daiAmount : Maybe String
+    , fiat : Maybe String
+    , margin : Maybe String
+    , paymentMethods : Maybe String
+    }
+
+
+noErrors =
+    Errors Nothing Nothing Nothing Nothing
 
 
 type alias UpdateResult =
