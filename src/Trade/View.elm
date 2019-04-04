@@ -467,47 +467,59 @@ phaseStateString status =
 
 chatOverlayElement : Model -> Element Msg
 chatOverlayElement model =
-    let
-        openChatButton =
-            EH.elOnCircle
-                [ Element.pointer
-                , Element.Events.onClick ToggleChat
-                ]
-                80
-                (Element.rgb 1 1 1)
-                (Images.toElement
-                    [ Element.centerX
-                    , Element.centerY
-                    , Element.moveRight 5
-                    ]
-                    Images.chatIcon
-                )
+    case ( model.userInfo, model.trade ) of
+        ( Just userInfo, CTypes.LoadedTrade trade ) ->
+            if trade.state.phase == CTypes.Open then
+                Element.none
 
-        chatWindow =
-            Maybe.map
-                ChatHistory.window
-                model.chatHistoryModel
-                |> Maybe.withDefault Element.none
-    in
-    if model.showChatHistory then
-        EH.modal
-            (Element.rgba 0 0 0 0.6)
-            (Element.row
-                [ Element.height Element.fill
-                , Element.spacing 50
-                , Element.alignRight
-                ]
-                [ Element.map ChatHistoryMsg chatWindow
-                , Element.el [ Element.alignBottom ] openChatButton
-                ]
-            )
+            else if CTypes.getInitiatorOrResponder trade userInfo.address == Nothing then
+                Element.none
 
-    else
-        Element.el
-            [ Element.alignRight
-            , Element.alignBottom
-            ]
-            openChatButton
+            else
+                let
+                    openChatButton =
+                        EH.elOnCircle
+                            [ Element.pointer
+                            , Element.Events.onClick ToggleChat
+                            ]
+                            80
+                            (Element.rgb 1 1 1)
+                            (Images.toElement
+                                [ Element.centerX
+                                , Element.centerY
+                                , Element.moveRight 5
+                                ]
+                                Images.chatIcon
+                            )
+
+                    chatWindow =
+                        Maybe.map
+                            ChatHistory.window
+                            model.chatHistoryModel
+                            |> Maybe.withDefault Element.none
+                in
+                if model.showChatHistory then
+                    EH.modal
+                        (Element.rgba 0 0 0 0.6)
+                        (Element.row
+                            [ Element.height Element.fill
+                            , Element.spacing 50
+                            , Element.alignRight
+                            ]
+                            [ Element.map ChatHistoryMsg chatWindow
+                            , Element.el [ Element.alignBottom ] openChatButton
+                            ]
+                        )
+
+                else
+                    Element.el
+                        [ Element.alignRight
+                        , Element.alignBottom
+                        ]
+                        openChatButton
+
+        _ ->
+            Element.none
 
 
 getModalOrNone : Model -> Element Msg
