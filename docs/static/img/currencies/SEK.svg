@@ -1,1 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="87" height="87" viewBox="0 0 87 87"><defs><style>.a,.c{fill:#fff;}.a{stroke:#707070;}.b{fill:rgba(0,0,0,0.67);}.d{clip-path:url(#c);}.e{clip-path:url(#d);}.f{fill:#004073;}.g{fill:#003f73;}.h{fill:#fc0;}.i{filter:url(#a);}</style><filter id="a" x="0" y="0" width="87" height="87" filterUnits="userSpaceOnUse"><feOffset dy="3" input="SourceAlpha"/><feGaussianBlur stdDeviation="10" result="b"/><feFlood flood-opacity="0.051"/><feComposite operator="in" in2="b"/><feComposite in="SourceGraphic"/></filter><clipPath id="c"><ellipse class="a" cx="13.5" cy="13.5" rx="13.5" ry="13.5"/></clipPath><clipPath id="d"><rect class="b" width="36" height="27" transform="translate(-2.817 0)"/></clipPath></defs><g transform="translate(-397 -543)"><g class="i" transform="matrix(1, 0, 0, 1, 397, 543)"><ellipse class="c" cx="13.5" cy="13.5" rx="13.5" ry="13.5" transform="translate(30 27)"/></g><g class="d" transform="translate(427 570)"><g class="e" transform="translate(2.952 0)"><g transform="translate(-39.305 -51.125)"><rect class="f" width="13.5" height="10.8" transform="translate(32.918 51.141)"/><rect class="g" width="13.5" height="10.8" transform="translate(32.918 67.324)"/><rect class="h" width="13.5" height="5.4" transform="translate(32.918 61.935)"/><rect class="h" width="5.4" height="27" transform="translate(46.363 51.125)"/><rect class="h" width="24.3" height="5.4" transform="translate(51.591 61.936)"/><rect class="g" width="24.3" height="10.8" transform="translate(51.758 67.325)"/><rect class="g" width="24.3" height="10.8" transform="translate(51.758 51.141)"/></g></g></g></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="29" height="29" viewBox="0 0 29 29">
+  <defs>
+    <clipPath id="clip-path">
+      <ellipse id="Ellipse_21" data-name="Ellipse 21" cx="13.5" cy="13.5" rx="13.5" ry="13.5" fill="#fff" stroke="#707070" stroke-width="1"/>
+    </clipPath>
+    <clipPath id="clip-path-2">
+      <rect id="rect15335" width="36" height="27" transform="translate(-2.817 0)" fill="rgba(0,0,0,0.67)"/>
+    </clipPath>
+  </defs>
+  <g id="SEK" transform="translate(-426 -569)">
+    <circle id="Ellipse_62" data-name="Ellipse 62" cx="14.5" cy="14.5" r="14.5" transform="translate(426 569)" opacity="0.05"/>
+    <g id="Mask_Group_17" data-name="Mask Group 17" transform="translate(427 570)" clip-path="url(#clip-path)">
+      <g id="swe" transform="translate(2.952 0)" clip-path="url(#clip-path-2)">
+        <g id="g558" transform="translate(-39.305 -51.125)">
+          <rect id="rect552" width="13.5" height="10.8" transform="translate(32.918 51.141)" fill="#004073"/>
+          <rect id="rect553" width="13.5" height="10.8" transform="translate(32.918 67.324)" fill="#003f73"/>
+          <rect id="rect554" width="13.5" height="5.4" transform="translate(32.918 61.935)" fill="#fc0"/>
+          <rect id="rect556" width="5.4" height="27" transform="translate(46.363 51.125)" fill="#fc0"/>
+          <rect id="rect557" width="24.3" height="5.4" transform="translate(51.591 61.936)" fill="#fc0"/>
+          <rect id="rect558" width="24.3" height="10.8" transform="translate(51.758 67.325)" fill="#003f73"/>
+          <rect id="rect559" width="24.3" height="10.8" transform="translate(51.758 51.141)" fill="#003f73"/>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

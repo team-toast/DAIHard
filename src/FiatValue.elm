@@ -52,18 +52,10 @@ currencyTypes =
     ]
         |> List.map
             (\( typeString, typeChar ) ->
-                let
-                    extension =
-                        if typeString == "CNY" || typeString == "EUR" then
-                            ".png"
-
-                        else
-                            ".svg"
-                in
                 ( typeString
                 , ( typeChar
                   , Images.image
-                        { src = "/DAIHard/static/img/currencies/" ++ typeString ++ extension
+                        { src = "/DAIHard/static/img/currencies/" ++ typeString ++ ".svg"
                         , description = typeString
                         }
                   )

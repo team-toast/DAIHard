@@ -13,6 +13,7 @@ module ElementHelpers exposing
     , disabledTextColor
     , elOnCircle
     , errorMessage
+    , etherscanAddressLink
     , fakeLink
     , fancyInput
     , fiatTypeToSymbolElement
@@ -61,6 +62,9 @@ import Element.Border
 import Element.Events
 import Element.Font
 import Element.Input
+import Eth.Types exposing (Address)
+import Eth.Utils
+import EthHelpers
 import FiatValue exposing (FiatValue)
 import Html.Attributes
 import Html.Events
@@ -69,6 +73,7 @@ import Images
 import Json.Decode
 import List
 import Maybe.Extra
+import Network exposing (..)
 import Task
 import Time
 import TimeHelpers
@@ -636,26 +641,29 @@ currencySelector showDropdown typeStringInput openCurrencySelectorMsg typeString
                     Element.none
 
                 ( True, Nothing ) ->
-                    Element.column
-                        [ Element.width <| Element.fill
+                    Element.wrappedRow
+                        [ Element.width <| Element.px 350
                         , Element.Border.color black
                         , Element.Border.width 1
                         , Element.Background.color white
-                        , Element.padding 5
-                        , Element.width Element.fill
+                        , Element.padding 10
+                        , Element.centerX
                         ]
                         (FiatValue.searchTypes typeStringInput
                             |> Dict.toList
                             |> List.map
                                 (\( typeString, ( _, image ) ) ->
                                     Element.row
-                                        [ Element.width Element.fill
+                                        [ Element.width <| Element.px 80
                                         , Element.spacing 9
                                         , Element.paddingXY 0 5
                                         , onClickNoPropagation <| typeStringChangedMsgConstructor typeString
                                         , Element.mouseOver [ Element.Background.color <| Element.rgb 0.8 0.8 1 ]
                                         ]
-                                        [ Images.toElement [ Element.height <| Element.px 26 ] image
+                                        [ Images.toElement
+                                            [ Element.height <| Element.px 26
+                                            ]
+                                            image
                                         , Element.el [ Element.Font.size 16, Element.Font.semiBold ] <| textWithoutTextCursor typeString
                                         ]
                                 )
@@ -971,3 +979,12 @@ maybeErrorElement attributes maybeError =
                     []
                     [ Element.text errorString ]
                 )
+
+
+etherscanAddressLink : List (Attribute msg) -> Network -> Address -> Element msg
+etherscanAddressLink attributes network address =
+    Element.newTabLink
+        attributes
+        { url = EthHelpers.makeEtherscanAddressUrl network address
+        , label = Element.text <| Eth.Utils.addressToString address
+        }

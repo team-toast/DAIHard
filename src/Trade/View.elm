@@ -14,6 +14,7 @@ import Eth.Utils
 import FiatValue exposing (FiatValue)
 import Images exposing (Image)
 import Margin
+import Network exposing (..)
 import PaymentMethods exposing (PaymentMethod)
 import Time
 import TimeHelpers
@@ -33,7 +34,7 @@ root time model =
                 , Element.inFront <| chatOverlayElement model
                 , Element.inFront <| getModalOrNone model
                 ]
-                [ header tradeInfo model.stats model.userInfo
+                [ header tradeInfo model.stats model.userInfo model.ethNode.network
                 , Element.column
                     [ Element.width Element.fill
                     , Element.paddingXY 40 0
@@ -53,10 +54,10 @@ root time model =
                 (Element.text "Loading contract info...")
 
 
-header : FullTradeInfo -> StatsModel -> Maybe UserInfo -> Element Msg
-header trade stats maybeUserInfo =
+header : FullTradeInfo -> StatsModel -> Maybe UserInfo -> Network -> Element Msg
+header trade stats maybeUserInfo network =
     EH.niceFloatingRow
-        [ tradeStatusElement trade
+        [ tradeStatusElement trade network
         , daiAmountElement trade maybeUserInfo
         , fiatElement trade
         , marginElement trade maybeUserInfo
@@ -70,15 +71,16 @@ header trade stats maybeUserInfo =
         ]
 
 
-tradeStatusElement : FullTradeInfo -> Element Msg
-tradeStatusElement trade =
+tradeStatusElement : FullTradeInfo -> Network -> Element Msg
+tradeStatusElement trade network =
     EH.withHeader
         "Trade Status"
-        (Element.el
+        (Element.column
             [ Element.Font.size 24
             , Element.Font.medium
+            , Element.spacing 8
             ]
-            (Element.text
+            [ Element.text
                 (case trade.state.phase of
                     CTypes.Open ->
                         case trade.parameters.openMode of
@@ -97,7 +99,14 @@ tradeStatusElement trade =
                     CTypes.Closed ->
                         "Closed"
                 )
-            )
+            , EH.etherscanAddressLink
+                [ Element.Font.size 12
+                , Element.Font.color EH.blue
+                , Element.Font.underline
+                ]
+                network
+                trade.creationInfo.address
+            ]
         )
 
 
@@ -467,47 +476,59 @@ phaseStateString status =
 
 chatOverlayElement : Model -> Element Msg
 chatOverlayElement model =
-    let
-        openChatButton =
-            EH.elOnCircle
-                [ Element.pointer
-                , Element.Events.onClick ToggleChat
-                ]
-                80
-                (Element.rgb 1 1 1)
-                (Images.toElement
-                    [ Element.centerX
-                    , Element.centerY
-                    , Element.moveRight 5
-                    ]
-                    Images.chatIcon
-                )
+    case ( model.userInfo, model.trade ) of
+        ( Just userInfo, CTypes.LoadedTrade trade ) ->
+            if trade.state.phase == CTypes.Open then
+                Element.none
 
-        chatWindow =
-            Maybe.map
-                ChatHistory.window
-                model.chatHistoryModel
-                |> Maybe.withDefault Element.none
-    in
-    if model.showChatHistory then
-        EH.modal
-            (Element.rgba 0 0 0 0.6)
-            (Element.row
-                [ Element.height Element.fill
-                , Element.spacing 50
-                , Element.alignRight
-                ]
-                [ Element.map ChatHistoryMsg chatWindow
-                , Element.el [ Element.alignBottom ] openChatButton
-                ]
-            )
+            else if CTypes.getInitiatorOrResponder trade userInfo.address == Nothing then
+                Element.none
 
-    else
-        Element.el
-            [ Element.alignRight
-            , Element.alignBottom
-            ]
-            openChatButton
+            else
+                let
+                    openChatButton =
+                        EH.elOnCircle
+                            [ Element.pointer
+                            , Element.Events.onClick ToggleChat
+                            ]
+                            80
+                            (Element.rgb 1 1 1)
+                            (Images.toElement
+                                [ Element.centerX
+                                , Element.centerY
+                                , Element.moveRight 5
+                                ]
+                                Images.chatIcon
+                            )
+
+                    chatWindow =
+                        Maybe.map
+                            ChatHistory.window
+                            model.chatHistoryModel
+                            |> Maybe.withDefault Element.none
+                in
+                if model.showChatHistory then
+                    EH.modal
+                        (Element.rgba 0 0 0 0.6)
+                        (Element.row
+                            [ Element.height Element.fill
+                            , Element.spacing 50
+                            , Element.alignRight
+                            ]
+                            [ Element.map ChatHistoryMsg chatWindow
+                            , Element.el [ Element.alignBottom ] openChatButton
+                            ]
+                        )
+
+                else
+                    Element.el
+                        [ Element.alignRight
+                        , Element.alignBottom
+                        ]
+                        openChatButton
+
+        _ ->
+            Element.none
 
 
 getModalOrNone : Model -> Element Msg
