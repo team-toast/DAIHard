@@ -8,7 +8,7 @@
     </clipPath>
   </defs>
   <g id="EUR" transform="translate(-110 -269)">
-    <circle id="Ellipse_35" data-name="Ellipse 35" cx="14.5" cy="14.5" r="14.5" transform="translate(110 269)" opacity="0.05"/>
+    <circle id="Ellipse_35" data-name="Ellipse 35" cx="14.5" cy="14.5" r="14.5" transform="translate(110 269)" fill="#e0e0e0"/>
     <g id="Group_4" data-name="Group 4">
       <ellipse id="_038266e21d31efa760b6ff0c79374040" data-name="038266e21d31efa760b6ff0c79374040" cx="13.5" cy="13.5" rx="13.5" ry="13.5" transform="translate(111 270)" fill="url(#pattern)"/>
     </g>

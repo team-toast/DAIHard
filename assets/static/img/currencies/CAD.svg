@@ -8,7 +8,7 @@
     </clipPath>
   </defs>
   <g id="CAD" transform="translate(-110 -149)">
-    <circle id="Ellipse_33" data-name="Ellipse 33" cx="14.5" cy="14.5" r="14.5" transform="translate(110 149)" opacity="0.05"/>
+    <circle id="Ellipse_33" data-name="Ellipse 33" cx="14.5" cy="14.5" r="14.5" transform="translate(110 149)" fill="#e0e0e0"/>
     <g id="Mask_Group_27" data-name="Mask Group 27" transform="translate(111 150)" clip-path="url(#clip-path)">
       <g id="can" transform="translate(-0.696)" clip-path="url(#clip-path-2)">
         <g id="g3531" transform="translate(4.207)">

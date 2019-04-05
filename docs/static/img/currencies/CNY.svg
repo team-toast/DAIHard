@@ -8,7 +8,7 @@
     </pattern>
   </defs>
   <g id="CNY" transform="translate(-110 -209)">
-    <circle id="Ellipse_34" data-name="Ellipse 34" cx="14.5" cy="14.5" r="14.5" transform="translate(110 209)" opacity="0.05"/>
+    <circle id="Ellipse_34" data-name="Ellipse 34" cx="14.5" cy="14.5" r="14.5" transform="translate(110 209)" fill="#e0e0e0"/>
     <g id="Mask_Group_19" data-name="Mask Group 19" transform="translate(111 210)" clip-path="url(#clip-path)">
       <rect id="_9a4ba18cb4e773230ba0592f2dbe1551" data-name="9a4ba18cb4e773230ba0592f2dbe1551" width="54" height="27" transform="translate(-2.865)" fill="url(#pattern)"/>
     </g>
