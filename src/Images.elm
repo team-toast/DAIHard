@@ -3,6 +3,7 @@ module Images exposing
     , addButton
     , backButton
     , chatIcon
+    , closeIcon
     , daiSymbol
     , downArrow
     , image
@@ -185,4 +186,12 @@ loadingArrows =
     JustImage
         { src = "/DAIHard/static/img/loading-arrows.svg"
         , description = "waiting"
+        }
+
+
+closeIcon : Image
+closeIcon =
+    JustImage
+        { src = "/DAIHard/static/img/remove-circle.svg"
+        , description = "close"
         }

@@ -28,7 +28,7 @@ import Url exposing (Url)
 init : Flags -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init flags url key =
     if flags.width < 1024 then
-        ( Failed "Sorry, your screen size is not supported."
+        ( Failed "Sorry, your screen size (< 1024 width) is not supported."
         , Cmd.none
         )
 
