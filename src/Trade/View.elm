@@ -218,25 +218,29 @@ actionButtonsElement trade userInfo =
             )
          of
             ( CTypes.Open, Just Initiator, _ ) ->
-                [ EH.blueButton "Remove and Refund this Trade" Recall ]
+                [ Element.map StartContractAction <| EH.blueButton "Remove and Refund this Trade" Recall ]
 
             ( CTypes.Open, Nothing, _ ) ->
-                [ EH.redButton "Deposit and Commit to Trade" Commit ]
+                let
+                    depositAmount =
+                        CTypes.responderDeposit trade.parameters
+                            |> TokenValue.getBigInt
+                in
+                [ EH.redButton "Deposit and Commit to Trade" <| CommitClicked trade userInfo depositAmount ]
 
             ( CTypes.Committed, _, Just Buyer ) ->
-                [ EH.orangeButton "Abort Trade" Abort
-                , EH.redButton "I Confirm I have Sent Payment" Claim
+                [ Element.map StartContractAction <| EH.orangeButton "Abort Trade" Abort
+                , Element.map StartContractAction <| EH.redButton "I Confirm I have Sent Payment" Claim
                 ]
 
             ( CTypes.Claimed, _, Just Seller ) ->
-                [ EH.redButton "Burn it all" Burn
-                , EH.blueButton "Release Everything Now" Release
+                [ Element.map StartContractAction <| EH.redButton "Burn it all" Burn
+                , Element.map StartContractAction <| EH.blueButton "Release Everything Now" Release
                 ]
 
             _ ->
                 []
         )
-        |> Element.map StartContractAction
 
 
 phasesElement : FullTradeInfo -> CTypes.Phase -> Maybe UserInfo -> Time.Posix -> Element Msg
@@ -533,47 +537,141 @@ chatOverlayElement model =
 
 getModalOrNone : Model -> Element Msg
 getModalOrNone model =
-    Maybe.map
-        EH.txProcessModal
-        (case model.txChainStatus of
-            NoTx ->
-                Nothing
+    case model.txChainStatus of
+        NoTx ->
+            Element.none
 
-            ApproveNeedsSig ->
-                Just
-                    [ Element.text "Waiting for user signature for the approve call."
-                    , Element.text "(check Metamask!)"
-                    , Element.text "Note that there will be a second transaction to sign after this."
+        ConfirmingCommit trade userInfo deposit ->
+            let
+                depositAmountEl =
+                    TokenValue.tokenValue tokenDecimals deposit
+                        |> TokenValue.toConciseString
+                        |> Element.text
+
+                fiatPriceString =
+                    FiatValue.renderToStringFull trade.parameters.fiatPrice
+
+                daiAmountString =
+                    TokenValue.toConciseString trade.parameters.tradeAmount ++ " DAI"
+
+                ( buyerOrSellerEl, agreeToWhatTextList ) =
+                    case CTypes.getResponderRole trade.parameters of
+                        Buyer ->
+                            ( Element.el [ Element.Font.medium, Element.Font.color EH.black ] <| Element.text "buyer"
+                            , [ Element.text "pay the seller "
+                              , Element.el [ Element.Font.color EH.blue ] <| Element.text fiatPriceString
+                              , Element.text " in exchange for the "
+                              , Element.el [ Element.Font.color EH.blue ] <| Element.text daiAmountString
+                              , Element.text " held in this contract."
+                              ]
+                            )
+
+                        Seller ->
+                            ( Element.el [ Element.Font.medium, Element.Font.color EH.black ] <| Element.text "seller"
+                            , [ Element.text "accept "
+                              , Element.el [ Element.Font.color EH.blue ] <| Element.text fiatPriceString
+                              , Element.text " from the buyer in exchange for the "
+                              , Element.el [ Element.Font.color EH.blue ] <| Element.text daiAmountString
+                              , Element.text " held in this contract."
+                              ]
+                            )
+            in
+            EH.closeableModal
+                (Element.column
+                    [ Element.spacing 20
+                    , Element.centerX
+                    , Element.height Element.fill
+                    , Element.Font.center
                     ]
-
-            ApproveMining txHash ->
-                Just
-                    [ Element.text "Mining the initial approve transaction..."
-
-                    -- , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                    --     { url = EthHelpers.makeEtherscanTxUrl txHash
-                    --     , label = Element.text "See the transaction on Etherscan"
-                    --     }
-                    , Element.text "Funds will not be sent until you sign the next transaction."
-                    , Element.text "Please do not leave the page or change the gas price of the mining transaction."
+                    [ Element.el
+                        [ Element.Font.size 26
+                        , Element.Font.semiBold
+                        , Element.centerX
+                        , Element.centerY
+                        ]
+                        (Element.text "Just to Confirm...")
+                    , Element.column
+                        [ Element.spacing 20
+                        , Element.centerX
+                        , Element.centerY
+                        ]
+                        (List.map
+                            (Element.paragraph
+                                [ Element.width <| Element.px 500
+                                , Element.centerX
+                                , Element.Font.size 18
+                                , Element.Font.medium
+                                , Element.Font.color EH.permanentTextColor
+                                ]
+                            )
+                            [ [ Element.text <| "You will deposit "
+                              , depositAmountEl
+                              , Element.el [ Element.Font.color EH.blue ] <| Element.text " DAI, thereby becoming the "
+                              , buyerOrSellerEl
+                              , Element.text " of this trade. By doing so, you are agreeing to "
+                              ]
+                                ++ agreeToWhatTextList
+                            , [ Element.text <| "(This ususally requires two Metamask signatures. Your DAI will not be deposited until the second transaction has been mined.)" ]
+                            ]
+                        )
+                    , Element.el
+                        [ Element.alignBottom
+                        , Element.centerX
+                        ]
+                        (EH.redButton "Yes, I definitely want to commit to this trade." (ConfirmCommit trade userInfo deposit))
                     ]
+                )
+                AbortCommit
 
-            ActionNeedsSig action ->
-                Just
-                    [ Element.text <| "Waiting for user signature for the " ++ actionName action ++ " call."
-                    , Element.text "(check Metamask!)"
-                    ]
+        ApproveNeedsSig ->
+            EH.txProcessModal
+                [ Element.text "Waiting for user signature for the approve call."
+                , Element.text "(check Metamask!)"
+                , Element.text "Note that there will be a second transaction to sign after this."
+                ]
 
-            ActionMining action txHash ->
-                Nothing
+        ApproveMining txHash ->
+            EH.txProcessModal
+                [ Element.text "Mining the initial approve transaction..."
 
-            TxError s ->
-                Just
-                    [ Element.text "Something has gone terribly wrong"
-                    , Element.text s
-                    ]
-        )
-        |> Maybe.withDefault Element.none
+                -- , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
+                --     { url = EthHelpers.makeEtherscanTxUrl txHash
+                --     , label = Element.text "See the transaction on Etherscan"
+                --     }
+                , Element.text "Funds will not be sent until you sign the next transaction."
+                ]
+
+        CommitNeedsSig ->
+            EH.txProcessModal
+                [ Element.text "Waiting for user signature for the final commit call."
+                , Element.text "(check Metamask!)"
+                , Element.text "This will make the deposit and commit you to the trade."
+                ]
+
+        CommitMining txHash ->
+            EH.txProcessModal
+                [ Element.text "Mining the final commit transaction..."
+
+                -- , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
+                --     { url = EthHelpers.makeEtherscanTxUrl txHash
+                --     , label = Element.text "See the transaction on Etherscan"
+                --     }
+                ]
+
+        ActionNeedsSig action ->
+            EH.txProcessModal
+                [ Element.text <| "Waiting for user signature for the " ++ actionName action ++ " call."
+                , Element.text "(check Metamask!)"
+                ]
+
+        ActionMining action txHash ->
+            Element.none
+
+        TxError s ->
+            EH.txProcessModal
+                [ Element.text "Something has gone terribly wrong"
+                , Element.text s
+                ]
 
 
 actionName : ContractAction -> String
@@ -581,9 +679,6 @@ actionName action =
     case action of
         Poke ->
             "poke"
-
-        Commit ->
-            "commit"
 
         Recall ->
             "recall"

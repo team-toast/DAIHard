@@ -8,7 +8,7 @@
     </clipPath>
   </defs>
   <g id="NOK" transform="translate(-426 -449)">
-    <circle id="Ellipse_60" data-name="Ellipse 60" cx="14.5" cy="14.5" r="14.5" transform="translate(426 449)" opacity="0.05"/>
+    <circle id="Ellipse_60" data-name="Ellipse 60" cx="14.5" cy="14.5" r="14.5" transform="translate(426 449)" fill="#e0e0e0"/>
     <g id="Mask_Group_15" data-name="Mask Group 15" transform="translate(427 450)" clip-path="url(#clip-path)">
       <g id="nor" transform="translate(-0.065 -0.338)" clip-path="url(#clip-path-2)">
         <rect id="rect8153" width="28.8" height="28.8" transform="translate(0 -1.125)" fill="#fff"/>

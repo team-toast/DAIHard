@@ -37,6 +37,7 @@ root time model =
             ]
             [ Element.el
                 [ Element.alignTop
+                , Element.width (Element.fill |> Element.maximum 300)
                 ]
                 (EH.withHeader
                     "Offer Type"
@@ -110,7 +111,10 @@ typeToggleElement openMode =
                     , baseStyles
                     )
     in
-    Element.row [ Element.spacing 20 ]
+    Element.wrappedRow
+        [ Element.spacing 20
+        , Element.width Element.fill
+        ]
         [ Element.el
             ([ Element.Events.onClick <| ChangeOfferType CTypes.SellerOpened ] ++ sellStyles)
             (Element.text "Selling DAI")
@@ -311,7 +315,7 @@ paymentMethodsInput : String -> Element Msg
 paymentMethodsInput searchString =
     Element.Input.text
         [ Element.alignTop
-        , Element.width <| Element.px 300
+        , Element.width <| Element.px 150
         , Element.height <| Element.px 40
         , Element.Border.color EH.lightGray
         , Element.Border.shadow

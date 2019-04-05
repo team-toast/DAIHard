@@ -5,7 +5,7 @@
     </clipPath>
   </defs>
   <g id="RUB" transform="translate(-268 -569)">
-    <circle id="Ellipse_51" data-name="Ellipse 51" cx="14.5" cy="14.5" r="14.5" transform="translate(268 569)" opacity="0.05"/>
+    <circle id="Ellipse_51" data-name="Ellipse 51" cx="14.5" cy="14.5" r="14.5" transform="translate(268 569)" fill="#e0e0e0"/>
     <g id="Mask_Group_8" data-name="Mask Group 8" transform="translate(269 570)" clip-path="url(#clip-path)">
       <g id="rus" transform="translate(-4.865)">
         <rect id="rect171" width="36" height="27" fill="#fff"/>

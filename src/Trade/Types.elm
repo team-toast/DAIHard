@@ -44,6 +44,11 @@ type Msg
     | StateFetched (Result Http.Error (Maybe CTypes.State))
     | ParametersFetched (Result Http.Error (Result String CTypes.TradeParameters))
     | AllowanceFetched (Result Http.Error BigInt)
+    | CommitClicked CTypes.FullTradeInfo UserInfo BigInt
+    | AbortCommit
+    | ConfirmCommit CTypes.FullTradeInfo UserInfo BigInt
+    | CommitSigned (Result String TxHash)
+    | CommitMined (Result String TxReceipt)
     | StartContractAction ContractAction
     | ActionMined ContractAction (Result String TxReceipt)
     | ActionSigned ContractAction (Result String TxHash)
@@ -60,8 +65,11 @@ type Msg
 
 type TxChainStatus
     = NoTx
+    | ConfirmingCommit CTypes.FullTradeInfo UserInfo BigInt
     | ApproveNeedsSig
     | ApproveMining TxHash
+    | CommitNeedsSig
+    | CommitMining TxHash
     | ActionNeedsSig ContractAction
     | ActionMining ContractAction TxHash
     | TxError String
@@ -69,7 +77,6 @@ type TxChainStatus
 
 type ContractAction
     = Poke
-    | Commit
     | Recall
     | Claim
     | Abort

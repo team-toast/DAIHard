@@ -8,7 +8,7 @@
     </clipPath>
   </defs>
   <g id="USD" transform="translate(-110 -90)">
-    <circle id="Ellipse_32" data-name="Ellipse 32" cx="14.5" cy="14.5" r="14.5" transform="translate(110 90)" opacity="0.05"/>
+    <circle id="Ellipse_32" data-name="Ellipse 32" cx="14.5" cy="14.5" r="14.5" transform="translate(110 90)" fill="#e0e0e0"/>
     <g id="USD-2" data-name="USD" transform="translate(111 91)" clip-path="url(#clip-path)">
       <g id="usa" transform="translate(-4.865 0)" clip-path="url(#clip-path-2)">
         <g id="g390" transform="translate(0 0)">

@@ -4,12 +4,14 @@ module ElementHelpers exposing
     , blue
     , blueButton
     , bulletPointString
+    , closeableModal
     , comingSoonMsg
     , currencySelector
     , daiSymbol
     , daiSymbolAndLabel
     , daiValue
     , darkGray
+    , disabledButton
     , disabledTextColor
     , elOnCircle
     , errorMessage
@@ -334,6 +336,13 @@ intervalInput maybeLowValColor i newIntervalMsg =
                                 newIntervalMsg <|
                                     (TimeHelpers.sub i incAmount
                                         |> TimeHelpers.negativeToZero
+                                        |> (\t ->
+                                                if Time.posixToMillis t == 0 then
+                                                    Time.millisToPosix <| 1000 * 60 * 5
+
+                                                else
+                                                    t
+                                           )
                                     )
                             ]
                             (Images.toElement
@@ -502,6 +511,22 @@ redButton text msg =
         white
         text
         msg
+
+
+disabledButton : String -> Maybe String -> Element msg
+disabledButton text maybeTipText =
+    Element.el
+        [ Element.Border.rounded 4
+        , Element.paddingXY 25 17
+        , Element.Font.size 18
+        , Element.Font.semiBold
+        , Element.Background.color lightGray
+        , Element.above <|
+            maybeErrorElement
+                [ Element.moveUp 5 ]
+                maybeTipText
+        ]
+        (Element.text text)
 
 
 orangeButton : String -> msg -> Element msg
@@ -869,7 +894,7 @@ marginFloatToConciseUnsignedString f =
 modal : Element.Color -> Element msg -> Element msg
 modal overlayColor =
     Element.el
-        [ Element.Background.color overlayColor --<| Element.rgba 0.0 0.0 0.0 0.6
+        [ Element.Background.color overlayColor
         , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
         , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
         , Element.htmlAttribute <| Html.Attributes.style "top" "0"
@@ -877,6 +902,29 @@ modal overlayColor =
         , Element.htmlAttribute <| Html.Attributes.style "width" "100%"
         , Element.htmlAttribute <| Html.Attributes.style "height" "100%"
         ]
+
+
+closeableModal : Element msg -> msg -> Element msg
+closeableModal innerEl closeMsg =
+    (modal <| Element.rgba 0 0 0.3 0.6) <|
+        Element.column
+            [ Element.width <| Element.px 600
+            , Element.height <| Element.px 500
+            , Element.centerX
+            , Element.alignTop
+            , Element.moveDown 200
+            , Element.Background.color white
+            , Element.Border.rounded 8
+            , Element.padding 50
+            ]
+            [ Images.toElement
+                [ Element.alignRight
+                , Element.pointer
+                , Element.Events.onClick closeMsg
+                ]
+                Images.closeIcon
+            , innerEl
+            ]
 
 
 txProcessModal : List (Element msg) -> Element msg

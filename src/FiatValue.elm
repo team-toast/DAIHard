@@ -1,4 +1,4 @@
-module FiatValue exposing (FiatValue, compare, currencyTypes, decoder, encode, getFloatValueWithWarning, renderToString, searchTypes, typeStringToCharStringDefaultEmpty, typeStringToSymbol)
+module FiatValue exposing (FiatValue, compare, currencyTypes, decoder, encode, getFloatValueWithWarning, renderToString, renderToStringFull, searchTypes, typeStringToCharStringDefaultEmpty, typeStringToSymbol)
 
 import BigInt exposing (BigInt)
 import BigIntHelpers
@@ -96,6 +96,11 @@ getFloatValueWithWarning value =
 renderToString : FiatValue -> String
 renderToString fv =
     typeStringToCharStringDefaultEmpty fv.fiatType ++ BigIntHelpers.toStringWithCommas fv.amount
+
+
+renderToStringFull : FiatValue -> String
+renderToStringFull fv =
+    renderToString fv ++ " " ++ fv.fiatType
 
 
 typeStringToCharStringDefaultEmpty : String -> String

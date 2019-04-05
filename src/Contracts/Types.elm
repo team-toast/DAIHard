@@ -1,4 +1,4 @@
-module Contracts.Types exposing (CreateParameters, DAIHardEvent(..), FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), State, Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, getBuyerOrSeller, getInitiatorOrResponder, initiatorIsBuyerToOpenMode, initiatorOrResponderToBuyerOrSeller, openModeToInitiatorIsBuyer, partialTradeInfo, phaseToInt, phaseToString, responderDeposit, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePaymentMethods, updateState)
+module Contracts.Types exposing (CreateParameters, DAIHardEvent(..), FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), State, Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, getBuyerOrSeller, getInitiatorOrResponder, getResponderRole, initiatorIsBuyerToOpenMode, initiatorOrResponderToBuyerOrSeller, openModeToInitiatorIsBuyer, partialTradeInfo, phaseToInt, phaseToString, responderDeposit, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePaymentMethods, updateState)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
@@ -143,6 +143,16 @@ type alias DerivedValues =
     { phaseEndTime : Time.Posix
     , margin : Maybe Float
     }
+
+
+getResponderRole : TradeParameters -> BuyerOrSeller
+getResponderRole parameters =
+    case parameters.openMode of
+        BuyerOpened ->
+            Seller
+
+        SellerOpened ->
+            Buyer
 
 
 responderDeposit : TradeParameters -> TokenValue

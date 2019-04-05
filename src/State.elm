@@ -2,6 +2,7 @@ port module State exposing (init, subscriptions, update)
 
 import BigInt
 import Browser
+import Browser.Dom
 import Browser.Navigation
 import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (UserInfo)
@@ -26,29 +27,35 @@ import Url exposing (Url)
 
 init : Flags -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init flags url key =
-    case EthHelpers.intToNetwork flags.networkId of
-        Nothing ->
-            ( Failed "Your provider (Metamask?) is set to an unsupported network. Switch to mainnet (or Kovan for testing) and refresh."
-            , Cmd.none
-            )
+    if flags.width < 1024 then
+        ( Failed "Sorry, your screen size (< 1024 width) is not supported."
+        , Cmd.none
+        )
 
-        Just network ->
-            let
-                node =
-                    EthHelpers.ethNode network
+    else
+        case EthHelpers.intToNetwork flags.networkId of
+            Nothing ->
+                ( Failed "Your provider (Metamask?) is set to an unsupported network. Switch to mainnet (or Kovan for testing) and refresh."
+                , Cmd.none
+                )
 
-                txSentry =
-                    TxSentry.init ( txOut, txIn ) TxSentryMsg node.http
-            in
-            { key = key
-            , time = Time.millisToPosix 0
-            , node = node
-            , txSentry = txSentry
-            , userAddress = Nothing
-            , userInfo = Nothing
-            , submodel = BetaLandingPage
-            }
-                |> updateFromUrl url
+            Just network ->
+                let
+                    node =
+                        EthHelpers.ethNode network
+
+                    txSentry =
+                        TxSentry.init ( txOut, txIn ) TxSentryMsg node.http
+                in
+                { key = key
+                , time = Time.millisToPosix 0
+                , node = node
+                , txSentry = txSentry
+                , userAddress = Nothing
+                , userInfo = Nothing
+                , submodel = BetaLandingPage
+                }
+                    |> updateFromUrl url
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )

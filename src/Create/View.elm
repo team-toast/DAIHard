@@ -14,8 +14,10 @@ import EthHelpers
 import FiatValue
 import Images exposing (Image)
 import List.Extra
+import Network exposing (..)
 import PaymentMethods exposing (PaymentMethod)
 import Time
+import TokenValue exposing (TokenValue)
 
 
 root : Model -> Element Msg
@@ -222,7 +224,12 @@ buttonsElement model =
     Element.row
         [ Element.spacing 10 ]
         [ EH.blueButton "Clear Draft" ClearDraft
-        , EH.redButton "Publish Offer" BeginCreateProcess
+        , case model.userInfo of
+            Just userInfo ->
+                EH.redButton "Open Trade" (CreateClicked userInfo)
+
+            Nothing ->
+                EH.disabledButton "Open Trade" (Just "No account detected. Is Metamask unlocked?")
         ]
 
 
@@ -397,30 +404,89 @@ getModalOrNone model =
                             (PMWizard.root pmModal model.inputs.openMode)
 
         _ ->
-            txChainStatusModal model.txChainStatus
+            txChainStatusModal model
 
 
-txChainStatusModal : TxChainStatus -> Element Msg
-txChainStatusModal txChainStatus =
-    EH.txProcessModal <|
-        case txChainStatus of
-            NoTx ->
+txChainStatusModal : Model -> Element Msg
+txChainStatusModal model =
+    case model.txChainStatus of
+        NoTx ->
+            EH.txProcessModal
                 [ Element.text "Something broke!"
                 , Element.text "You shouldn't be seeing this!"
-                , Element.text "This is not helpful probably!"
+                , Element.text "This is probably not helpful!"
                 , Element.text "I'm so sorry!!!"
                 ]
 
-            FetchingFees ->
-                [ Element.text "Fetching exact fees from Factory contract..." ]
+        Confirm createParameters ->
+            let
+                ( depositAmountEl, confirmButton ) =
+                    case model.depositAmount of
+                        Just depositAmount ->
+                            ( TokenValue.tokenValue tokenDecimals depositAmount
+                                |> TokenValue.toConciseString
+                                |> Element.text
+                            , EH.redButton "Yes, I definitely want to open this trade." (ConfirmCreate createParameters depositAmount)
+                            )
 
-            ApproveNeedsSig ->
+                        Nothing ->
+                            ( Element.text "??"
+                            , EH.disabledButton "(loading exact fees...)" Nothing
+                            )
+            in
+            EH.closeableModal
+                (Element.column
+                    [ Element.spacing 20
+                    , Element.centerX
+                    , Element.height Element.fill
+                    , Element.Font.center
+                    ]
+                    [ Element.el
+                        [ Element.Font.size 26
+                        , Element.Font.semiBold
+                        , Element.centerX
+                        , Element.centerY
+                        ]
+                        (Element.text "Just to Confirm...")
+                    , Element.column
+                        [ Element.spacing 20
+                        , Element.centerX
+                        , Element.centerY
+                        ]
+                        (List.map
+                            (Element.paragraph
+                                [ Element.width <| Element.px 500
+                                , Element.centerX
+                                , Element.Font.size 18
+                                , Element.Font.medium
+                                , Element.Font.color EH.permanentTextColor
+                                ]
+                            )
+                            [ [ Element.text <| "You will deposit "
+                              , depositAmountEl
+                              , Element.text " DAI (including the 1% dev fee) to open this trade."
+                              ]
+                            , [ Element.text <| "This ususally requires two Metamask signatures. Your DAI will not be deposited until the final transaction has been mined." ]
+                            ]
+                        )
+                    , Element.el
+                        [ Element.alignBottom
+                        , Element.centerX
+                        ]
+                        confirmButton
+                    ]
+                )
+                AbortCreate
+
+        ApproveNeedsSig ->
+            EH.txProcessModal
                 [ Element.text "Waiting for user signature for the approve call."
                 , Element.text "(check Metamask!)"
                 , Element.text "Note that there will be a second transaction to sign after this."
                 ]
 
-            ApproveMining txHash ->
+        ApproveMining createParameters txHash ->
+            EH.txProcessModal
                 [ Element.text "Mining the initial approve transaction..."
 
                 -- , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
@@ -431,12 +497,14 @@ txChainStatusModal txChainStatus =
                 , Element.text "Please do not leave the page or change the gas price of the mining transaction."
                 ]
 
-            CreateNeedsSig ->
+        CreateNeedsSig ->
+            EH.txProcessModal
                 [ Element.text "Waiting for user signature for the create call."
                 , Element.text "(check Metamask!)"
                 ]
 
-            CreateMining txHash ->
+        CreateMining txHash ->
+            EH.txProcessModal
                 [ Element.text "Mining the final create call..."
 
                 -- , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
@@ -446,7 +514,8 @@ txChainStatusModal txChainStatus =
                 , Element.text "You will be redirected when it's mined."
                 ]
 
-            TxError s ->
+        TxError s ->
+            EH.txProcessModal
                 [ Element.text "Something has gone terribly wrong"
                 , Element.text s
                 ]

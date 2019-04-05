@@ -4,8 +4,8 @@
       <ellipse id="Ellipse_2" data-name="Ellipse 2" cx="13.5" cy="13.5" rx="13.5" ry="13.5" fill="#fff" stroke="#707070" stroke-width="1"/>
     </clipPath>
   </defs>
-  <g id="AUD" transform="translate(-268 -90)">
-    <circle id="Ellipse_43" data-name="Ellipse 43" cx="14.5" cy="14.5" r="14.5" transform="translate(268 90)" opacity="0.05"/>
+  <g id="AUD" transform="translate(-268 -89)">
+    <circle id="Ellipse_43" data-name="Ellipse 43" cx="14.5" cy="14.5" r="14.5" transform="translate(268 89)" fill="#e0e0e0"/>
     <g id="Group_1" data-name="Group 1" transform="translate(269 90)" clip-path="url(#clip-path)">
       <g id="aus" transform="translate(-2.865)">
         <rect id="rect124" width="36" height="27" fill="#006"/>

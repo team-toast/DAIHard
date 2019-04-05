@@ -43,10 +43,12 @@ type Msg
     | AutoreleaseIntervalChanged Time.Posix
     | OpenPMWizard
     | ClearDraft
-    | BeginCreateProcess
+    | CreateClicked UserInfo
+    | AbortCreate
+    | ConfirmCreate CTypes.CreateParameters BigInt
     | AllowanceFetched (Result Http.Error BigInt)
-    | ExtraFeesFetched (Result Http.Error DHF.GetExtraFees)
-    | ApproveSigned (Result String TxHash)
+    | ExtraFeesFetched CTypes.CreateParameters (Result Http.Error DHF.GetExtraFees)
+    | ApproveSigned CTypes.CreateParameters (Result String TxHash)
     | CreateSigned (Result String TxHash)
     | CreateMined (Result String TxReceipt)
     | NoOp
@@ -55,9 +57,9 @@ type Msg
 
 type TxChainStatus
     = NoTx
-    | FetchingFees
+    | Confirm CTypes.CreateParameters
     | ApproveNeedsSig
-    | ApproveMining TxHash
+    | ApproveMining CTypes.CreateParameters TxHash
     | CreateNeedsSig
     | CreateMining TxHash
     | TxError String
