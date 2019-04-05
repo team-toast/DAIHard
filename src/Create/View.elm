@@ -466,7 +466,7 @@ txChainStatusModal model =
                               , depositAmountEl
                               , Element.text " DAI (including the 1% dev fee) to open this trade."
                               ]
-                            , [ Element.text <| "This ususally requires two Metamask signatures. Your DAI will not be deposited until the second transaction has been mined." ]
+                            , [ Element.text <| "This ususally requires two Metamask signatures. Your DAI will not be deposited until the final transaction has been mined." ]
                             ]
                         )
                     , Element.el

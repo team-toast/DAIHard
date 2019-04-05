@@ -300,6 +300,55 @@ update msg prevModel =
             , ChainCmd.none
             )
 
+        CommitClicked trade userInfo depositAmount ->
+            ( { prevModel | txChainStatus = ConfirmingCommit trade userInfo depositAmount }
+            , Cmd.none
+            , ChainCmd.none
+            )
+
+        AbortCommit ->
+            ( { prevModel | txChainStatus = NoTx }
+            , Cmd.none
+            , ChainCmd.none
+            )
+
+        ConfirmCommit trade userInfo depositAmount ->
+            let
+                ( txChainStatus, chainCmd ) =
+                    let
+                        approveChainCmd =
+                            let
+                                txParams =
+                                    TokenContract.approve
+                                        (daiAddress prevModel.ethNode.network)
+                                        trade.creationInfo.address
+                                        depositAmount
+                                        |> Eth.toSend
+
+                                customSend =
+                                    { onMined = Nothing
+                                    , onSign = Just ApproveSigned
+                                    , onBroadcast = Nothing
+                                    }
+                            in
+                            ChainCmd.custom customSend txParams
+                    in
+                    case prevModel.allowance of
+                        Just allowance ->
+                            if BigInt.compare allowance (CTypes.responderDeposit trade.parameters |> TokenValue.getBigInt) /= LT then
+                                initiateCommitCall trade.creationInfo.address userInfo.commPubkey
+
+                            else
+                                ( ApproveNeedsSig, approveChainCmd )
+
+                        _ ->
+                            ( ApproveNeedsSig, approveChainCmd )
+            in
+            ( { prevModel | txChainStatus = txChainStatus }
+            , Cmd.none
+            , chainCmd
+            )
+
         StartContractAction actionMsg ->
             let
                 ( txChainStatus, chainCmd ) =
@@ -315,40 +364,6 @@ update msg prevModel =
                                     ( ActionNeedsSig Recall
                                     , ChainCmd.custom (contractActionSend Recall) txParams
                                     )
-
-                                Commit ->
-                                    let
-                                        fullDepositAmount =
-                                            TokenValue.getBigInt <|
-                                                CTypes.responderDeposit tradeInfo.parameters
-
-                                        approveChainCmd =
-                                            let
-                                                txParams =
-                                                    TokenContract.approve
-                                                        (daiAddress prevModel.ethNode.network)
-                                                        tradeInfo.creationInfo.address
-                                                        fullDepositAmount
-                                                        |> Eth.toSend
-
-                                                customSend =
-                                                    { onMined = Nothing
-                                                    , onSign = Just ApproveSigned
-                                                    , onBroadcast = Nothing
-                                                    }
-                                            in
-                                            ChainCmd.custom customSend txParams
-                                    in
-                                    case ( prevModel.allowance, prevModel.userInfo ) of
-                                        ( Just allowance, Just userInfo ) ->
-                                            if BigInt.compare allowance (CTypes.responderDeposit tradeInfo.parameters |> TokenValue.getBigInt) /= LT then
-                                                initiateCommitCall tradeInfo.creationInfo.address userInfo.commPubkey
-
-                                            else
-                                                ( ApproveNeedsSig, approveChainCmd )
-
-                                        _ ->
-                                            ( ApproveNeedsSig, approveChainCmd )
 
                                 Claim ->
                                     let
@@ -429,6 +444,26 @@ update msg prevModel =
                     , Cmd.none
                     , ChainCmd.none
                     )
+
+        CommitSigned txHashResult ->
+            case txHashResult of
+                Ok txHash ->
+                    ( { prevModel | txChainStatus = CommitMining txHash }
+                    , Cmd.none
+                    , ChainCmd.none
+                    )
+
+                Err errstr ->
+                    ( { prevModel | txChainStatus = TxError errstr }
+                    , Cmd.none
+                    , ChainCmd.none
+                    )
+
+        CommitMined _ ->
+            ( { prevModel | txChainStatus = NoTx }
+            , Cmd.none
+            , ChainCmd.none
+            )
 
         ActionSigned action txHashResult ->
             case txHashResult of
@@ -586,8 +621,13 @@ initiateCommitCall tradeAddress commPubkey =
             DHT.commit tradeAddress commPubkey
                 |> Eth.toSend
     in
-    ( ActionNeedsSig Commit
-    , ChainCmd.custom (contractActionSend Commit) txParams
+    ( CommitNeedsSig
+    , ChainCmd.custom
+        { onMined = Just ( CommitMined, Nothing )
+        , onSign = Just CommitSigned
+        , onBroadcast = Nothing
+        }
+        txParams
     )
 
 
