@@ -415,7 +415,7 @@ contract DAIHardTrade {
     external
     view
     returns(uint balance, Phase phase, uint phaseStartTimestamp, address responder) {
-        return (getBalance(), this.phase(), phaseStartTimestamps[uint(phase)], this.responder());
+        return (getBalance(), this.phase(), phaseStartTimestamps[uint(this.phase())], this.responder());
     }
 
     function getBalance()

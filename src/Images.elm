@@ -6,6 +6,7 @@ module Images exposing
     , closeIcon
     , daiSymbol
     , downArrow
+    , flame
     , image
     , loadingArrows
     , marginSymbol
@@ -194,4 +195,12 @@ closeIcon =
     JustImage
         { src = "/DAIHard/static/img/remove-circle.svg"
         , description = "close"
+        }
+
+
+flame : Image
+flame =
+    JustImage
+        { src = "/DAIHard/static/img/flame.png"
+        , description = "flame"
         }

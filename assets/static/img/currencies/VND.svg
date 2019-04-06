@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="29" height="29" viewBox="0 0 29 29">
+  <defs>
+    <clipPath id="clip-path">
+      <ellipse id="Ellipse_12" data-name="Ellipse 12" cx="13.5" cy="13.5" rx="13.5" ry="13.5" transform="translate(427 690)" fill="#fff" stroke="#707070" stroke-width="1"/>
+    </clipPath>
+    <clipPath id="clip-path-2">
+      <rect id="rect4026" width="36.135" height="27.101" transform="translate(-80.001)" fill="rgba(0,0,0,0.67)"/>
+    </clipPath>
+  </defs>
+  <g id="VND" transform="translate(-426 -689)">
+    <circle id="Ellipse_53" data-name="Ellipse 53" cx="14.5" cy="14.5" r="14.5" transform="translate(426 689)" fill="#e0e0e0"/>
+    <g id="Mask_Group_28" data-name="Mask Group 28" clip-path="url(#clip-path)">
+      <g id="vnm" transform="translate(502.001 690)" clip-path="url(#clip-path-2)">
+        <rect id="rect149" width="40.652" height="27.101" transform="translate(-82.259)" fill="#ec0015"/>
+        <path id="path205" d="M120.279,103.114l-4.741-3.541-4.718,3.576,1.755-5.81-4.71-3.588,5.827-.05,1.807-5.793,1.846,5.78,5.827.008-4.685,3.622,1.794,5.8Z" transform="translate(-177.259 -82.944)" fill="#ff0" fill-rule="evenodd"/>
+      </g>
+    </g>
+  </g>
+</svg>
