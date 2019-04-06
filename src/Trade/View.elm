@@ -478,13 +478,16 @@ phaseStateString status =
 phaseAdviceElement : CTypes.Phase -> CTypes.FullTradeInfo -> Maybe UserInfo -> Element Msg
 phaseAdviceElement viewPhase trade maybeUserInfo =
     let
+        phaseIsActive =
+            viewPhase == trade.state.phase
+
         maybeBuyerOrSeller =
             maybeUserInfo
                 |> Maybe.map .address
                 |> Maybe.andThen (CTypes.getBuyerOrSeller trade)
 
         mainFontColor =
-            if viewPhase == trade.state.phase then
+            if phaseIsActive then
                 EH.white
 
             else
@@ -498,7 +501,10 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                 ]
 
         emphasizedColor =
-            Element.rgb255 0 226 255
+            if phaseIsActive then
+                Element.rgb255 0 226 255
+            else
+                Element.rgb255 16 7 234
 
         emphasizedText =
             Element.el [ Element.Font.color emphasizedColor ] << Element.text
