@@ -302,12 +302,12 @@ contract DAIHardTrade {
 
     function internalAbort()
     internal {
-        //Punishment amount is 1/2 the buyerDeposit for now,
+        //Punishment amount is 1/4 the buyerDeposit for now,
         //but in a future version this might be set by the Initiator.
-        uint burnAmount = buyerDeposit / 2;
+        uint burnAmount = buyerDeposit / 4;
 
         //Punish both parties equally by burning burnAmount.
-        //Instead of burning burnAmount twice, just burn it all in one call.
+        //Instead of burning burnAmount twice, just burn it all in one call (saves gas).
         require(daiContract.transfer(address(0x0), burnAmount*2), "Token burn failed!");
 
         //Send back deposits minus burned amounts.

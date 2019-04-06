@@ -297,16 +297,16 @@ commonPhaseAttributes =
 phaseElement : CTypes.Phase -> FullTradeInfo -> Maybe UserInfo -> Bool -> Time.Posix -> Element Msg
 phaseElement viewPhase trade maybeUserInfo expanded currentTime =
     let
-        ( viewPhaseInt, tradePhaseInt ) =
+        ( viewPhaseInt, activePhaseInt ) =
             ( CTypes.phaseToInt viewPhase
             , CTypes.phaseToInt trade.state.phase
             )
 
-        phaseState =
-            if viewPhaseInt > tradePhaseInt then
+        viewPhaseState =
+            if viewPhaseInt > activePhaseInt then
                 NotStarted
 
-            else if viewPhaseInt == tradePhaseInt then
+            else if viewPhaseInt == activePhaseInt then
                 Active
 
             else
@@ -327,7 +327,7 @@ phaseElement viewPhase trade maybeUserInfo expanded currentTime =
                     Time.millisToPosix 0
 
         displayInterval =
-            case phaseState of
+            case viewPhaseState of
                 NotStarted ->
                     fullInterval
 
@@ -361,7 +361,7 @@ phaseElement viewPhase trade maybeUserInfo expanded currentTime =
                     Images.none
                     titleElement
                     displayInterval
-                    phaseState
+                    viewPhaseState
 
         secondEl =
             Element.el
@@ -376,7 +376,7 @@ phaseElement viewPhase trade maybeUserInfo expanded currentTime =
                 [ Element.height Element.fill
                 , Element.width <| Element.px 1
                 , Element.Background.color <|
-                    case phaseState of
+                    case viewPhaseState of
                         Active ->
                             Element.rgb 0 0 1
 
@@ -388,7 +388,7 @@ phaseElement viewPhase trade maybeUserInfo expanded currentTime =
     if expanded then
         Element.row
             (commonPhaseAttributes
-                ++ (if phaseState == Active then
+                ++ (if viewPhaseState == Active then
                         activePhaseAttributes
 
                     else
@@ -401,7 +401,7 @@ phaseElement viewPhase trade maybeUserInfo expanded currentTime =
     else
         Element.row
             (commonPhaseAttributes
-                ++ (if phaseState == Active then
+                ++ (if viewPhaseState == Active then
                         activePhaseAttributes
 
                     else
@@ -543,10 +543,9 @@ getModalOrNone model =
 
         ConfirmingCommit trade userInfo deposit ->
             let
-                depositAmountEl =
+                depositAmountString =
                     TokenValue.tokenValue tokenDecimals deposit
                         |> TokenValue.toConciseString
-                        |> Element.text
 
                 fiatPriceString =
                     FiatValue.renderToStringFull trade.parameters.fiatPrice
@@ -605,8 +604,8 @@ getModalOrNone model =
                                 ]
                             )
                             [ [ Element.text <| "You will deposit "
-                              , depositAmountEl
-                              , Element.el [ Element.Font.color EH.blue ] <| Element.text " DAI, thereby becoming the "
+                              , Element.el [ Element.Font.color EH.blue ] <| Element.text <| depositAmountString ++ " DAI"
+                              , Element.text ", thereby becoming the "
                               , buyerOrSellerEl
                               , Element.text " of this trade. By doing so, you are agreeing to "
                               ]

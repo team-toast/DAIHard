@@ -24,7 +24,7 @@ var commonModule = (function () {
 
     pub.prepareKeypair = function (signSeedMsg, web3Account, pubkeyCallback) {
         //first try loading seed for the web3Account
-        var storageKey = "commKeySeed-v1:" + web3Account;
+        var storageKey = "commKeySeed-v2:" + web3Account;
 
         if (typeof (Storage) !== "undefined") {
             var loadedSeed = localStorage.getItem(storageKey);

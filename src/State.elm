@@ -115,7 +115,7 @@ updateValidModel msg model =
                     genPrivkey <|
                         encodeGenPrivkeyArgs
                             address
-                            "Deriving keypair for encrypted communication on DAIHARD. Never sign this on any other site!"
+                            "Deriving keypair for encrypted communication on the DAIHard exchange. Never sign this on any other tool or site! If you do, you risk revealing any of your encrypted communication on DAIHard to an attacker."
             )
 
         UserPubkeySet commPubkeyValue ->
