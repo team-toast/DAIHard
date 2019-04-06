@@ -543,10 +543,9 @@ getModalOrNone model =
 
         ConfirmingCommit trade userInfo deposit ->
             let
-                depositAmountEl =
+                depositAmountString =
                     TokenValue.tokenValue tokenDecimals deposit
                         |> TokenValue.toConciseString
-                        |> Element.text
 
                 fiatPriceString =
                     FiatValue.renderToStringFull trade.parameters.fiatPrice
@@ -605,8 +604,8 @@ getModalOrNone model =
                                 ]
                             )
                             [ [ Element.text <| "You will deposit "
-                              , depositAmountEl
-                              , Element.el [ Element.Font.color EH.blue ] <| Element.text " DAI, thereby becoming the "
+                              , Element.el [ Element.Font.color EH.blue ] <| Element.text <| depositAmountString ++ " DAI"
+                              , Element.text ", thereby becoming the "
                               , buyerOrSellerEl
                               , Element.text " of this trade. By doing so, you are agreeing to "
                               ]
