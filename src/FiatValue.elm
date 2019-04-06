@@ -49,6 +49,7 @@ currencyTypes =
     , ( "PLN", "zł" )
     , ( "THB", "฿" )
     , ( "ZAR", "R" )
+    , ( "VND", "₫" )
     ]
         |> List.map
             (\( typeString, typeChar ) ->
