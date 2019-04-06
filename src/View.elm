@@ -274,14 +274,19 @@ betaLandingPage =
                         [ Element.Font.center
                         , Element.Font.size 24
                         , Element.Font.semiBold
+                        , Element.spacing 17
                         ]
                     )
-                    [ [ Element.text "Welcome to DAIHard!" ]
-                    , [ Element.text "Just a few notes for this beta version:" ]
+                    [ [ Element.el [ Element.Font.size 40 ] <| Element.text "Welcome to DAIHard!" ]
+
+                    --, [ Element.text "Just a few notes for this beta version:" ]
                     ]
                 )
-            , [ "Make sure Metamask is unlocked."
-              , "When mining some transactions, DAIHard looks as if it is doing nothing. Check Metamask after signing a transaction to see its progress; the tool updates when the transaction is mined."
+            , Element.el [ Element.height <| Element.px 1 ] Element.none
+            , EH.coolCurrencyHbreak
+            , Element.el [ Element.height <| Element.px 1 ] Element.none
+            , [ "Make sure Metamask is set up and unlocked, and keep an eye on its icon for pending notifications or mining transactions."
+              , "DAIHard sometimes appears stuck, but generally it is Metamask being too meek with its notifications. Check Metamask and refresh."
               ]
                 |> (\lines ->
                         Element.column
@@ -305,12 +310,7 @@ betaLandingPage =
                    )
             , Element.el [ Element.centerX ]
                 (EH.blueButton "Okay, let's go!" (GotoRoute <| Routing.Marketplace CTypes.SellerOpened))
-
-            -- , FiatValue.currencyTypes
-            --     |> Dict.toList
-            --     |> List.map Tuple.second
-            --     |> List.map Tuple.first
-            --     |> List.map (\s -> Element.text <| " " ++ s ++ " ")
-            --     |> Element.paragraph [ Element.centerX, Element.Font.center ]
+            , Element.el [ Element.height <| Element.px 1 ] Element.none
+            , EH.coolCurrencyHbreak
             ]
         ]

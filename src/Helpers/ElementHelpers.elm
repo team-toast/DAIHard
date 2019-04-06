@@ -6,6 +6,7 @@ module ElementHelpers exposing
     , bulletPointString
     , closeableModal
     , comingSoonMsg
+    , coolCurrencyHbreak
     , currencySelector
     , daiSymbol
     , daiSymbolAndLabel
@@ -1036,3 +1037,13 @@ etherscanAddressLink attributes network address =
         { url = EthHelpers.makeEtherscanAddressUrl network address
         , label = Element.text <| Eth.Utils.addressToString address
         }
+
+
+coolCurrencyHbreak : Element msg
+coolCurrencyHbreak =
+    FiatValue.currencyTypes
+        |> Dict.toList
+        |> List.map Tuple.second
+        |> List.map Tuple.first
+        |> List.map (\s -> Element.text <| " " ++ s ++ " ")
+        |> Element.paragraph [ Element.centerX, Element.Font.center ]
