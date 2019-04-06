@@ -280,8 +280,8 @@ betaLandingPage =
                     , [ Element.text "Just a few notes for this beta version:" ]
                     ]
                 )
-            , [ "Make sure Metamask is unlocked."
-              , "When mining some transactions, DAIHard looks as if it is doing nothing. Check Metamask after signing a transaction to see its progress; the tool updates when the transaction is mined."
+            , [ "Make sure Metamask is set up and unlocked, and keep an eye on its icon for pending notifications or mining transactions."
+              , "DAIHard sometimes appears stuck, but generally it is Metamask being too meek with its notifications. Check Metamask and refresh."
               ]
                 |> (\lines ->
                         Element.column
