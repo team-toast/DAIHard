@@ -354,14 +354,11 @@ phaseElement viewPhase trade maybeUserInfo expanded currentTime =
                     "Closed"
 
         firstEl =
-            Element.el
-                [ Element.padding 30 ]
-            <|
-                phaseStatusElement
-                    Images.none
-                    titleElement
-                    displayInterval
-                    viewPhaseState
+            phaseStatusElement
+                Images.none
+                titleElement
+                displayInterval
+                viewPhaseState
 
         secondEl =
             Element.el
@@ -369,7 +366,7 @@ phaseElement viewPhase trade maybeUserInfo expanded currentTime =
                 , Element.width Element.fill
                 , Element.height Element.fill
                 ]
-                (EH.comingSoonMsg [ Element.Font.size 16 ] "Phase description coming soon!")
+                (phaseAdviceElement viewPhase trade maybeUserInfo)
 
         borderEl =
             Element.el
@@ -476,6 +473,118 @@ phaseStateString status =
 
         Finished ->
             "Finished"
+
+
+phaseAdviceElement : CTypes.Phase -> CTypes.FullTradeInfo -> Maybe UserInfo -> Element Msg
+phaseAdviceElement viewPhase trade maybeUserInfo =
+    let
+        maybeBuyerOrSeller =
+            maybeUserInfo
+                |> Maybe.map .address
+                |> Maybe.andThen (CTypes.getBuyerOrSeller trade)
+
+        mainFontColor =
+            if viewPhase == trade.state.phase then
+                EH.white
+
+            else
+                EH.black
+
+        makeParagraph =
+            Element.paragraph
+                [ Element.Font.color mainFontColor
+                , Element.Font.size 18
+                , Element.Font.semiBold
+                ]
+
+        emphasizedColor =
+            Element.rgb255 0 226 255
+
+        emphasizedText =
+            Element.el [ Element.Font.color emphasizedColor ] << Element.text
+
+        scaryText =
+            Element.el [ Element.Font.color <| Element.rgb 1 0 0 ] << Element.text
+
+        tradeAmountString =
+            TokenValue.toConciseString trade.parameters.tradeAmount ++ " DAI"
+
+        fiatAmountString =
+            FiatValue.renderToStringFull trade.parameters.fiatPrice
+
+        buyerDepositString =
+            TokenValue.toConciseString trade.parameters.buyerDeposit ++ " DAI"
+
+        tradePlusDepositString =
+            (TokenValue.add
+                trade.parameters.tradeAmount
+                trade.parameters.buyerDeposit
+                |> TokenValue.toConciseString
+            )
+                ++ " DAI"
+
+        threeFlames =
+            Element.row []
+                (List.repeat 3 (Images.toElement [ Element.height <| Element.px 18 ] Images.flame))
+
+        ( titleString, paragraphEls ) =
+            case ( viewPhase, maybeBuyerOrSeller ) of
+                ( CTypes.Open, Nothing ) ->
+                    ( "Get it while it's hot"
+                    , case trade.parameters.openMode of
+                        CTypes.SellerOpened ->
+                            List.map makeParagraph
+                                [ [ Element.text "The Seller has deposited "
+                                  , emphasizedText tradeAmountString
+                                  , Element.text " into this sell offer. To become the Buyer, you must deposit 1/3 of the sell amount "
+                                  , emphasizedText <| "(" ++ buyerDepositString ++ ")"
+                                  , Element.text " into this contract by clicking \"Deposit and Commit to Trade\"."
+                                  ]
+                                , [ Element.text "If the trade is successful, the combined balance "
+                                  , emphasizedText <| "(" ++ tradePlusDepositString ++ ")"
+                                  , Element.text " will be released to you. If anything goes wrong, there are "
+                                  , scaryText "burable punishments "
+                                  , threeFlames
+                                  , Element.text " for both parties."
+                                  ]
+                                , [ Element.text "Don't commit unless you can fulfil one of the seller’s accepted payment methods below for "
+                                  , emphasizedText fiatAmountString
+                                  , Element.text " within the payment window."
+                                  ]
+                                ]
+
+                        _ ->
+                            []
+                    )
+
+                _ ->
+                    ( "", [] )
+    in
+    Element.column
+        [ Element.width Element.fill
+        , Element.height Element.fill
+        , Element.paddingXY 90 10
+        , Element.spacing 16
+        ]
+        [ Element.el
+            [ Element.Font.size 24
+            , Element.Font.semiBold
+            , Element.Font.color emphasizedColor
+            ]
+            (Element.text titleString)
+        , Element.column
+            [ Element.width Element.fill
+            , Element.centerY
+            , Element.spacing 13
+            , Element.paddingEach
+                { right = 40
+                , top = 0
+                , bottom = 0
+                , left = 0
+                }
+            ]
+            paragraphEls
+        ]
 
 
 chatOverlayElement : Model -> Element Msg
