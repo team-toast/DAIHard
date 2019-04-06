@@ -164,7 +164,7 @@ renderFiatAmount fiatValue =
             [ Element.Font.size 24
             , Element.Font.medium
             ]
-            (Element.text <| FiatValue.renderToString fiatValue)
+            (Element.text <| FiatValue.renderToStringFull fiatValue)
         ]
 
 
