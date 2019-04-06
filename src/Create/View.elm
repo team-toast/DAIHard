@@ -308,10 +308,10 @@ paymentWindowSummary : CTypes.OpenMode -> String
 paymentWindowSummary openMode =
     case openMode of
         CTypes.BuyerOpened ->
-            "You have this time window to send the fiat funds (<- replace me!) to the seller using one of your payment methods indicated below."
+            "You have this time window to send the fiat funds to the seller using one of your payment methods indicated below."
 
         CTypes.SellerOpened ->
-            "The buyer has this time window to send the fiat funds (<- replace me!) to you using one of your payment methods indicated below."
+            "The buyer has this time window to send the fiat funds to you using one of your payment methods indicated below."
 
 
 releaseWindowSummary : CTypes.OpenMode -> String
