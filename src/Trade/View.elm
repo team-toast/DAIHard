@@ -247,7 +247,7 @@ phasesElement : FullTradeInfo -> CTypes.Phase -> Maybe UserInfo -> Time.Posix ->
 phasesElement trade expandedPhase maybeUserInfo currentTime =
     Element.row
         [ Element.width Element.fill
-        , Element.height <| Element.px 360
+        , Element.height Element.shrink
         , Element.spacing 20
         ]
     <|
@@ -290,7 +290,7 @@ inactivePhaseAttributes =
 
 commonPhaseAttributes =
     [ Element.Border.rounded 12
-    , Element.height Element.fill
+    , Element.height (Element.shrink |> Element.minimum 360)
     ]
 
 
