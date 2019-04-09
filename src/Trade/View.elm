@@ -662,7 +662,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                         , [ Element.text "If they cannot confirm they've received payment from you, they will probably instead "
                           , scaryText "burn the contract's balance of "
                           , emphasizedText tradePlusDepositString
-                          , Element.text "."
+                          , scaryText "."
                           ]
                         , [ Element.text "These are the only options the Seller has. So, fingers crossed!"
                           ]
