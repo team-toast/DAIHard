@@ -494,7 +494,6 @@ txChainStatusModal model =
                 --     , label = Element.text "See the transaction on Etherscan"
                 --     }
                 , Element.text "Funds will not be sent until you sign the next transaction."
-                , Element.text "Please do not leave the page or change the gas price of the mining transaction."
                 ]
 
         CreateNeedsSig ->
