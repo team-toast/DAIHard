@@ -235,8 +235,8 @@ actionButtonsElement trade userInfo =
                 ]
 
             ( CTypes.Claimed, _, Just Seller ) ->
-                [ Element.map StartContractAction <| EH.redButton "Burn it all" Burn
-                , Element.map StartContractAction <| EH.blueButton "Release Everything Now" Release
+                [ Element.map StartContractAction <| EH.redButton "Burn it All!" Burn
+                , Element.map StartContractAction <| EH.blueButton "Release Everything" Release
                 ]
 
             _ ->
@@ -598,7 +598,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                                   , Element.text ", and has deposited "
                                   , emphasizedText buyerDepositString
                                   , Element.text " into this contract as a "
-                                  , scaryText "burnable bond"
+                                  , scaryText "burnable deposit"
                                   , Element.text ". To become the Seller, deposit "
                                   , emphasizedText tradeAmountString
                                   , Element.text " into this contract by clicking \"Deposit and Commit to Trade\"."
@@ -620,12 +620,49 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                     )
 
                 ( CTypes.Open, Just buyerOrSeller ) ->
-                    let
-                        _ =
-                            Debug.log "still have to write this hint" "open phase for initiator"
-                    in
-                    ( "Did you forget this is a beta?"
-                    , [ makeParagraph [ Element.text "Very silly of you. This description has not yet been written. Sorry!" ] ]
+                    ( "And Now, We Wait"
+                    , case buyerOrSeller of
+                        Buyer ->
+                            List.map makeParagraph
+                                [ [ Element.text "Your "
+                                  , scaryText "burnable deposit"
+                                  , Element.text " of "
+                                  , emphasizedText buyerDepositString
+                                  , Element.text " is now held in this contract, and your offer to buy "
+                                  , emphasizedText tradeAmountString
+                                  , Element.text " for "
+                                  , emphasizedText fiatAmountString
+                                  , Element.text " is now listed in the marketplace."
+                                  ]
+                                , [ Element.text "If another user likes your offer, they can become the Seller by depositing the full "
+                                  , emphasizedText tradeAmountString
+                                  , Element.text " into this contract."
+                                  ]
+                                , [ Element.text "If no one commits within the Open Window, your offer will expire, refunding the "
+                                  , emphasizedText buyerDepositString
+                                  , Element.text " to you."
+                                  ]
+                                ]
+
+                        Seller ->
+                            List.map makeParagraph
+                                [ [ Element.text "Your offer to sell the "
+                                  , emphasizedText tradeAmountString
+                                  , Element.text " held in this contract for "
+                                  , emphasizedText fiatAmountString
+                                  , Element.text " is now listed in the marketplace."
+                                  ]
+                                , [ Element.text "If another user likes your offer, they can become the Buyer by depositing a "
+                                  , scaryText "burnable deposit"
+                                  , Element.text " of 1/3 of the trade amount "
+                                  , emphasizedText <| "(" ++ buyerDepositString ++ ")"
+                                  , Element.text " into this contract."
+                                  ]
+                                , [ Element.text "If no one commits within the Open Window, your offer will expire, refunding the "
+                                  , emphasizedText tradeAmountString
+                                  , Element.text " to you."
+                                  ]
+                                ]
                     )
 
                 ( CTypes.Committed, Just Buyer ) ->
@@ -635,19 +672,69 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                           , emphasizedText fiatAmountString
                           , Element.text " via one of the accepted payment methods below, "
                           , Element.el [ Element.Font.semiBold ] <| Element.text "and click \"Confirm Payment\""
-                          , Element.text " before the payment window runs out."
+                          , Element.text " before the payment window runs out. Use the chat to coordinate."
                           ]
-                        , [ Element.text "If you do not confirm payment before this time is up, "
+                        , [ Element.text "If you abort the trade, or do not confirm payment before this time is up, "
                           , emphasizedText abortPunishmentString
                           , Element.text " (1/4 of the "
-                          , scaryText "burnable bond"
+                          , scaryText "burnable deposit"
+                          , Element.text ") will be "
+                          , scaryText "burned"
+                          , Element.text " from both parties, while the remainder of each party's deposit is refunded ("
+                          , emphasizedText sellerAbortRefundString
+                          , Element.text " to the Seller, "
+                          , emphasizedText buyerAbortRefundString
+                          , Element.text " to you)."
+                          ]
+                        , [ Element.text "This may be your last chance to clear up any ambiguity before Judgement. Do not confirm unless you're sure the "
+                          , emphasizedText fiatAmountString
+                          , Element.text " has been successfully transferred."
+                          ]
+                        ]
+                    )
+
+                ( CTypes.Committed, Just Seller ) ->
+                    ( "Time to Get Paid"
+                    , List.map makeParagraph
+                        [ [ Element.text "Work and communicate with the Buyer to receive "
+                          , emphasizedText fiatAmountString
+                          , Element.text ". Then, the Buyer should confirm the payment, moving the trade to the final phase."
+                          ]
+                        , [ Element.text "If the Buyer aborts the trade, or doesn't confirm payment before this time is up, "
+                          , emphasizedText abortPunishmentString
+                          , Element.text " (1/4 of the "
+                          , scaryText "burnable deposit"
+                          , Element.text ") will be "
+                          , scaryText "burned"
+                          , Element.text " from both parties, while the remainder of each party's deposit is refunded ("
+                          , emphasizedText sellerAbortRefundString
+                          , Element.text " to you, "
+                          , emphasizedText buyerAbortRefundString
+                          , Element.text " to the Buyer)."
+                          ]
+                        ]
+                    )
+
+                ( CTypes.Committed, Nothing ) ->
+                    ( "Making the Payment"
+                    , List.map makeParagraph
+                        [ [ Element.text "During this phase, the Buyer is expected to transfer "
+                          , emphasizedText fiatAmountString
+                          , Element.text " to the Seller, via one of the payment methods listed below, "
+                          , Element.el [ Element.Font.semiBold ] <| Element.text "and click \"Confirm Payment\""
+                          , Element.text " before the payment window runs out. This would move the trade to the final phase."
+                          ]
+                        , [ Element.text "If the Buyer aborts the trade, or doesn't confirm payment before this time is up, "
+                          , emphasizedText abortPunishmentString
+                          , Element.text " (1/4 of the "
+                          , scaryText "burnable deposit"
                           , Element.text " amount) will be "
                           , scaryText "burned"
-                          , Element.text " from both you and the Seller, while the remainder of each party's deposit ("
+                          , Element.text " from both parties, while the remainder of each party's deposit is refunded ("
                           , emphasizedText sellerAbortRefundString
-                          , Element.text " for the Seller, "
+                          , Element.text " to the Seller, "
                           , emphasizedText buyerAbortRefundString
-                          , Element.text " for you) is refunded."
+                          , Element.text " to the Buyer)."
                           ]
                         ]
                     )
@@ -669,6 +756,40 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                         ]
                     )
 
+                ( CTypes.Claimed, Just Seller ) ->
+                    ( "Judgement"
+                    , List.map makeParagraph
+                        [ [ Element.text "By pushing the contract to the final stage, the Buyer has indicated that the transfer has taken place, and awaits your judgement."
+                          ]
+                        , [ Element.text "So, have you recieved the "
+                          , emphasizedText fiatAmountString
+                          , Element.text "? If so, you can click \"Release Everything\"."
+                          ]
+                        , [ Element.text "If not, the Buyer is probably trying to scam you, and you should probably "
+                          , scaryText "burn it all"
+                          , Element.text ". You're not getting it back either way, and you wouldn't want the other guy to get it, would you?"
+                          ]
+                        , [ Element.text "If you don't decide within the Release Window, the balance will be automatically released."
+                          ]
+                        ]
+                    )
+
+                ( CTypes.Claimed, Nothing ) ->
+                    ( "Judgement"
+                    , List.map makeParagraph
+                        [ [ Element.text "The Buyer has indicated that the transfer has taken place, and awaits the Seller's judgement on the fact of the matter."
+                          ]
+                        , [ Element.text "If the Seller can verify he has received the "
+                          , emphasizedText fiatAmountString
+                          , Element.text ", he will probably release the total balance of "
+                          , emphasizedText tradeAmountString
+                          , Element.text " to the Buyer. If he cannot verify payment, he will probably instead "
+                          , scaryText "burn it all"
+                          , Element.text "."
+                          ]
+                        ]
+                    )
+
                 ( CTypes.Closed, Just _ ) ->
                     ( "Contract closed."
                     , [ makeParagraph [ Element.text "Check the chat log for the full history." ] ]
@@ -677,15 +798,6 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                 ( CTypes.Closed, Nothing ) ->
                     ( "Contract closed."
                     , []
-                    )
-
-                other ->
-                    let
-                        _ =
-                            Debug.log "still have to write this hint" other
-                    in
-                    ( "Did you forget this is a beta?"
-                    , [ makeParagraph [ Element.text "Very silly of you! This description has not yet been written. Sorry!" ] ]
                     )
     in
     Element.column
