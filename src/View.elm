@@ -286,7 +286,7 @@ betaLandingPage =
             , EH.coolCurrencyHbreak
             , Element.el [ Element.height <| Element.px 1 ] Element.none
             , [ "Make sure Metamask is set up and unlocked, and keep an eye on its icon for pending notifications or mining transactions."
-              , "DAIHard sometimes appears stuck, but generally it is Metamask being too meek with its notifications. Check Metamask and refresh."
+              , "DAIHard sometimes appears stuck, but generally it is Metamask being too meek with its notifications. When in doubt, check Metamask."
               ]
                 |> (\lines ->
                         Element.column

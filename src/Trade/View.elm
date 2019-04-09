@@ -1,6 +1,7 @@
 module Trade.View exposing (root)
 
 import Array
+import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes exposing (FullTradeInfo)
 import Element exposing (Attribute, Element)
@@ -230,12 +231,12 @@ actionButtonsElement trade userInfo =
 
             ( CTypes.Committed, _, Just Buyer ) ->
                 [ Element.map StartContractAction <| EH.orangeButton "Abort Trade" Abort
-                , Element.map StartContractAction <| EH.redButton "I Confirm I have Sent Payment" Claim
+                , Element.map StartContractAction <| EH.redButton "Confirm Payment" Claim
                 ]
 
             ( CTypes.Claimed, _, Just Seller ) ->
-                [ Element.map StartContractAction <| EH.redButton "Burn it all" Burn
-                , Element.map StartContractAction <| EH.blueButton "Release Everything Now" Release
+                [ Element.map StartContractAction <| EH.redButton "Burn it All!" Burn
+                , Element.map StartContractAction <| EH.blueButton "Release Everything" Release
                 ]
 
             _ ->
@@ -247,7 +248,7 @@ phasesElement : FullTradeInfo -> CTypes.Phase -> Maybe UserInfo -> Time.Posix ->
 phasesElement trade expandedPhase maybeUserInfo currentTime =
     Element.row
         [ Element.width Element.fill
-        , Element.height <| Element.px 360
+        , Element.height Element.shrink
         , Element.spacing 20
         ]
     <|
@@ -290,7 +291,7 @@ inactivePhaseAttributes =
 
 commonPhaseAttributes =
     [ Element.Border.rounded 12
-    , Element.height Element.fill
+    , Element.height (Element.shrink |> Element.minimum 360)
     ]
 
 
@@ -503,6 +504,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
         emphasizedColor =
             if phaseIsActive then
                 Element.rgb255 0 226 255
+
             else
                 Element.rgb255 16 7 234
 
@@ -529,6 +531,32 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
             )
                 ++ " DAI"
 
+        abortPunishment =
+            TokenValue.div
+                trade.parameters.buyerDeposit
+                (TokenValue.tokenValue tokenDecimals <| BigInt.fromInt 4)
+
+        abortPunishmentString =
+            TokenValue.toConciseString
+                abortPunishment
+                ++ " DAI"
+
+        sellerAbortRefundString =
+            TokenValue.toConciseString
+                (TokenValue.sub
+                    trade.parameters.tradeAmount
+                    abortPunishment
+                )
+                ++ " DAI"
+
+        buyerAbortRefundString =
+            TokenValue.toConciseString
+                (TokenValue.sub
+                    trade.parameters.buyerDeposit
+                    abortPunishment
+                )
+                ++ " DAI"
+
         threeFlames =
             Element.row []
                 (List.repeat 3 (Images.toElement [ Element.height <| Element.px 18 ] Images.flame))
@@ -542,11 +570,13 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                             List.map makeParagraph
                                 [ [ Element.text "The Seller has deposited "
                                   , emphasizedText tradeAmountString
-                                  , Element.text " into this sell offer. To become the Buyer, you must deposit 1/3 of the sell amount "
+                                  , Element.text " into this contract, and offers sell it for "
+                                  , emphasizedText fiatAmountString
+                                  , Element.text ". To become the Buyer, you must deposit 1/3 of the trade amount "
                                   , emphasizedText <| "(" ++ buyerDepositString ++ ")"
                                   , Element.text " into this contract by clicking \"Deposit and Commit to Trade\"."
                                   ]
-                                , [ Element.text "If the trade is successful, the combined balance "
+                                , [ Element.text "If the trade is successful, the combined DAI balance "
                                   , emphasizedText <| "(" ++ tradePlusDepositString ++ ")"
                                   , Element.text " will be released to you. If anything goes wrong, there are "
                                   , scaryText "burable punishments "
@@ -559,12 +589,216 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                                   ]
                                 ]
 
-                        _ ->
-                            []
+                        CTypes.BuyerOpened ->
+                            List.map makeParagraph
+                                [ [ Element.text "The Buyer is offering to buy "
+                                  , emphasizedText tradeAmountString
+                                  , Element.text " for "
+                                  , emphasizedText fiatAmountString
+                                  , Element.text ", and has deposited "
+                                  , emphasizedText buyerDepositString
+                                  , Element.text " into this contract as a "
+                                  , scaryText "burnable deposit"
+                                  , Element.text ". To become the Seller, deposit "
+                                  , emphasizedText tradeAmountString
+                                  , Element.text " into this contract by clicking \"Deposit and Commit to Trade\"."
+                                  ]
+                                , [ Element.text "When you receive the "
+                                  , emphasizedText fiatAmountString
+                                  , Element.text " from the Buyer, the combined DAI balance "
+                                  , emphasizedText <| "(" ++ tradePlusDepositString ++ ")"
+                                  , Element.text " will be released to the Buyer. If anything goes wrong, there are "
+                                  , scaryText "burnable punishments "
+                                  , threeFlames
+                                  , Element.text " for both parties."
+                                  ]
+                                , [ Element.text "Don't commit unless you can receive "
+                                  , emphasizedText fiatAmountString
+                                  , Element.text " via one of the Buyer's payment methods below, within the payment window."
+                                  ]
+                                ]
                     )
 
-                _ ->
-                    ( "", [] )
+                ( CTypes.Open, Just buyerOrSeller ) ->
+                    ( "And Now, We Wait"
+                    , case buyerOrSeller of
+                        Buyer ->
+                            List.map makeParagraph
+                                [ [ Element.text "Your "
+                                  , scaryText "burnable deposit"
+                                  , Element.text " of "
+                                  , emphasizedText buyerDepositString
+                                  , Element.text " is now held in this contract, and your offer to buy "
+                                  , emphasizedText tradeAmountString
+                                  , Element.text " for "
+                                  , emphasizedText fiatAmountString
+                                  , Element.text " is now listed in the marketplace."
+                                  ]
+                                , [ Element.text "If another user likes your offer, they can become the Seller by depositing the full "
+                                  , emphasizedText tradeAmountString
+                                  , Element.text " into this contract."
+                                  ]
+                                , [ Element.text "If no one commits within the Open Window, your offer will expire, refunding the "
+                                  , emphasizedText buyerDepositString
+                                  , Element.text " to you."
+                                  ]
+                                ]
+
+                        Seller ->
+                            List.map makeParagraph
+                                [ [ Element.text "Your offer to sell the "
+                                  , emphasizedText tradeAmountString
+                                  , Element.text " held in this contract for "
+                                  , emphasizedText fiatAmountString
+                                  , Element.text " is now listed in the marketplace."
+                                  ]
+                                , [ Element.text "If another user likes your offer, they can become the Buyer by depositing a "
+                                  , scaryText "burnable deposit"
+                                  , Element.text " of 1/3 of the trade amount "
+                                  , emphasizedText <| "(" ++ buyerDepositString ++ ")"
+                                  , Element.text " into this contract."
+                                  ]
+                                , [ Element.text "If no one commits within the Open Window, your offer will expire, refunding the "
+                                  , emphasizedText tradeAmountString
+                                  , Element.text " to you."
+                                  ]
+                                ]
+                    )
+
+                ( CTypes.Committed, Just Buyer ) ->
+                    ( "Time to Pay Up"
+                    , List.map makeParagraph
+                        [ [ Element.text "You must now pay the Seller "
+                          , emphasizedText fiatAmountString
+                          , Element.text " via one of the accepted payment methods below, "
+                          , Element.el [ Element.Font.semiBold ] <| Element.text "and click \"Confirm Payment\""
+                          , Element.text " before the payment window runs out. Use the chat to coordinate."
+                          ]
+                        , [ Element.text "If you abort the trade, or do not confirm payment before this time is up, "
+                          , emphasizedText abortPunishmentString
+                          , Element.text " (1/4 of the "
+                          , scaryText "burnable deposit"
+                          , Element.text ") will be "
+                          , scaryText "burned"
+                          , Element.text " from both parties, while the remainder of each party's deposit is refunded ("
+                          , emphasizedText sellerAbortRefundString
+                          , Element.text " to the Seller, "
+                          , emphasizedText buyerAbortRefundString
+                          , Element.text " to you)."
+                          ]
+                        , [ Element.text "This may be your last chance to clear up any ambiguity before Judgement. Do not confirm unless you're sure the "
+                          , emphasizedText fiatAmountString
+                          , Element.text " has been successfully transferred."
+                          ]
+                        ]
+                    )
+
+                ( CTypes.Committed, Just Seller ) ->
+                    ( "Time to Get Paid"
+                    , List.map makeParagraph
+                        [ [ Element.text "Work and communicate with the Buyer to receive "
+                          , emphasizedText fiatAmountString
+                          , Element.text ". Then, the Buyer should confirm the payment, moving the trade to the final phase."
+                          ]
+                        , [ Element.text "If the Buyer aborts the trade, or doesn't confirm payment before this time is up, "
+                          , emphasizedText abortPunishmentString
+                          , Element.text " (1/4 of the "
+                          , scaryText "burnable deposit"
+                          , Element.text ") will be "
+                          , scaryText "burned"
+                          , Element.text " from both parties, while the remainder of each party's deposit is refunded ("
+                          , emphasizedText sellerAbortRefundString
+                          , Element.text " to you, "
+                          , emphasizedText buyerAbortRefundString
+                          , Element.text " to the Buyer)."
+                          ]
+                        ]
+                    )
+
+                ( CTypes.Committed, Nothing ) ->
+                    ( "Making the Payment"
+                    , List.map makeParagraph
+                        [ [ Element.text "During this phase, the Buyer is expected to transfer "
+                          , emphasizedText fiatAmountString
+                          , Element.text " to the Seller, via one of the payment methods listed below, "
+                          , Element.el [ Element.Font.semiBold ] <| Element.text "and click \"Confirm Payment\""
+                          , Element.text " before the payment window runs out. This would move the trade to the final phase."
+                          ]
+                        , [ Element.text "If the Buyer aborts the trade, or doesn't confirm payment before this time is up, "
+                          , emphasizedText abortPunishmentString
+                          , Element.text " (1/4 of the "
+                          , scaryText "burnable deposit"
+                          , Element.text " amount) will be "
+                          , scaryText "burned"
+                          , Element.text " from both parties, while the remainder of each party's deposit is refunded ("
+                          , emphasizedText sellerAbortRefundString
+                          , Element.text " to the Seller, "
+                          , emphasizedText buyerAbortRefundString
+                          , Element.text " to the Buyer)."
+                          ]
+                        ]
+                    )
+
+                ( CTypes.Claimed, Just Buyer ) ->
+                    ( "Judgement"
+                    , List.map makeParagraph
+                        [ [ Element.text "If the Seller confirms receipt of payment, or fails to decide within the release window, the combined balance of "
+                          , emphasizedText tradePlusDepositString
+                          , Element.text " will be released to you."
+                          ]
+                        , [ Element.text "If they cannot confirm they've received payment from you, they will probably instead "
+                          , scaryText "burn the contract's balance of "
+                          , emphasizedText tradePlusDepositString
+                          , scaryText "."
+                          ]
+                        , [ Element.text "These are the only options the Seller has. So, fingers crossed!"
+                          ]
+                        ]
+                    )
+
+                ( CTypes.Claimed, Just Seller ) ->
+                    ( "Judgement"
+                    , List.map makeParagraph
+                        [ [ Element.text "By pushing the contract to the final stage, the Buyer has indicated that the transfer has taken place, and awaits your judgement."
+                          ]
+                        , [ Element.text "So, have you recieved the "
+                          , emphasizedText fiatAmountString
+                          , Element.text "? If so, you can click \"Release Everything\"."
+                          ]
+                        , [ Element.text "If not, the Buyer is probably trying to scam you, and you should probably "
+                          , scaryText "burn it all"
+                          , Element.text ". You're not getting it back either way, and you wouldn't want the other guy to get it, would you?"
+                          ]
+                        , [ Element.text "If you don't decide within the Release Window, the balance will be automatically released."
+                          ]
+                        ]
+                    )
+
+                ( CTypes.Claimed, Nothing ) ->
+                    ( "Judgement"
+                    , List.map makeParagraph
+                        [ [ Element.text "The Buyer has indicated that the transfer has taken place, and awaits the Seller's judgement on the fact of the matter."
+                          ]
+                        , [ Element.text "If the Seller can verify he has received the "
+                          , emphasizedText fiatAmountString
+                          , Element.text ", he will probably release the total balance of "
+                          , emphasizedText tradeAmountString
+                          , Element.text " to the Buyer. If he cannot verify payment, he will probably instead "
+                          , scaryText "burn it all"
+                          , Element.text "."
+                          ]
+                        ]
+                    )
+
+                ( CTypes.Closed, Just _ ) ->
+                    ( "Contract closed."
+                    , [ makeParagraph [ Element.text "Check the chat log for the full history." ] ]
+                    )
+
+                ( CTypes.Closed, Nothing ) ->
+                    ( "Contract closed."
+                    , []
+                    )
     in
     Element.column
         [ Element.width Element.fill
