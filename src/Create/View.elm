@@ -1,5 +1,6 @@
 module Create.View exposing (root)
 
+import BigInt exposing (BigInt)
 import Contracts.Types as CTypes
 import Create.PMWizard.View as PMWizard
 import Create.Types exposing (..)
@@ -30,6 +31,7 @@ root model =
             getModalOrNone model
         ]
         [ mainInputElement model
+        , devFeeNotifyElement model
         , phasesElement model
         , Element.el
             [ Element.below <|
@@ -231,6 +233,53 @@ buttonsElement model =
             Nothing ->
                 EH.disabledButton "Open Trade" (Just "No account detected. Is Metamask unlocked?")
         ]
+
+
+devFeeNotifyElement : Model -> Element Msg
+devFeeNotifyElement model =
+    let
+        topText =
+            case TokenValue.fromString 18 model.inputs.daiAmount of
+                Just daiAmount ->
+                    "There is a 1% dev fee of "
+                        ++ TokenValue.toConciseString
+                            (TokenValue.div
+                                daiAmount
+                                (TokenValue.tokenValue 18 (BigInt.fromInt 100))
+                            )
+                        ++ " DAI."
+
+                Nothing ->
+                    "There is a 1% dev fee."
+
+        bottomText =
+            "This dev fee is only collected when trades resolve successfully. If the trade is burned or aborted, we all lose out."
+    in
+    Element.el
+        [ Element.width Element.fill
+        , Element.paddingXY 40 0
+        ]
+    <|
+        Element.column
+            [ Element.width Element.fill
+            , Element.paddingXY 30 20
+            , Element.Background.color <| Element.rgb255 10 33 108
+            , Element.Border.rounded 8
+            , Element.spacing 3
+            ]
+            [ Element.el
+                [ Element.Font.size 18
+                , Element.Font.color <| Element.rgb255 0 226 255
+                , Element.Font.semiBold
+                ]
+                (Element.text topText)
+            , Element.el
+                [ Element.Font.size 17
+                , Element.Font.color EH.white
+                , Element.Font.medium
+                ]
+                (Element.text bottomText)
+            ]
 
 
 phasesElement : Model -> Element Msg

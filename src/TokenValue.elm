@@ -107,17 +107,17 @@ toConciseString tv =
             s
 
         [ 0 ] ->
-            "0" ++ String.left 2 s
+            "0" ++ String.left 3 s
 
         [ 1 ] ->
             String.toFloat s
-                |> Maybe.map ((*) 10.0)
+                |> Maybe.map ((*) 100.0)
                 |> Maybe.map round
                 |> Maybe.map toFloat
-                |> Maybe.map (\f -> f / 10.0)
+                |> Maybe.map (\f -> f / 100.0)
                 |> Maybe.map String.fromFloat
                 |> Maybe.withDefault s
-                |> String.left 3
+                |> String.left 4
 
         [ i ] ->
             String.toFloat s
