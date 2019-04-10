@@ -323,7 +323,10 @@ viewMargin trade upIsGreen =
 
 viewPaymentMethods : List PaymentMethod -> Element Msg
 viewPaymentMethods paymentMethods =
-    EH.comingSoonMsg [] "Payment method summary coming soon! For now, click \"View offer\" ---> "
+    paymentMethods
+        |> List.head
+        |> Maybe.map PaymentMethods.previewTextHack
+        |> Maybe.withDefault Element.none
 
 
 viewTradeButton : Int -> Element Msg

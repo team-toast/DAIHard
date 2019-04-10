@@ -34,7 +34,8 @@ root model =
         , devFeeNotifyElement model
         , phasesElement model
         , Element.el
-            [ Element.below <|
+            [ Element.width Element.fill
+            , Element.below <|
                 EH.maybeErrorElement
                     [ Element.moveDown 5
                     , Element.padding 10
@@ -43,7 +44,15 @@ root model =
                     ]
                     model.errors.paymentMethods
             ]
-            (PaymentMethods.viewList model.inputs.paymentMethods (Just OpenPMWizard))
+            (PaymentMethods.viewList
+                model.inputs.paymentMethods
+                (if List.length model.inputs.paymentMethods == 0 then
+                    Just OpenPMWizard
+
+                 else
+                    Nothing
+                )
+            )
         ]
 
 
