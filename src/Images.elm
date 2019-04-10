@@ -3,7 +3,9 @@ module Images exposing
     , addButton
     , backButton
     , chatIcon
+    , claimedPhase
     , closeIcon
+    , committedPhase
     , daiSymbol
     , downArrow
     , flame
@@ -11,6 +13,7 @@ module Images exposing
     , loadingArrows
     , marginSymbol
     , none
+    , openPhase
     , openWindowIcon
     , paymentWindowIcon
     , pmBank
@@ -203,4 +206,28 @@ flame =
     JustImage
         { src = "/DAIHard/static/img/flame.png"
         , description = "flame"
+        }
+
+
+openPhase : Image
+openPhase =
+    JustImage
+        { src = "/DAIHard/static/img/phase-open.svg"
+        , description = "open phase"
+        }
+
+
+committedPhase : Image
+committedPhase =
+    JustImage
+        { src = "/DAIHard/static/img/phase-committed.svg"
+        , description = "committed phase"
+        }
+
+
+claimedPhase : Image
+claimedPhase =
+    JustImage
+        { src = "/DAIHard/static/img/phase-claimed.svg"
+        , description = "claimed phase"
         }

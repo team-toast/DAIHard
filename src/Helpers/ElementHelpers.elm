@@ -15,6 +15,7 @@ module ElementHelpers exposing
     , disabledButton
     , disabledTextColor
     , elOnCircle
+    , elementColorToAvh4Color
     , errorMessage
     , etherscanAddressLink
     , fakeLink

@@ -2,6 +2,8 @@ module Trade.View exposing (root)
 
 import Array
 import BigInt exposing (BigInt)
+import Collage exposing (Collage)
+import Collage.Render
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes exposing (FullTradeInfo)
 import Element exposing (Attribute, Element)
@@ -414,6 +416,9 @@ phaseStatusElement viewPhase trade currentTime =
         viewPhaseState =
             phaseState trade viewPhase
 
+        iconEl =
+            phaseIconElement viewPhase viewPhaseState
+
         titleColor =
             case viewPhaseState of
                 Active ->
@@ -498,11 +503,46 @@ phaseStatusElement viewPhase trade currentTime =
             , Element.height Element.fill
             , Element.spaceEvenly
             ]
-            [ Element.none -- add icon!
+            [ iconEl
             , titleElement
             , intervalElement
             , phaseStateElement
             ]
+
+
+phaseIconElement : CTypes.Phase -> PhaseState -> Element Msg
+phaseIconElement viewPhase viewPhaseState =
+    let
+        circleColor =
+            case viewPhaseState of
+                NotStarted ->
+                    Element.rgb255 10 33 108
+
+                Active ->
+                    Element.rgb255 0 100 170
+
+                Finished ->
+                    Element.rgb255 1 129 104
+
+        circleElement =
+            Collage.circle 75
+                |> Collage.filled (Collage.uniform (EH.elementColorToAvh4Color circleColor))
+                |> Collage.Render.svg
+                |> Element.html
+
+        image =
+            CTypes.phaseIcon viewPhase
+    in
+    Element.el
+        [ Element.inFront
+            (Images.toElement
+                [ Element.centerX
+                , Element.centerY
+                ]
+                image
+            )
+        ]
+        circleElement
 
 
 phaseStateString : PhaseState -> String
