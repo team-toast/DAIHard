@@ -212,11 +212,18 @@ viewTradeRow time userRole viewPhase trade =
         [ Element.width Element.fill
         , Element.spacing 1
         ]
-        [ if viewPhase /= CTypes.Closed then
-            cellMaker ( 1, phaseCountdown time trade )
+        [ case viewPhase of
+            CTypes.Open ->
+                cellMaker ( 1, phaseCountdown time trade False )
 
-          else
-            Element.none
+            CTypes.Committed ->
+                cellMaker ( 1, phaseCountdown time trade (userRole == Buyer) )
+
+            CTypes.Claimed ->
+                cellMaker ( 1, phaseCountdown time trade (userRole == Seller) )
+
+            CTypes.Closed ->
+                Element.none
         , cellMaker ( 1, viewTradeAmount trade )
         , cellMaker ( 2, viewFiat trade )
         , cellMaker ( 1, viewMargin trade (userRole == Seller) )
@@ -242,46 +249,38 @@ cellMaker ( portion, cellElement ) =
             cellElement
 
 
-phaseCountdown : Time.Posix -> CTypes.FullTradeInfo -> Element Msg
-phaseCountdown time trade =
-    let
-        interval =
-            TimeHelpers.sub
-                (TimeHelpers.add trade.state.phaseStartTime trade.parameters.autorecallInterval)
-                time
-    in
-    if Time.posixToMillis interval > 0 then
-        EH.smallIntervalWithElapsedBar interval trade.parameters.autorecallInterval Element.fill
+phaseCountdown : Time.Posix -> CTypes.FullTradeInfo -> Bool -> Element Msg
+phaseCountdown time trade userActionNeeded =
+    case CTypes.getCurrentPhaseTimeoutInfo time trade of
+        CTypes.TimeLeft timeoutInfo ->
+            let
+                baseColor =
+                    if userActionNeeded && (TimeHelpers.getRatio (Tuple.first timeoutInfo) (Tuple.second timeoutInfo) < 0.05) then
+                        EH.red
 
-    else
-        let
-            text =
-                case trade.state.phase of
-                    CTypes.Open ->
-                        "Expiring..."
+                    else
+                        EH.black
+            in
+            EH.intervalWithElapsedBar
+                [ Element.width Element.fill ]
+                [ Element.Font.size 16 ]
+                ( baseColor, EH.lightGray )
+                timeoutInfo
 
-                    CTypes.Committed ->
-                        "Aborting..."
-
-                    CTypes.Claimed ->
-                        "Releasing..."
-
-                    CTypes.Closed ->
-                        ""
-        in
-        Element.column
-            [ Element.spacing 4
-            , Element.width Element.fill
-            ]
-            [ Element.el
-                [ Element.centerX
-                , Element.Font.size 14
+        CTypes.TimeUp _ ->
+            Element.column
+                [ Element.spacing 4
+                , Element.width Element.fill
                 ]
-                (Element.text text)
-            , Element.el
-                [ Element.centerX ]
-                (pokeButton trade.creationInfo.address)
-            ]
+                [ Element.el
+                    [ Element.centerX
+                    , Element.Font.size 14
+                    ]
+                    (Element.text (CTypes.getPokeText trade.state.phase))
+                , Element.el
+                    [ Element.centerX ]
+                    (pokeButton trade.creationInfo.address)
+                ]
 
 
 pokeButton : Address -> Element Msg
@@ -328,16 +327,6 @@ viewPaymentMethods paymentMethods =
         |> List.head
         |> Maybe.map PaymentMethods.previewTextHack
         |> Maybe.withDefault Element.none
-
-
-viewAutoabortWindow : CTypes.FullTradeInfo -> Element Msg
-viewAutoabortWindow trade =
-    EH.interval False (Just EH.red) trade.parameters.autoabortInterval
-
-
-viewAutoreleaseWindow : CTypes.FullTradeInfo -> Element Msg
-viewAutoreleaseWindow trade =
-    EH.interval False (Just EH.red) trade.parameters.autoreleaseInterval
 
 
 viewTradeButton : Int -> Element Msg

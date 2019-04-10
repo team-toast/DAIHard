@@ -25,6 +25,7 @@ module ElementHelpers exposing
     , headerBackgroundColor
     , interval
     , intervalInput
+    , intervalWithElapsedBar
     , inverseBlueButton
     , lightBlue
     , lightGray
@@ -41,7 +42,6 @@ module ElementHelpers exposing
     , redButton
     , roundBottomCorners
     , roundTopCorners
-    , smallIntervalWithElapsedBar
     , subtleShadow
     , testBorderStyles
     , textInputWithElement
@@ -113,6 +113,10 @@ lightBlue =
 
 yellow =
     Element.rgb 1 1 0
+
+
+darkYellow =
+    Element.rgb 0.6 0.6 0
 
 
 lightGray =
@@ -244,178 +248,118 @@ margin upIsGreen marginFloat =
                 ]
 
 
-interval : Bool -> Maybe Element.Color -> Time.Posix -> Element msg
-interval big maybeLowValColor i =
-    case TimeHelpers.toHumanReadableInterval i of
-        Nothing ->
-            errorMessage "Interval display failed! Is it too big?" i
-
-        Just hrInterval ->
-            let
-                lowValColor =
-                    maybeLowValColor
-                        |> Maybe.withDefault black
-
-                dc =
-                    if hrInterval.days == 0 then
-                        lightGray
-
-                    else
-                        black
-
-                ( hc, mc ) =
-                    if hrInterval.days == 0 && hrInterval.hours == 0 then
-                        ( lightGray, lowValColor )
-
-                    else
-                        ( black, black )
-            in
-            if big then
-                Element.row
-                    [ Element.spaceEvenly
-                    , Element.width Element.fill
-                    ]
-                    [ bigTimeUnitElement 3 dc " days" hrInterval.days
-                    , bigTimeUnitElement 2 hc " hours" hrInterval.hours
-                    , bigTimeUnitElement 2 mc " min" hrInterval.min
-                    ]
-
-            else
-                Element.row [ Element.spacing 5 ]
-                    [ conciseTimeUnitElement 'd' dc hrInterval.days
-                    , conciseTimeUnitElement 'h' hc hrInterval.hours
-                    , conciseTimeUnitElement 'm' mc hrInterval.min
-                    ]
-
-
-intervalInput : Maybe Element.Color -> Time.Posix -> (Time.Posix -> msg) -> Element msg
-intervalInput maybeLowValColor i newIntervalMsg =
-    case TimeHelpers.toHumanReadableInterval i of
-        Nothing ->
-            errorMessage "Interval display failed! Is it too big?" i
-
-        Just hrInterval ->
-            let
-                lowValColor =
-                    maybeLowValColor
-                        |> Maybe.withDefault black
-
-                dc =
-                    if hrInterval.days == 0 then
-                        lightGray
-
-                    else
-                        black
-
-                ( hc, mc ) =
-                    if hrInterval.days == 0 && hrInterval.hours == 0 then
-                        ( lightGray, lowValColor )
-
-                    else
-                        ( black, black )
-
-                withModifyArrows : Time.Posix -> Element msg -> Element msg
-                withModifyArrows incAmount el =
-                    Element.column [ Element.spacing 4 ]
-                        [ Element.el
-                            [ Element.padding 4
-                            , Element.pointer
-                            , Element.Events.onClick <|
-                                newIntervalMsg <|
-                                    TimeHelpers.add i incAmount
-                            ]
-                            (Images.toElement
-                                [ Element.height <| Element.px 10
-                                ]
-                                Images.upArrow
-                            )
-                        , el
-                        , Element.el
-                            [ Element.padding 4
-                            , Element.pointer
-                            , Element.Events.onClick <|
-                                newIntervalMsg <|
-                                    (TimeHelpers.sub i incAmount
-                                        |> TimeHelpers.negativeToZero
-                                        |> (\t ->
-                                                if Time.posixToMillis t == 0 then
-                                                    Time.millisToPosix <| 1000 * 60 * 5
-
-                                                else
-                                                    t
-                                           )
-                                    )
-                            ]
-                            (Images.toElement
-                                [ Element.height <| Element.px 10
-                                ]
-                                Images.downArrow
-                            )
-                        ]
-            in
-            Element.row
-                [ Element.spaceEvenly
-                , Element.width Element.fill
-                ]
-                [ bigTimeUnitElement 3 dc " days" hrInterval.days
-                    |> withModifyArrows (Time.millisToPosix <| 1000 * 60 * 60 * 24)
-                , bigTimeUnitElement 2 hc " hours" hrInterval.hours
-                    |> withModifyArrows (Time.millisToPosix <| 1000 * 60 * 60)
-                , bigTimeUnitElement 2 mc " min" hrInterval.min
-                    |> withModifyArrows (Time.millisToPosix <| 1000 * 60 * 5)
-                ]
-
-
-bigTimeUnitElement : Int -> Element.Color -> String -> Int -> Element msg
-bigTimeUnitElement numDigits color labelString num =
-    let
-        numStr =
-            String.fromInt num
-                |> String.padLeft numDigits '0'
-    in
-    Element.el
-        [ Element.Font.size 22
-        , Element.Font.color color
+pokeButton : msg -> Element msg
+pokeButton pokeMsg =
+    Element.Input.button
+        [ Element.Background.color <| Element.rgba255 16 7 234 0.2
+        , Element.padding 5
+        , Element.Border.rounded 4
+        , Element.width Element.fill
+        , Element.mouseOver [ Element.Background.color <| Element.rgba255 16 7 234 0.4 ]
         ]
-        (Element.text <| numStr ++ labelString)
+        { onPress = Just pokeMsg
+        , label =
+            Element.el
+                [ Element.centerX
+                , Element.Font.color <| Element.rgb255 16 7 234
+                , Element.Font.medium
+                , Element.Font.size 14
+                ]
+                (Element.text "Poke")
+        }
 
 
-conciseTimeUnitElement : Char -> Element.Color -> Int -> Element msg
-conciseTimeUnitElement unitChar color num =
+interval : List (Attribute msg) -> List (Attribute msg) -> ( Element.Color, Element.Color ) -> Time.Posix -> Element msg
+interval containerAttributes textAttributes ( defaultColor, zeroColor ) i =
+    if TimeHelpers.isNegative i then
+        interval
+            containerAttributes
+            textAttributes
+            ( defaultColor, zeroColor )
+            (Time.millisToPosix 0)
+
+    else
+        let
+            hrInterval =
+                TimeHelpers.toHumanReadableInterval i
+
+            dc =
+                if hrInterval.days == 0 then
+                    zeroColor
+
+                else
+                    defaultColor
+
+            hc =
+                if hrInterval.days == 0 && hrInterval.hours == 0 then
+                    zeroColor
+
+                else
+                    defaultColor
+
+            mc =
+                if Time.posixToMillis i > 0 then
+                    defaultColor
+
+                else
+                    zeroColor
+
+            numStr num unitStr =
+                (String.fromInt num
+                    |> String.padLeft 2 '0'
+                )
+                    ++ unitStr
+        in
+        Element.row
+            ([ Element.spacing 5 ] ++ containerAttributes)
+            [ Element.el
+                ([ Element.Font.color dc ] ++ textAttributes)
+                (Element.text <| numStr hrInterval.days "d")
+            , Element.el
+                ([ Element.Font.color hc ] ++ textAttributes)
+                (Element.text <| numStr hrInterval.hours "h")
+            , Element.el
+                ([ Element.Font.color mc ] ++ textAttributes)
+                (Element.text <| numStr hrInterval.min "m")
+            ]
+
+
+intervalWithElapsedBar : List (Attribute msg) -> List (Attribute msg) -> ( Element.Color, Element.Color ) -> ( Time.Posix, Time.Posix ) -> Element msg
+intervalWithElapsedBar containerAttributes textAttributes ( defaultColor, zeroColor ) ( i, total ) =
     let
-        numStr =
-            String.fromInt num
-                |> String.padLeft 2 '0'
-    in
-    Element.el [ Element.Font.size 16, Element.Font.color color, Element.Font.medium ]
-        (Element.text <| numStr ++ String.fromChar unitChar)
+        timeLeftRatio =
+            TimeHelpers.getRatio
+                i
+                total
 
-
-smallIntervalWithElapsedBar : Time.Posix -> Time.Posix -> Element.Length -> Element msg
-smallIntervalWithElapsedBar i total width =
-    let
         color =
-            let
-                seconds =
-                    TimeHelpers.posixToSeconds i
-            in
-            if seconds < 60 * 60 then
+            if timeLeftRatio < 0.1 then
                 red
 
-            else if seconds < 60 * 60 * 24 then
+            else if timeLeftRatio < 0.2 then
                 yellow
 
             else
                 green
 
-        ratio =
-            TimeHelpers.getRatio
-                (TimeHelpers.sub total i)
-                total
+        intervalEl =
+            Element.el
+                [ Element.centerX ]
+                (interval
+                    []
+                    []
+                    ( defaultColor, zeroColor )
+                    i
+                )
     in
-    Element.column [ Element.spacing 5, Element.width width ]
-        [ Element.el [ Element.centerX ] (interval False Nothing i)
-        , elapsedBar ratio color
+    Element.column
+        ([ Element.spacing 5 ] ++ containerAttributes)
+        [ interval
+            [ Element.centerX ]
+            textAttributes
+            ( defaultColor, zeroColor )
+            i
+        , elapsedBar (1 - timeLeftRatio) color
         ]
 
 
@@ -457,7 +401,106 @@ elapsedBar ratio filledBarColor =
         ]
 
 
+intervalInput : Maybe Element.Color -> Time.Posix -> (Time.Posix -> msg) -> Element msg
+intervalInput maybeLowValColor i newIntervalMsg =
+    let
+        hrInterval =
+            TimeHelpers.toHumanReadableInterval i
 
+        lowValColor =
+            maybeLowValColor
+                |> Maybe.withDefault black
+
+        dc =
+            if hrInterval.days == 0 then
+                lightGray
+
+            else
+                black
+
+        ( hc, mc ) =
+            if hrInterval.days == 0 && hrInterval.hours == 0 then
+                ( lightGray, lowValColor )
+
+            else
+                ( black, black )
+
+        withModifyArrows : Time.Posix -> Element msg -> Element msg
+        withModifyArrows incAmount el =
+            Element.column [ Element.spacing 4 ]
+                [ Element.el
+                    [ Element.padding 4
+                    , Element.pointer
+                    , Element.Events.onClick <|
+                        newIntervalMsg <|
+                            TimeHelpers.add i incAmount
+                    ]
+                    (Images.toElement
+                        [ Element.height <| Element.px 10
+                        ]
+                        Images.upArrow
+                    )
+                , el
+                , Element.el
+                    [ Element.padding 4
+                    , Element.pointer
+                    , Element.Events.onClick <|
+                        newIntervalMsg <|
+                            (TimeHelpers.sub i incAmount
+                                |> TimeHelpers.negativeToZero
+                                |> (\t ->
+                                        if Time.posixToMillis t == 0 then
+                                            Time.millisToPosix <| 1000 * 60 * 5
+
+                                        else
+                                            t
+                                   )
+                            )
+                    ]
+                    (Images.toElement
+                        [ Element.height <| Element.px 10
+                        ]
+                        Images.downArrow
+                    )
+                ]
+    in
+    Element.row
+        [ Element.spaceEvenly
+        , Element.width Element.fill
+        ]
+        [ bigTimeUnitElement 3 dc " days" hrInterval.days
+            |> withModifyArrows (Time.millisToPosix <| 1000 * 60 * 60 * 24)
+        , bigTimeUnitElement 2 hc " hours" hrInterval.hours
+            |> withModifyArrows (Time.millisToPosix <| 1000 * 60 * 60)
+        , bigTimeUnitElement 2 mc " min" hrInterval.min
+            |> withModifyArrows (Time.millisToPosix <| 1000 * 60 * 5)
+        ]
+
+
+bigTimeUnitElement : Int -> Element.Color -> String -> Int -> Element msg
+bigTimeUnitElement numDigits color labelString num =
+    let
+        numStr =
+            String.fromInt num
+                |> String.padLeft numDigits '0'
+    in
+    Element.el
+        [ Element.Font.size 22
+        , Element.Font.color color
+        ]
+        (Element.text <| numStr ++ labelString)
+
+
+
+-- conciseTimeUnitElement : Char -> Element.Color -> Int -> Element msg
+-- conciseTimeUnitElement unitChar color num =
+--     let
+--         numStr =
+--             String.fromInt num
+--                 |> String.padLeft 2 '0'
+--     in
+--     Element.el [ Element.Font.size 16, Element.Font.color color, Element.Font.medium ]
+--         (Element.text <| numStr ++ String.fromChar unitChar)
 -- INPUTS
 
 

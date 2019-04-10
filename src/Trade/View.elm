@@ -35,7 +35,7 @@ root time model =
                 , Element.inFront <| chatOverlayElement model
                 , Element.inFront <| getModalOrNone model
                 ]
-                [ header tradeInfo model.stats model.userInfo model.ethNode.network
+                [ header time tradeInfo model.stats model.userInfo model.ethNode.network
                 , Element.column
                     [ Element.width Element.fill
                     , Element.paddingXY 40 0
@@ -55,8 +55,8 @@ root time model =
                 (Element.text "Loading contract info...")
 
 
-header : FullTradeInfo -> StatsModel -> Maybe UserInfo -> Network -> Element Msg
-header trade stats maybeUserInfo network =
+header : Time.Posix -> FullTradeInfo -> StatsModel -> Maybe UserInfo -> Network -> Element Msg
+header currentTime trade stats maybeUserInfo network =
     EH.niceFloatingRow
         [ tradeStatusElement trade network
         , daiAmountElement trade maybeUserInfo
@@ -65,7 +65,7 @@ header trade stats maybeUserInfo network =
         , statsElement stats
         , case maybeUserInfo of
             Just userInfo ->
-                actionButtonsElement trade userInfo
+                actionButtonsElement currentTime trade userInfo
 
             Nothing ->
                 Element.none
@@ -208,40 +208,45 @@ statsElement stats =
         (EH.comingSoonMsg [] "Stats coming soon!")
 
 
-actionButtonsElement : FullTradeInfo -> UserInfo -> Element Msg
-actionButtonsElement trade userInfo =
-    Element.row
-        [ Element.spacing 8 ]
-        (case
-            ( trade.state.phase
-            , CTypes.getInitiatorOrResponder trade userInfo.address
-            , CTypes.getBuyerOrSeller trade userInfo.address
-            )
-         of
-            ( CTypes.Open, Just Initiator, _ ) ->
-                [ Element.map StartContractAction <| EH.blueButton "Remove and Refund this Trade" Recall ]
+actionButtonsElement : Time.Posix -> FullTradeInfo -> UserInfo -> Element Msg
+actionButtonsElement currentTime trade userInfo =
+    case CTypes.getCurrentPhaseTimeoutInfo currentTime trade of
+        CTypes.TimeUp _ ->
+            Element.none
 
-            ( CTypes.Open, Nothing, _ ) ->
-                let
-                    depositAmount =
-                        CTypes.responderDeposit trade.parameters
-                            |> TokenValue.getBigInt
-                in
-                [ EH.redButton "Deposit and Commit to Trade" <| CommitClicked trade userInfo depositAmount ]
+        CTypes.TimeLeft _ ->
+            Element.row
+                [ Element.spacing 8 ]
+                (case
+                    ( trade.state.phase
+                    , CTypes.getInitiatorOrResponder trade userInfo.address
+                    , CTypes.getBuyerOrSeller trade userInfo.address
+                    )
+                 of
+                    ( CTypes.Open, Just Initiator, _ ) ->
+                        [ Element.map StartContractAction <| EH.blueButton "Remove and Refund this Trade" Recall ]
 
-            ( CTypes.Committed, _, Just Buyer ) ->
-                [ Element.map StartContractAction <| EH.orangeButton "Abort Trade" Abort
-                , Element.map StartContractAction <| EH.redButton "Confirm Payment" Claim
-                ]
+                    ( CTypes.Open, Nothing, _ ) ->
+                        let
+                            depositAmount =
+                                CTypes.responderDeposit trade.parameters
+                                    |> TokenValue.getBigInt
+                        in
+                        [ EH.redButton "Deposit and Commit to Trade" <| CommitClicked trade userInfo depositAmount ]
 
-            ( CTypes.Claimed, _, Just Seller ) ->
-                [ Element.map StartContractAction <| EH.redButton "Burn it All!" Burn
-                , Element.map StartContractAction <| EH.blueButton "Release Everything" Release
-                ]
+                    ( CTypes.Committed, _, Just Buyer ) ->
+                        [ Element.map StartContractAction <| EH.orangeButton "Abort Trade" Abort
+                        , Element.map StartContractAction <| EH.redButton "Confirm Payment" Claim
+                        ]
 
-            _ ->
-                []
-        )
+                    ( CTypes.Claimed, _, Just Seller ) ->
+                        [ Element.map StartContractAction <| EH.redButton "Burn it All!" Burn
+                        , Element.map StartContractAction <| EH.blueButton "Release Everything" Release
+                        ]
+
+                    _ ->
+                        []
+                )
 
 
 phasesElement : FullTradeInfo -> CTypes.Phase -> Maybe UserInfo -> Time.Posix -> Element Msg
@@ -295,23 +300,29 @@ commonPhaseAttributes =
     ]
 
 
+phaseState : CTypes.FullTradeInfo -> CTypes.Phase -> PhaseState
+phaseState trade phase =
+    let
+        ( viewPhaseInt, activePhaseInt ) =
+            ( CTypes.phaseToInt phase
+            , CTypes.phaseToInt trade.state.phase
+            )
+    in
+    if viewPhaseInt > activePhaseInt then
+        NotStarted
+
+    else if viewPhaseInt == activePhaseInt then
+        Active
+
+    else
+        Finished
+
+
 phaseElement : CTypes.Phase -> FullTradeInfo -> Maybe UserInfo -> Bool -> Time.Posix -> Element Msg
 phaseElement viewPhase trade maybeUserInfo expanded currentTime =
     let
-        ( viewPhaseInt, activePhaseInt ) =
-            ( CTypes.phaseToInt viewPhase
-            , CTypes.phaseToInt trade.state.phase
-            )
-
         viewPhaseState =
-            if viewPhaseInt > activePhaseInt then
-                NotStarted
-
-            else if viewPhaseInt == activePhaseInt then
-                Active
-
-            else
-                Finished
+            phaseState trade viewPhase
 
         fullInterval =
             case viewPhase of
@@ -340,26 +351,11 @@ phaseElement viewPhase trade maybeUserInfo expanded currentTime =
                 Finished ->
                     Time.millisToPosix 0
 
-        titleElement =
-            case viewPhase of
-                CTypes.Open ->
-                    "Open Window"
-
-                CTypes.Committed ->
-                    "Payment Window"
-
-                CTypes.Claimed ->
-                    "Release Window"
-
-                CTypes.Closed ->
-                    "Closed"
-
         firstEl =
             phaseStatusElement
-                Images.none
-                titleElement
-                displayInterval
-                viewPhaseState
+                viewPhase
+                trade
+                currentTime
 
         secondEl =
             Element.el
@@ -412,11 +408,14 @@ phaseElement viewPhase trade maybeUserInfo expanded currentTime =
             [ firstEl ]
 
 
-phaseStatusElement : Image -> String -> Time.Posix -> PhaseState -> Element Msg
-phaseStatusElement icon title interval phaseState =
+phaseStatusElement : CTypes.Phase -> CTypes.FullTradeInfo -> Time.Posix -> Element Msg
+phaseStatusElement viewPhase trade currentTime =
     let
+        viewPhaseState =
+            phaseState trade viewPhase
+
         titleColor =
-            case phaseState of
+            case viewPhaseState of
                 Active ->
                     Element.rgb255 0 226 255
 
@@ -430,11 +429,54 @@ phaseStatusElement icon title interval phaseState =
                 , Element.Font.semiBold
                 , Element.centerX
                 ]
-                (Element.text title)
+                (Element.text <|
+                    case viewPhase of
+                        CTypes.Open ->
+                            "Open Window"
+
+                        CTypes.Committed ->
+                            "Payment Window"
+
+                        CTypes.Claimed ->
+                            "Release Window"
+
+                        CTypes.Closed ->
+                            "Closed"
+                )
 
         intervalElement =
-            Element.el [ Element.centerX ]
-                (EH.interval False Nothing interval)
+            if viewPhase == CTypes.Closed then
+                Element.none
+
+            else
+                case viewPhaseState of
+                    NotStarted ->
+                        EH.interval
+                            [ Element.centerX ]
+                            [ Element.Font.size 22, Element.Font.medium ]
+                            ( EH.black, EH.lightGray )
+                            (CTypes.getPhaseInterval viewPhase trade)
+
+                    Active ->
+                        case CTypes.getCurrentPhaseTimeoutInfo currentTime trade of
+                            CTypes.TimeLeft timeoutInfo ->
+                                EH.intervalWithElapsedBar
+                                    [ Element.centerX ]
+                                    [ Element.Font.size 22, Element.Font.medium ]
+                                    ( EH.white, EH.lightGray )
+                                    timeoutInfo
+
+                            CTypes.TimeUp _ ->
+                                Element.column
+                                    [ Element.centerX
+                                    , Element.spacing 10
+                                    ]
+                                    [ Element.el [ Element.centerX ] <| Element.text (CTypes.getPokeText viewPhase)
+                                    , EH.blueButton "Poke" (StartContractAction Poke)
+                                    ]
+
+                    Finished ->
+                        Element.none
 
         phaseStateElement =
             Element.el
@@ -443,7 +485,7 @@ phaseStatusElement icon title interval phaseState =
                 , Element.Font.semiBold
                 , Element.Font.size 16
                 ]
-                (Element.text <| phaseStateString phaseState)
+                (Element.text <| phaseStateString viewPhaseState)
     in
     Element.el
         [ Element.height <| Element.px 360
@@ -574,7 +616,9 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                                   , emphasizedText fiatAmountString
                                   , Element.text ". To become the Buyer, you must deposit 1/3 of the trade amount "
                                   , emphasizedText <| "(" ++ buyerDepositString ++ ")"
-                                  , Element.text " into this contract by clicking \"Deposit and Commit to Trade\"."
+                                  , Element.text " into this contract by clicking "
+                                  , scaryText "Deposit and Commit to Trade"
+                                  , Element.text "."
                                   ]
                                 , [ Element.text "If the trade is successful, the combined DAI balance "
                                   , emphasizedText <| "(" ++ tradePlusDepositString ++ ")"
@@ -601,7 +645,9 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                                   , scaryText "burnable deposit"
                                   , Element.text ". To become the Seller, deposit "
                                   , emphasizedText tradeAmountString
-                                  , Element.text " into this contract by clicking \"Deposit and Commit to Trade\"."
+                                  , Element.text " into this contract by clicking "
+                                  , scaryText "Deposit and Commit to Trade"
+                                  , Element.text "."
                                   ]
                                 , [ Element.text "When you receive the "
                                   , emphasizedText fiatAmountString
@@ -671,7 +717,8 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                         [ [ Element.text "You must now pay the Seller "
                           , emphasizedText fiatAmountString
                           , Element.text " via one of the accepted payment methods below, "
-                          , Element.el [ Element.Font.semiBold ] <| Element.text "and click \"Confirm Payment\""
+                          , Element.el [ Element.Font.semiBold ] <| Element.text "and click "
+                          , scaryText "Confirm Payment"
                           , Element.text " before the payment window runs out. Use the chat to coordinate."
                           ]
                         , [ Element.text "If you abort the trade, or do not confirm payment before this time is up, "
@@ -688,7 +735,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                           ]
                         , [ Element.text "This may be your last chance to clear up any ambiguity before Judgement. Do not confirm unless you're sure the "
                           , emphasizedText fiatAmountString
-                          , Element.text " has been successfully transferred."
+                          , Element.text " has been unmistakably transferred."
                           ]
                         ]
                     )
@@ -721,7 +768,8 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                         [ [ Element.text "During this phase, the Buyer is expected to transfer "
                           , emphasizedText fiatAmountString
                           , Element.text " to the Seller, via one of the payment methods listed below, "
-                          , Element.el [ Element.Font.semiBold ] <| Element.text "and click \"Confirm Payment\""
+                          , Element.el [ Element.Font.semiBold ] <| Element.text "and "
+                          , scaryText "Confirm the Payment "
                           , Element.text " before the payment window runs out. This would move the trade to the final phase."
                           ]
                         , [ Element.text "If the Buyer aborts the trade, or doesn't confirm payment before this time is up, "
@@ -763,7 +811,9 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                           ]
                         , [ Element.text "So, have you recieved the "
                           , emphasizedText fiatAmountString
-                          , Element.text "? If so, you can click \"Release Everything\"."
+                          , Element.text "? If so, you can click "
+                          , scaryText "Release Everything"
+                          , Element.text "."
                           ]
                         , [ Element.text "If not, the Buyer is probably trying to scam you, and you should probably "
                           , scaryText "burn it all"

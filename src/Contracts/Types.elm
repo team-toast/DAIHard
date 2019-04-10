@@ -1,4 +1,4 @@
-module Contracts.Types exposing (CreateParameters, DAIHardEvent(..), FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), State, Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, getBuyerOrSeller, getInitiatorOrResponder, getResponderRole, initiatorIsBuyerToOpenMode, initiatorOrResponderToBuyerOrSeller, openModeToInitiatorIsBuyer, partialTradeInfo, phaseToInt, phaseToString, responderDeposit, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePaymentMethods, updateState)
+module Contracts.Types exposing (CreateParameters, DAIHardEvent(..), FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), State, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, getBuyerOrSeller, getCurrentPhaseTimeoutInfo, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderRole, initiatorIsBuyerToOpenMode, initiatorOrResponderToBuyerOrSeller, openModeToInitiatorIsBuyer, partialTradeInfo, phaseToInt, phaseToString, responderDeposit, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePaymentMethods, updateState)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
@@ -305,6 +305,66 @@ getBuyerOrSeller tradeInfo userAddress =
                     ( Responder, BuyerOpened ) ->
                         Seller
             )
+
+
+type TimeoutInfo
+    = TimeUp Time.Posix
+    | TimeLeft ( Time.Posix, Time.Posix )
+
+
+getCurrentPhaseTimeoutInfo : Time.Posix -> FullTradeInfo -> TimeoutInfo
+getCurrentPhaseTimeoutInfo currentTime tradeInfo =
+    let
+        elapsed =
+            TimeHelpers.sub
+                currentTime
+                tradeInfo.state.phaseStartTime
+
+        totalInterval =
+            getPhaseInterval tradeInfo.state.phase tradeInfo
+
+        timeLeft =
+            TimeHelpers.sub
+                totalInterval
+                elapsed
+    in
+    if Time.posixToMillis timeLeft > 0 then
+        TimeLeft ( timeLeft, totalInterval )
+
+    else
+        TimeUp totalInterval
+
+
+getPhaseInterval : Phase -> FullTradeInfo -> Time.Posix
+getPhaseInterval phase tradeInfo =
+    case phase of
+        Open ->
+            tradeInfo.parameters.autorecallInterval
+
+        Committed ->
+            tradeInfo.parameters.autoabortInterval
+
+        Claimed ->
+            tradeInfo.parameters.autoreleaseInterval
+
+        Closed ->
+            Time.millisToPosix 0
+
+
+getPokeText : Phase -> String
+getPokeText phase =
+    case phase of
+        Open ->
+            "Expiring..."
+
+        Committed ->
+            "Aborting..."
+
+        Claimed ->
+            "Releasing..."
+
+        Closed ->
+            ""
 
 
 eventDecoder : Json.Decode.Decoder DAIHardEvent
