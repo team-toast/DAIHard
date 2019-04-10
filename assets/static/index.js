@@ -7,6 +7,20 @@ import { Elm } from '../../src/App'
 window.testStuff = secureComms.testStuff;
 
 window.addEventListener('load', function () {
+    if (window.ethereum) {
+        window.web3 = new Web3(ethereum);
+        ethereum.enable().then(function (val) {
+            startDapp()
+        }).catch(function (err) {
+            startDapp();
+        });
+    }
+    else {
+        startDapp();
+    }
+});
+
+function startDapp() {
     if (typeof web3 !== 'undefined') {
         web3.version.getNetwork(function (e, networkId) {
             window.app = Elm.App.init({
@@ -31,7 +45,7 @@ window.addEventListener('load', function () {
         });
         console.log("Metamask not detected.");
     }
-});
+}
 
 function portStuff(app) {
     elm_ethereum_ports.txSentry(app.ports.txOut, app.ports.txIn, web3);

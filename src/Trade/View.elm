@@ -207,7 +207,7 @@ statsElement : StatsModel -> Element Msg
 statsElement stats =
     EH.withHeader
         "Initiator Stats"
-        (EH.comingSoonMsg [] "Stats coming soon!")
+        (EH.comingSoonMsg [] "Reputation stats coming soon!")
 
 
 actionButtonsElement : Time.Posix -> FullTradeInfo -> UserInfo -> Element Msg
