@@ -6,7 +6,7 @@ import PaymentMethods exposing (PaymentMethod)
 
 init : Model
 init =
-    ChooseType
+    Details <| PaymentMethods.blank PaymentMethods.Custom
 
 
 update : Msg -> Model -> UpdateResult
