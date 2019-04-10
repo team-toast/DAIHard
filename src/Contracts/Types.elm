@@ -1,4 +1,4 @@
-module Contracts.Types exposing (CreateParameters, DAIHardEvent(..), FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), State, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, getBuyerOrSeller, getCurrentPhaseTimeoutInfo, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderRole, initiatorIsBuyerToOpenMode, initiatorOrResponderToBuyerOrSeller, openModeToInitiatorIsBuyer, partialTradeInfo, phaseToInt, phaseToString, responderDeposit, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePaymentMethods, updateState)
+module Contracts.Types exposing (CreateParameters, DAIHardEvent(..), FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), State, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, getBuyerOrSeller, getCurrentPhaseTimeoutInfo, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderRole, initiatorIsBuyerToOpenMode, initiatorOrResponderToBuyerOrSeller, openModeToInitiatorIsBuyer, partialTradeInfo, phaseIcon, phaseToInt, phaseToString, responderDeposit, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePaymentMethods, updateState)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
@@ -10,6 +10,7 @@ import Eth.Types exposing (Address)
 import Eth.Utils
 import EthHelpers
 import FiatValue exposing (FiatValue)
+import Images exposing (Image)
 import Json.Decode
 import Margin
 import Network exposing (..)
@@ -541,3 +542,19 @@ initiatorOrResponderToBuyerOrSeller openMode initiatorOrResponder =
 
         ( Responder, SellerOpened ) ->
             Buyer
+
+
+phaseIcon : Phase -> Image
+phaseIcon phase =
+    case phase of
+        Open ->
+            Images.openPhase
+
+        Committed ->
+            Images.committedPhase
+
+        Claimed ->
+            Images.claimedPhase
+
+        Closed ->
+            Images.none
