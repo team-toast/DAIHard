@@ -27,6 +27,7 @@ var commonConfig = {
     output: {
         path: outputPath,
         filename: `static/js/${outputFilename}`,
+        publicPath: '/DAIHard/'
     },
     resolve: {
         extensions: ['.js', '.elm'],
