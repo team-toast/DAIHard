@@ -222,7 +222,7 @@ update msg prevModel =
                     )
 
                 Err (Http.BadBody errstr) ->
-                    Debug.todo "Should reload after some delay"
+                    Debug.todo "No contract at this id. Maybe should reload after some delay."
 
                 Err otherErr ->
                     let
