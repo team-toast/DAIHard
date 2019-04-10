@@ -419,13 +419,28 @@ cellMaker ( portion, cellElement ) =
 
 viewExpiring : Time.Posix -> CTypes.FullTradeInfo -> Element Msg
 viewExpiring time trade =
-    let
-        interval =
-            TimeHelpers.sub
-                (TimeHelpers.add trade.state.phaseStartTime trade.parameters.autorecallInterval)
-                time
-    in
-    EH.smallIntervalWithElapsedBar interval trade.parameters.autorecallInterval Element.fill
+    case CTypes.getCurrentPhaseTimeoutInfo time trade of
+        CTypes.TimeLeft timeoutInfo ->
+            let
+                baseIntervalColor =
+                    if TimeHelpers.getRatio (Tuple.first timeoutInfo) (Tuple.second timeoutInfo) < 0.05 then
+                        EH.red
+
+                    else
+                        EH.black
+            in
+            EH.intervalWithElapsedBar
+                [ Element.width Element.fill ]
+                [ Element.Font.size 16 ]
+                ( baseIntervalColor, EH.lightGray )
+                timeoutInfo
+
+        CTypes.TimeUp totalInterval ->
+            EH.intervalWithElapsedBar
+                [ Element.width Element.fill ]
+                [ Element.Font.size 16 ]
+                ( EH.red, EH.lightGray )
+                ( Time.millisToPosix 0, totalInterval )
 
 
 viewTradeAmount : CTypes.FullTradeInfo -> Element Msg
@@ -453,27 +468,49 @@ viewPaymentMethods paymentMethods =
 viewAutoabortWindow : Bool -> CTypes.FullTradeInfo -> Element Msg
 viewAutoabortWindow viewAsBuyer trade =
     let
-        color =
+        lowValColor =
             if viewAsBuyer then
-                Just EH.red
+                EH.red
 
             else
-                Just EH.green
+                EH.green
+
+        baseColor =
+            if Time.posixToMillis trade.parameters.autoabortInterval < (1000 * 60 * 60 * 6) then
+                lowValColor
+
+            else
+                EH.black
     in
-    EH.interval False color trade.parameters.autoabortInterval
+    EH.interval
+        []
+        []
+        ( baseColor, EH.lightGray )
+        trade.parameters.autoabortInterval
 
 
 viewAutoreleaseWindow : Bool -> CTypes.FullTradeInfo -> Element Msg
 viewAutoreleaseWindow viewAsBuyer trade =
     let
-        color =
+        lowValColor =
             if viewAsBuyer then
-                Just EH.green
+                EH.green
 
             else
-                Just EH.red
+                EH.red
+
+        baseColor =
+            if Time.posixToMillis trade.parameters.autoabortInterval < (1000 * 60 * 60 * 6) then
+                lowValColor
+
+            else
+                EH.black
     in
-    EH.interval False color trade.parameters.autoreleaseInterval
+    EH.interval
+        []
+        []
+        ( baseColor, EH.lightGray )
+        trade.parameters.autoreleaseInterval
 
 
 viewTradeButton : Int -> Element Msg

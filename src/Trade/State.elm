@@ -233,11 +233,25 @@ update msg prevModel =
 
         StateFetched fetchResult ->
             case fetchResult of
-                Ok (Just state) ->
+                Ok (Just newState) ->
                     let
+                        didPhaseChange =
+                            case prevModel.trade of
+                                CTypes.PartiallyLoadedTrade _ ->
+                                    True
+
+                                CTypes.LoadedTrade oldTradeInfo ->
+                                    oldTradeInfo.state.phase /= newState.phase
+
                         newModel =
                             { prevModel
-                                | trade = prevModel.trade |> CTypes.updateState state
+                                | trade = prevModel.trade |> CTypes.updateState newState
+                                , expandedPhase =
+                                    if didPhaseChange then
+                                        newState.phase
+
+                                    else
+                                        prevModel.expandedPhase
                             }
                     in
                     ( newModel

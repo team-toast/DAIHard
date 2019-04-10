@@ -101,9 +101,10 @@ type alias HumanReadableInterval =
 
 
 --ignores some maybes, because we never divmod by zero.
+--However it could (maybe?) return Nothing, if the number is so large that BigIntHelpers.toInt fails.
 
 
-toHumanReadableInterval : Time.Posix -> Maybe HumanReadableInterval
+toHumanReadableInterval : Time.Posix -> HumanReadableInterval
 toHumanReadableInterval t =
     let
         secsInDays =
@@ -118,12 +119,11 @@ toHumanReadableInterval t =
                             BigInt.divmod secsInMin (BigInt.fromInt 60)
                                 |> Maybe.withDefault ( BigInt.fromInt 0, BigInt.fromInt 0 )
                                 |> (\( min, sec ) ->
-                                        Maybe.map4
-                                            HumanReadableInterval
-                                            (BigIntHelpers.toInt days)
-                                            (BigIntHelpers.toInt hours)
-                                            (BigIntHelpers.toInt min)
-                                            (BigIntHelpers.toInt sec)
+                                        HumanReadableInterval
+                                            (BigIntHelpers.toIntWithWarning days)
+                                            (BigIntHelpers.toIntWithWarning hours)
+                                            (BigIntHelpers.toIntWithWarning min)
+                                            (BigIntHelpers.toIntWithWarning sec)
                                    )
                        )
            )
