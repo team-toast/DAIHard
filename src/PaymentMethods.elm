@@ -6,6 +6,7 @@ module PaymentMethods exposing
     , decoder
     , encode
     , getTitle
+    , previewTextHack
     , stringToType
     , typeDecoder
     , typeToIcon
@@ -129,18 +130,16 @@ viewList pmList maybeAddMsg =
         [ Element.spacing 40
         , Element.width Element.fill
         ]
-        [ paymentMethodsHeaderElement (List.length pmList) maybeAddMsg
+        [ paymentMethodsHeaderElement maybeAddMsg
         , paymentMethodsElement pmList
         ]
 
 
-paymentMethodsHeaderElement : Int -> Maybe msg -> Element msg
-paymentMethodsHeaderElement numMethods maybeAddMsg =
+paymentMethodsHeaderElement : Maybe msg -> Element msg
+paymentMethodsHeaderElement maybeAddMsg =
     let
         titleStr =
-            "Accepted Payment Methods ("
-                ++ String.fromInt numMethods
-                ++ ")"
+            "Accepted Payment Methods"
 
         addMethodButton =
             case maybeAddMsg of
@@ -172,8 +171,9 @@ paymentMethodsElement pmList =
         , Element.width Element.fill
         ]
         (pmList
-            |> List.map pmElement
-            |> doubleColumn
+            |> List.head
+            |> Maybe.map pmElement
+            |> Maybe.withDefault Element.none
         )
 
 
@@ -185,20 +185,10 @@ pmElement pm =
         , Element.spacing 1
         ]
         [ Element.el
-            [ Element.width Element.fill
+            [ Element.width Element.shrink
             , Element.height Element.shrink
             , Element.paddingXY 60 40
-            , EH.roundTopCorners 8
-            , Element.Background.color EH.white
-            , Element.Font.size 22
-            , Element.Font.semiBold
-            ]
-            (Element.text <| getTitle pm.type_)
-        , Element.el
-            [ Element.width Element.fill
-            , Element.height Element.shrink
-            , Element.paddingXY 60 40
-            , EH.roundBottomCorners 8
+            , Element.Border.rounded 8
             , Element.Background.color EH.white
             ]
             (Element.paragraph
@@ -249,3 +239,17 @@ typeToIcon pmType =
 
         Custom ->
             Images.pmCustom
+
+
+previewTextHack : PaymentMethod -> Element msg
+previewTextHack pm =
+    Element.el
+        [ Element.width Element.fill
+        , Element.height Element.fill
+        , Element.clip
+        ]
+        (Element.paragraph
+            [ Element.Font.size 12
+            ]
+            [ Element.text pm.info ]
+        )

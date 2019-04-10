@@ -64,8 +64,7 @@ headerElement model =
         [ Element.width Element.fill
         , Element.spacing 22
         ]
-        [ maybeBackButtonEl
-        , Element.el
+        [ Element.el
             [ Element.Font.size 24
             , Element.Font.semiBold
             , Element.centerX
@@ -84,12 +83,7 @@ headerElement model =
 
 getTitle : Model -> String
 getTitle model =
-    case model of
-        ChooseType ->
-            "Add Payment Method"
-
-        Details paymentMethod ->
-            PaymentMethods.getTitle paymentMethod.type_
+    "Add Payment Methods"
 
 
 bodyElement : Model -> CTypes.OpenMode -> Element Msg
@@ -160,66 +154,41 @@ pmTypeElement pmType openMode =
 
 detailsElement : PaymentMethod -> CTypes.OpenMode -> Element Msg
 detailsElement paymentMethod openMode =
-    Element.column
-        [ Element.width Element.fill
+    Element.el
+        [ Element.padding 20
+        , Element.Background.color EH.white
+        , Element.width Element.fill
         , Element.height Element.fill
-        , Element.spacing 1
+        , EH.roundBottomCorners 5
         ]
-        [ Element.column
-            [ Element.spacing 5
-            , Element.padding 20
-            , Element.width Element.fill
-            , Element.Background.color EH.white
-            , EH.roundTopCorners 5
-            ]
-            [ Element.el
-                [ Element.Font.size 20
-                , Element.Font.semiBold
-                ]
-                (Element.text <| getTitle (Details paymentMethod) ++ " -  Details")
-            , Element.el
-                [ Element.Font.size 17
-                , Element.Font.color EH.permanentTextColor
-                ]
-                (Element.text <| typeSummary paymentMethod.type_ openMode)
-            ]
-        , Element.el
-            [ Element.padding 20
-            , Element.Background.color EH.white
+        (Element.column
+            [ Element.spacing 20
             , Element.width Element.fill
             , Element.height Element.fill
-            , EH.roundBottomCorners 5
             ]
-            (Element.column
-                [ Element.spacing 20
-                , Element.width Element.fill
+            [ Element.Input.multiline
+                [ Element.width Element.fill
                 , Element.height Element.fill
                 ]
-                [ Element.Input.multiline
-                    [ Element.width Element.fill
-                    , Element.height Element.fill
-                    ]
-                    { onChange = ChangeDetails
-                    , text = paymentMethod.info
-                    , placeholder =
-                        if paymentMethod.info == "" then
-                            Just <| inputPlaceholder paymentMethod openMode
+                { onChange = ChangeDetails
+                , text = paymentMethod.info
+                , placeholder =
+                    if paymentMethod.info == "" then
+                        Just <| inputPlaceholder paymentMethod openMode
 
-                        else
-                            Nothing
-                    , label = Element.Input.labelHidden "details"
-                    , spellcheck = True
-                    }
-                , Element.row
-                    [ Element.alignRight
-                    , Element.spacing 18
-                    ]
-                    [ EH.inverseBlueButton "Save and Add Another" SaveAndAddAnother
-                    , EH.blueButton "Save" Save
-                    ]
+                    else
+                        Nothing
+                , label = Element.Input.labelHidden "details"
+                , spellcheck = True
+                }
+            , Element.row
+                [ Element.alignRight
+                , Element.spacing 18
                 ]
-            )
-        ]
+                [ EH.blueButton "Save" Save
+                ]
+            ]
+        )
 
 
 typeTitle : PaymentMethods.Type -> String
@@ -258,10 +227,12 @@ inputPlaceholder : PaymentMethod -> CTypes.OpenMode -> Element.Input.Placeholder
 inputPlaceholder paymentMethod openMode =
     Element.Input.placeholder
         []
-        (Element.text """Put lots of details here!
-This text will be replaced later!
+        (Element.text """Put lots of detail here. You can provide multiple options.
+If you are accepting a bank transfer, include a routing/ABA/IBAN number, to avoid ambiguity.
 
-For now I'm just putting a bunch of stuff here...
+Some examples:
 
-Wowowowowow
-        """)
+I can accept transfers to a Schwab bank account (routing 121202211)
+I can meet in person to accept cash in London, weekdays after 6, with a day of notice.
+I accept Steam gift cards.
+""")
