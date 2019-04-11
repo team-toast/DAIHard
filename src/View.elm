@@ -12,6 +12,7 @@ import Element.Font
 import Element.Input
 import ElementHelpers as EH
 import FiatValue
+import Landing.View
 import Marketplace.Types
 import Marketplace.View
 import MyTrades.View
@@ -218,7 +219,7 @@ subModelElement maybeValidModel =
             Running model ->
                 case model.submodel of
                     BetaLandingPage ->
-                        betaLandingPage
+                        Landing.View.root (GotoRoute <| Routing.Marketplace)
 
                     CreateModel createModel ->
                         Element.map CreateMsg (Create.View.root createModel)
@@ -242,75 +243,3 @@ subModelElement maybeValidModel =
                         [ Element.text errorMessageString ]
                     )
         )
-
-
-betaLandingPage : Element Msg
-betaLandingPage =
-    Element.column
-        [ Element.centerX ]
-        [ Element.el
-            [ Element.height (Element.px 100) ]
-            Element.none
-        , Element.column
-            [ Element.centerX
-            , Element.width <| Element.px 800
-            , Element.Background.color <| Element.rgba 0.9 0.9 0.5 0.5
-            , Element.Border.width 1
-            , Element.Border.color <| Element.rgba 0.5 0.5 0.3 0.5
-            , Element.Border.shadow
-                { offset = ( 0, 3 )
-                , size = 0
-                , blur = 20
-                , color = Element.rgba255 0 0 0 0.1
-                }
-            , Element.padding 20
-            , Element.Border.rounded 10
-            , Element.spacing 20
-            , Element.paddingXY 50 30
-            ]
-            [ Element.column [ Element.width Element.fill ]
-                (List.map
-                    (Element.paragraph
-                        [ Element.Font.center
-                        , Element.Font.size 24
-                        , Element.Font.semiBold
-                        , Element.spacing 17
-                        ]
-                    )
-                    [ [ Element.el [ Element.Font.size 40 ] <| Element.text "Welcome to DAIHard!" ]
-
-                    --, [ Element.text "Just a few notes for this beta version:" ]
-                    ]
-                )
-            , Element.el [ Element.height <| Element.px 1 ] Element.none
-            , EH.coolCurrencyHbreak
-            , Element.el [ Element.height <| Element.px 1 ] Element.none
-            , [ "Make sure Metamask is set up and unlocked, and keep an eye on its icon for pending notifications or mining transactions."
-              , "DAIHard sometimes appears stuck, but generally it is Metamask being too meek with its notifications. When in doubt, check Metamask."
-              ]
-                |> (\lines ->
-                        Element.column
-                            [ Element.width Element.fill
-                            , Element.spacing 20
-                            ]
-                            (lines
-                                |> List.map
-                                    (\line ->
-                                        Element.row
-                                            [ Element.spacing 20 ]
-                                            [ Element.el
-                                                [ Element.Font.size 30
-                                                , Element.centerY
-                                                ]
-                                                (Element.text EH.bulletPointString)
-                                            , Element.paragraph [] [ Element.text line ]
-                                            ]
-                                    )
-                            )
-                   )
-            , Element.el [ Element.centerX ]
-                (EH.blueButton "Okay, let's go!" (GotoRoute <| Routing.Marketplace))
-            , Element.el [ Element.height <| Element.px 1 ] Element.none
-            , EH.coolCurrencyHbreak
-            ]
-        ]
