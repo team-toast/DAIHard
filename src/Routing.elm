@@ -13,7 +13,7 @@ type Route
     = Home
     | Create
     | Trade Int
-    | Marketplace CTypes.OpenMode
+    | Marketplace
     | MyTrades
     | NotFound
 
@@ -25,17 +25,9 @@ routeParser =
                 [ Url.Parser.map Home Url.Parser.top
                 , Url.Parser.map Create (Url.Parser.s "create")
                 , Url.Parser.map Trade (Url.Parser.s "trade" </> Url.Parser.int)
-                , Url.Parser.map Marketplace (Url.Parser.s "marketplace" </> openModeParser)
+                , Url.Parser.map Marketplace (Url.Parser.s "marketplace")
                 , Url.Parser.map MyTrades (Url.Parser.s "mytrades")
                 ]
-
-
-openModeParser : Parser (CTypes.OpenMode -> a) a
-openModeParser =
-    Url.Parser.oneOf
-        [ Url.Parser.map CTypes.BuyerOpened (Url.Parser.s "buys")
-        , Url.Parser.map CTypes.SellerOpened (Url.Parser.s "sells")
-        ]
 
 
 urlToRoute : Url -> Route
@@ -55,21 +47,11 @@ routeToString route =
         Trade id ->
             Url.Builder.absolute [ "DAIHard", "trade", String.fromInt id ] []
 
-        Marketplace openMode ->
-            Url.Builder.absolute [ "DAIHard", "marketplace", openModeBuilder openMode ] []
+        Marketplace ->
+            Url.Builder.absolute [ "DAIHard", "marketplace" ] []
 
         MyTrades ->
             Url.Builder.absolute [ "DAIHard", "mytrades" ] []
 
         NotFound ->
             Url.Builder.absolute [] []
-
-
-openModeBuilder : CTypes.OpenMode -> String
-openModeBuilder openMode =
-    case openMode of
-        CTypes.BuyerOpened ->
-            "buys"
-
-        CTypes.SellerOpened ->
-            "sells"

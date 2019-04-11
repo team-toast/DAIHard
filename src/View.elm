@@ -92,7 +92,7 @@ headerContent maybeValidModel =
             [ logoElement
             , headerLink
                 "Marketplace"
-                (GotoRoute <| Routing.Marketplace CTypes.SellerOpened)
+                (GotoRoute <| Routing.Marketplace)
                 (Maybe.map
                     (\submodel ->
                         case submodel of
@@ -309,7 +309,7 @@ betaLandingPage =
                             )
                    )
             , Element.el [ Element.centerX ]
-                (EH.blueButton "Okay, let's go!" (GotoRoute <| Routing.Marketplace CTypes.SellerOpened))
+                (EH.blueButton "Okay, let's go!" (GotoRoute <| Routing.Marketplace))
             , Element.el [ Element.height <| Element.px 1 ] Element.none
             , EH.coolCurrencyHbreak
             ]
