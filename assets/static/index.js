@@ -9,15 +9,10 @@ window.testStuff = secureComms.testStuff;
 window.addEventListener('load', function () {
     if (window.ethereum) {
         window.web3 = new Web3(ethereum);
-        ethereum.enable().then(function (val) {
-            startDapp()
-        }).catch(function (err) {
-            startDapp();
-        });
+        ethereum.enable();
     }
-    else {
-        startDapp();
-    }
+
+    startDapp();
 });
 
 function startDapp() {
