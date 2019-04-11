@@ -347,10 +347,10 @@ gotoRoute model route =
                 ]
             )
 
-        Routing.Marketplace openMode ->
+        Routing.Marketplace ->
             let
                 ( marketplaceModel, marketplaceCmd ) =
-                    Marketplace.State.init model.node model.userInfo openMode
+                    Marketplace.State.init model.node model.userInfo
             in
             ( Running
                 { model

@@ -22,27 +22,28 @@ import TokenValue exposing (TokenValue)
 import TradeCache.State as TradeCache
 
 
-init : EthHelpers.EthNode -> Maybe UserInfo -> CTypes.OpenMode -> ( Model, Cmd Msg )
-init ethNode userInfo openMode =
+init : EthHelpers.EthNode -> Maybe UserInfo -> ( Model, Cmd Msg )
+init ethNode userInfo =
     let
         ( tradeCache, tcCmd ) =
             TradeCache.initAndStartCaching ethNode
     in
     ( { ethNode = ethNode
       , userInfo = userInfo
-      , inputs = initialInputs openMode
+      , inputs = initialInputs
       , errors = noErrors
       , showCurrencyDropdown = False
       , filterFunc = baseFilterFunc
       , sortFunc = initialSortFunc
       , tradeCache = tradeCache
       }
+        |> applyInputs
     , tcCmd |> Cmd.map TradeCacheMsg
     )
 
 
-initialInputs : CTypes.OpenMode -> SearchInputs
-initialInputs openMode =
+initialInputs : SearchInputs
+initialInputs =
     { minDai = ""
     , maxDai = ""
     , fiatType = ""
@@ -50,7 +51,7 @@ initialInputs openMode =
     , maxFiat = ""
     , paymentMethod = ""
     , paymentMethodTerms = []
-    , openMode = openMode
+    , openMode = CTypes.SellerOpened
     }
 
 
@@ -81,7 +82,7 @@ update msg model =
         --     , Nothing
         --     )
         ChangeOfferType newOpenMode ->
-            ( { model | inputs = model.inputs |> updateOpenMode newOpenMode }
+            ( { model | inputs = model.inputs |> updateOpenMode newOpenMode } |> applyInputs
             , Cmd.none
             , Nothing
             )
@@ -359,7 +360,7 @@ inputsToQuery inputs =
                     (String.Extra.nonEmpty inputs.fiatType)
             , paymentMethodTerms =
                 inputs.paymentMethodTerms
-            , openMode = inputs.openMode
+            , openMode = Debug.log "OM" inputs.openMode
             }
         )
         (interpretDaiAmount inputs.minDai
@@ -409,7 +410,7 @@ resetSearch model =
     { model
         | sortFunc = initialSortFunc
         , filterFunc = baseFilterFunc
-        , inputs = initialInputs model.inputs.openMode
+        , inputs = { initialInputs | openMode = model.inputs.openMode }
     }
 
 
