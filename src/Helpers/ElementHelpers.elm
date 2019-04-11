@@ -76,6 +76,7 @@ import Html.Styled
 import Images
 import Json.Decode
 import List
+import List.Extra
 import Maybe.Extra
 import Network exposing (..)
 import Task
@@ -490,19 +491,6 @@ bigTimeUnitElement numDigits color labelString num =
         , Element.Font.color color
         ]
         (Element.text <| numStr ++ labelString)
-
-
-
--- conciseTimeUnitElement : Char -> Element.Color -> Int -> Element msg
--- conciseTimeUnitElement unitChar color num =
---     let
---         numStr =
---             String.fromInt num
---                 |> String.padLeft 2 '0'
---     in
---     Element.el [ Element.Font.size 16, Element.Font.color color, Element.Font.medium ]
---         (Element.text <| numStr ++ String.fromChar unitChar)
--- INPUTS
 
 
 button : ( Element.Color, Element.Color, Element.Color ) -> Element.Color -> String -> msg -> Element msg
@@ -1083,11 +1071,37 @@ etherscanAddressLink attributes network address =
         }
 
 
-coolCurrencyHbreak : Element msg
-coolCurrencyHbreak =
-    FiatValue.currencyTypes
-        |> Dict.toList
-        |> List.map Tuple.second
-        |> List.map Tuple.first
-        |> List.map (\s -> Element.text <| " " ++ s ++ " ")
-        |> Element.paragraph [ Element.centerX, Element.Font.center ]
+coolCurrencyHbreak : Bool -> Element.Length -> Element msg
+coolCurrencyHbreak reversed length =
+    Element.el
+        [ Element.width Element.fill
+        , Element.inFront
+            (FiatValue.currencyTypes
+                |> Dict.toList
+                |> List.map (Tuple.second >> Tuple.first)
+                |> List.Extra.unique
+                |> (if reversed then
+                        List.reverse
+
+                    else
+                        identity
+                   )
+                |> List.Extra.cycle 100
+                |> List.map (Element.el [ Element.Font.color (Element.rgba 0 0 0 0.2) ] << Element.text)
+                |> List.intersperse
+                    (Element.el
+                        [ Element.Font.color (Element.rgba 0 0 0 0.1)
+                        , Element.Font.size 14
+                        ]
+                     <|
+                        Element.text bulletPointString
+                    )
+                |> Element.row
+                    [ Element.spacing 3
+                    , Element.width <| Element.fillPortion 100
+                    , Element.width length
+                    , Element.clip
+                    ]
+            )
+        ]
+        (Element.text " ")

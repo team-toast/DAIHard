@@ -13,6 +13,7 @@ module Images exposing
     , loadingArrows
     , marginSymbol
     , none
+    , numberOnCircleEl
     , openPhase
     , openWindowIcon
     , paymentWindowIcon
@@ -230,4 +231,15 @@ claimedPhase =
     JustImage
         { src = "/DAIHard/static/img/phase-claimed.svg"
         , description = "claimed phase"
+        }
+
+
+numberOnCircleEl : Int -> Image
+numberOnCircleEl number =
+    JustImage
+        { src =
+            "/DAIHard/static/img/circle-"
+                ++ String.fromInt number
+                ++ ".svg"
+        , description = String.fromInt number
         }
