@@ -498,7 +498,7 @@ updateParameters model =
             Maybe.map2
                 CTypes.buildCreateParameters
                 model.userInfo
-                (Result.toMaybe <| validateResult)
+                (Result.toMaybe validateResult)
         , errors = newErrors
     }
 

@@ -481,7 +481,7 @@ phaseStatusElement viewPhase trade currentTime =
                                     ]
 
                     Finished ->
-                        Element.none
+                        Element.el [ Element.height <| Element.px 1] Element.none
 
         phaseStateElement =
             Element.el
@@ -852,7 +852,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                         , [ Element.text "So, have you recieved the "
                           , emphasizedText fiatAmountString
                           , Element.text "? If so, you can click "
-                          , scaryText "Release Everything"
+                          , emphasizedText "Release Everything"
                           , Element.text "."
                           ]
                         , [ Element.text "If not, the Buyer is probably trying to scam you, and you should probably "
