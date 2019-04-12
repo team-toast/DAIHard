@@ -352,34 +352,36 @@ openWindowSummary openMode =
         committingParty =
             case openMode of
                 CTypes.BuyerOpened ->
-                    "seller"
+                    "Seller"
 
                 CTypes.SellerOpened ->
-                    "buyer"
+                    "Buyer"
     in
     "The offer will expire by this time window if a "
         ++ committingParty
-        ++ " does not commit to the trade. You can also remove the trade before this window runs out."
+        ++ " does not commit to the trade, returning the balance and the devFee to your wallet. This can also be manually triggered anytime before a "
+        ++ committingParty
+        ++ " commits."
 
 
 paymentWindowSummary : CTypes.OpenMode -> String
 paymentWindowSummary openMode =
     case openMode of
         CTypes.BuyerOpened ->
-            "You have this time window to send the fiat funds to the seller using one of your payment methods indicated below."
+            "After committing, you have this time window to send the fiat funds to the Seller using one of your payment methods indicated below. If you fail to confirm payment within this window, 1/4 of your deposit is burned from both parties and the rest is refunded."
 
         CTypes.SellerOpened ->
-            "The buyer has this time window to send the fiat funds to you using one of your payment methods indicated below."
+            "After committing, the Buyer has this time window to send the fiat funds to you using one of your payment methods indicated below. If the Buyer aborts or fails to confirm within this window, 1/12 of the trade amount is burned from both parties and the rest is refunded."
 
 
 releaseWindowSummary : CTypes.OpenMode -> String
 releaseWindowSummary openMode =
     case openMode of
         CTypes.BuyerOpened ->
-            "Once you confirm payment, the seller has this time window to decide whether to release the funds to you or burn everything."
+            "Once you confirm payment, the Seller has this time window to decide whether to release the funds to you or burn everything. If he doesn't decide before the time is up, funds are released to you by default."
 
         CTypes.SellerOpened ->
-            "Once the buyer confirms payment, you have this time window to decide whether to release the funds to the buyer or burn everything."
+            "Once the Buyer confirms payment, you have this time window to decide whether to release the funds to the Buyer or burn everything. If you don't decide before the time is up, funds are released to the Buyer by default."
 
 
 phaseElement : Image -> String -> String -> Time.Posix -> Maybe Element.Color -> (Time.Posix -> Msg) -> Element Msg
@@ -389,7 +391,7 @@ phaseElement icon title summary interval lowIntervalColor newIntervalMsg =
             Element.column
                 [ Element.spacing 15
                 , Element.width Element.fill
-                , Element.height <| Element.px 160
+                , Element.height <| Element.px 220
                 ]
                 [ Images.toElement [] icon
                 , Element.column
