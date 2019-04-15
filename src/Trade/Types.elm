@@ -35,7 +35,7 @@ type alias Model =
     , secureCommInfo : SecureCommInfo
     , eventSentry : EventSentry Msg
     , allowance : Maybe BigInt
-    , txChainStatus : TxChainStatus
+    , txChainStatus : Maybe TxChainStatus
     }
 
 
@@ -64,15 +64,13 @@ type Msg
 
 
 type TxChainStatus
-    = NoTx
-    | ConfirmingCommit CTypes.FullTradeInfo UserInfo BigInt
+    = ConfirmingCommit CTypes.FullTradeInfo UserInfo BigInt
     | ApproveNeedsSig
     | ApproveMining TxHash
     | CommitNeedsSig
     | CommitMining TxHash
     | ActionNeedsSig ContractAction
     | ActionMining ContractAction TxHash
-    | TxError String
 
 
 type ContractAction

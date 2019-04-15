@@ -481,7 +481,7 @@ phaseStatusElement viewPhase trade currentTime =
                                     ]
 
                     Finished ->
-                        Element.el [ Element.height <| Element.px 1] Element.none
+                        Element.el [ Element.height <| Element.px 1 ] Element.none
 
         phaseStateElement =
             Element.el
@@ -977,10 +977,10 @@ chatOverlayElement model =
 getModalOrNone : Model -> Element Msg
 getModalOrNone model =
     case model.txChainStatus of
-        NoTx ->
+        Nothing ->
             Element.none
 
-        ConfirmingCommit trade userInfo deposit ->
+        Just (ConfirmingCommit trade userInfo deposit) ->
             let
                 depositAmountString =
                     TokenValue.tokenValue tokenDecimals deposit
@@ -1061,14 +1061,14 @@ getModalOrNone model =
                 )
                 AbortCommit
 
-        ApproveNeedsSig ->
+        Just ApproveNeedsSig ->
             EH.txProcessModal
                 [ Element.text "Waiting for user signature for the approve call."
                 , Element.text "(check Metamask!)"
                 , Element.text "Note that there will be a second transaction to sign after this."
                 ]
 
-        ApproveMining txHash ->
+        Just (ApproveMining txHash) ->
             EH.txProcessModal
                 [ Element.text "Mining the initial approve transaction..."
 
@@ -1079,14 +1079,14 @@ getModalOrNone model =
                 , Element.text "Funds will not be sent until you sign the next transaction."
                 ]
 
-        CommitNeedsSig ->
+        Just CommitNeedsSig ->
             EH.txProcessModal
                 [ Element.text "Waiting for user signature for the final commit call."
                 , Element.text "(check Metamask!)"
                 , Element.text "This will make the deposit and commit you to the trade."
                 ]
 
-        CommitMining txHash ->
+        Just (CommitMining txHash) ->
             EH.txProcessModal
                 [ Element.text "Mining the final commit transaction..."
 
@@ -1096,20 +1096,14 @@ getModalOrNone model =
                 --     }
                 ]
 
-        ActionNeedsSig action ->
+        Just (ActionNeedsSig action) ->
             EH.txProcessModal
                 [ Element.text <| "Waiting for user signature for the " ++ actionName action ++ " call."
                 , Element.text "(check Metamask!)"
                 ]
 
-        ActionMining action txHash ->
+        Just (ActionMining action txHash) ->
             Element.none
-
-        TxError s ->
-            EH.txProcessModal
-                [ Element.text "Something has gone terribly wrong"
-                , Element.text s
-                ]
 
 
 actionName : ContractAction -> String

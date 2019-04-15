@@ -35,7 +35,7 @@ root model =
         , phasesElement model
         , Element.el
             [ Element.width Element.fill
-            , Element.below <|
+            , Element.above <|
                 EH.maybeErrorElement
                     [ Element.moveDown 5
                     , Element.padding 10
@@ -452,7 +452,7 @@ phaseElement icon title summary interval lowIntervalColor newIntervalMsg =
 getModalOrNone : Model -> Element Msg
 getModalOrNone model =
     case model.txChainStatus of
-        NoTx ->
+        Nothing ->
             case model.addPMModal of
                 Nothing ->
                     Element.none
@@ -463,21 +463,13 @@ getModalOrNone model =
                             PMWizardMsg
                             (PMWizard.root pmModal model.inputs.openMode)
 
-        _ ->
-            txChainStatusModal model
+        Just txChainStatus ->
+            txChainStatusModal txChainStatus model
 
 
-txChainStatusModal : Model -> Element Msg
-txChainStatusModal model =
-    case model.txChainStatus of
-        NoTx ->
-            EH.txProcessModal
-                [ Element.text "Something broke!"
-                , Element.text "You shouldn't be seeing this!"
-                , Element.text "This is probably not helpful!"
-                , Element.text "I'm so sorry!!!"
-                ]
-
+txChainStatusModal : TxChainStatus -> Model -> Element Msg
+txChainStatusModal txChainStatus model =
+    case txChainStatus of
         Confirm createParameters ->
             let
                 ( depositAmountEl, confirmButton ) =
@@ -571,10 +563,4 @@ txChainStatusModal model =
                 --     , label = Element.text "See the transaction on Etherscan"
                 --     }
                 , Element.text "You will be redirected when it's mined."
-                ]
-
-        TxError s ->
-            EH.txProcessModal
-                [ Element.text "Something has gone terribly wrong"
-                , Element.text s
                 ]
