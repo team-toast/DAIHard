@@ -668,7 +668,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                                 , [ Element.text "If the trade is successful, the combined DAI balance "
                                   , emphasizedText <| "(" ++ tradePlusDepositString ++ ")"
                                   , Element.text " will be released to you. If anything goes wrong, there are "
-                                  , scaryText "burable punishments "
+                                  , scaryText "burnable punishments "
                                   , threeFlames
                                   , Element.text " for both parties."
                                   ]
