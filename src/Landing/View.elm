@@ -65,7 +65,7 @@ root letsGoMsg =
                     [ Element.Font.color EH.blue
                     , Element.Font.underline
                     ]
-                    { url = "NEEDLINK"
+                    { url = "https://www.reddit.com/r/ethereum/comments/bdetr2/daihard_the_unkillable_cryptofiat_gateway_any/"
                     , label = Element.text "announcement post"
                     }
                 , Element.text " for an overview of DAIHard, or the video "
