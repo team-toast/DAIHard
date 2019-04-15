@@ -35,7 +35,7 @@ init flags url key =
     else
         case EthHelpers.intToNetwork flags.networkId of
             Just Mainnet ->
-                ( Failed "Mainnet operation is disabled due to a critical vulnerability in the Solidity. We've left the interface operational on Kovan."
+                ( Failed "Mainnet operation is disabled due to a critical vulnerability in the contracts. We've left the interface operational on Kovan."
                 , Cmd.none
                 )
 
