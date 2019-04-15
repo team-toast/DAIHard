@@ -59,12 +59,29 @@ root letsGoMsg =
             , Element.el [ Element.width <| Element.px 1 ] Element.none
             , numberedNoteElement
                 1
-                "Keep an Eye Out"
-                [ Element.text "Make sure you keep an eye on MetaMask for pending notifications or mining transactions; it doesn’t always pop up when it needs your attention." ]
+                "Confused?"
+                [ Element.text "See our "
+                , Element.newTabLink
+                    [ Element.Font.color EH.blue
+                    , Element.Font.underline
+                    ]
+                    { url = "NEEDLINK"
+                    , label = Element.text "announcement post"
+                    }
+                , Element.text " for an overview of DAIHard, or the video "
+                , Element.newTabLink
+                    [ Element.Font.color EH.blue
+                    , Element.Font.underline
+                    ]
+                    { url = "https://www.youtube.com/watch?v=TaI1fCzhSt4"
+                    , label = Element.text "Using DAIHard to Buy and Sell DAI"
+                    }
+                , Element.text " for a quick usage demo."
+                ]
             , numberedNoteElement
                 2
-                "Under Rapid Construction"
-                [ Element.text "We’re busy refining DaiHard and are regularly adding new functionality. Keep checking back in to see what’s new and improved." ]
+                "Keep an Eye Out"
+                [ Element.text "Make sure you keep an eye on MetaMask for pending notifications or mining transactions; it doesn’t always pop up when it needs your attention." ]
             , Element.el [ Element.width <| Element.px 1 ] Element.none
             , Element.el [ Element.width <| Element.px 1 ] Element.none
             ]
@@ -76,8 +93,8 @@ root letsGoMsg =
             , Element.el [ Element.width <| Element.px 1 ] Element.none
             , numberedNoteElement
                 3
-                "Feedback, Please!"
-                [ Element.text "We’d love any feedback or critique you can possibly give us. We'll respond fastest if you use the "
+                "Under Rapid Construction"
+                [ Element.text "We’re busy refining DaiHard and are regularly adding new functionality, so things might change quickly. Feel free to join our "
                 , Element.newTabLink
                     [ Element.Font.color EH.blue
                     , Element.Font.underline
@@ -85,20 +102,20 @@ root letsGoMsg =
                     { url = "https://t.me/daihard_exchange"
                     , label = Element.text "Telegram channel"
                     }
-                , Element.text "."
+                , Element.text " for announcements."
                 ]
             , numberedNoteElement
                 4
-                "Confused?"
-                [ Element.text "See the video "
+                "Feedback, Please!"
+                [ Element.text "We’d love any feedback or critique you can possibly give us! We'll respond fastest if you use the "
                 , Element.newTabLink
                     [ Element.Font.color EH.blue
                     , Element.Font.underline
                     ]
-                    { url = "https://www.youtube.com/watch?v=TaI1fCzhSt4"
-                    , label = Element.text "Using DAIHard to Buy and Sell DAI"
+                    { url = "https://t.me/daihardexchange_group"
+                    , label = Element.text "Telegram group"
                     }
-                , Element.text " for a quick overview."
+                , Element.text "."
                 ]
             , Element.el [ Element.width <| Element.px 1 ] Element.none
             , Element.el [ Element.width <| Element.px 1 ] Element.none
