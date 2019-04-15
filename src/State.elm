@@ -34,8 +34,13 @@ init flags url key =
 
     else
         case EthHelpers.intToNetwork flags.networkId of
+            Just Mainnet ->
+                ( Failed "Mainnet operation is disabled due to a critical vulnerability in the Solidity. We've left the interface operational on Kovan."
+                , Cmd.none
+                )
+
             Nothing ->
-                ( Failed "Your provider (Metamask?) is set to an unsupported network. Switch to mainnet (or Kovan for testing) and refresh."
+                ( Failed "Your provider (Metamask?) is set to an unsupported network. Switch to Kovan refresh."
                 , Cmd.none
                 )
 
