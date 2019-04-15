@@ -25,7 +25,7 @@ type alias Model =
     , createParameters : Maybe CTypes.CreateParameters
     , depositAmount : Maybe BigInt
     , allowance : Maybe BigInt
-    , txChainStatus : TxChainStatus
+    , txChainStatus : Maybe TxChainStatus
     }
 
 
@@ -56,13 +56,11 @@ type Msg
 
 
 type TxChainStatus
-    = NoTx
-    | Confirm CTypes.CreateParameters
+    = Confirm CTypes.CreateParameters
     | ApproveNeedsSig
     | ApproveMining CTypes.CreateParameters TxHash
     | CreateNeedsSig
     | CreateMining TxHash
-    | TxError String
 
 
 type alias Inputs =

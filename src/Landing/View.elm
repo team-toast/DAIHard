@@ -59,7 +59,7 @@ root letsGoMsg =
             , numberedNoteElement
                 1
                 "Keep an Eye Out"
-                [ Element.text "Make sure you keep an eye on Metamask for pending notifications or mining transactions. The MM window doesn’t always pop-up." ]
+                [ Element.text "Make sure you keep an eye on Metamask for pending notifications or mining transactions. The MM window doesn’t always pop up when it needs your attention." ]
             , numberedNoteElement
                 2
                 "Under Rapid Construction"
@@ -83,6 +83,7 @@ numberedNoteElement number title textElList =
     Element.column
         [ Element.width (Element.fill |> Element.maximum 400)
         , Element.spacing 10
+        , Element.alignTop
         ]
         [ Images.toElement [ Element.centerX ] <| Images.numberOnCircleEl number
         , Element.el

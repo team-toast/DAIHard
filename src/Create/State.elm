@@ -35,7 +35,7 @@ init node userInfo =
             , showFiatTypeDropdown = False
             , addPMModal = Nothing
             , createParameters = Nothing
-            , txChainStatus = NoTx
+            , txChainStatus = Nothing
             , depositAmount = Nothing
             , allowance = Nothing
             }
@@ -236,7 +236,7 @@ update msg prevModel =
                     in
                     UpdateResult
                         { prevModel
-                            | txChainStatus = Confirm createParameters
+                            | txChainStatus = Just <| Confirm createParameters
                             , depositAmount = Nothing
                         }
                         (Contracts.Wrappers.getExtraFeesCmd
@@ -277,7 +277,7 @@ update msg prevModel =
                     justModelUpdate prevModel
 
         AbortCreate ->
-            justModelUpdate { prevModel | txChainStatus = NoTx }
+            justModelUpdate { prevModel | txChainStatus = Nothing }
 
         ConfirmCreate createParameters fullDepositAmount ->
             let
@@ -305,10 +305,10 @@ update msg prevModel =
                                 initiateCreateCall prevModel.node.network createParameters
 
                             else
-                                ( ApproveNeedsSig, approveChainCmd )
+                                ( Just ApproveNeedsSig, approveChainCmd )
 
                         Nothing ->
-                            ( ApproveNeedsSig, approveChainCmd )
+                            ( Just ApproveNeedsSig, approveChainCmd )
             in
             { model = { prevModel | txChainStatus = txChainStatus }
             , cmd = Cmd.none
@@ -319,14 +319,14 @@ update msg prevModel =
         ApproveSigned createParameters result ->
             case result of
                 Ok txHash ->
-                    justModelUpdate { prevModel | txChainStatus = ApproveMining createParameters txHash }
+                    justModelUpdate { prevModel | txChainStatus = Just <| ApproveMining createParameters txHash }
 
                 Err e ->
                     let
                         _ =
                             Debug.log "Error encountered when getting sig from user" e
                     in
-                    justModelUpdate { prevModel | txChainStatus = TxError e }
+                    justModelUpdate { prevModel | txChainStatus = Nothing }
 
         AllowanceFetched fetchResult ->
             case fetchResult of
@@ -338,7 +338,7 @@ update msg prevModel =
                             }
                     in
                     case ( newModel.txChainStatus, newModel.depositAmount ) of
-                        ( ApproveMining createParameters _, Just depositAmount ) ->
+                        ( Just (ApproveMining createParameters _), Just depositAmount ) ->
                             if BigInt.compare allowance depositAmount /= LT then
                                 let
                                     ( txChainStatus, chainCmd ) =
@@ -366,14 +366,14 @@ update msg prevModel =
         CreateSigned result ->
             case result of
                 Ok txHash ->
-                    justModelUpdate { prevModel | txChainStatus = CreateMining txHash }
+                    justModelUpdate { prevModel | txChainStatus = Just <| CreateMining txHash }
 
                 Err e ->
                     let
                         _ =
                             Debug.log "Error encountered when getting sig from user" e
                     in
-                    justModelUpdate { prevModel | txChainStatus = TxError e }
+                    justModelUpdate { prevModel | txChainStatus = Nothing }
 
         CreateMined (Err errstr) ->
             let
@@ -447,7 +447,7 @@ update msg prevModel =
             justModelUpdate prevModel
 
 
-initiateCreateCall : Network -> CTypes.CreateParameters -> ( TxChainStatus, ChainCmd Msg )
+initiateCreateCall : Network -> CTypes.CreateParameters -> ( Maybe TxChainStatus, ChainCmd Msg )
 initiateCreateCall network parameters =
     let
         txParams =
@@ -462,7 +462,7 @@ initiateCreateCall network parameters =
             , onBroadcast = Nothing
             }
     in
-    ( CreateNeedsSig
+    ( Just CreateNeedsSig
     , ChainCmd.custom customSend txParams
     )
 
@@ -498,7 +498,7 @@ updateParameters model =
             Maybe.map2
                 CTypes.buildCreateParameters
                 model.userInfo
-                (Result.toMaybe <| validateResult)
+                (Result.toMaybe validateResult)
         , errors = newErrors
     }
 

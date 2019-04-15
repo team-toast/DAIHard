@@ -230,9 +230,13 @@ inputPlaceholder paymentMethod openMode =
         (Element.text """Put lots of detail here. You can provide multiple options.
 If you are accepting a bank transfer, include a routing/ABA/IBAN number, to avoid ambiguity.
 
-Some examples:
+Some examples for Sellers:
 
 I can accept transfers to a Schwab bank account (routing 121202211)
 I can meet in person to accept cash in London, weekdays after 6, with a day of notice.
-I accept Steam gift cards.
+
+Some examples for Buyers:
+
+I can deliver cash anywhere within an hour drive of Phoneix, AZ, with 2 days of notice.
+I can send money via TransferWise
 """)
