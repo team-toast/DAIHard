@@ -434,7 +434,7 @@ testTextMatch terms paymentMethods =
                     (\term ->
                         String.contains
                             (String.toLower term)
-                            (String.toLower  searchable)
+                            (String.toLower searchable)
                     )
     in
     paymentMethods
