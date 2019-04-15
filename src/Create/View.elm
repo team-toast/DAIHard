@@ -15,9 +15,11 @@ import EthHelpers
 import FiatValue
 import Images exposing (Image)
 import List.Extra
+import Maybe.Extra
 import Network exposing (..)
 import PaymentMethods exposing (PaymentMethod)
 import Time
+import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
@@ -514,12 +516,14 @@ txChainStatusModal txChainStatus model =
                                 , Element.Font.color EH.permanentTextColor
                                 ]
                             )
-                            [ [ Element.text <| "You will deposit "
-                              , depositAmountEl
-                              , Element.text " DAI (including the 1% dev fee) to open this trade."
-                              ]
-                            , [ Element.text <| "This ususally requires two Metamask signatures. Your DAI will not be deposited until the final transaction has been mined." ]
-                            ]
+                            (getWarningParagraphs createParameters
+                                ++ [ [ Element.text <| "You will deposit "
+                                     , depositAmountEl
+                                     , Element.text " DAI (including the 1% dev fee) to open this trade."
+                                     ]
+                                   , [ Element.text <| "This ususally requires two Metamask signatures. Your DAI will not be deposited until the final transaction has been mined." ]
+                                   ]
+                            )
                         )
                     , Element.el
                         [ Element.alignBottom
@@ -564,3 +568,37 @@ txChainStatusModal txChainStatus model =
                 --     }
                 , Element.text "You will be redirected when it's mined."
                 ]
+
+
+getWarningParagraphs : CTypes.CreateParameters -> List (List (Element Msg))
+getWarningParagraphs createParameters =
+    [ if TimeHelpers.compare createParameters.autoreleaseInterval (Time.millisToPosix (1000 * 60 * 20)) == LT then
+        Just <|
+            case createParameters.openMode of
+                CTypes.BuyerOpened ->
+                    "That Release Window time is quite small! It might take a while to find a committed Seller."
+
+                CTypes.SellerOpened ->
+                    "That Release Window time is quite small! This may attract scammers. Only create this trade if you know what you're doing."
+
+      else
+        Nothing
+    , if TimeHelpers.compare createParameters.autoabortInterval (Time.millisToPosix (1000 * 60 * 60)) == LT then
+        Just <|
+            case createParameters.openMode of
+                CTypes.BuyerOpened ->
+                    "That Payment Window time is quite small! If you fail to to 1. make the payment and 2. click \"confirm\" before this time is up, the trade will automatically abort, incurring the abort punishments on both parties."
+
+                CTypes.SellerOpened ->
+                    "That Payment Window time is quite small! If the Buyer fails to to 1. make the payment and 2. click \"confirm\" before this time is up, the trade will automatically abort, incurring the abort punishments on both parties."
+
+      else
+        Nothing
+    ]
+        |> Maybe.Extra.values
+        |> List.map
+            (\message ->
+                [ Element.el [ Element.Font.color EH.red ] <| Element.text "Caution! "
+                , Element.text message
+                ]
+            )

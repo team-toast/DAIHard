@@ -942,7 +942,7 @@ closeableModal innerEl closeMsg =
     (modal <| Element.rgba 0 0 0.3 0.6) <|
         Element.column
             [ Element.width <| Element.px 600
-            , Element.height <| Element.px 500
+            , Element.height (Element.shrink |> Element.minimum 500)
             , Element.centerX
             , Element.alignTop
             , Element.moveDown 200
