@@ -70,7 +70,12 @@ header currentTime trade stats maybeUserInfo network =
                 actionButtonsElement currentTime trade userInfo
 
             Nothing ->
-                Element.none
+                Element.el
+                    [ Element.width <| Element.px 200 ]
+                <|
+                    EH.maybeErrorElement
+                        []
+                        (Just "Can't find user address. Is Metamask unlocked?")
         ]
 
 
