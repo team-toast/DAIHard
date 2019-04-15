@@ -56,20 +56,51 @@ root letsGoMsg =
             , Element.width Element.fill
             ]
             [ Element.el [ Element.width <| Element.px 1 ] Element.none
+            , Element.el [ Element.width <| Element.px 1 ] Element.none
             , numberedNoteElement
                 1
                 "Keep an Eye Out"
-                [ Element.text "Make sure you keep an eye on Metamask for pending notifications or mining transactions. The MM window doesn’t always pop up when it needs your attention." ]
+                [ Element.text "Make sure you keep an eye on MetaMask for pending notifications or mining transactions; it doesn’t always pop up when it needs your attention." ]
             , numberedNoteElement
                 2
                 "Under Rapid Construction"
                 [ Element.text "We’re busy refining DaiHard and are regularly adding new functionality. Keep checking back in to see what’s new and improved." ]
+            , Element.el [ Element.width <| Element.px 1 ] Element.none
+            , Element.el [ Element.width <| Element.px 1 ] Element.none
+            ]
+        , Element.row
+            [ Element.spaceEvenly
+            , Element.width Element.fill
+            ]
+            [ Element.el [ Element.width <| Element.px 1 ] Element.none
+            , Element.el [ Element.width <| Element.px 1 ] Element.none
             , numberedNoteElement
                 3
                 "Feedback, Please!"
-                [ Element.text "We’d love any feedback or critique you can possibly give us. Please use "
-                , Element.el [ Element.Font.color EH.red ] <| Element.text "USERVOICE LINK HERE"
+                [ Element.text "We’d love any feedback or critique you can possibly give us. We'll respond fastest if you use the "
+                , Element.newTabLink
+                    [ Element.Font.color EH.blue
+                    , Element.Font.underline
+                    ]
+                    { url = "https://t.me/daihard_exchange"
+                    , label = Element.text "Telegram channel"
+                    }
+                , Element.text "."
                 ]
+            , numberedNoteElement
+                4
+                "Confused?"
+                [ Element.text "See the video "
+                , Element.newTabLink
+                    [ Element.Font.color EH.blue
+                    , Element.Font.underline
+                    ]
+                    { url = "https://www.youtube.com/watch?v=TaI1fCzhSt4"
+                    , label = Element.text "Using DAIHard to Buy and Sell DAI"
+                    }
+                , Element.text " for a quick overview."
+                ]
+            , Element.el [ Element.width <| Element.px 1 ] Element.none
             , Element.el [ Element.width <| Element.px 1 ] Element.none
             ]
         , Element.el [ Element.centerX ]
