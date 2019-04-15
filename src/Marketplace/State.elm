@@ -432,7 +432,9 @@ testTextMatch terms paymentMethods =
             terms
                 |> List.all
                     (\term ->
-                        String.contains term searchable
+                        String.contains
+                            (String.toLower term)
+                            (String.toLower searchable)
                     )
     in
     paymentMethods
