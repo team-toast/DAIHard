@@ -188,7 +188,8 @@ contract DAIHardTrade {
     event Opened(string fiatTransferMethods, string commPubkey);
 
     function open(address payable _initiator, bool _initiatorIsBuyer, uint[6] memory uintArgs, string memory _price, string memory fiatTransferMethods, string memory commPubkey)
-    public {
+    public
+    inPhase(Phase.Created) {
         require(getBalance() > 0, "You can't open a trade without first depositing DAI.");
 
         responderDeposit = uintArgs[0];
