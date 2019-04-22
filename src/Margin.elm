@@ -5,25 +5,25 @@ import TokenValue exposing (TokenValue)
 
 
 margin : TokenValue -> FiatValue -> Maybe Float
-margin tokens fiat =
+margin dai fiat =
     let
-        tokenFloat =
-            TokenValue.getFloatValueWithWarning tokens
+        daiFloat =
+            TokenValue.getFloatValueWithWarning dai
 
         fiatFloat =
             FiatValue.getFloatValueWithWarning fiat
     in
     case fiat.fiatType of
         "USD" ->
-            Just <| marginFromFloats tokenFloat fiatFloat
+            Just <| marginFromFloats daiFloat fiatFloat
 
         _ ->
             Nothing
 
 
 marginFromFloats : Float -> Float -> Float
-marginFromFloats tokens fiat =
-    (fiat - tokens) / tokens
+marginFromFloats dai fiat =
+    (fiat - dai) / dai
 
 
 stringToMarginFloat : String -> Maybe Float
