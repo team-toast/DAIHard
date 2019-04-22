@@ -1,5 +1,70 @@
 pragma solidity 0.5.6;
 
+/**
+ * @title SafeMath
+ * @dev Unsigned math operations with safety checks that revert on error.
+ * Code yanked from https://github.com/OpenZeppelin/openzeppelin-solidity/blob/master/contracts/math/SafeMath.sol
+ */
+library SafeMath {
+    /**
+     * @dev Multiplies two unsigned integers, reverts on overflow.
+     */
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
+        // benefit is lost if 'b' is also tested.
+        // See: https://github.com/OpenZeppelin/openzeppelin-solidity/pull/522
+        if (a == 0) {
+            return 0;
+        }
+
+        uint256 c = a * b;
+        require(c / a == b);
+
+        return c;
+    }
+
+    /**
+     * @dev Integer division of two unsigned integers truncating the quotient, reverts on division by zero.
+     */
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        // Solidity only automatically asserts when dividing by 0
+        require(b > 0);
+        uint256 c = a / b;
+        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
+
+        return c;
+    }
+
+    /**
+     * @dev Subtracts two unsigned integers, reverts on overflow (i.e. if subtrahend is greater than minuend).
+     */
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        require(b <= a);
+        uint256 c = a - b;
+
+        return c;
+    }
+
+    /**
+     * @dev Adds two unsigned integers, reverts on overflow.
+     */
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
+        require(c >= a);
+
+        return c;
+    }
+
+    /**
+     * @dev Divides two unsigned integers and returns the remainder (unsigned integer modulo),
+     * reverts when dividing by zero.
+     */
+    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
+        require(b != 0);
+        return a % b;
+    }
+}
+
 contract ERC20Interface {
     function totalSupply() public view returns (uint);
     function balanceOf(address tokenOwner) public view returns (uint balance);
@@ -72,11 +137,15 @@ contract DAIHardFactory {
         uint[6] memory newUintArgs; // Note that this structure is not the same as the above comment describes. See below in DAIHardTrade.open.
 
         if (initiatorIsBuyer) {
-            transferAmount = getBuyerDeposit(uintArgs[0]) + uintArgs[1] + getDevFee(uintArgs[0]);
+            //transferAmount = getBuyerDeposit(uintArgs[0]) + uintArgs[1] + getDevFee(uintArgs[0]); (kept for legibility; SafeMath must be used)
+            transferAmount = SafeMath.add(SafeMath.add(getBuyerDeposit(uintArgs[0]), uintArgs[1]), getDevFee(uintArgs[0]));
+
             newUintArgs = [uintArgs[0], uintArgs[1], getDevFee(uintArgs[0]), uintArgs[2], uintArgs[3], uintArgs[4]];
         }
         else {
-            transferAmount = uintArgs[0] + uintArgs[1] + getDevFee(uintArgs[0]);
+            //transferAmount = uintArgs[0] + uintArgs[1] + getDevFee(uintArgs[0]);  (kept for legibility; SafeMath must be used)
+            transferAmount = SafeMath.add(SafeMath.add(uintArgs[0], uintArgs[1]), getDevFee(uintArgs[0]));
+
             newUintArgs = [getBuyerDeposit(uintArgs[0]), uintArgs[1], getDevFee(uintArgs[0]), uintArgs[2], uintArgs[3], uintArgs[4]];
         }
 
@@ -205,11 +274,11 @@ contract DAIHardTrade {
         if (initiatorIsBuyer) {
             buyer = initiator;
             daiAmount = responderDeposit;
-            buyerDeposit = getBalance() - (pokeReward + devFee);
+            buyerDeposit = SafeMath.sub(getBalance(), SafeMath.add(pokeReward, devFee));
         }
         else {
             seller = initiator;
-            daiAmount = getBalance() - (pokeReward + devFee);
+            daiAmount = SafeMath.sub(getBalance(), SafeMath.add(pokeReward, devFee));
             buyerDeposit = responderDeposit;
         }
 
@@ -256,7 +325,7 @@ contract DAIHardTrade {
     view
     inPhase(Phase.Open)
     returns(bool available) {
-        return (block.timestamp >= phaseStartTimestamps[uint(Phase.Open)] + autorecallInterval);
+        return (block.timestamp >= SafeMath.add(phaseStartTimestamps[uint(Phase.Open)], autorecallInterval));
     }
 
     function commit(string calldata commPubkey)
@@ -305,6 +374,7 @@ contract DAIHardTrade {
     internal {
         //Punishment amount is 1/4 the buyerDeposit for now,
         //but in a future version this might be set by the Initiator.
+        //At that point, this code should be checked for overflow concerns in the following require statement.
         uint burnAmount = buyerDeposit / 4;
 
         //Punish both parties equally by burning burnAmount.
@@ -312,13 +382,13 @@ contract DAIHardTrade {
         require(daiContract.transfer(address(0x0), burnAmount*2), "Token burn failed!");
 
         //Send back deposits minus burned amounts.
-        require(daiContract.transfer(buyer, buyerDeposit - burnAmount), "Token transfer to Buyer failed!");
-        require(daiContract.transfer(seller, daiAmount - burnAmount), "Token transfer to Seller failed!");
+        require(daiContract.transfer(buyer, SafeMath.sub(buyerDeposit, burnAmount)), "Token transfer to Buyer failed!");
+        require(daiContract.transfer(seller, SafeMath.sub(daiAmount, burnAmount)), "Token transfer to Seller failed!");
 
         uint sendBackToInitiator = devFee;
         //If there was a pokeReward left, it should be sent back to the initiator
         if (!pokeRewardSent) {
-            sendBackToInitiator += pokeReward;
+            sendBackToInitiator = SafeMath.add(sendBackToInitiator, pokeReward);
         }
         
         require(daiContract.transfer(initiator, sendBackToInitiator), "Token refund of devFee+pokeReward to Initiator failed!");
@@ -334,7 +404,7 @@ contract DAIHardTrade {
     view
     inPhase(Phase.Committed)
     returns(bool passed) {
-        return (block.timestamp >= phaseStartTimestamps[uint(Phase.Committed)] + autoabortInterval);
+        return (block.timestamp >= SafeMath.add(phaseStartTimestamps[uint(Phase.Committed)], autoabortInterval));
     }
 
     function claim()
@@ -366,7 +436,7 @@ contract DAIHardTrade {
     view
     inPhase(Phase.Claimed)
     returns(bool available) {
-        return (block.timestamp >= phaseStartTimestamps[uint(Phase.Claimed)] + autoreleaseInterval);
+        return (block.timestamp >= SafeMath.add(phaseStartTimestamps[uint(Phase.Claimed)], autoreleaseInterval));
     }
 
     function release()
