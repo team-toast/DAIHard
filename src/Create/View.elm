@@ -544,11 +544,10 @@ txChainStatusModal txChainStatus model =
         ApproveMining createParameters txHash ->
             EH.txProcessModal
                 [ Element.text "Mining the initial approve transaction..."
-
-                -- , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                --     { url = EthHelpers.makeEtherscanTxUrl txHash
-                --     , label = Element.text "See the transaction on Etherscan"
-                --     }
+                , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
+                    { url = EthHelpers.makeEtherscanTxUrl model.node.network txHash
+                    , label = Element.text "See the transaction on Etherscan"
+                    }
                 , Element.text "Funds will not be sent until you sign the next transaction."
                 ]
 
@@ -561,11 +560,10 @@ txChainStatusModal txChainStatus model =
         CreateMining txHash ->
             EH.txProcessModal
                 [ Element.text "Mining the final create call..."
-
-                -- , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                --     { url = EthHelpers.makeEtherscanTxUrl txHash
-                --     , label = Element.text "See the transaction on Etherscan"
-                --     }
+                , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
+                    { url = EthHelpers.makeEtherscanTxUrl model.node.network txHash
+                    , label = Element.text "See the transaction on Etherscan"
+                    }
                 , Element.text "You will be redirected when it's mined."
                 ]
 

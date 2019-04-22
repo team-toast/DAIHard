@@ -20,35 +20,40 @@ import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
-type OpenMode
-    = BuyerOpened
-    | SellerOpened
+type Trade
+    = PartiallyLoadedTrade PartialTradeInfo
+    | LoadedTrade FullTradeInfo
 
 
-openModeToInitiatorIsBuyer : OpenMode -> Bool
-openModeToInitiatorIsBuyer openMode =
-    case openMode of
-        BuyerOpened ->
-            True
-
-        SellerOpened ->
-            False
-
-
-initiatorIsBuyerToOpenMode : Bool -> OpenMode
-initiatorIsBuyerToOpenMode initiatorIsBuyer =
-    if initiatorIsBuyer then
-        BuyerOpened
-
-    else
-        SellerOpened
+type alias PartialTradeInfo =
+    { factoryID : Int
+    , creationInfo : Maybe TradeCreationInfo
+    , parameters : Maybe TradeParameters
+    , state : Maybe State
+    , paymentMethods : Maybe (List PaymentMethod)
+    }
 
 
-type Phase
-    = Open
-    | Committed
-    | Claimed
-    | Closed
+type alias FullTradeInfo =
+    { factoryID : Int
+    , creationInfo : TradeCreationInfo
+    , parameters : TradeParameters
+    , state : State
+    , derived : DerivedValues
+    , paymentMethods : List PaymentMethod
+    }
+
+
+type alias TradeCreationInfo =
+    { address : Address
+    , blocknum : Int
+    }
+
+
+type alias DerivedValues =
+    { phaseEndTime : Time.Posix
+    , margin : Maybe Float
+    }
 
 
 type alias UserParameters =
@@ -89,12 +94,24 @@ type alias CreateParameters =
     }
 
 
+type OpenMode
+    = BuyerOpened
+    | SellerOpened
+
+
 type alias State =
     { balance : TokenValue
     , phase : Phase
     , phaseStartTime : Time.Posix
     , responder : Maybe Address
     }
+
+
+type Phase
+    = Open
+    | Committed
+    | Claimed
+    | Closed
 
 
 type DAIHardEvent
@@ -110,40 +127,23 @@ type DAIHardEvent
     | ResponderStatementLogEvent DHT.ResponderStatementLog
 
 
-type Trade
-    = PartiallyLoadedTrade PartialTradeInfo
-    | LoadedTrade FullTradeInfo
+openModeToInitiatorIsBuyer : OpenMode -> Bool
+openModeToInitiatorIsBuyer openMode =
+    case openMode of
+        BuyerOpened ->
+            True
+
+        SellerOpened ->
+            False
 
 
-type alias PartialTradeInfo =
-    { factoryID : Int
-    , creationInfo : Maybe TradeCreationInfo
-    , parameters : Maybe TradeParameters
-    , state : Maybe State
-    , paymentMethods : Maybe (List PaymentMethod)
-    }
+initiatorIsBuyerToOpenMode : Bool -> OpenMode
+initiatorIsBuyerToOpenMode initiatorIsBuyer =
+    if initiatorIsBuyer then
+        BuyerOpened
 
-
-type alias TradeCreationInfo =
-    { address : Address
-    , blocknum : Int
-    }
-
-
-type alias FullTradeInfo =
-    { factoryID : Int
-    , creationInfo : TradeCreationInfo
-    , parameters : TradeParameters
-    , state : State
-    , derived : DerivedValues
-    , paymentMethods : List PaymentMethod
-    }
-
-
-type alias DerivedValues =
-    { phaseEndTime : Time.Posix
-    , margin : Maybe Float
-    }
+    else
+        SellerOpened
 
 
 getResponderRole : TradeParameters -> BuyerOrSeller

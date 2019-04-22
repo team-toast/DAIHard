@@ -32,15 +32,15 @@ import Trade.Types exposing (..)
 
 
 init : EthHelpers.EthNode -> Maybe UserInfo -> Int -> ( Model, Cmd Msg, ChainCmd Msg )
-init ethNode userInfo tradeId =
+init node userInfo tradeId =
     let
         getCreationInfoCmd =
-            getContractCreationInfoCmd ethNode tradeId
+            getContractCreationInfoCmd node tradeId
 
         ( eventSentry, eventSentryCmd ) =
-            EventSentry.init EventSentryMsg ethNode.http
+            EventSentry.init EventSentryMsg node.http
     in
-    ( { ethNode = ethNode
+    ( { node = node
       , userInfo = userInfo
       , trade = CTypes.partialTradeInfo tradeId
       , stats = Waiting
@@ -59,8 +59,8 @@ init ethNode userInfo tradeId =
 
 
 getContractCreationInfoCmd : EthHelpers.EthNode -> Int -> Cmd Msg
-getContractCreationInfoCmd ethNode id =
-    Contracts.Wrappers.getCreationInfoFromIdCmd ethNode (BigInt.fromInt id) CreationInfoFetched
+getContractCreationInfoCmd node id =
+    Contracts.Wrappers.getCreationInfoFromIdCmd node (BigInt.fromInt id) CreationInfoFetched
 
 
 updateUserInfo : Maybe UserInfo -> Model -> ( Model, Cmd Msg )
@@ -69,7 +69,7 @@ updateUserInfo userInfo model =
     , case ( userInfo, model.trade ) of
         ( Just uInfo, CTypes.LoadedTrade trade ) ->
             Contracts.Wrappers.getAllowanceCmd
-                model.ethNode
+                model.node
                 uInfo.address
                 trade.creationInfo.address
                 AllowanceFetched
@@ -89,7 +89,7 @@ update msg prevModel =
                         CTypes.PartiallyLoadedTrade pInfo ->
                             case pInfo.creationInfo of
                                 Nothing ->
-                                    getContractCreationInfoCmd prevModel.ethNode pInfo.factoryID
+                                    getContractCreationInfoCmd prevModel.node pInfo.factoryID
 
                                 _ ->
                                     Cmd.none
@@ -116,7 +116,7 @@ update msg prevModel =
                     case ( prevModel.userInfo, prevModel.trade ) of
                         ( Just userInfo, CTypes.LoadedTrade trade ) ->
                             Contracts.Wrappers.getAllowanceCmd
-                                prevModel.ethNode
+                                prevModel.node
                                 userInfo.address
                                 trade.creationInfo.address
                                 AllowanceFetched
@@ -131,7 +131,7 @@ update msg prevModel =
                 CTypes.LoadedTrade tradeInfo ->
                     ( newModel
                     , Cmd.batch
-                        [ Contracts.Wrappers.getStateCmd prevModel.ethNode tradeInfo.creationInfo.address StateFetched
+                        [ Contracts.Wrappers.getStateCmd prevModel.node tradeInfo.creationInfo.address StateFetched
                         , decryptCmd
                         , fetchCreationInfoCmd
                         , fetchAllowanceCmd
@@ -213,7 +213,7 @@ update msg prevModel =
                         cmd =
                             Cmd.batch
                                 [ sentryCmd
-                                , Contracts.Wrappers.getParametersAndStateCmd newModel.ethNode newCreationInfo.address ParametersFetched StateFetched
+                                , Contracts.Wrappers.getParametersAndStateCmd newModel.node newCreationInfo.address ParametersFetched StateFetched
                                 ]
                     in
                     ( newModel
@@ -334,7 +334,7 @@ update msg prevModel =
                             let
                                 txParams =
                                     TokenContract.approve
-                                        (daiAddress prevModel.ethNode.network)
+                                        (daiAddress prevModel.node.network)
                                         trade.creationInfo.address
                                         depositAmount
                                         |> Eth.toSend

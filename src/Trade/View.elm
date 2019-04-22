@@ -14,6 +14,7 @@ import Element.Font
 import Element.Input
 import ElementHelpers as EH
 import Eth.Utils
+import EthHelpers exposing (EthNode)
 import FiatValue exposing (FiatValue)
 import Images exposing (Image)
 import Margin
@@ -37,7 +38,7 @@ root time model =
                 , Element.inFront <| chatOverlayElement model
                 , Element.inFront <| getModalOrNone model
                 ]
-                [ header time tradeInfo model.stats model.userInfo model.ethNode.network
+                [ header time tradeInfo model.stats model.userInfo model.node.network
                 , Element.column
                     [ Element.width Element.fill
                     , Element.paddingXY 40 0
@@ -1076,11 +1077,10 @@ getModalOrNone model =
         Just (ApproveMining txHash) ->
             EH.txProcessModal
                 [ Element.text "Mining the initial approve transaction..."
-
-                -- , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                --     { url = EthHelpers.makeEtherscanTxUrl txHash
-                --     , label = Element.text "See the transaction on Etherscan"
-                --     }
+                , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
+                    { url = EthHelpers.makeEtherscanTxUrl model.node.network txHash
+                    , label = Element.text "See the transaction on Etherscan"
+                    }
                 , Element.text "Funds will not be sent until you sign the next transaction."
                 ]
 
@@ -1094,11 +1094,10 @@ getModalOrNone model =
         Just (CommitMining txHash) ->
             EH.txProcessModal
                 [ Element.text "Mining the final commit transaction..."
-
-                -- , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                --     { url = EthHelpers.makeEtherscanTxUrl txHash
-                --     , label = Element.text "See the transaction on Etherscan"
-                --     }
+                , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
+                    { url = EthHelpers.makeEtherscanTxUrl model.node.network txHash
+                    , label = Element.text "See the transaction on Etherscan"
+                    }
                 ]
 
         Just (ActionNeedsSig action) ->

@@ -24,7 +24,7 @@ import Trade.ChatHistory.Types as ChatHistory
 
 
 type alias Model =
-    { ethNode : EthHelpers.EthNode
+    { node : EthHelpers.EthNode
     , userInfo : Maybe UserInfo
     , trade : CTypes.Trade
     , stats : StatsModel
