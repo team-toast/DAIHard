@@ -250,13 +250,13 @@ devFeeNotifyElement : Model -> Element Msg
 devFeeNotifyElement model =
     let
         topText =
-            case TokenValue.fromString 18 model.inputs.daiAmount of
+            case TokenValue.fromString tokenDecimals model.inputs.daiAmount of
                 Just daiAmount ->
                     "There is a 1% dev fee of "
                         ++ TokenValue.toConciseString
                             (TokenValue.div
                                 daiAmount
-                                (TokenValue.tokenValue 18 (BigInt.fromInt 100))
+                                (TokenValue.tokenValue tokenDecimals (BigInt.fromInt 100))
                             )
                         ++ " DAI."
 

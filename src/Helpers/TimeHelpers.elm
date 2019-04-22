@@ -101,7 +101,6 @@ type alias HumanReadableInterval =
 
 
 --ignores some maybes, because we never divmod by zero.
---However it could (maybe?) return Nothing, if the number is so large that BigIntHelpers.toInt fails.
 
 
 toHumanReadableInterval : Time.Posix -> HumanReadableInterval
