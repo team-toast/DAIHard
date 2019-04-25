@@ -21,6 +21,7 @@ import Network exposing (..)
 import Routing
 import Time
 import Trade.State
+import TradeCache.Types exposing (TradeCache)
 import Types exposing (..)
 import Url exposing (Url)
 
@@ -53,6 +54,7 @@ init flags url key =
                 , txSentry = txSentry
                 , userAddress = Nothing
                 , userInfo = Nothing
+                , tradeCache = Nothing
                 , submodel = BetaLandingPage
                 }
                     |> updateFromUrl url
@@ -295,15 +297,23 @@ updateFromUrl url model =
 
 
 gotoRoute : ValidModel -> Routing.Route -> ( Model, Cmd Msg )
-gotoRoute model route =
+gotoRoute oldModel route =
     let
         newUrlString =
             Routing.routeToString route
+
+        modelWithTradeCache =
+            case getMaybeTradeCache oldModel.submodel of
+                Just existingTradeCache ->
+                    { oldModel | tradeCache = Just existingTradeCache }
+
+                Nothing ->
+                    oldModel
     in
     case route of
         Routing.Home ->
             ( Running
-                { model
+                { modelWithTradeCache
                     | submodel = BetaLandingPage
                 }
             , Cmd.none
@@ -312,13 +322,13 @@ gotoRoute model route =
         Routing.Create ->
             let
                 ( createModel, createCmd, chainCmdOrder ) =
-                    Create.State.init model.node model.userInfo
+                    Create.State.init modelWithTradeCache.node modelWithTradeCache.userInfo
 
                 ( newTxSentry, chainCmd ) =
-                    ChainCmd.execute model.txSentry (ChainCmd.map CreateMsg chainCmdOrder)
+                    ChainCmd.execute modelWithTradeCache.txSentry (ChainCmd.map CreateMsg chainCmdOrder)
             in
             ( Running
-                { model
+                { modelWithTradeCache
                     | submodel = CreateModel createModel
                     , txSentry = newTxSentry
                 }
@@ -331,13 +341,13 @@ gotoRoute model route =
         Routing.Trade id ->
             let
                 ( tradeModel, tradeCmd, chainCmdOrder ) =
-                    Trade.State.init model.node model.userInfo id
+                    Trade.State.init modelWithTradeCache.node modelWithTradeCache.userInfo id
 
                 ( newTxSentry, chainCmd ) =
-                    ChainCmd.execute model.txSentry (ChainCmd.map TradeMsg chainCmdOrder)
+                    ChainCmd.execute modelWithTradeCache.txSentry (ChainCmd.map TradeMsg chainCmdOrder)
             in
             ( Running
-                { model
+                { modelWithTradeCache
                     | submodel = TradeModel tradeModel
                     , txSentry = newTxSentry
                 }
@@ -350,10 +360,10 @@ gotoRoute model route =
         Routing.Marketplace ->
             let
                 ( marketplaceModel, marketplaceCmd ) =
-                    Marketplace.State.init model.node model.userInfo
+                    Marketplace.State.init modelWithTradeCache.node modelWithTradeCache.userInfo modelWithTradeCache.tradeCache
             in
             ( Running
-                { model
+                { modelWithTradeCache
                     | submodel = MarketplaceModel marketplaceModel
                 }
             , Cmd.batch
@@ -364,10 +374,10 @@ gotoRoute model route =
         Routing.MyTrades ->
             let
                 ( myTradesModel, myTradesCmd ) =
-                    MyTrades.State.init model.node model.userInfo
+                    MyTrades.State.init modelWithTradeCache.node modelWithTradeCache.userInfo modelWithTradeCache.tradeCache
             in
             ( Running
-                { model
+                { modelWithTradeCache
                     | submodel = MyTradesModel myTradesModel
                 }
             , Cmd.batch
@@ -376,7 +386,20 @@ gotoRoute model route =
             )
 
         Routing.NotFound ->
-            ( Failed "Don't understand that url...", Browser.Navigation.pushUrl model.key newUrlString )
+            ( Failed "Don't understand that url...", Browser.Navigation.pushUrl modelWithTradeCache.key newUrlString )
+
+
+getMaybeTradeCache : Submodel -> Maybe TradeCache
+getMaybeTradeCache submodel =
+    case submodel of
+        MarketplaceModel marketplaceModel ->
+            Just <| marketplaceModel.tradeCache
+
+        MyTradesModel myTradesModel ->
+            Just <| myTradesModel.tradeCache
+
+        _ ->
+            Nothing
 
 
 updateSubmodelUserInfo : Maybe UserInfo -> Submodel -> ( Submodel, Cmd Msg )

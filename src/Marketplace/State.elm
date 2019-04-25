@@ -20,16 +20,22 @@ import Time
 import TimeHelpers
 import TokenValue exposing (TokenValue)
 import TradeCache.State as TradeCache
+import TradeCache.Types as TradeCache exposing (TradeCache)
 
 
-init : EthHelpers.EthNode -> Maybe UserInfo -> ( Model, Cmd Msg )
-init ethNode userInfo =
+init : EthHelpers.EthNode -> Maybe UserInfo -> Maybe TradeCache -> ( Model, Cmd Msg )
+init ethNode maybeUserInfo maybeTradeCache =
     let
         ( tradeCache, tcCmd ) =
-            TradeCache.initAndStartCaching ethNode
+            case maybeTradeCache of
+                Just existingTradeCache ->
+                    ( existingTradeCache, Cmd.none )
+
+                Nothing ->
+                    TradeCache.initAndStartCaching ethNode
     in
     ( { ethNode = ethNode
-      , userInfo = userInfo
+      , userInfo = maybeUserInfo
       , inputs = initialInputs
       , errors = noErrors
       , showCurrencyDropdown = False

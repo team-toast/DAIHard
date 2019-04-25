@@ -15,6 +15,7 @@ import MyTrades.Types
 import Routing
 import Time
 import Trade.Types
+import TradeCache.Types exposing (TradeCache)
 import Url exposing (Url)
 
 
@@ -37,6 +38,7 @@ type alias ValidModel =
     , txSentry : TxSentry Msg
     , userAddress : Maybe Address
     , userInfo : Maybe UserInfo
+    , tradeCache : Maybe TradeCache
     , submodel : Submodel
     }
 
