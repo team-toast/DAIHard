@@ -1,4 +1,4 @@
-module Contracts.Types exposing (CreateParameters, DAIHardEvent(..), FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), State, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, getBuyerOrSeller, getCurrentPhaseTimeoutInfo, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderRole, initiatorIsBuyerToOpenMode, initiatorOrResponderToBuyerOrSeller, openModeToInitiatorIsBuyer, partialTradeInfo, phaseIcon, phaseToInt, phaseToString, responderDeposit, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePaymentMethods, updateState)
+module Contracts.Types exposing (ClosedReason(..), CreateParameters, DAIHardEvent(..), FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), State, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, getBuyerOrSeller, getCurrentPhaseTimeoutInfo, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderRole, initiatorIsBuyerToOpenMode, initiatorOrResponderToBuyerOrSeller, openModeToInitiatorIsBuyer, partialTradeInfo, phaseIcon, phaseToInt, phaseToString, responderDeposit, txReceiptToCreatedTradeSellId, updateClosedReason, updateCreationInfo, updateParameters, updatePaymentMethods, updateState)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
@@ -31,6 +31,7 @@ type alias PartialTradeInfo =
     , parameters : Maybe TradeParameters
     , state : Maybe State
     , paymentMethods : Maybe (List PaymentMethod)
+    , closedReason : Maybe ClosedReason
     }
 
 
@@ -41,7 +42,15 @@ type alias FullTradeInfo =
     , state : State
     , derived : DerivedValues
     , paymentMethods : List PaymentMethod
+    , closedReason : Maybe ClosedReason
     }
+
+
+type ClosedReason
+    = ClosedByRecall
+    | ClosedByAbort
+    | ClosedByRelease
+    | ClosedByBurn
 
 
 type alias TradeCreationInfo =
@@ -168,7 +177,7 @@ responderDeposit parameters =
 
 partialTradeInfo : Int -> Trade
 partialTradeInfo factoryID =
-    PartiallyLoadedTrade (PartialTradeInfo factoryID Nothing Nothing Nothing Nothing)
+    PartiallyLoadedTrade (PartialTradeInfo factoryID Nothing Nothing Nothing Nothing Nothing)
 
 
 updateCreationInfo : TradeCreationInfo -> Trade -> Trade
@@ -227,6 +236,16 @@ updatePaymentMethods paymentMethods trade =
             trade
 
 
+updateClosedReason : ClosedReason -> Trade -> Trade
+updateClosedReason reason trade =
+    case trade of
+        PartiallyLoadedTrade pInfo ->
+            PartiallyLoadedTrade { pInfo | closedReason = Just reason }
+
+        LoadedTrade info ->
+            LoadedTrade { info | closedReason = Just reason }
+
+
 checkIfTradeLoaded : PartialTradeInfo -> Trade
 checkIfTradeLoaded pInfo =
     case ( ( pInfo.creationInfo, pInfo.parameters ), ( pInfo.state, pInfo.paymentMethods ) ) of
@@ -239,6 +258,7 @@ checkIfTradeLoaded pInfo =
                     state
                     (deriveValues parameters state)
                     paymentMethods
+                    pInfo.closedReason
                 )
 
         _ ->

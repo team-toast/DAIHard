@@ -280,7 +280,13 @@ phasesElement trade expandedPhase maybeUserInfo currentTime =
                         , Element.Font.semiBold
                         , Element.Font.color EH.white
                         ]
-                        (Element.text "Trade Closed")
+                        (case trade.closedReason of
+                            Nothing ->
+                                Element.text "Trade Closed"
+
+                            Just reason ->
+                                Element.text <| "Trade " ++ closedReasonToText reason
+                        )
                     )
                 ]
 
@@ -456,38 +462,39 @@ phaseStatusElement viewPhase trade currentTime =
                 )
 
         intervalElement =
-            if viewPhase == CTypes.Closed then
-                Element.none
+            case viewPhase of
+                CTypes.Closed ->
+                    Element.none
 
-            else
-                case viewPhaseState of
-                    NotStarted ->
-                        EH.interval
-                            [ Element.centerX ]
-                            [ Element.Font.size 22, Element.Font.medium ]
-                            ( EH.black, EH.lightGray )
-                            (CTypes.getPhaseInterval viewPhase trade)
+                _ ->
+                    case viewPhaseState of
+                        NotStarted ->
+                            EH.interval
+                                [ Element.centerX ]
+                                [ Element.Font.size 22, Element.Font.medium ]
+                                ( EH.black, EH.lightGray )
+                                (CTypes.getPhaseInterval viewPhase trade)
 
-                    Active ->
-                        case CTypes.getCurrentPhaseTimeoutInfo currentTime trade of
-                            CTypes.TimeLeft timeoutInfo ->
-                                EH.intervalWithElapsedBar
-                                    [ Element.centerX ]
-                                    [ Element.Font.size 22, Element.Font.medium ]
-                                    ( EH.white, EH.lightGray )
-                                    timeoutInfo
+                        Active ->
+                            case CTypes.getCurrentPhaseTimeoutInfo currentTime trade of
+                                CTypes.TimeLeft timeoutInfo ->
+                                    EH.intervalWithElapsedBar
+                                        [ Element.centerX ]
+                                        [ Element.Font.size 22, Element.Font.medium ]
+                                        ( EH.white, EH.lightGray )
+                                        timeoutInfo
 
-                            CTypes.TimeUp _ ->
-                                Element.column
-                                    [ Element.centerX
-                                    , Element.spacing 10
-                                    ]
-                                    [ Element.el [ Element.centerX ] <| Element.text (CTypes.getPokeText viewPhase)
-                                    , EH.blueButton "Poke" (StartContractAction Poke)
-                                    ]
+                                CTypes.TimeUp _ ->
+                                    Element.column
+                                        [ Element.centerX
+                                        , Element.spacing 10
+                                        ]
+                                        [ Element.el [ Element.centerX ] <| Element.text (CTypes.getPokeText viewPhase)
+                                        , EH.blueButton "Poke" (StartContractAction Poke)
+                                        ]
 
-                    Finished ->
-                        Element.el [ Element.height <| Element.px 1 ] Element.none
+                        Finished ->
+                            Element.el [ Element.height <| Element.px 1 ] Element.none
 
         phaseStateElement =
             Element.el
@@ -1133,3 +1140,19 @@ actionName action =
 
         Burn ->
             "burn"
+
+
+closedReasonToText : CTypes.ClosedReason -> String
+closedReasonToText reason =
+    case reason of
+        CTypes.ClosedByRecall ->
+            "Recalled"
+
+        CTypes.ClosedByAbort ->
+            "Aborted"
+
+        CTypes.ClosedByRelease ->
+            "Released"
+
+        CTypes.ClosedByBurn ->
+            "Burned"
