@@ -157,6 +157,8 @@ contract DAIHardFactory {
         //transfer DAI to the trade and open it
         require(daiContract.transferFrom(msg.sender, address(newTrade), transferAmount), "Token transfer failed. Did you call approve() on the DAI contract?");
         newTrade.open(_initiator, initiatorIsBuyer, newUintArgs, _totalPrice, _fiatTransferMethods, _commPubkey);
+
+        return newTrade;
     }
 
     function getNumTrades()
@@ -244,6 +246,20 @@ contract DAIHardTrade {
 
     bool public pokeRewardSent;
 
+    /* ---------------------- CREATED PHASE -----------------------
+
+    The only reason for this phase is so the Factory can have
+    somewhere to send the DAI before the Trade is initiated with
+    all the settings, and moved to the Open phase.
+
+    The Factory creates the DAIHardTrade and moves it past this state
+    in a single call, so any DAIHardTrade made by the factory should
+    never be "seen" in this state.
+
+    ------------------------------------------------------------ */
+
+    event Opened(string fiatTransferMethods, string commPubkey);
+
     /*
     uintArgs:
     0 - responderDeposit
@@ -253,8 +269,6 @@ contract DAIHardTrade {
     4 - autoabortInterval
     5 - autoreleaseInterval
     */
-
-    event Opened(string fiatTransferMethods, string commPubkey);
 
     function open(address payable _initiator, bool _initiatorIsBuyer, uint[6] memory uintArgs, string memory _price, string memory fiatTransferMethods, string memory commPubkey)
     public
@@ -431,14 +445,6 @@ contract DAIHardTrade {
     event Released();
     event Burned();
 
-    function autoreleaseAvailable()
-    public
-    view
-    inPhase(Phase.Claimed)
-    returns(bool available) {
-        return (block.timestamp >= SafeMath.add(phaseStartTimestamps[uint(Phase.Claimed)], autoreleaseInterval));
-    }
-
     function release()
     external
     inPhase(Phase.Claimed)
@@ -461,6 +467,14 @@ contract DAIHardTrade {
 
         changePhase(Phase.Closed);
         emit Released();
+    }
+
+    function autoreleaseAvailable()
+    public
+    view
+    inPhase(Phase.Claimed)
+    returns(bool available) {
+        return (block.timestamp >= SafeMath.add(phaseStartTimestamps[uint(Phase.Claimed)], autoreleaseInterval));
     }
 
     function burn()
