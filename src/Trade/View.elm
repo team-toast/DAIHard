@@ -763,7 +763,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                         [ [ Element.text "You must now pay the Seller "
                           , emphasizedText fiatAmountString
                           , Element.text " via one of the accepted payment methods below, "
-                          , Element.el [ Element.Font.semiBold ] <| Element.text "and click "
+                          , Element.el [ Element.Font.semiBold ] <| Element.text "and then click "
                           , scaryText "Confirm Payment"
                           , Element.text " before the payment window runs out. Use the chat to coordinate."
                           ]
@@ -844,6 +844,9 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                           , scaryText "burn the contract's balance of "
                           , emphasizedText tradePlusDepositString
                           , scaryText "."
+                          , Element.text " In this case the "
+                          , emphasizedText tradePlusDepositString
+                          , Element.text " will be lost to both parties."
                           ]
                         , [ Element.text "These are the only options the Seller has. So, fingers crossed!"
                           ]
