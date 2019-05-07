@@ -28,7 +28,6 @@ type alias Model =
     , showCurrencyDropdown : Bool
     , filterFunc : Time.Posix -> CTypes.FullTradeInfo -> Bool
     , sortFunc : CTypes.FullTradeInfo -> CTypes.FullTradeInfo -> Order
-    , tradeCache : TradeCache
     }
 
 
@@ -48,7 +47,6 @@ type Msg
     | ResetSearch
     | TradeClicked Int
     | SortBy ResultColumnType Bool
-    | TradeCacheMsg TradeCache.Msg
     | NoOp
 
 

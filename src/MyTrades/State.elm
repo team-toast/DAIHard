@@ -26,24 +26,14 @@ import TradeCache.State as TradeCache
 import TradeCache.Types as TradeCache exposing (TradeCache)
 
 
-init : EthHelpers.EthNode -> Maybe UserInfo -> Maybe TradeCache -> ( Model, Cmd Msg )
-init ethNode maybeUserInfo maybeTradeCache =
-    let
-        ( tradeCache, tcCmd ) =
-            case maybeTradeCache of
-                Just existingTradeCache ->
-                    ( existingTradeCache, Cmd.none )
-
-                Nothing ->
-                    TradeCache.initAndStartCaching ethNode
-    in
+init : EthHelpers.EthNode -> Maybe UserInfo -> ( Model, Cmd Msg )
+init ethNode maybeUserInfo =
     ( { ethNode = ethNode
       , userInfo = maybeUserInfo
-      , tradeCache = tradeCache
       , viewUserRole = Seller
       , viewPhase = CTypes.Open
       }
-    , tcCmd |> Cmd.map TradeCacheMsg
+    , Cmd.none
     )
 
 
@@ -94,19 +84,6 @@ update msg prevModel =
                 Cmd.none
                 ChainCmd.none
                 (Just (Routing.Trade id))
-
-        TradeCacheMsg tradeCacheMsg ->
-            let
-                ( newTradeCache, tcCmd ) =
-                    TradeCache.update
-                        tradeCacheMsg
-                        prevModel.tradeCache
-            in
-            UpdateResult
-                { prevModel | tradeCache = newTradeCache }
-                (tcCmd |> Cmd.map TradeCacheMsg)
-                ChainCmd.none
-                Nothing
 
         NoOp ->
             noUpdate prevModel

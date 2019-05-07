@@ -23,17 +23,8 @@ import TradeCache.State as TradeCache
 import TradeCache.Types as TradeCache exposing (TradeCache)
 
 
-init : EthHelpers.EthNode -> Maybe UserInfo -> Maybe TradeCache -> ( Model, Cmd Msg )
-init ethNode maybeUserInfo maybeTradeCache =
-    let
-        ( tradeCache, tcCmd ) =
-            case maybeTradeCache of
-                Just existingTradeCache ->
-                    ( existingTradeCache, Cmd.none )
-
-                Nothing ->
-                    TradeCache.initAndStartCaching ethNode
-    in
+init : EthHelpers.EthNode -> Maybe UserInfo -> ( Model, Cmd Msg )
+init ethNode maybeUserInfo =
     ( { ethNode = ethNode
       , userInfo = maybeUserInfo
       , inputs = initialInputs
@@ -41,10 +32,9 @@ init ethNode maybeUserInfo maybeTradeCache =
       , showCurrencyDropdown = False
       , filterFunc = baseFilterFunc
       , sortFunc = initialSortFunc
-      , tradeCache = tradeCache
       }
         |> applyInputs
-    , tcCmd |> Cmd.map TradeCacheMsg
+    , Cmd.none
     )
 
 
@@ -225,18 +215,6 @@ update msg model =
             in
             ( { model | sortFunc = newSortFunc }
             , Cmd.none
-            , Nothing
-            )
-
-        TradeCacheMsg tradeCacheMsg ->
-            let
-                ( newTradeCache, tcCmd ) =
-                    TradeCache.update
-                        tradeCacheMsg
-                        model.tradeCache
-            in
-            ( { model | tradeCache = newTradeCache }
-            , tcCmd |> Cmd.map TradeCacheMsg
             , Nothing
             )
 

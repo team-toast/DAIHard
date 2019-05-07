@@ -21,6 +21,7 @@ import Network exposing (..)
 import Routing
 import Time
 import Trade.State
+import TradeCache.State as TradeCache
 import TradeCache.Types exposing (TradeCache)
 import Types exposing (..)
 import Url exposing (Url)
@@ -47,17 +48,28 @@ init flags url key =
 
                     txSentry =
                         TxSentry.init ( txOut, txIn ) TxSentryMsg node.http
+
+                    ( tradeCache, tcCmd ) =
+                        TradeCache.initAndStartCaching node
+
+                    ( model, fromUrlCmd ) =
+                        { key = key
+                        , time = Time.millisToPosix 0
+                        , node = node
+                        , txSentry = txSentry
+                        , userAddress = Nothing
+                        , userInfo = Nothing
+                        , tradeCache = tradeCache
+                        , submodel = BetaLandingPage
+                        }
+                            |> updateFromUrl url
                 in
-                { key = key
-                , time = Time.millisToPosix 0
-                , node = node
-                , txSentry = txSentry
-                , userAddress = Nothing
-                , userInfo = Nothing
-                , tradeCache = Nothing
-                , submodel = BetaLandingPage
-                }
-                    |> updateFromUrl url
+                ( model
+                , Cmd.batch
+                    [ Cmd.map TradeCacheMsg tcCmd
+                    , fromUrlCmd
+                    ]
+                )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -271,6 +283,17 @@ updateValidModel msg model =
             in
             ( Running { model | txSentry = submodel }, subCmd )
 
+        TradeCacheMsg tradeCacheMsg ->
+            let
+                ( newTradeCache, tcCmd ) =
+                    TradeCache.update
+                        tradeCacheMsg
+                        model.tradeCache
+            in
+            ( Running { model | tradeCache = newTradeCache }
+            , tcCmd |> Cmd.map TradeCacheMsg
+            )
+
         Fail str ->
             ( Failed str, Cmd.none )
 
@@ -301,19 +324,11 @@ gotoRoute oldModel route =
     let
         newUrlString =
             Routing.routeToString route
-
-        modelWithTradeCache =
-            case getMaybeTradeCache oldModel.submodel of
-                Just existingTradeCache ->
-                    { oldModel | tradeCache = Just existingTradeCache }
-
-                Nothing ->
-                    oldModel
     in
     case route of
         Routing.Home ->
             ( Running
-                { modelWithTradeCache
+                { oldModel
                     | submodel = BetaLandingPage
                 }
             , Cmd.none
@@ -322,13 +337,13 @@ gotoRoute oldModel route =
         Routing.Create ->
             let
                 ( createModel, createCmd, chainCmdOrder ) =
-                    Create.State.init modelWithTradeCache.node modelWithTradeCache.userInfo
+                    Create.State.init oldModel.node oldModel.userInfo
 
                 ( newTxSentry, chainCmd ) =
-                    ChainCmd.execute modelWithTradeCache.txSentry (ChainCmd.map CreateMsg chainCmdOrder)
+                    ChainCmd.execute oldModel.txSentry (ChainCmd.map CreateMsg chainCmdOrder)
             in
             ( Running
-                { modelWithTradeCache
+                { oldModel
                     | submodel = CreateModel createModel
                     , txSentry = newTxSentry
                 }
@@ -341,13 +356,13 @@ gotoRoute oldModel route =
         Routing.Trade id ->
             let
                 ( tradeModel, tradeCmd, chainCmdOrder ) =
-                    Trade.State.init modelWithTradeCache.node modelWithTradeCache.userInfo id
+                    Trade.State.init oldModel.node oldModel.userInfo id
 
                 ( newTxSentry, chainCmd ) =
-                    ChainCmd.execute modelWithTradeCache.txSentry (ChainCmd.map TradeMsg chainCmdOrder)
+                    ChainCmd.execute oldModel.txSentry (ChainCmd.map TradeMsg chainCmdOrder)
             in
             ( Running
-                { modelWithTradeCache
+                { oldModel
                     | submodel = TradeModel tradeModel
                     , txSentry = newTxSentry
                 }
@@ -360,10 +375,10 @@ gotoRoute oldModel route =
         Routing.Marketplace ->
             let
                 ( marketplaceModel, marketplaceCmd ) =
-                    Marketplace.State.init modelWithTradeCache.node modelWithTradeCache.userInfo modelWithTradeCache.tradeCache
+                    Marketplace.State.init oldModel.node oldModel.userInfo
             in
             ( Running
-                { modelWithTradeCache
+                { oldModel
                     | submodel = MarketplaceModel marketplaceModel
                 }
             , Cmd.batch
@@ -374,10 +389,10 @@ gotoRoute oldModel route =
         Routing.MyTrades ->
             let
                 ( myTradesModel, myTradesCmd ) =
-                    MyTrades.State.init modelWithTradeCache.node modelWithTradeCache.userInfo modelWithTradeCache.tradeCache
+                    MyTrades.State.init oldModel.node oldModel.userInfo
             in
             ( Running
-                { modelWithTradeCache
+                { oldModel
                     | submodel = MyTradesModel myTradesModel
                 }
             , Cmd.batch
@@ -386,20 +401,7 @@ gotoRoute oldModel route =
             )
 
         Routing.NotFound ->
-            ( Failed "Don't understand that url...", Browser.Navigation.pushUrl modelWithTradeCache.key newUrlString )
-
-
-getMaybeTradeCache : Submodel -> Maybe TradeCache
-getMaybeTradeCache submodel =
-    case submodel of
-        MarketplaceModel marketplaceModel ->
-            Just <| marketplaceModel.tradeCache
-
-        MyTradesModel myTradesModel ->
-            Just <| myTradesModel.tradeCache
-
-        _ ->
-            Nothing
+            ( Failed "Don't understand that url...", Browser.Navigation.pushUrl oldModel.key newUrlString )
 
 
 updateSubmodelUserInfo : Maybe UserInfo -> Submodel -> ( Submodel, Cmd Msg )

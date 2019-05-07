@@ -19,10 +19,11 @@ import PaymentMethods exposing (PaymentMethod)
 import Time
 import TimeHelpers
 import TradeCache.State as TradeCache
+import TradeCache.Types exposing (TradeCache)
 
 
-root : Time.Posix -> Model -> Element Msg
-root time model =
+root : Time.Posix -> TradeCache -> Model -> Element Msg
+root time tradeCache model =
     Element.column
         [ Element.Border.rounded 5
         , Element.Background.color EH.white
@@ -45,7 +46,7 @@ root time model =
                 )
             , searchInputElement model.inputs model.errors model.showCurrencyDropdown
             ]
-        , resultsElement time model
+        , resultsElement time tradeCache model
         ]
 
 
@@ -161,11 +162,11 @@ removeSearchTermButton term =
         (Element.text "x")
 
 
-resultsElement : Time.Posix -> Model -> Element Msg
-resultsElement time model =
+resultsElement : Time.Posix -> TradeCache -> Model -> Element Msg
+resultsElement time tradeCache model =
     let
         visibleTrades =
-            TradeCache.loadedTrades model.tradeCache
+            TradeCache.loadedTrades tradeCache
                 |> filterAndSortTrades time model.filterFunc model.sortFunc
 
         buyingOrSellingString =

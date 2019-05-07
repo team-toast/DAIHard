@@ -228,10 +228,10 @@ subModelElement maybeValidModel =
                         Element.map TradeMsg (Trade.View.root model.time tradeModel)
 
                     MarketplaceModel marketplaceModel ->
-                        Element.map MarketplaceMsg (Marketplace.View.root model.time marketplaceModel)
+                        Element.map MarketplaceMsg (Marketplace.View.root model.time model.tradeCache marketplaceModel)
 
                     MyTradesModel myTradesModel ->
-                        Element.map MyTradesMsg (MyTrades.View.root model.time myTradesModel)
+                        Element.map MyTradesMsg (MyTrades.View.root model.time model.tradeCache myTradesModel)
 
             Failed errorMessageString ->
                 Element.el
