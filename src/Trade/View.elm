@@ -280,13 +280,7 @@ phasesElement trade expandedPhase maybeUserInfo currentTime =
                         , Element.Font.semiBold
                         , Element.Font.color EH.white
                         ]
-                        (case trade.closedReason of
-                            Nothing ->
-                                Element.text "Trade Closed"
-
-                            Just reason ->
-                                Element.text <| "Trade " ++ closedReasonToText reason
-                        )
+                        (Element.text <| "Trade " ++ closedReasonToText trade.state.closedReason)
                     )
                 ]
 
@@ -1145,14 +1139,17 @@ actionName action =
 closedReasonToText : CTypes.ClosedReason -> String
 closedReasonToText reason =
     case reason of
-        CTypes.ClosedByRecall ->
+        CTypes.NotClosed ->
+            ""
+
+        CTypes.Recalled ->
             "Recalled"
 
-        CTypes.ClosedByAbort ->
+        CTypes.Aborted ->
             "Aborted"
 
-        CTypes.ClosedByRelease ->
+        CTypes.Released ->
             "Released"
 
-        CTypes.ClosedByBurn ->
+        CTypes.Burned ->
             "Burned"

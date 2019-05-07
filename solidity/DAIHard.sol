@@ -178,12 +178,17 @@ contract DAIHardTrade {
         _;
     }
 
+    enum ClosedReason {NotClosed, Recalled, Aborted, Released, Burned}
+    ClosedReason public closedReason;
+
     uint[5] public phaseStartTimestamps;
+    uint[5] public phaseStartBlocknums;
 
     function changePhase(Phase p)
     internal {
         phase = p;
         phaseStartTimestamps[uint(p)] = block.timestamp;
+        phaseStartBlocknums[uint(p)] = block.number;
     }
 
 
@@ -224,6 +229,7 @@ contract DAIHardTrade {
     constructor(ERC20Interface _daiContract, address payable _devFeeAddress)
     public {
         changePhase(Phase.Created);
+        closedReason = ClosedReason.NotClosed;
 
         daiContract = _daiContract;
         devFeeAddress = _devFeeAddress;
@@ -331,6 +337,8 @@ contract DAIHardTrade {
         require(daiContract.transfer(initiator, getBalance()), "Recall of DAI to initiator failed!");
 
         changePhase(Phase.Closed);
+        closedReason = ClosedReason.Recalled;
+
         emit Recalled();
     }
 
@@ -410,6 +418,8 @@ contract DAIHardTrade {
         //There may be a wei or two left over in the contract due to integer division. Not a big deal.
 
         changePhase(Phase.Closed);
+        closedReason = ClosedReason.Aborted;
+
         emit Aborted();
     }
 
@@ -466,6 +476,8 @@ contract DAIHardTrade {
         require(daiContract.transfer(buyer, getBalance()), "Final release transfer to buyer failed!");
 
         changePhase(Phase.Closed);
+        closedReason = ClosedReason.Released;
+
         emit Released();
     }
 
@@ -491,6 +503,8 @@ contract DAIHardTrade {
         require(daiContract.transfer(address(0x0), getBalance()), "Final DAI burn failed!");
 
         changePhase(Phase.Closed);
+        closedReason = ClosedReason.Burned;
+
         emit Burned();
     }
 
@@ -499,8 +513,8 @@ contract DAIHardTrade {
     function getState()
     external
     view
-    returns(uint balance, Phase phase, uint phaseStartTimestamp, address responder) {
-        return (getBalance(), this.phase(), phaseStartTimestamps[uint(this.phase())], this.responder());
+    returns(uint balance, Phase phase, uint phaseStartTimestamp, address responder, ClosedReason closedReason) {
+        return (getBalance(), this.phase(), phaseStartTimestamps[uint(this.phase())], this.responder(), this.closedReason());
     }
 
     function getBalance()

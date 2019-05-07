@@ -19,6 +19,7 @@ module Contracts.Generated.DAIHardTrade exposing
     , buyerDeposit
     , claim
     , claimedEvent
+    , closedReason
     , commit
     , committedDecoder
     , committedEvent
@@ -38,6 +39,7 @@ module Contracts.Generated.DAIHardTrade exposing
     , openedDecoder
     , openedEvent
     , phase
+    , phaseStartBlocknums
     , phaseStartTimestamps
     , poke
     , pokeEvent
@@ -239,6 +241,21 @@ claim contractAddress =
     }
 
 
+{-| "closedReason()" function
+-}
+closedReason : Address -> Call BigInt
+closedReason contractAddress =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "closedReason()" []
+    , nonce = Nothing
+    , decoder = toElmDecoder AbiDecode.uint
+    }
+
+
 {-| "commit(string)" function
 -}
 commit : Address -> String -> Call ()
@@ -349,6 +366,7 @@ type alias GetState =
     , phase : BigInt
     , phaseStartTimestamp : BigInt
     , responder : Address
+    , closedReason : BigInt
     }
 
 
@@ -372,6 +390,7 @@ getStateDecoder =
         |> andMap AbiDecode.uint
         |> andMap AbiDecode.uint
         |> andMap AbiDecode.address
+        |> andMap AbiDecode.uint
         |> toElmDecoder
 
 
@@ -445,6 +464,21 @@ phase contractAddress =
     , gasPrice = Nothing
     , value = Nothing
     , data = Just <| AbiEncode.functionCall "phase()" []
+    , nonce = Nothing
+    , decoder = toElmDecoder AbiDecode.uint
+    }
+
+
+{-| "phaseStartBlocknums(uint256)" function
+-}
+phaseStartBlocknums : Address -> BigInt -> Call BigInt
+phaseStartBlocknums contractAddress a =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "phaseStartBlocknums(uint256)" [ AbiEncode.uint a ]
     , nonce = Nothing
     , decoder = toElmDecoder AbiDecode.uint
     }

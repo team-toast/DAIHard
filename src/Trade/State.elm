@@ -689,26 +689,6 @@ handleNewLog log prevModel =
                                     in
                                     prevModel.trade
 
-                        CTypes.RecalledEvent ->
-                            prevModel.trade
-                                |> CTypes.updateClosedReason
-                                    CTypes.ClosedByRecall
-
-                        CTypes.AbortedEvent ->
-                            prevModel.trade
-                                |> CTypes.updateClosedReason
-                                    CTypes.ClosedByAbort
-
-                        CTypes.ReleasedEvent ->
-                            prevModel.trade
-                                |> CTypes.updateClosedReason
-                                    CTypes.ClosedByRelease
-
-                        CTypes.BurnedEvent ->
-                            prevModel.trade
-                                |> CTypes.updateClosedReason
-                                    CTypes.ClosedByBurn
-
                         _ ->
                             prevModel.trade
 

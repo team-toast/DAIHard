@@ -1,4 +1,4 @@
-module Contracts.Types exposing (ClosedReason(..), CreateParameters, DAIHardEvent(..), FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), State, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, getBuyerOrSeller, getCurrentPhaseTimeoutInfo, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderRole, initiatorIsBuyerToOpenMode, initiatorOrResponderToBuyerOrSeller, openModeToInitiatorIsBuyer, partialTradeInfo, phaseIcon, phaseToInt, phaseToString, responderDeposit, txReceiptToCreatedTradeSellId, updateClosedReason, updateCreationInfo, updateParameters, updatePaymentMethods, updateState)
+module Contracts.Types exposing (ClosedReason(..), CreateParameters, DAIHardEvent(..), FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), State, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, getBuyerOrSeller, getCurrentPhaseTimeoutInfo, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderRole, initiatorIsBuyerToOpenMode, initiatorOrResponderToBuyerOrSeller, openModeToInitiatorIsBuyer, partialTradeInfo, phaseIcon, phaseToInt, phaseToString, responderDeposit, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePaymentMethods, updateState)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
@@ -31,7 +31,6 @@ type alias PartialTradeInfo =
     , parameters : Maybe TradeParameters
     , state : Maybe State
     , paymentMethods : Maybe (List PaymentMethod)
-    , closedReason : Maybe ClosedReason
     }
 
 
@@ -42,15 +41,7 @@ type alias FullTradeInfo =
     , state : State
     , derived : DerivedValues
     , paymentMethods : List PaymentMethod
-    , closedReason : Maybe ClosedReason
     }
-
-
-type ClosedReason
-    = ClosedByRecall
-    | ClosedByAbort
-    | ClosedByRelease
-    | ClosedByBurn
 
 
 type alias TradeCreationInfo =
@@ -113,6 +104,7 @@ type alias State =
     , phase : Phase
     , phaseStartTime : Time.Posix
     , responder : Maybe Address
+    , closedReason : ClosedReason
     }
 
 
@@ -121,6 +113,14 @@ type Phase
     | Committed
     | Claimed
     | Closed
+
+
+type ClosedReason
+    = NotClosed
+    | Recalled
+    | Aborted
+    | Released
+    | Burned
 
 
 type DAIHardEvent
@@ -177,7 +177,7 @@ responderDeposit parameters =
 
 partialTradeInfo : Int -> Trade
 partialTradeInfo factoryID =
-    PartiallyLoadedTrade (PartialTradeInfo factoryID Nothing Nothing Nothing Nothing Nothing)
+    PartiallyLoadedTrade (PartialTradeInfo factoryID Nothing Nothing Nothing Nothing)
 
 
 updateCreationInfo : TradeCreationInfo -> Trade -> Trade
@@ -236,16 +236,6 @@ updatePaymentMethods paymentMethods trade =
             trade
 
 
-updateClosedReason : ClosedReason -> Trade -> Trade
-updateClosedReason reason trade =
-    case trade of
-        PartiallyLoadedTrade pInfo ->
-            PartiallyLoadedTrade { pInfo | closedReason = Just reason }
-
-        LoadedTrade info ->
-            LoadedTrade { info | closedReason = Just reason }
-
-
 checkIfTradeLoaded : PartialTradeInfo -> Trade
 checkIfTradeLoaded pInfo =
     case ( ( pInfo.creationInfo, pInfo.parameters ), ( pInfo.state, pInfo.paymentMethods ) ) of
@@ -258,7 +248,6 @@ checkIfTradeLoaded pInfo =
                     state
                     (deriveValues parameters state)
                     paymentMethods
-                    pInfo.closedReason
                 )
 
         _ ->
@@ -474,6 +463,32 @@ bigIntToPhase phase =
             Nothing
 
 
+bigIntToClosedReason : BigInt -> Maybe ClosedReason
+bigIntToClosedReason i =
+    let
+        reasonInt =
+            Maybe.withDefault 99 (BigInt.toString i |> String.toInt)
+    in
+    case reasonInt of
+        0 ->
+            Just NotClosed
+
+        1 ->
+            Just Recalled
+
+        2 ->
+            Just Aborted
+
+        3 ->
+            Just Released
+
+        4 ->
+            Just Burned
+
+        _ ->
+            Nothing
+
+
 phaseToInt : Phase -> Int
 phaseToInt phase =
     case phase of
@@ -535,17 +550,22 @@ decodeState numDecimals encodedState =
 
         maybePhaseStartTime =
             TimeHelpers.secondsBigIntToMaybePosix encodedState.phaseStartTimestamp
+
+        maybeClosedReason =
+            bigIntToClosedReason encodedState.closedReason
     in
-    Maybe.map2
-        (\phase phaseStartTime ->
+    Maybe.map3
+        (\phase phaseStartTime closedReason ->
             { balance = TokenValue.tokenValue numDecimals encodedState.balance
             , phase = phase
             , phaseStartTime = phaseStartTime
             , responder = EthHelpers.addressIfNot0x0 encodedState.responder
+            , closedReason = closedReason
             }
         )
         maybePhase
         maybePhaseStartTime
+        maybeClosedReason
 
 
 initiatorOrResponderToBuyerOrSeller : OpenMode -> InitiatorOrResponder -> BuyerOrSeller
