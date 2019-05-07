@@ -25,10 +25,11 @@ import TimeHelpers
 import TokenValue exposing (TokenValue)
 import Trade.ChatHistory.View as ChatHistory
 import Trade.Types exposing (..)
+import TradeCache.Types exposing (TradeCache)
 
 
-root : Time.Posix -> Model -> Element.Element Msg
-root time model =
+root : Time.Posix -> TradeCache -> Model -> Element.Element Msg
+root time tradeCache model =
     case model.trade of
         CTypes.LoadedTrade tradeInfo ->
             Element.column
@@ -38,7 +39,7 @@ root time model =
                 , Element.inFront <| chatOverlayElement model
                 , Element.inFront <| getModalOrNone model
                 ]
-                [ header time tradeInfo model.stats model.userInfo model.node.network
+                [ header time tradeInfo model.userInfo model.node.network tradeCache
                 , Element.column
                     [ Element.width Element.fill
                     , Element.paddingXY 40 0
@@ -58,14 +59,14 @@ root time model =
                 (Element.text "Loading contract info...")
 
 
-header : Time.Posix -> FullTradeInfo -> StatsModel -> Maybe UserInfo -> Network -> Element Msg
-header currentTime trade stats maybeUserInfo network =
+header : Time.Posix -> FullTradeInfo -> Maybe UserInfo -> Network -> TradeCache -> Element Msg
+header currentTime trade maybeUserInfo network tradeCache =
     EH.niceFloatingRow
         [ tradeStatusElement trade network
         , daiAmountElement trade maybeUserInfo
         , fiatElement trade
         , marginElement trade maybeUserInfo
-        , statsElement stats
+        , statsElement trade tradeCache
         , case maybeUserInfo of
             Just userInfo ->
                 actionButtonsElement currentTime trade userInfo
@@ -209,11 +210,76 @@ renderMargin marginFloat maybeUserInfo =
         ]
 
 
-statsElement : StatsModel -> Element Msg
-statsElement stats =
+statsElement : FullTradeInfo -> TradeCache -> Element Msg
+statsElement trade tradeCache =
     EH.withHeader
         "Initiator Stats"
-        (EH.comingSoonMsg [] "Reputation stats coming soon!")
+        (case trade.parameters.openMode of
+            CTypes.SellerOpened ->
+                let
+                    ( releases, burns ) =
+                        tradeCache.trades
+                            |> Array.toList
+                            |> List.filterMap
+                                (\t ->
+                                    case t of
+                                        CTypes.LoadedTrade loadedT ->
+                                            Just loadedT
+
+                                        _ ->
+                                            Nothing
+                                )
+                            |> List.filter
+                                -- filter for trades that share the same Seller
+                                (\t ->
+                                    CTypes.getBuyerOrSeller t trade.parameters.initiatorAddress == Just Seller
+                                )
+                            |> List.foldl
+                                (\t sums ->
+                                    if t.state.closedReason == CTypes.Released then
+                                        Tuple.mapFirst ((+) 1) sums
+
+                                    else if t.state.closedReason == CTypes.Burned then
+                                        Tuple.mapSecond ((+) 1) sums
+
+                                    else
+                                        sums
+                                )
+                                ( 0, 0 )
+                in
+                Element.row
+                    [ Element.width Element.fill
+                    , Element.spacing 30
+                    ]
+                    [ Element.row
+                        []
+                        [ Images.toElement
+                            [ Element.height <| Element.px 28
+                            ]
+                            Images.release
+                        , Element.el
+                            [ Element.Font.size 24
+                            , Element.Font.medium
+                            ]
+                            (Element.text (String.padLeft 2 '0' <| String.fromInt releases))
+                        ]
+                    , Element.row
+                        []
+                        [ Images.toElement
+                            [ Element.height <| Element.px 28
+                            ]
+                            Images.flame
+                        , Element.el
+                            [ Element.Font.size 24
+                            , Element.Font.medium
+                            ]
+                            (Element.text (String.padLeft 2 '0' <| String.fromInt burns))
+                        ]
+                    ]
+
+            CTypes.BuyerOpened ->
+                Element.text "??"
+        )
 
 
 actionButtonsElement : Time.Posix -> FullTradeInfo -> UserInfo -> Element Msg

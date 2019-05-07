@@ -225,7 +225,7 @@ subModelElement maybeValidModel =
                         Element.map CreateMsg (Create.View.root createModel)
 
                     TradeModel tradeModel ->
-                        Element.map TradeMsg (Trade.View.root model.time tradeModel)
+                        Element.map TradeMsg (Trade.View.root model.time model.tradeCache tradeModel)
 
                     MarketplaceModel marketplaceModel ->
                         Element.map MarketplaceMsg (Marketplace.View.root model.time model.tradeCache marketplaceModel)

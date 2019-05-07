@@ -3,7 +3,6 @@ module Trade.Types exposing
     , Model
     , Msg(..)
     , PhaseState(..)
-    , StatsModel(..)
     , TxChainStatus(..)
     )
 
@@ -27,7 +26,6 @@ type alias Model =
     { node : EthHelpers.EthNode
     , userInfo : Maybe UserInfo
     , trade : CTypes.Trade
-    , stats : StatsModel
     , expandedPhase : CTypes.Phase
     , chatHistoryModel : Maybe ChatHistory.Model
     , eventsWaitingForChatHistory : List ( Int, CTypes.DAIHardEvent )
@@ -80,12 +78,6 @@ type ContractAction
     | Abort
     | Release
     | Burn
-
-
-type StatsModel
-    = Waiting
-    | Scanning
-    | DoneLoading
 
 
 type PhaseState

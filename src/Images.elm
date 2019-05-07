@@ -21,6 +21,7 @@ module Images exposing
     , pmCash
     , pmCustom
     , qmarkCircle
+    , release
     , releaseWindowIcon
     , toElement
     , upArrow
@@ -207,6 +208,14 @@ flame =
     JustImage
         { src = "/DAIHard/static/img/flame.png"
         , description = "flame"
+        }
+
+
+release : Image
+release =
+    JustImage
+        { src = "/DAIHard/static/img/release.png"
+        , description = "release"
         }
 
 

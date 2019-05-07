@@ -43,7 +43,6 @@ init node userInfo tradeId =
     ( { node = node
       , userInfo = userInfo
       , trade = CTypes.partialTradeInfo tradeId
-      , stats = Waiting
       , expandedPhase = CTypes.Open
       , chatHistoryModel = Nothing
       , showChatHistory = False
