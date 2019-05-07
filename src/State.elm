@@ -450,6 +450,7 @@ subscriptions maybeValidModel =
                  , walletSentryPort (WalletSentry.decodeToMsg Fail WalletStatus)
                  , TxSentry.listen model.txSentry
                  , userPubkeyResult UserPubkeySet
+                 , Sub.map TradeCacheMsg <| TradeCache.subscriptions model.tradeCache
                  ]
                     ++ [ submodelSubscriptions model ]
                 )
