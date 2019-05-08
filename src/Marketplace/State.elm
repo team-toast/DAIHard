@@ -243,6 +243,7 @@ addPaymentInputTerm model =
                     |> updatePaymentMethodInput ""
                     |> updatePaymentMethodTerms newSearchTerms
         }
+            |> applyInputs
 
 
 removePaymentInputTerm : String -> Model -> Model
@@ -253,6 +254,7 @@ removePaymentInputTerm term model =
                 |> List.filter ((/=) term)
     in
     { model | inputs = model.inputs |> updatePaymentMethodTerms newTermList }
+        |> applyInputs
 
 
 applyInputs : Model -> Model
