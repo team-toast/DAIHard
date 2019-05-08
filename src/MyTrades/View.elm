@@ -318,7 +318,7 @@ viewFiat trade =
 viewMargin : CTypes.FullTradeInfo -> Bool -> Element Msg
 viewMargin trade upIsGreen =
     trade.derived.margin
-        |> Maybe.map (EH.margin upIsGreen)
+        |> Maybe.map (EH.coloredMargin upIsGreen)
         |> Maybe.withDefault Element.none
 
 

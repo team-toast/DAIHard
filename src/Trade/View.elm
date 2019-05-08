@@ -186,30 +186,11 @@ marginElement trade maybeUserInfo =
         "At Margin"
         (case trade.derived.margin of
             Just marginFloat ->
-                renderMargin marginFloat maybeUserInfo
+                EH.uncoloredMargin marginFloat
 
             Nothing ->
                 EH.comingSoonMsg [] "Margin for non-USD currencies coming soon!"
         )
-
-
-renderMargin : Float -> Maybe UserInfo -> Element Msg
-renderMargin marginFloat maybeUserInfo =
-    let
-        marginString =
-            Margin.marginToString marginFloat ++ "%"
-
-        image =
-            if marginFloat == 0 then
-                Images.none
-
-            else
-                Images.marginSymbol (marginFloat > 0) Nothing
-    in
-    Element.row [ Element.spacing 5 ]
-        [ Element.text marginString
-        , Images.toElement [] image
-        ]
 
 
 type alias Stats =
