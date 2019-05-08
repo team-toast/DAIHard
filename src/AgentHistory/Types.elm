@@ -1,4 +1,4 @@
-module MyTrades.Types exposing (Model, Msg(..), UpdateResult)
+module AgentHistory.Types exposing (Model, Msg(..), UpdateResult)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
@@ -24,8 +24,9 @@ import TradeCache.Types as TradeCache exposing (TradeCache)
 
 type alias Model =
     { ethNode : EthNode
+    , agentAddress : Address
+    , agentRole : BuyerOrSeller
     , userInfo : Maybe UserInfo
-    , viewUserRole : BuyerOrSeller
     , viewPhase : CTypes.Phase
     }
 

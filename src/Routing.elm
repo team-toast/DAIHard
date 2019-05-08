@@ -1,7 +1,9 @@
 module Routing exposing (Route(..), routeToString, urlToRoute)
 
 import BigInt exposing (BigInt)
+import CommonTypes exposing (..)
 import Contracts.Types as CTypes
+import Eth.Types exposing (Address)
 import Eth.Utils
 import Marketplace.Types
 import Url exposing (Url)
@@ -14,7 +16,7 @@ type Route
     | Create
     | Trade Int
     | Marketplace
-    | MyTrades
+    | AgentHistory Address BuyerOrSeller
     | NotFound
 
 
@@ -26,8 +28,33 @@ routeParser =
                 , Url.Parser.map Create (Url.Parser.s "create")
                 , Url.Parser.map Trade (Url.Parser.s "trade" </> Url.Parser.int)
                 , Url.Parser.map Marketplace (Url.Parser.s "marketplace")
-                , Url.Parser.map MyTrades (Url.Parser.s "mytrades")
+                , Url.Parser.map AgentHistory (Url.Parser.s "history" </> addressParser </> buyerOrSellerParser)
+                , Url.Parser.map (\address -> AgentHistory address Seller) (Url.Parser.s "history" </> addressParser)
                 ]
+
+
+addressParser : Parser (Address -> a) a
+addressParser =
+    Url.Parser.custom
+        "ADDRESS"
+        (Eth.Utils.toAddress >> Result.toMaybe)
+
+
+buyerOrSellerParser : Parser (BuyerOrSeller -> a) a
+buyerOrSellerParser =
+    Url.Parser.custom
+        "BUYERORSELLER"
+        (\s ->
+            case s of
+                "buyer" ->
+                    Just Buyer
+
+                "seller" ->
+                    Just Seller
+
+                _ ->
+                    Nothing
+        )
 
 
 urlToRoute : Url -> Route
@@ -50,8 +77,19 @@ routeToString route =
         Marketplace ->
             Url.Builder.absolute [ "DAIHard", "marketplace" ] []
 
-        MyTrades ->
-            Url.Builder.absolute [ "DAIHard", "mytrades" ] []
+        AgentHistory address buyerOrSeller ->
+            Url.Builder.absolute
+                [ "DAIHard"
+                , "history"
+                , Eth.Utils.addressToString address
+                , case buyerOrSeller of
+                    Buyer ->
+                        "buyer"
+
+                    Seller ->
+                        "seller"
+                ]
+                []
 
         NotFound ->
             Url.Builder.absolute [] []

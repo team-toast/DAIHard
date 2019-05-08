@@ -368,7 +368,9 @@ statsModal address stats =
 
         statsBody =
             Element.column
-                [ Element.spacing 23 ]
+                [ Element.spacing 23
+                , Element.width Element.fill
+                ]
                 (List.map
                     (\( titleString, statString ) -> statEl titleString statString)
                     [ ( "First Trade"
@@ -394,6 +396,9 @@ statsModal address stats =
                             ++ " DAI Burned"
                       )
                     ]
+                    ++ [ Element.el [ Element.centerX ]
+                            (EH.blueButton "View Seller History" ViewSellerHistory)
+                       ]
                 )
 
         dateFormatter =

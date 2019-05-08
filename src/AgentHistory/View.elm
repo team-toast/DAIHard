@@ -1,5 +1,6 @@
-module MyTrades.View exposing (root)
+module AgentHistory.View exposing (root)
 
+import AgentHistory.Types exposing (..)
 import Array exposing (Array)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
@@ -15,7 +16,6 @@ import FiatValue exposing (FiatValue)
 import Html.Events.Extra
 import Images exposing (Image)
 import Margin
-import MyTrades.Types exposing (..)
 import PaymentMethods exposing (PaymentMethod)
 import Time
 import TimeHelpers
@@ -32,17 +32,56 @@ root time tradeCache model =
         , Element.height Element.fill
         , Element.paddingXY 0 20
         ]
-        [ viewTypeElement model
+        [ pageTitleElement model
+        , viewTypeElement model
         , phaseElement model
         , resultsElement time tradeCache model
         ]
+
+
+pageTitleElement : Model -> Element Msg
+pageTitleElement model =
+    let
+        viewingOwnHistory =
+            case model.userInfo of
+                Nothing ->
+                    False
+
+                Just userInfo ->
+                    userInfo.address == model.agentAddress
+    in
+    if viewingOwnHistory then
+        Element.el
+            [ Element.paddingXY 30 10
+            , Element.Font.size 24
+            , Element.Font.semiBold
+            ]
+            (Element.text "Your Trades")
+
+    else
+        Element.row
+            [ Element.spacing 10
+            , Element.paddingEach
+                { top = 10
+                , left = 30
+                , right = 30
+                , bottom = 30
+                }
+            ]
+            [ Element.el
+                [ Element.Font.size 24
+                , Element.Font.semiBold
+                ]
+                (Element.text "Trade History for User")
+            , EH.ethAddress 18 model.agentAddress
+            ]
 
 
 viewTypeElement : Model -> Element Msg
 viewTypeElement model =
     Element.el
         [ Element.paddingXY 30 10 ]
-        (userRoleToggle model.viewUserRole)
+        (userRoleToggle model.agentRole)
 
 
 userRoleToggle : BuyerOrSeller -> Element Msg
@@ -138,20 +177,15 @@ resultsElement time tradeCache model =
                     (basicSortFunc model)
 
         visibleTrades =
-            case model.userInfo of
-                Just userInfo ->
-                    userTrades
-                        |> List.filter
-                            (\trade ->
-                                tradeMatchesUserRole trade model.viewUserRole userInfo.address
-                                    && (trade.state.phase == model.viewPhase)
-                            )
-
-                Nothing ->
-                    []
+            userTrades
+                |> List.filter
+                    (\trade ->
+                        tradeMatchesUserRole trade model.agentRole model.agentAddress
+                            && (trade.state.phase == model.viewPhase)
+                    )
 
         amountTitleString =
-            case model.viewUserRole of
+            case model.agentRole of
                 Buyer ->
                     "Buying"
 
@@ -202,7 +236,7 @@ resultsElement time tradeCache model =
             ]
             (visibleTrades
                 |> List.map
-                    (viewTradeRow time model.viewUserRole model.viewPhase)
+                    (viewTradeRow time model.agentRole model.viewPhase)
             )
         ]
 
@@ -376,13 +410,8 @@ columnHeader title =
 basicFilterFunc : Model -> (CTypes.FullTradeInfo -> Bool)
 basicFilterFunc model =
     \trade ->
-        case model.userInfo of
-            Just userInfo ->
-                (trade.parameters.initiatorAddress == userInfo.address)
-                    || (trade.state.responder == Just userInfo.address)
-
-            Nothing ->
-                False
+        (trade.parameters.initiatorAddress == model.agentAddress)
+            || (trade.state.responder == Just model.agentAddress)
 
 
 basicSortFunc : Model -> (CTypes.FullTradeInfo -> CTypes.FullTradeInfo -> Order)

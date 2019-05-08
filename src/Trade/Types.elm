@@ -4,10 +4,13 @@ module Trade.Types exposing
     , Msg(..)
     , PhaseState(..)
     , TxChainStatus(..)
+    , UpdateResult
+    , justModelUpdate
     )
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
+import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
 import Contracts.Generated.DAIHardFactory as DHF
 import Contracts.Generated.DAIHardTrade as DHT
@@ -17,6 +20,7 @@ import Eth.Types exposing (Address, TxHash, TxReceipt)
 import EthHelpers
 import Http
 import Json.Decode
+import Routing
 import Time
 import Trade.ChatHistory.SecureComm exposing (..)
 import Trade.ChatHistory.Types as ChatHistory
@@ -57,11 +61,29 @@ type Msg
     | ExpandPhase CTypes.Phase
     | ToggleChat
     | ToggleStatsModal
+    | ViewSellerHistory
     | EventLogFetched Eth.Types.Log
     | EventSentryMsg EventSentry.Msg
     | ChatHistoryMsg ChatHistory.Msg
     | MessageSubmitMined (Result String TxReceipt)
     | EncryptionFinished Json.Decode.Value
+
+
+type alias UpdateResult =
+    { model : Model
+    , cmd : Cmd Msg
+    , chainCmd : ChainCmd Msg
+    , newRoute : Maybe Routing.Route
+    }
+
+
+justModelUpdate : Model -> UpdateResult
+justModelUpdate model =
+    UpdateResult
+        model
+        Cmd.none
+        ChainCmd.none
+        Nothing
 
 
 type TxChainStatus
