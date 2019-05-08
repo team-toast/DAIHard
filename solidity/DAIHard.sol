@@ -532,6 +532,14 @@ contract DAIHardTrade {
         return (this.initiator(), this.initiatorIsBuyer(), this.daiAmount(), this.price(), this.buyerDeposit(), this.autorecallInterval(), this.autoabortInterval(), this.autoreleaseInterval(), this.pokeReward());
     }
 
+    function getPhaseStartInfo()
+    external
+    view
+    returns (uint, uint, uint, uint, uint, uint, uint, uint, uint, uint)
+    {
+        return (phaseStartBlocknums[0], phaseStartBlocknums[1], phaseStartBlocknums[2], phaseStartBlocknums[3], phaseStartBlocknums[4], phaseStartTimestamps[0], phaseStartTimestamps[1], phaseStartTimestamps[2], phaseStartTimestamps[3], phaseStartTimestamps[4]);
+    }
+
     // Poke function lets anyone move the contract along,
     // if it's due for some state transition.
 

@@ -29,5 +29,6 @@ type Msg
     | CreationInfoFetched Int (Result Http.Error DHF.CreatedTrade)
     | ParametersFetched Int (Result Http.Error (Result String CTypes.TradeParameters))
     | StateFetched Int (Result Http.Error (Maybe CTypes.State))
+    | PhaseStartInfoFetched Int (Result Http.Error (Maybe CTypes.PhaseStartInfo))
     | OpenedEventDataFetched Int (Result Json.Decode.Error DHT.Opened)
     | EventSentryMsg EventSentry.Msg

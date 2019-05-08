@@ -6,6 +6,7 @@ import Collage exposing (Collage)
 import Collage.Render
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes exposing (FullTradeInfo)
+import DateFormat
 import Element exposing (Attribute, Element)
 import Element.Background
 import Element.Border
@@ -13,6 +14,7 @@ import Element.Events
 import Element.Font
 import Element.Input
 import ElementHelpers as EH
+import Eth.Types exposing (Address)
 import Eth.Utils
 import EthHelpers exposing (EthNode)
 import FiatValue exposing (FiatValue)
@@ -39,7 +41,7 @@ root time tradeCache model =
                 , Element.inFront <| chatOverlayElement model
                 , Element.inFront <| getModalOrNone model
                 ]
-                [ header time tradeInfo model.userInfo model.node.network tradeCache
+                [ header time tradeInfo model.userInfo model.node.network tradeCache model.showStatsModal
                 , Element.column
                     [ Element.width Element.fill
                     , Element.paddingXY 40 0
@@ -59,14 +61,14 @@ root time tradeCache model =
                 (Element.text "Loading contract info...")
 
 
-header : Time.Posix -> FullTradeInfo -> Maybe UserInfo -> Network -> TradeCache -> Element Msg
-header currentTime trade maybeUserInfo network tradeCache =
+header : Time.Posix -> FullTradeInfo -> Maybe UserInfo -> Network -> TradeCache -> Bool -> Element Msg
+header currentTime trade maybeUserInfo network tradeCache showStatsModal =
     EH.niceFloatingRow
         [ tradeStatusElement trade network
         , daiAmountElement trade maybeUserInfo
         , fiatElement trade
         , marginElement trade maybeUserInfo
-        , statsElement trade tradeCache
+        , statsElement trade tradeCache showStatsModal
         , case maybeUserInfo of
             Just userInfo ->
                 actionButtonsElement currentTime trade userInfo
@@ -210,76 +212,242 @@ renderMargin marginFloat maybeUserInfo =
         ]
 
 
-statsElement : FullTradeInfo -> TradeCache -> Element Msg
-statsElement trade tradeCache =
-    EH.withHeader
-        "Initiator Stats"
-        (case trade.parameters.openMode of
-            CTypes.SellerOpened ->
-                let
-                    ( releases, burns ) =
-                        tradeCache.trades
-                            |> Array.toList
-                            |> List.filterMap
-                                (\t ->
-                                    case t of
-                                        CTypes.LoadedTrade loadedT ->
-                                            Just loadedT
+type alias Stats =
+    { firstTrade : Maybe Time.Posix
+    , numTrades : Int
+    , numBurns : Int
+    , numReleases : Int
+    , numAborts : Int
+    , amountBurned : TokenValue
+    , amountReleased : TokenValue
+    }
 
-                                        _ ->
-                                            Nothing
-                                )
-                            |> List.filter
-                                -- filter for trades that share the same Seller
-                                (\t ->
-                                    CTypes.getBuyerOrSeller t trade.parameters.initiatorAddress == Just Seller
-                                )
-                            |> List.foldl
-                                (\t sums ->
-                                    if t.state.closedReason == CTypes.Released then
-                                        Tuple.mapFirst ((+) 1) sums
 
-                                    else if t.state.closedReason == CTypes.Burned then
-                                        Tuple.mapSecond ((+) 1) sums
+generateStatsForSeller : TradeCache -> Address -> Stats
+generateStatsForSeller tradeCache sellerAddress =
+    let
+        fullTradesFromSeller =
+            tradeCache.trades
+                |> Array.toList
+                |> List.filterMap
+                    (\t ->
+                        case t of
+                            CTypes.LoadedTrade loadedT ->
+                                Just loadedT
+
+                            _ ->
+                                Nothing
+                    )
+                |> List.filter
+                    -- filter for trades that share the same Seller
+                    (\t ->
+                        CTypes.getBuyerOrSeller t sellerAddress == Just Seller
+                    )
+
+        talliedVals =
+            fullTradesFromSeller
+                |> List.foldl
+                    (\trade tallied ->
+                        if trade.state.closedReason == CTypes.Released then
+                            { tallied
+                                | numReleases = tallied.numReleases + 1
+                                , amountReleased =
+                                    TokenValue.add
+                                        tallied.amountReleased
+                                        trade.parameters.tradeAmount
+                            }
+
+                        else if trade.state.closedReason == CTypes.Burned then
+                            { tallied
+                                | numBurns = tallied.numBurns + 1
+                                , amountBurned =
+                                    TokenValue.add
+                                        tallied.amountBurned
+                                        trade.parameters.tradeAmount
+                            }
+
+                        else if trade.state.closedReason == CTypes.Aborted then
+                            { tallied | numAborts = tallied.numAborts + 1 }
+
+                        else
+                            tallied
+                    )
+                    { numBurns = 0
+                    , numReleases = 0
+                    , numAborts = 0
+                    , amountBurned = TokenValue.zero tokenDecimals
+                    , amountReleased = TokenValue.zero tokenDecimals
+                    }
+
+        numTrades =
+            List.length fullTradesFromSeller
+
+        firstTradeDate =
+            fullTradesFromSeller
+                |> List.filterMap
+                    (\t ->
+                        Time.posixToMillis t.phaseStartInfo.committedTime
+                            |> (\millis ->
+                                    if millis == 0 then
+                                        Nothing
 
                                     else
-                                        sums
-                                )
-                                ( 0, 0 )
-                in
-                Element.row
-                    [ Element.width Element.fill
-                    , Element.spacing 30
-                    ]
-                    [ Element.row
-                        []
-                        [ Images.toElement
-                            [ Element.height <| Element.px 28
-                            ]
-                            Images.release
-                        , Element.el
-                            [ Element.Font.size 24
-                            , Element.Font.medium
-                            ]
-                            (Element.text (String.padLeft 2 '0' <| String.fromInt releases))
-                        ]
-                    , Element.row
-                        []
-                        [ Images.toElement
-                            [ Element.height <| Element.px 28
-                            ]
-                            Images.flame
-                        , Element.el
-                            [ Element.Font.size 24
-                            , Element.Font.medium
-                            ]
-                            (Element.text (String.padLeft 2 '0' <| String.fromInt burns))
-                        ]
+                                        Just millis
+                               )
+                    )
+                |> List.sort
+                |> List.head
+                |> Maybe.map Time.millisToPosix
+    in
+    { numTrades = numTrades
+    , firstTrade = firstTradeDate
+    , numBurns = talliedVals.numBurns
+    , numReleases = talliedVals.numReleases
+    , numAborts = talliedVals.numAborts
+    , amountBurned = talliedVals.amountBurned
+    , amountReleased = talliedVals.amountReleased
+    }
+
+
+statsElement : FullTradeInfo -> TradeCache -> Bool -> Element Msg
+statsElement trade tradeCache showModal =
+    case trade.parameters.openMode of
+        CTypes.SellerOpened ->
+            let
+                sellerStats =
+                    generateStatsForSeller tradeCache trade.parameters.initiatorAddress
+            in
+            Element.el
+                (if showModal then
+                    [ Element.below
+                        (Element.el
+                            [ Element.moveDown 30 ]
+                            (statsModal trade.parameters.initiatorAddress sellerStats)
+                        )
                     ]
 
-            CTypes.BuyerOpened ->
-                Element.text "??"
-        )
+                 else
+                    []
+                )
+            <|
+                EH.withHeader
+                    "Seller Stats"
+                    (Element.row
+                        [ Element.width Element.fill
+                        , Element.spacing 30
+                        , Element.pointer
+                        , Element.Events.onClick ToggleStatsModal
+                        ]
+                        [ Element.row
+                            []
+                            [ Images.toElement
+                                [ Element.height <| Element.px 28
+                                ]
+                                Images.release
+                            , Element.el
+                                [ Element.Font.size 24
+                                , Element.Font.medium
+                                ]
+                                (Element.text (String.padLeft 2 '0' <| String.fromInt sellerStats.numReleases))
+                            ]
+                        , Element.row
+                            []
+                            [ Images.toElement
+                                [ Element.height <| Element.px 28
+                                ]
+                                Images.flame
+                            , Element.el
+                                [ Element.Font.size 24
+                                , Element.Font.medium
+                                ]
+                                (Element.text (String.padLeft 2 '0' <| String.fromInt sellerStats.numBurns))
+                            ]
+                        ]
+                    )
+
+        CTypes.BuyerOpened ->
+            Element.text "??"
+
+
+statsModal : Address -> Stats -> Element Msg
+statsModal address stats =
+    let
+        statEl titleString statString =
+            Element.column
+                [ Element.Font.size 18
+                , Element.spacing 6
+                ]
+                [ Element.el
+                    [ Element.Font.bold ]
+                    (Element.text titleString)
+                , Element.el
+                    [ Element.Font.regular ]
+                    (Element.text statString)
+                ]
+
+        statsBody =
+            Element.column
+                [ Element.spacing 23 ]
+                (List.map
+                    (\( titleString, statString ) -> statEl titleString statString)
+                    [ ( "First Trade"
+                      , case stats.firstTrade of
+                            Just date ->
+                                dateFormatter
+                                    Time.utc
+                                    date
+
+                            Nothing ->
+                                "No Committed Trades yet!"
+                      )
+                    , ( "Release Outcomes"
+                      , String.fromInt stats.numReleases
+                            ++ " trades / "
+                            ++ TokenValue.toConciseString stats.amountReleased
+                            ++ " DAI Released"
+                      )
+                    , ( "Burn Outcomes"
+                      , String.fromInt stats.numBurns
+                            ++ " trades / "
+                            ++ TokenValue.toConciseString stats.amountBurned
+                            ++ " DAI Burned"
+                      )
+                    ]
+                )
+
+        dateFormatter =
+            DateFormat.format
+                [ DateFormat.monthNameFull
+                , DateFormat.text ", "
+                , DateFormat.yearNumber
+                ]
+    in
+    Element.column
+        [ Element.Border.rounded 8
+        , Element.clipX
+        , Element.clipY
+        , Element.Background.color EH.lightGray
+        , Element.spacing 1
+        , Element.Border.shadow
+            { offset = ( 0, 0 )
+            , size = 0
+            , blur = 20
+            , color = Element.rgba 0 0 0 0.08
+            }
+        ]
+        [ Element.el
+            [ Element.width Element.fill
+            , Element.Background.color EH.white
+            , Element.padding 17
+            ]
+            (EH.ethAddress 18 address)
+        , Element.el
+            [ Element.width Element.fill
+            , Element.Background.color EH.white
+            , Element.padding 17
+            ]
+            statsBody
+        ]
 
 
 actionButtonsElement : Time.Posix -> FullTradeInfo -> UserInfo -> Element Msg

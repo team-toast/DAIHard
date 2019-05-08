@@ -1,4 +1,4 @@
-module Contracts.Types exposing (ClosedReason(..), CreateParameters, DAIHardEvent(..), FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), State, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, decodeState, eventDecoder, getBuyerOrSeller, getCurrentPhaseTimeoutInfo, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderRole, initiatorIsBuyerToOpenMode, initiatorOrResponderToBuyerOrSeller, openModeToInitiatorIsBuyer, partialTradeInfo, phaseIcon, phaseToInt, phaseToString, responderDeposit, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePaymentMethods, updateState)
+module Contracts.Types exposing (ClosedReason(..), CreateParameters, DAIHardEvent(..), FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), PhaseStartInfo, State, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, decodePhaseStartInfo, decodeState, eventDecoder, getBuyerOrSeller, getCurrentPhaseTimeoutInfo, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderRole, initiatorIsBuyerToOpenMode, initiatorOrResponderToBuyerOrSeller, openModeToInitiatorIsBuyer, partialTradeInfo, phaseIcon, phaseToInt, phaseToString, responderDeposit, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePaymentMethods, updatePhaseStartInfo, updateState)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
@@ -30,6 +30,7 @@ type alias PartialTradeInfo =
     , creationInfo : Maybe TradeCreationInfo
     , parameters : Maybe TradeParameters
     , state : Maybe State
+    , phaseStartInfo : Maybe PhaseStartInfo
     , paymentMethods : Maybe (List PaymentMethod)
     }
 
@@ -39,6 +40,7 @@ type alias FullTradeInfo =
     , creationInfo : TradeCreationInfo
     , parameters : TradeParameters
     , state : State
+    , phaseStartInfo : PhaseStartInfo
     , derived : DerivedValues
     , paymentMethods : List PaymentMethod
     }
@@ -136,6 +138,18 @@ type DAIHardEvent
     | ResponderStatementLogEvent DHT.ResponderStatementLog
 
 
+type alias PhaseStartInfo =
+    { openedBlock : BigInt
+    , committedBlock : BigInt
+    , claimedBlock : BigInt
+    , closedBlock : BigInt
+    , openedTime : Time.Posix
+    , committedTime : Time.Posix
+    , claimedTime : Time.Posix
+    , closedTime : Time.Posix
+    }
+
+
 openModeToInitiatorIsBuyer : OpenMode -> Bool
 openModeToInitiatorIsBuyer openMode =
     case openMode of
@@ -177,7 +191,7 @@ responderDeposit parameters =
 
 partialTradeInfo : Int -> Trade
 partialTradeInfo factoryID =
-    PartiallyLoadedTrade (PartialTradeInfo factoryID Nothing Nothing Nothing Nothing)
+    PartiallyLoadedTrade (PartialTradeInfo factoryID Nothing Nothing Nothing Nothing Nothing)
 
 
 updateCreationInfo : TradeCreationInfo -> Trade -> Trade
@@ -210,6 +224,21 @@ updateParameters parameters trade =
             trade
 
 
+updatePhaseStartInfo : PhaseStartInfo -> Trade -> Trade
+updatePhaseStartInfo phaseStartInfo trade =
+    case trade of
+        PartiallyLoadedTrade pInfo ->
+            { pInfo | phaseStartInfo = Just phaseStartInfo }
+                |> checkIfTradeLoaded
+
+        LoadedTrade info ->
+            let
+                _ =
+                    Debug.log "Trying to update phaseStartInfo on a trade that's already fully loaded!" ""
+            in
+            trade
+
+
 updateState : State -> Trade -> Trade
 updateState state trade =
     case trade of
@@ -238,14 +267,15 @@ updatePaymentMethods paymentMethods trade =
 
 checkIfTradeLoaded : PartialTradeInfo -> Trade
 checkIfTradeLoaded pInfo =
-    case ( ( pInfo.creationInfo, pInfo.parameters ), ( pInfo.state, pInfo.paymentMethods ) ) of
-        ( ( Just creationInfo, Just parameters ), ( Just state, Just paymentMethods ) ) ->
+    case ( ( pInfo.creationInfo, pInfo.parameters ), ( pInfo.state, pInfo.paymentMethods ), pInfo.phaseStartInfo ) of
+        ( ( Just creationInfo, Just parameters ), ( Just state, Just paymentMethods ), Just phaseStartInfo ) ->
             LoadedTrade
                 (FullTradeInfo
                     pInfo.factoryID
                     creationInfo
                     parameters
                     state
+                    phaseStartInfo
                     (deriveValues parameters state)
                     paymentMethods
                 )
@@ -566,6 +596,26 @@ decodeState numDecimals encodedState =
         maybePhase
         maybePhaseStartTime
         maybeClosedReason
+
+
+decodePhaseStartInfo : DHT.GetPhaseStartInfo -> Maybe PhaseStartInfo
+decodePhaseStartInfo encoded =
+    Maybe.map4
+        (\openedTimeBigInt committedTimeBigInt claimedTimeBigInt closedTimeBigInt ->
+            { openedTime = openedTimeBigInt
+            , committedTime = committedTimeBigInt
+            , claimedTime = claimedTimeBigInt
+            , closedTime = closedTimeBigInt
+            , openedBlock = encoded.v1
+            , committedBlock = encoded.v2
+            , claimedBlock = encoded.v3
+            , closedBlock = encoded.v4
+            }
+        )
+        (TimeHelpers.secondsBigIntToMaybePosix encoded.v6)
+        (TimeHelpers.secondsBigIntToMaybePosix encoded.v7)
+        (TimeHelpers.secondsBigIntToMaybePosix encoded.v8)
+        (TimeHelpers.secondsBigIntToMaybePosix encoded.v9)
 
 
 initiatorOrResponderToBuyerOrSeller : OpenMode -> InitiatorOrResponder -> BuyerOrSeller

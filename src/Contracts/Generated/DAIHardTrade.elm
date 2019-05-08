@@ -1,6 +1,7 @@
 module Contracts.Generated.DAIHardTrade exposing
     ( Committed
     , GetParameters
+    , GetPhaseStartInfo
     , GetState
     , InitiatorStatementLog
     , Opened
@@ -28,6 +29,8 @@ module Contracts.Generated.DAIHardTrade exposing
     , getBalance
     , getParameters
     , getParametersDecoder
+    , getPhaseStartInfo
+    , getPhaseStartInfoDecoder
     , getState
     , getStateDecoder
     , initiator
@@ -351,6 +354,51 @@ getParametersDecoder =
         |> andMap AbiDecode.bool
         |> andMap AbiDecode.uint
         |> andMap AbiDecode.string
+        |> andMap AbiDecode.uint
+        |> andMap AbiDecode.uint
+        |> andMap AbiDecode.uint
+        |> andMap AbiDecode.uint
+        |> andMap AbiDecode.uint
+        |> toElmDecoder
+
+
+{-| "getPhaseStartInfo()" function
+-}
+type alias GetPhaseStartInfo =
+    { v0 : BigInt
+    , v1 : BigInt
+    , v2 : BigInt
+    , v3 : BigInt
+    , v4 : BigInt
+    , v5 : BigInt
+    , v6 : BigInt
+    , v7 : BigInt
+    , v8 : BigInt
+    , v9 : BigInt
+    }
+
+
+getPhaseStartInfo : Address -> Call GetPhaseStartInfo
+getPhaseStartInfo contractAddress =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "getPhaseStartInfo()" []
+    , nonce = Nothing
+    , decoder = getPhaseStartInfoDecoder
+    }
+
+
+getPhaseStartInfoDecoder : Decoder GetPhaseStartInfo
+getPhaseStartInfoDecoder =
+    abiDecode GetPhaseStartInfo
+        |> andMap AbiDecode.uint
+        |> andMap AbiDecode.uint
+        |> andMap AbiDecode.uint
+        |> andMap AbiDecode.uint
+        |> andMap AbiDecode.uint
         |> andMap AbiDecode.uint
         |> andMap AbiDecode.uint
         |> andMap AbiDecode.uint

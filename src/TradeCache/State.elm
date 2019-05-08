@@ -168,7 +168,7 @@ update msg prevModel =
 
                         cmd =
                             Cmd.batch
-                                [ Contracts.Wrappers.getParametersAndStateCmd prevModel.ethNode creationInfo.address (ParametersFetched id) (StateFetched id)
+                                [ Contracts.Wrappers.getParametersStateAndPhaseInfoCmd prevModel.ethNode creationInfo.address (ParametersFetched id) (StateFetched id) (PhaseStartInfoFetched id)
                                 , sentryCmd
                                 ]
                     in
@@ -201,6 +201,20 @@ update msg prevModel =
             case fetchResult of
                 Ok (Just state) ->
                     ( prevModel |> updateTradeState id state
+                    , Cmd.none
+                    )
+
+                _ ->
+                    let
+                        _ =
+                            EthHelpers.logBadFetchResultMaybe fetchResult
+                    in
+                    ( prevModel, Cmd.none )
+
+        PhaseStartInfoFetched id fetchResult ->
+            case fetchResult of
+                Ok (Just phaseStartInfo) ->
+                    ( prevModel |> updateTradePhaseStartInfo id phaseStartInfo
                     , Cmd.none
                     )
 
@@ -332,7 +346,7 @@ updateTradeParameters id parameters tradeCache =
         Nothing ->
             let
                 _ =
-                    Debug.log "updateTTParameters ran into an out-of-range error" ""
+                    Debug.log "updateTradeParameters ran into an out-of-range error" ""
             in
             tradeCache
 
@@ -355,7 +369,30 @@ updateTradeState id state tradeCache =
         Nothing ->
             let
                 _ =
-                    Debug.log "updateTTState ran into an out-of-range error" ""
+                    Debug.log "updateTradeState ran into an out-of-range error" ""
+            in
+            tradeCache
+
+
+updateTradePhaseStartInfo : Int -> CTypes.PhaseStartInfo -> TradeCache -> TradeCache
+updateTradePhaseStartInfo id phaseStartInfo tradeCache =
+    case Array.get id tradeCache.trades of
+        Just trade ->
+            let
+                newTrade =
+                    CTypes.updatePhaseStartInfo phaseStartInfo trade
+
+                newTradeArray =
+                    Array.set id
+                        newTrade
+                        tradeCache.trades
+            in
+            { tradeCache | trades = newTradeArray }
+
+        Nothing ->
+            let
+                _ =
+                    Debug.log "updateTradePhaseTimeInfo ran into an out-of-range error" ""
             in
             tradeCache
 
