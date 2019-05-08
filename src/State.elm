@@ -21,6 +21,8 @@ import Network exposing (..)
 import Routing
 import Time
 import Trade.State
+import TradeCache.State as TradeCache
+import TradeCache.Types exposing (TradeCache)
 import Types exposing (..)
 import Url exposing (Url)
 
@@ -46,16 +48,28 @@ init flags url key =
 
                     txSentry =
                         TxSentry.init ( txOut, txIn ) TxSentryMsg node.http
+
+                    ( tradeCache, tcCmd ) =
+                        TradeCache.initAndStartCaching node
+
+                    ( model, fromUrlCmd ) =
+                        { key = key
+                        , time = Time.millisToPosix 0
+                        , node = node
+                        , txSentry = txSentry
+                        , userAddress = Nothing
+                        , userInfo = Nothing
+                        , tradeCache = tradeCache
+                        , submodel = BetaLandingPage
+                        }
+                            |> updateFromUrl url
                 in
-                { key = key
-                , time = Time.millisToPosix 0
-                , node = node
-                , txSentry = txSentry
-                , userAddress = Nothing
-                , userInfo = Nothing
-                , submodel = BetaLandingPage
-                }
-                    |> updateFromUrl url
+                ( model
+                , Cmd.batch
+                    [ Cmd.map TradeCacheMsg tcCmd
+                    , fromUrlCmd
+                    ]
+                )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -269,6 +283,17 @@ updateValidModel msg model =
             in
             ( Running { model | txSentry = submodel }, subCmd )
 
+        TradeCacheMsg tradeCacheMsg ->
+            let
+                ( newTradeCache, tcCmd ) =
+                    TradeCache.update
+                        tradeCacheMsg
+                        model.tradeCache
+            in
+            ( Running { model | tradeCache = newTradeCache }
+            , tcCmd |> Cmd.map TradeCacheMsg
+            )
+
         Fail str ->
             ( Failed str, Cmd.none )
 
@@ -295,7 +320,7 @@ updateFromUrl url model =
 
 
 gotoRoute : ValidModel -> Routing.Route -> ( Model, Cmd Msg )
-gotoRoute model route =
+gotoRoute oldModel route =
     let
         newUrlString =
             Routing.routeToString route
@@ -303,7 +328,7 @@ gotoRoute model route =
     case route of
         Routing.Home ->
             ( Running
-                { model
+                { oldModel
                     | submodel = BetaLandingPage
                 }
             , Cmd.none
@@ -312,13 +337,13 @@ gotoRoute model route =
         Routing.Create ->
             let
                 ( createModel, createCmd, chainCmdOrder ) =
-                    Create.State.init model.node model.userInfo
+                    Create.State.init oldModel.node oldModel.userInfo
 
                 ( newTxSentry, chainCmd ) =
-                    ChainCmd.execute model.txSentry (ChainCmd.map CreateMsg chainCmdOrder)
+                    ChainCmd.execute oldModel.txSentry (ChainCmd.map CreateMsg chainCmdOrder)
             in
             ( Running
-                { model
+                { oldModel
                     | submodel = CreateModel createModel
                     , txSentry = newTxSentry
                 }
@@ -331,13 +356,13 @@ gotoRoute model route =
         Routing.Trade id ->
             let
                 ( tradeModel, tradeCmd, chainCmdOrder ) =
-                    Trade.State.init model.node model.userInfo id
+                    Trade.State.init oldModel.node oldModel.userInfo id
 
                 ( newTxSentry, chainCmd ) =
-                    ChainCmd.execute model.txSentry (ChainCmd.map TradeMsg chainCmdOrder)
+                    ChainCmd.execute oldModel.txSentry (ChainCmd.map TradeMsg chainCmdOrder)
             in
             ( Running
-                { model
+                { oldModel
                     | submodel = TradeModel tradeModel
                     , txSentry = newTxSentry
                 }
@@ -350,10 +375,10 @@ gotoRoute model route =
         Routing.Marketplace ->
             let
                 ( marketplaceModel, marketplaceCmd ) =
-                    Marketplace.State.init model.node model.userInfo
+                    Marketplace.State.init oldModel.node oldModel.userInfo
             in
             ( Running
-                { model
+                { oldModel
                     | submodel = MarketplaceModel marketplaceModel
                 }
             , Cmd.batch
@@ -364,10 +389,10 @@ gotoRoute model route =
         Routing.MyTrades ->
             let
                 ( myTradesModel, myTradesCmd ) =
-                    MyTrades.State.init model.node model.userInfo
+                    MyTrades.State.init oldModel.node oldModel.userInfo
             in
             ( Running
-                { model
+                { oldModel
                     | submodel = MyTradesModel myTradesModel
                 }
             , Cmd.batch
@@ -376,7 +401,7 @@ gotoRoute model route =
             )
 
         Routing.NotFound ->
-            ( Failed "Don't understand that url...", Browser.Navigation.pushUrl model.key newUrlString )
+            ( Failed "Don't understand that url...", Browser.Navigation.pushUrl oldModel.key newUrlString )
 
 
 updateSubmodelUserInfo : Maybe UserInfo -> Submodel -> ( Submodel, Cmd Msg )
@@ -425,6 +450,7 @@ subscriptions maybeValidModel =
                  , walletSentryPort (WalletSentry.decodeToMsg Fail WalletStatus)
                  , TxSentry.listen model.txSentry
                  , userPubkeyResult UserPubkeySet
+                 , Sub.map TradeCacheMsg <| TradeCache.subscriptions model.tradeCache
                  ]
                     ++ [ submodelSubscriptions model ]
                 )

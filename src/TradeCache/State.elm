@@ -1,4 +1,4 @@
-module TradeCache.State exposing (init, initAndStartCaching, loadedTrades, startCaching, update)
+module TradeCache.State exposing (init, initAndStartCaching, loadedTrades, startCaching, subscriptions, update)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
@@ -32,7 +32,7 @@ init ethNode =
 
 startCaching : TradeCache -> Cmd Msg
 startCaching tradeCache =
-    Contracts.Wrappers.getNumTradesCmd tradeCache.ethNode NumTradesFetched
+    Contracts.Wrappers.getNumTradesCmd tradeCache.ethNode InitialNumTradesFetched
 
 
 initAndStartCaching : EthHelpers.EthNode -> ( TradeCache, Cmd Msg )
@@ -52,7 +52,7 @@ initAndStartCaching ethNode =
 update : Msg -> TradeCache -> ( TradeCache, Cmd Msg )
 update msg prevModel =
     case msg of
-        NumTradesFetched fetchResult ->
+        InitialNumTradesFetched fetchResult ->
             case fetchResult of
                 Ok bigInt ->
                     case BigIntHelpers.toInt bigInt of
@@ -82,7 +82,7 @@ update msg prevModel =
                         Nothing ->
                             let
                                 _ =
-                                    Debug.log "can't convert the numTrades bigInt value to an int"
+                                    Debug.log "can't convert the numTrades bigInt value to an int" ""
                             in
                             ( prevModel, Cmd.none )
 
@@ -90,6 +90,63 @@ update msg prevModel =
                     let
                         _ =
                             Debug.log "can't fetch numTrades:" errstr
+                    in
+                    ( prevModel, Cmd.none )
+
+        CheckForNewTrades ->
+            ( prevModel
+            , Contracts.Wrappers.getNumTradesCmd prevModel.ethNode NumTradesFetchedAgain
+            )
+
+        NumTradesFetchedAgain fetchResult ->
+            case ( fetchResult, prevModel.numTrades ) of
+                ( Ok bigInt, Just oldNumTrades ) ->
+                    case BigIntHelpers.toInt bigInt of
+                        Just newNumTrades ->
+                            if oldNumTrades < newNumTrades then
+                                let
+                                    fetchCreationInfoCmd =
+                                        Cmd.batch
+                                            (List.range oldNumTrades (newNumTrades - 1)
+                                                |> List.map
+                                                    (\id ->
+                                                        Contracts.Wrappers.getCreationInfoFromIdCmd prevModel.ethNode (BigInt.fromInt id) (CreationInfoFetched id)
+                                                    )
+                                            )
+
+                                    additionalTrades =
+                                        List.range oldNumTrades (newNumTrades - 1)
+                                            |> List.map CTypes.partialTradeInfo
+                                            |> Array.fromList
+                                in
+                                ( { prevModel
+                                    | numTrades = Just newNumTrades
+                                    , trades = Array.append prevModel.trades additionalTrades
+                                  }
+                                , fetchCreationInfoCmd
+                                )
+
+                            else
+                                ( prevModel, Cmd.none )
+
+                        Nothing ->
+                            let
+                                _ =
+                                    Debug.log "Can't convert the numTrades bigInt value to an int" ""
+                            in
+                            ( prevModel, Cmd.none )
+
+                ( Err errstr, _ ) ->
+                    let
+                        _ =
+                            Debug.log "can't fetch numTrades:" errstr
+                    in
+                    ( prevModel, Cmd.none )
+
+                ( _, Nothing ) ->
+                    let
+                        _ =
+                            Debug.log "Trying to fetch additional trades, but there is an unexpected Nothing in the existing numTrades." ""
                     in
                     ( prevModel, Cmd.none )
 
@@ -111,7 +168,7 @@ update msg prevModel =
 
                         cmd =
                             Cmd.batch
-                                [ Contracts.Wrappers.getParametersAndStateCmd prevModel.ethNode creationInfo.address (ParametersFetched id) (StateFetched id)
+                                [ Contracts.Wrappers.getParametersStateAndPhaseInfoCmd prevModel.ethNode creationInfo.address (ParametersFetched id) (StateFetched id) (PhaseStartInfoFetched id)
                                 , sentryCmd
                                 ]
                     in
@@ -144,6 +201,20 @@ update msg prevModel =
             case fetchResult of
                 Ok (Just state) ->
                     ( prevModel |> updateTradeState id state
+                    , Cmd.none
+                    )
+
+                _ ->
+                    let
+                        _ =
+                            EthHelpers.logBadFetchResultMaybe fetchResult
+                    in
+                    ( prevModel, Cmd.none )
+
+        PhaseStartInfoFetched id fetchResult ->
+            case fetchResult of
+                Ok (Just phaseStartInfo) ->
+                    ( prevModel |> updateTradePhaseStartInfo id phaseStartInfo
                     , Cmd.none
                     )
 
@@ -275,7 +346,7 @@ updateTradeParameters id parameters tradeCache =
         Nothing ->
             let
                 _ =
-                    Debug.log "updateTTParameters ran into an out-of-range error" ""
+                    Debug.log "updateTradeParameters ran into an out-of-range error" ""
             in
             tradeCache
 
@@ -298,7 +369,30 @@ updateTradeState id state tradeCache =
         Nothing ->
             let
                 _ =
-                    Debug.log "updateTTState ran into an out-of-range error" ""
+                    Debug.log "updateTradeState ran into an out-of-range error" ""
+            in
+            tradeCache
+
+
+updateTradePhaseStartInfo : Int -> CTypes.PhaseStartInfo -> TradeCache -> TradeCache
+updateTradePhaseStartInfo id phaseStartInfo tradeCache =
+    case Array.get id tradeCache.trades of
+        Just trade ->
+            let
+                newTrade =
+                    CTypes.updatePhaseStartInfo phaseStartInfo trade
+
+                newTradeArray =
+                    Array.set id
+                        newTrade
+                        tradeCache.trades
+            in
+            { tradeCache | trades = newTradeArray }
+
+        Nothing ->
+            let
+                _ =
+                    Debug.log "updateTradePhaseTimeInfo ran into an out-of-range error" ""
             in
             tradeCache
 
@@ -324,3 +418,8 @@ updateTradePaymentMethods id methods tradeCache =
                     Debug.log "updateTTPaymentMethods ran into an out-of-range error" ""
             in
             tradeCache
+
+
+subscriptions : TradeCache -> Sub Msg
+subscriptions tradeCache =
+    Time.every 5000 (\_ -> CheckForNewTrades)

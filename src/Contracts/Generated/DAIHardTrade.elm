@@ -1,6 +1,7 @@
 module Contracts.Generated.DAIHardTrade exposing
     ( Committed
     , GetParameters
+    , GetPhaseStartInfo
     , GetState
     , InitiatorStatementLog
     , Opened
@@ -19,6 +20,7 @@ module Contracts.Generated.DAIHardTrade exposing
     , buyerDeposit
     , claim
     , claimedEvent
+    , closedReason
     , commit
     , committedDecoder
     , committedEvent
@@ -27,6 +29,8 @@ module Contracts.Generated.DAIHardTrade exposing
     , getBalance
     , getParameters
     , getParametersDecoder
+    , getPhaseStartInfo
+    , getPhaseStartInfoDecoder
     , getState
     , getStateDecoder
     , initiator
@@ -38,6 +42,7 @@ module Contracts.Generated.DAIHardTrade exposing
     , openedDecoder
     , openedEvent
     , phase
+    , phaseStartBlocknums
     , phaseStartTimestamps
     , poke
     , pokeEvent
@@ -239,6 +244,21 @@ claim contractAddress =
     }
 
 
+{-| "closedReason()" function
+-}
+closedReason : Address -> Call BigInt
+closedReason contractAddress =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "closedReason()" []
+    , nonce = Nothing
+    , decoder = toElmDecoder AbiDecode.uint
+    }
+
+
 {-| "commit(string)" function
 -}
 commit : Address -> String -> Call ()
@@ -342,6 +362,51 @@ getParametersDecoder =
         |> toElmDecoder
 
 
+{-| "getPhaseStartInfo()" function
+-}
+type alias GetPhaseStartInfo =
+    { v0 : BigInt
+    , v1 : BigInt
+    , v2 : BigInt
+    , v3 : BigInt
+    , v4 : BigInt
+    , v5 : BigInt
+    , v6 : BigInt
+    , v7 : BigInt
+    , v8 : BigInt
+    , v9 : BigInt
+    }
+
+
+getPhaseStartInfo : Address -> Call GetPhaseStartInfo
+getPhaseStartInfo contractAddress =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "getPhaseStartInfo()" []
+    , nonce = Nothing
+    , decoder = getPhaseStartInfoDecoder
+    }
+
+
+getPhaseStartInfoDecoder : Decoder GetPhaseStartInfo
+getPhaseStartInfoDecoder =
+    abiDecode GetPhaseStartInfo
+        |> andMap AbiDecode.uint
+        |> andMap AbiDecode.uint
+        |> andMap AbiDecode.uint
+        |> andMap AbiDecode.uint
+        |> andMap AbiDecode.uint
+        |> andMap AbiDecode.uint
+        |> andMap AbiDecode.uint
+        |> andMap AbiDecode.uint
+        |> andMap AbiDecode.uint
+        |> andMap AbiDecode.uint
+        |> toElmDecoder
+
+
 {-| "getState()" function
 -}
 type alias GetState =
@@ -349,6 +414,7 @@ type alias GetState =
     , phase : BigInt
     , phaseStartTimestamp : BigInt
     , responder : Address
+    , closedReason : BigInt
     }
 
 
@@ -372,6 +438,7 @@ getStateDecoder =
         |> andMap AbiDecode.uint
         |> andMap AbiDecode.uint
         |> andMap AbiDecode.address
+        |> andMap AbiDecode.uint
         |> toElmDecoder
 
 
@@ -445,6 +512,21 @@ phase contractAddress =
     , gasPrice = Nothing
     , value = Nothing
     , data = Just <| AbiEncode.functionCall "phase()" []
+    , nonce = Nothing
+    , decoder = toElmDecoder AbiDecode.uint
+    }
+
+
+{-| "phaseStartBlocknums(uint256)" function
+-}
+phaseStartBlocknums : Address -> BigInt -> Call BigInt
+phaseStartBlocknums contractAddress a =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "phaseStartBlocknums(uint256)" [ AbiEncode.uint a ]
     , nonce = Nothing
     , decoder = toElmDecoder AbiDecode.uint
     }

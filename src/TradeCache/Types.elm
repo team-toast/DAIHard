@@ -23,9 +23,12 @@ type alias TradeCache =
 
 
 type Msg
-    = NumTradesFetched (Result Http.Error BigInt)
+    = InitialNumTradesFetched (Result Http.Error BigInt)
+    | CheckForNewTrades
+    | NumTradesFetchedAgain (Result Http.Error BigInt)
     | CreationInfoFetched Int (Result Http.Error DHF.CreatedTrade)
     | ParametersFetched Int (Result Http.Error (Result String CTypes.TradeParameters))
     | StateFetched Int (Result Http.Error (Maybe CTypes.State))
+    | PhaseStartInfoFetched Int (Result Http.Error (Maybe CTypes.PhaseStartInfo))
     | OpenedEventDataFetched Int (Result Json.Decode.Error DHT.Opened)
     | EventSentryMsg EventSentry.Msg

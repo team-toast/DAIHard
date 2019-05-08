@@ -43,10 +43,10 @@ init node userInfo tradeId =
     ( { node = node
       , userInfo = userInfo
       , trade = CTypes.partialTradeInfo tradeId
-      , stats = Waiting
       , expandedPhase = CTypes.Open
       , chatHistoryModel = Nothing
       , showChatHistory = False
+      , showStatsModal = False
       , eventsWaitingForChatHistory = []
       , secureCommInfo = partialCommInfo
       , eventSentry = eventSentry
@@ -213,7 +213,7 @@ update msg prevModel =
                         cmd =
                             Cmd.batch
                                 [ sentryCmd
-                                , Contracts.Wrappers.getParametersAndStateCmd newModel.node newCreationInfo.address ParametersFetched StateFetched
+                                , Contracts.Wrappers.getParametersStateAndPhaseInfoCmd newModel.node newCreationInfo.address ParametersFetched StateFetched PhaseInfoFetched
                                 ]
                     in
                     ( newModel
@@ -287,6 +287,27 @@ update msg prevModel =
                     in
                     ( prevModel, Cmd.none, ChainCmd.none )
 
+        PhaseInfoFetched fetchResult ->
+            case fetchResult of
+                Ok (Just phaseInfo) ->
+                    let
+                        newModel =
+                            { prevModel
+                                | trade = prevModel.trade |> CTypes.updatePhaseStartInfo phaseInfo
+                            }
+                    in
+                    ( newModel
+                    , tryBuildDecryptCmd newModel
+                    , ChainCmd.none
+                    )
+
+                _ ->
+                    let
+                        _ =
+                            EthHelpers.logBadFetchResultMaybe fetchResult
+                    in
+                    ( prevModel, Cmd.none, ChainCmd.none )
+
         EventLogFetched log ->
             let
                 ( newModel, cmd ) =
@@ -310,6 +331,20 @@ update msg prevModel =
                         True
             in
             ( { prevModel | showChatHistory = showChat }
+            , Cmd.none
+            , ChainCmd.none
+            )
+
+        ToggleStatsModal ->
+            let
+                showStatsModal =
+                    if prevModel.showStatsModal then
+                        False
+
+                    else
+                        True
+            in
+            ( { prevModel | showStatsModal = showStatsModal }
             , Cmd.none
             , ChainCmd.none
             )

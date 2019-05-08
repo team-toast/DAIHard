@@ -17,6 +17,7 @@ module ElementHelpers exposing
     , elOnCircle
     , elementColorToAvh4Color
     , errorMessage
+    , ethAddress
     , etherscanAddressLink
     , fakeLink
     , fancyInput
@@ -1105,3 +1106,16 @@ coolCurrencyHbreak reversed length =
             )
         ]
         (Element.text " ")
+
+
+ethAddress : Int -> Address -> Element msg
+ethAddress fontSize address =
+    Element.el
+        [ Element.Border.rounded 4
+        , Element.Background.color <| Element.rgba 0 0 1 0.1
+        , Element.Font.color <| Element.rgb255 16 7 234
+        , Element.Font.size fontSize
+        , Element.Font.semiBold
+        , Element.paddingXY 15 13
+        ]
+        (Element.text <| Eth.Utils.addressToString address)

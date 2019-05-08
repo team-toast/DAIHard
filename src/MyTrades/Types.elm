@@ -25,7 +25,6 @@ import TradeCache.Types as TradeCache exposing (TradeCache)
 type alias Model =
     { ethNode : EthNode
     , userInfo : Maybe UserInfo
-    , tradeCache : TradeCache
     , viewUserRole : BuyerOrSeller
     , viewPhase : CTypes.Phase
     }
@@ -36,7 +35,6 @@ type Msg
     | ViewPhaseChanged CTypes.Phase
     | Poke Address
     | TradeClicked Int
-    | TradeCacheMsg TradeCache.Msg
     | NoOp
 
 

@@ -6,6 +6,7 @@ import Collage exposing (Collage)
 import Collage.Render
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes exposing (FullTradeInfo)
+import DateFormat
 import Element exposing (Attribute, Element)
 import Element.Background
 import Element.Border
@@ -13,6 +14,7 @@ import Element.Events
 import Element.Font
 import Element.Input
 import ElementHelpers as EH
+import Eth.Types exposing (Address)
 import Eth.Utils
 import EthHelpers exposing (EthNode)
 import FiatValue exposing (FiatValue)
@@ -25,10 +27,11 @@ import TimeHelpers
 import TokenValue exposing (TokenValue)
 import Trade.ChatHistory.View as ChatHistory
 import Trade.Types exposing (..)
+import TradeCache.Types exposing (TradeCache)
 
 
-root : Time.Posix -> Model -> Element.Element Msg
-root time model =
+root : Time.Posix -> TradeCache -> Model -> Element.Element Msg
+root time tradeCache model =
     case model.trade of
         CTypes.LoadedTrade tradeInfo ->
             Element.column
@@ -38,7 +41,7 @@ root time model =
                 , Element.inFront <| chatOverlayElement model
                 , Element.inFront <| getModalOrNone model
                 ]
-                [ header time tradeInfo model.stats model.userInfo model.node.network
+                [ header time tradeInfo model.userInfo model.node.network tradeCache model.showStatsModal
                 , Element.column
                     [ Element.width Element.fill
                     , Element.paddingXY 40 0
@@ -58,14 +61,14 @@ root time model =
                 (Element.text "Loading contract info...")
 
 
-header : Time.Posix -> FullTradeInfo -> StatsModel -> Maybe UserInfo -> Network -> Element Msg
-header currentTime trade stats maybeUserInfo network =
+header : Time.Posix -> FullTradeInfo -> Maybe UserInfo -> Network -> TradeCache -> Bool -> Element Msg
+header currentTime trade maybeUserInfo network tradeCache showStatsModal =
     EH.niceFloatingRow
         [ tradeStatusElement trade network
         , daiAmountElement trade maybeUserInfo
         , fiatElement trade
         , marginElement trade maybeUserInfo
-        , statsElement stats
+        , statsElement trade tradeCache showStatsModal
         , case maybeUserInfo of
             Just userInfo ->
                 actionButtonsElement currentTime trade userInfo
@@ -209,11 +212,242 @@ renderMargin marginFloat maybeUserInfo =
         ]
 
 
-statsElement : StatsModel -> Element Msg
-statsElement stats =
-    EH.withHeader
-        "Initiator Stats"
-        (EH.comingSoonMsg [] "Reputation stats coming soon!")
+type alias Stats =
+    { firstTrade : Maybe Time.Posix
+    , numTrades : Int
+    , numBurns : Int
+    , numReleases : Int
+    , numAborts : Int
+    , amountBurned : TokenValue
+    , amountReleased : TokenValue
+    }
+
+
+generateStatsForSeller : TradeCache -> Address -> Stats
+generateStatsForSeller tradeCache sellerAddress =
+    let
+        fullTradesFromSeller =
+            tradeCache.trades
+                |> Array.toList
+                |> List.filterMap
+                    (\t ->
+                        case t of
+                            CTypes.LoadedTrade loadedT ->
+                                Just loadedT
+
+                            _ ->
+                                Nothing
+                    )
+                |> List.filter
+                    -- filter for trades that share the same Seller
+                    (\t ->
+                        CTypes.getBuyerOrSeller t sellerAddress == Just Seller
+                    )
+
+        talliedVals =
+            fullTradesFromSeller
+                |> List.foldl
+                    (\trade tallied ->
+                        if trade.state.closedReason == CTypes.Released then
+                            { tallied
+                                | numReleases = tallied.numReleases + 1
+                                , amountReleased =
+                                    TokenValue.add
+                                        tallied.amountReleased
+                                        trade.parameters.tradeAmount
+                            }
+
+                        else if trade.state.closedReason == CTypes.Burned then
+                            { tallied
+                                | numBurns = tallied.numBurns + 1
+                                , amountBurned =
+                                    TokenValue.add
+                                        tallied.amountBurned
+                                        trade.parameters.tradeAmount
+                            }
+
+                        else if trade.state.closedReason == CTypes.Aborted then
+                            { tallied | numAborts = tallied.numAborts + 1 }
+
+                        else
+                            tallied
+                    )
+                    { numBurns = 0
+                    , numReleases = 0
+                    , numAborts = 0
+                    , amountBurned = TokenValue.zero tokenDecimals
+                    , amountReleased = TokenValue.zero tokenDecimals
+                    }
+
+        numTrades =
+            List.length fullTradesFromSeller
+
+        firstTradeDate =
+            fullTradesFromSeller
+                |> List.filterMap
+                    (\t ->
+                        Time.posixToMillis t.phaseStartInfo.committedTime
+                            |> (\millis ->
+                                    if millis == 0 then
+                                        Nothing
+
+                                    else
+                                        Just millis
+                               )
+                    )
+                |> List.sort
+                |> List.head
+                |> Maybe.map Time.millisToPosix
+    in
+    { numTrades = numTrades
+    , firstTrade = firstTradeDate
+    , numBurns = talliedVals.numBurns
+    , numReleases = talliedVals.numReleases
+    , numAborts = talliedVals.numAborts
+    , amountBurned = talliedVals.amountBurned
+    , amountReleased = talliedVals.amountReleased
+    }
+
+
+statsElement : FullTradeInfo -> TradeCache -> Bool -> Element Msg
+statsElement trade tradeCache showModal =
+    case trade.parameters.openMode of
+        CTypes.SellerOpened ->
+            let
+                sellerStats =
+                    generateStatsForSeller tradeCache trade.parameters.initiatorAddress
+            in
+            Element.el
+                (if showModal then
+                    [ Element.below
+                        (Element.el
+                            [ Element.moveDown 30 ]
+                            (statsModal trade.parameters.initiatorAddress sellerStats)
+                        )
+                    ]
+
+                 else
+                    []
+                )
+            <|
+                EH.withHeader
+                    "Seller Stats"
+                    (Element.row
+                        [ Element.width Element.fill
+                        , Element.spacing 30
+                        , Element.pointer
+                        , Element.Events.onClick ToggleStatsModal
+                        ]
+                        [ Element.row
+                            []
+                            [ Images.toElement
+                                [ Element.height <| Element.px 28
+                                ]
+                                Images.release
+                            , Element.el
+                                [ Element.Font.size 24
+                                , Element.Font.medium
+                                ]
+                                (Element.text (String.padLeft 2 '0' <| String.fromInt sellerStats.numReleases))
+                            ]
+                        , Element.row
+                            []
+                            [ Images.toElement
+                                [ Element.height <| Element.px 28
+                                ]
+                                Images.flame
+                            , Element.el
+                                [ Element.Font.size 24
+                                , Element.Font.medium
+                                ]
+                                (Element.text (String.padLeft 2 '0' <| String.fromInt sellerStats.numBurns))
+                            ]
+                        ]
+                    )
+
+        CTypes.BuyerOpened ->
+            Element.text "??"
+
+
+statsModal : Address -> Stats -> Element Msg
+statsModal address stats =
+    let
+        statEl titleString statString =
+            Element.column
+                [ Element.Font.size 18
+                , Element.spacing 6
+                ]
+                [ Element.el
+                    [ Element.Font.bold ]
+                    (Element.text titleString)
+                , Element.el
+                    [ Element.Font.regular ]
+                    (Element.text statString)
+                ]
+
+        statsBody =
+            Element.column
+                [ Element.spacing 23 ]
+                (List.map
+                    (\( titleString, statString ) -> statEl titleString statString)
+                    [ ( "First Trade"
+                      , case stats.firstTrade of
+                            Just date ->
+                                dateFormatter
+                                    Time.utc
+                                    date
+
+                            Nothing ->
+                                "No Committed Trades yet!"
+                      )
+                    , ( "Release Outcomes"
+                      , String.fromInt stats.numReleases
+                            ++ " trades / "
+                            ++ TokenValue.toConciseString stats.amountReleased
+                            ++ " DAI Released"
+                      )
+                    , ( "Burn Outcomes"
+                      , String.fromInt stats.numBurns
+                            ++ " trades / "
+                            ++ TokenValue.toConciseString stats.amountBurned
+                            ++ " DAI Burned"
+                      )
+                    ]
+                )
+
+        dateFormatter =
+            DateFormat.format
+                [ DateFormat.monthNameFull
+                , DateFormat.text ", "
+                , DateFormat.yearNumber
+                ]
+    in
+    Element.column
+        [ Element.Border.rounded 8
+        , Element.clipX
+        , Element.clipY
+        , Element.Background.color EH.lightGray
+        , Element.spacing 1
+        , Element.Border.shadow
+            { offset = ( 0, 0 )
+            , size = 0
+            , blur = 20
+            , color = Element.rgba 0 0 0 0.08
+            }
+        ]
+        [ Element.el
+            [ Element.width Element.fill
+            , Element.Background.color EH.white
+            , Element.padding 17
+            ]
+            (EH.ethAddress 18 address)
+        , Element.el
+            [ Element.width Element.fill
+            , Element.Background.color EH.white
+            , Element.padding 17
+            ]
+            statsBody
+        ]
 
 
 actionButtonsElement : Time.Posix -> FullTradeInfo -> UserInfo -> Element Msg
@@ -280,7 +514,7 @@ phasesElement trade expandedPhase maybeUserInfo currentTime =
                         , Element.Font.semiBold
                         , Element.Font.color EH.white
                         ]
-                        (Element.text "Trade Closed")
+                        (Element.text <| "Trade " ++ closedReasonToText trade.state.closedReason)
                     )
                 ]
 
@@ -456,38 +690,39 @@ phaseStatusElement viewPhase trade currentTime =
                 )
 
         intervalElement =
-            if viewPhase == CTypes.Closed then
-                Element.none
+            case viewPhase of
+                CTypes.Closed ->
+                    Element.none
 
-            else
-                case viewPhaseState of
-                    NotStarted ->
-                        EH.interval
-                            [ Element.centerX ]
-                            [ Element.Font.size 22, Element.Font.medium ]
-                            ( EH.black, EH.lightGray )
-                            (CTypes.getPhaseInterval viewPhase trade)
+                _ ->
+                    case viewPhaseState of
+                        NotStarted ->
+                            EH.interval
+                                [ Element.centerX ]
+                                [ Element.Font.size 22, Element.Font.medium ]
+                                ( EH.black, EH.lightGray )
+                                (CTypes.getPhaseInterval viewPhase trade)
 
-                    Active ->
-                        case CTypes.getCurrentPhaseTimeoutInfo currentTime trade of
-                            CTypes.TimeLeft timeoutInfo ->
-                                EH.intervalWithElapsedBar
-                                    [ Element.centerX ]
-                                    [ Element.Font.size 22, Element.Font.medium ]
-                                    ( EH.white, EH.lightGray )
-                                    timeoutInfo
+                        Active ->
+                            case CTypes.getCurrentPhaseTimeoutInfo currentTime trade of
+                                CTypes.TimeLeft timeoutInfo ->
+                                    EH.intervalWithElapsedBar
+                                        [ Element.centerX ]
+                                        [ Element.Font.size 22, Element.Font.medium ]
+                                        ( EH.white, EH.lightGray )
+                                        timeoutInfo
 
-                            CTypes.TimeUp _ ->
-                                Element.column
-                                    [ Element.centerX
-                                    , Element.spacing 10
-                                    ]
-                                    [ Element.el [ Element.centerX ] <| Element.text (CTypes.getPokeText viewPhase)
-                                    , EH.blueButton "Poke" (StartContractAction Poke)
-                                    ]
+                                CTypes.TimeUp _ ->
+                                    Element.column
+                                        [ Element.centerX
+                                        , Element.spacing 10
+                                        ]
+                                        [ Element.el [ Element.centerX ] <| Element.text (CTypes.getPokeText viewPhase)
+                                        , EH.blueButton "Poke" (StartContractAction Poke)
+                                        ]
 
-                    Finished ->
-                        Element.el [ Element.height <| Element.px 1 ] Element.none
+                        Finished ->
+                            Element.el [ Element.height <| Element.px 1 ] Element.none
 
         phaseStateElement =
             Element.el
@@ -763,7 +998,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                         [ [ Element.text "You must now pay the Seller "
                           , emphasizedText fiatAmountString
                           , Element.text " via one of the accepted payment methods below, "
-                          , Element.el [ Element.Font.semiBold ] <| Element.text "and click "
+                          , Element.el [ Element.Font.semiBold ] <| Element.text "and then click "
                           , scaryText "Confirm Payment"
                           , Element.text " before the payment window runs out. Use the chat to coordinate."
                           ]
@@ -844,6 +1079,9 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                           , scaryText "burn the contract's balance of "
                           , emphasizedText tradePlusDepositString
                           , scaryText "."
+                          , Element.text " In this case the "
+                          , emphasizedText tradePlusDepositString
+                          , Element.text " will be lost to both parties."
                           ]
                         , [ Element.text "These are the only options the Seller has. So, fingers crossed!"
                           ]
@@ -1130,3 +1368,22 @@ actionName action =
 
         Burn ->
             "burn"
+
+
+closedReasonToText : CTypes.ClosedReason -> String
+closedReasonToText reason =
+    case reason of
+        CTypes.NotClosed ->
+            ""
+
+        CTypes.Recalled ->
+            "Recalled"
+
+        CTypes.Aborted ->
+            "Aborted"
+
+        CTypes.Released ->
+            "Released"
+
+        CTypes.Burned ->
+            "Burned"

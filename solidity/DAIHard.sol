@@ -157,6 +157,8 @@ contract DAIHardFactory {
         //transfer DAI to the trade and open it
         require(daiContract.transferFrom(msg.sender, address(newTrade), transferAmount), "Token transfer failed. Did you call approve() on the DAI contract?");
         newTrade.open(_initiator, initiatorIsBuyer, newUintArgs, _totalPrice, _fiatTransferMethods, _commPubkey);
+
+        return newTrade;
     }
 
     function getNumTrades()
@@ -176,12 +178,17 @@ contract DAIHardTrade {
         _;
     }
 
+    enum ClosedReason {NotClosed, Recalled, Aborted, Released, Burned}
+    ClosedReason public closedReason;
+
     uint[5] public phaseStartTimestamps;
+    uint[5] public phaseStartBlocknums;
 
     function changePhase(Phase p)
     internal {
         phase = p;
         phaseStartTimestamps[uint(p)] = block.timestamp;
+        phaseStartBlocknums[uint(p)] = block.number;
     }
 
 
@@ -222,6 +229,7 @@ contract DAIHardTrade {
     constructor(ERC20Interface _daiContract, address payable _devFeeAddress)
     public {
         changePhase(Phase.Created);
+        closedReason = ClosedReason.NotClosed;
 
         daiContract = _daiContract;
         devFeeAddress = _devFeeAddress;
@@ -244,6 +252,20 @@ contract DAIHardTrade {
 
     bool public pokeRewardSent;
 
+    /* ---------------------- CREATED PHASE -----------------------
+
+    The only reason for this phase is so the Factory can have
+    somewhere to send the DAI before the Trade is initiated with
+    all the settings, and moved to the Open phase.
+
+    The Factory creates the DAIHardTrade and moves it past this state
+    in a single call, so any DAIHardTrade made by the factory should
+    never be "seen" in this state.
+
+    ------------------------------------------------------------ */
+
+    event Opened(string fiatTransferMethods, string commPubkey);
+
     /*
     uintArgs:
     0 - responderDeposit
@@ -253,8 +275,6 @@ contract DAIHardTrade {
     4 - autoabortInterval
     5 - autoreleaseInterval
     */
-
-    event Opened(string fiatTransferMethods, string commPubkey);
 
     function open(address payable _initiator, bool _initiatorIsBuyer, uint[6] memory uintArgs, string memory _price, string memory fiatTransferMethods, string memory commPubkey)
     public
@@ -317,6 +337,8 @@ contract DAIHardTrade {
         require(daiContract.transfer(initiator, getBalance()), "Recall of DAI to initiator failed!");
 
         changePhase(Phase.Closed);
+        closedReason = ClosedReason.Recalled;
+
         emit Recalled();
     }
 
@@ -396,6 +418,8 @@ contract DAIHardTrade {
         //There may be a wei or two left over in the contract due to integer division. Not a big deal.
 
         changePhase(Phase.Closed);
+        closedReason = ClosedReason.Aborted;
+
         emit Aborted();
     }
 
@@ -431,14 +455,6 @@ contract DAIHardTrade {
     event Released();
     event Burned();
 
-    function autoreleaseAvailable()
-    public
-    view
-    inPhase(Phase.Claimed)
-    returns(bool available) {
-        return (block.timestamp >= SafeMath.add(phaseStartTimestamps[uint(Phase.Claimed)], autoreleaseInterval));
-    }
-
     function release()
     external
     inPhase(Phase.Claimed)
@@ -460,7 +476,17 @@ contract DAIHardTrade {
         require(daiContract.transfer(buyer, getBalance()), "Final release transfer to buyer failed!");
 
         changePhase(Phase.Closed);
+        closedReason = ClosedReason.Released;
+
         emit Released();
+    }
+
+    function autoreleaseAvailable()
+    public
+    view
+    inPhase(Phase.Claimed)
+    returns(bool available) {
+        return (block.timestamp >= SafeMath.add(phaseStartTimestamps[uint(Phase.Claimed)], autoreleaseInterval));
     }
 
     function burn()
@@ -477,6 +503,8 @@ contract DAIHardTrade {
         require(daiContract.transfer(address(0x0), getBalance()), "Final DAI burn failed!");
 
         changePhase(Phase.Closed);
+        closedReason = ClosedReason.Burned;
+
         emit Burned();
     }
 
@@ -485,8 +513,8 @@ contract DAIHardTrade {
     function getState()
     external
     view
-    returns(uint balance, Phase phase, uint phaseStartTimestamp, address responder) {
-        return (getBalance(), this.phase(), phaseStartTimestamps[uint(this.phase())], this.responder());
+    returns(uint balance, Phase phase, uint phaseStartTimestamp, address responder, ClosedReason closedReason) {
+        return (getBalance(), this.phase(), phaseStartTimestamps[uint(this.phase())], this.responder(), this.closedReason());
     }
 
     function getBalance()
@@ -502,6 +530,14 @@ contract DAIHardTrade {
     returns (address initiator, bool initiatorIsBuyer, uint daiAmount, string memory totalPrice, uint buyerDeposit, uint autorecallInterval, uint autoabortInterval, uint autoreleaseInterval, uint pokeReward)
     {
         return (this.initiator(), this.initiatorIsBuyer(), this.daiAmount(), this.price(), this.buyerDeposit(), this.autorecallInterval(), this.autoabortInterval(), this.autoreleaseInterval(), this.pokeReward());
+    }
+
+    function getPhaseStartInfo()
+    external
+    view
+    returns (uint, uint, uint, uint, uint, uint, uint, uint, uint, uint)
+    {
+        return (phaseStartBlocknums[0], phaseStartBlocknums[1], phaseStartBlocknums[2], phaseStartBlocknums[3], phaseStartBlocknums[4], phaseStartTimestamps[0], phaseStartTimestamps[1], phaseStartTimestamps[2], phaseStartTimestamps[3], phaseStartTimestamps[4]);
     }
 
     // Poke function lets anyone move the contract along,

@@ -1,4 +1,4 @@
-module Contracts.Wrappers exposing (decodeParameters, getAllowanceCmd, getCreationInfoFromIdCmd, getDevFeeCmd, getExtraFeesCmd, getNumTradesCmd, getOpenedEventDataSentryCmd, getParametersAndStateCmd, getParametersCmd, getStateCmd, openTrade)
+module Contracts.Wrappers exposing (decodeParameters, getAllowanceCmd, getCreationInfoFromIdCmd, getDevFeeCmd, getExtraFeesCmd, getNumTradesCmd, getOpenedEventDataSentryCmd, getParametersAndStateCmd, getParametersCmd, getParametersStateAndPhaseInfoCmd, getStateCmd, openTrade)
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -95,6 +95,15 @@ getParametersAndStateCmd ethNode address parametersMsgConstructor stateMsgConstr
         ]
 
 
+getParametersStateAndPhaseInfoCmd : EthHelpers.EthNode -> Address -> (Result Http.Error (Result String TradeParameters) -> msg) -> (Result Http.Error (Maybe State) -> msg) -> (Result Http.Error (Maybe PhaseStartInfo) -> msg) -> Cmd msg
+getParametersStateAndPhaseInfoCmd ethNode address parametersMsgConstructor stateMsgConstructor phaseStartInfoConstructor =
+    Cmd.batch
+        [ getParametersCmd ethNode address parametersMsgConstructor
+        , getStateCmd ethNode address stateMsgConstructor
+        , getPhaseStartInfoCmd ethNode address phaseStartInfoConstructor
+        ]
+
+
 getParametersCmd : EthHelpers.EthNode -> Address -> (Result Http.Error (Result String TradeParameters) -> msg) -> Cmd msg
 getParametersCmd ethNode ttAddress msgConstructor =
     Eth.call ethNode.http (DHT.getParameters ttAddress)
@@ -106,6 +115,13 @@ getStateCmd : EthHelpers.EthNode -> Address -> (Result Http.Error (Maybe State) 
 getStateCmd ethNode ttAddress msgConstructor =
     Eth.call ethNode.http (DHT.getState ttAddress)
         |> Task.map (decodeState tokenDecimals)
+        |> Task.attempt msgConstructor
+
+
+getPhaseStartInfoCmd : EthHelpers.EthNode -> Address -> (Result Http.Error (Maybe PhaseStartInfo) -> msg) -> Cmd msg
+getPhaseStartInfoCmd ethNode ttAddress msgConstructor =
+    Eth.call ethNode.http (DHT.getPhaseStartInfo ttAddress)
+        |> Task.map decodePhaseStartInfo
         |> Task.attempt msgConstructor
 
 

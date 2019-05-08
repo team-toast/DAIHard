@@ -3,7 +3,6 @@ module Trade.Types exposing
     , Model
     , Msg(..)
     , PhaseState(..)
-    , StatsModel(..)
     , TxChainStatus(..)
     )
 
@@ -27,11 +26,11 @@ type alias Model =
     { node : EthHelpers.EthNode
     , userInfo : Maybe UserInfo
     , trade : CTypes.Trade
-    , stats : StatsModel
     , expandedPhase : CTypes.Phase
     , chatHistoryModel : Maybe ChatHistory.Model
     , eventsWaitingForChatHistory : List ( Int, CTypes.DAIHardEvent )
     , showChatHistory : Bool
+    , showStatsModal : Bool
     , secureCommInfo : SecureCommInfo
     , eventSentry : EventSentry Msg
     , allowance : Maybe BigInt
@@ -43,6 +42,7 @@ type Msg
     = CreationInfoFetched (Result Http.Error DHF.CreatedTrade)
     | StateFetched (Result Http.Error (Maybe CTypes.State))
     | ParametersFetched (Result Http.Error (Result String CTypes.TradeParameters))
+    | PhaseInfoFetched (Result Http.Error (Maybe CTypes.PhaseStartInfo))
     | AllowanceFetched (Result Http.Error BigInt)
     | CommitClicked CTypes.FullTradeInfo UserInfo BigInt
     | AbortCommit
@@ -56,6 +56,7 @@ type Msg
     | Refresh Time.Posix
     | ExpandPhase CTypes.Phase
     | ToggleChat
+    | ToggleStatsModal
     | EventLogFetched Eth.Types.Log
     | EventSentryMsg EventSentry.Msg
     | ChatHistoryMsg ChatHistory.Msg
@@ -80,12 +81,6 @@ type ContractAction
     | Abort
     | Release
     | Burn
-
-
-type StatsModel
-    = Waiting
-    | Scanning
-    | DoneLoading
 
 
 type PhaseState

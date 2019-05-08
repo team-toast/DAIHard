@@ -20,25 +20,21 @@ import Time
 import TimeHelpers
 import TokenValue exposing (TokenValue)
 import TradeCache.State as TradeCache
+import TradeCache.Types as TradeCache exposing (TradeCache)
 
 
 init : EthHelpers.EthNode -> Maybe UserInfo -> ( Model, Cmd Msg )
-init ethNode userInfo =
-    let
-        ( tradeCache, tcCmd ) =
-            TradeCache.initAndStartCaching ethNode
-    in
+init ethNode maybeUserInfo =
     ( { ethNode = ethNode
-      , userInfo = userInfo
+      , userInfo = maybeUserInfo
       , inputs = initialInputs
       , errors = noErrors
       , showCurrencyDropdown = False
       , filterFunc = baseFilterFunc
       , sortFunc = initialSortFunc
-      , tradeCache = tradeCache
       }
         |> applyInputs
-    , tcCmd |> Cmd.map TradeCacheMsg
+    , Cmd.none
     )
 
 
@@ -219,18 +215,6 @@ update msg model =
             in
             ( { model | sortFunc = newSortFunc }
             , Cmd.none
-            , Nothing
-            )
-
-        TradeCacheMsg tradeCacheMsg ->
-            let
-                ( newTradeCache, tcCmd ) =
-                    TradeCache.update
-                        tradeCacheMsg
-                        model.tradeCache
-            in
-            ( { model | tradeCache = newTradeCache }
-            , tcCmd |> Cmd.map TradeCacheMsg
             , Nothing
             )
 

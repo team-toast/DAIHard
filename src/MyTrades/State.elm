@@ -23,21 +23,17 @@ import Time
 import TimeHelpers
 import TokenValue exposing (TokenValue)
 import TradeCache.State as TradeCache
+import TradeCache.Types as TradeCache exposing (TradeCache)
 
 
 init : EthHelpers.EthNode -> Maybe UserInfo -> ( Model, Cmd Msg )
-init ethNode userInfo =
-    let
-        ( tradeCache, tcCmd ) =
-            TradeCache.initAndStartCaching ethNode
-    in
+init ethNode maybeUserInfo =
     ( { ethNode = ethNode
-      , userInfo = userInfo
-      , tradeCache = tradeCache
+      , userInfo = maybeUserInfo
       , viewUserRole = Seller
       , viewPhase = CTypes.Open
       }
-    , tcCmd |> Cmd.map TradeCacheMsg
+    , Cmd.none
     )
 
 
@@ -88,19 +84,6 @@ update msg prevModel =
                 Cmd.none
                 ChainCmd.none
                 (Just (Routing.Trade id))
-
-        TradeCacheMsg tradeCacheMsg ->
-            let
-                ( newTradeCache, tcCmd ) =
-                    TradeCache.update
-                        tradeCacheMsg
-                        prevModel.tradeCache
-            in
-            UpdateResult
-                { prevModel | tradeCache = newTradeCache }
-                (tcCmd |> Cmd.map TradeCacheMsg)
-                ChainCmd.none
-                Nothing
 
         NoOp ->
             noUpdate prevModel
