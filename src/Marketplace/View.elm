@@ -74,12 +74,6 @@ searchInputElement inputs errors showCurrencyDropdown =
               <|
                 fiatInput showCurrencyDropdown inputs.fiatType inputs.minFiat inputs.maxFiat errors
             , Element.column
-                [ Element.spacing 5
-                , Element.width Element.shrink
-                ]
-                [ applyButton, resetButton ]
-                |> withInputHeader " "
-            , Element.column
                 [ Element.width Element.shrink
                 , Element.alignTop
                 , Element.spacing 5
@@ -87,6 +81,12 @@ searchInputElement inputs errors showCurrencyDropdown =
                 [ paymentMethodsInput inputs.paymentMethod
                 , searchTermsDisplayElement inputs.paymentMethodTerms
                 ]
+            , Element.column
+                [ Element.spacing 5
+                , Element.width Element.shrink
+                ]
+                [ applyButton, resetButton ]
+                |> withInputHeader " "
             ]
         ]
 
@@ -316,7 +316,7 @@ paymentMethodsInput : String -> Element Msg
 paymentMethodsInput searchString =
     Element.Input.text
         [ Element.alignTop
-        , Element.width <| Element.px 150
+        , Element.width <| Element.px 250
         , Element.height <| Element.px 40
         , Element.Border.color EH.lightGray
         , Element.Border.shadow
@@ -332,7 +332,7 @@ paymentMethodsInput searchString =
         , placeholder = Nothing
         , label = Element.Input.labelHidden "payment methods search"
         }
-        |> withInputHeader "Payment Methods"
+        |> withInputHeader "Search Payment Methods"
 
 
 applyButton : Element Msg
