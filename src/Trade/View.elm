@@ -879,7 +879,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                             List.map makeParagraph
                                 [ [ Element.text "The Seller has deposited "
                                   , emphasizedText tradeAmountString
-                                  , Element.text " into this contract, and offers sell it for "
+                                  , Element.text " into this contract, and offers to sell it for "
                                   , emphasizedText fiatAmountString
                                   , Element.text ". To become the Buyer, you must deposit 1/3 of the trade amount "
                                   , emphasizedText <| "(" ++ buyerDepositString ++ ")"
@@ -1106,6 +1106,10 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                           , Element.text " to the Buyer. If he cannot verify payment, he will probably instead "
                           , scaryText "burn it all"
                           , Element.text "."
+                          ]
+                        , [ Element.text "If the Seller has not made a decision before the Release Window expires, the "
+                          , emphasizedText tradeAmountString
+                          , Element.text " will be automaticall released."
                           ]
                         ]
                     )
