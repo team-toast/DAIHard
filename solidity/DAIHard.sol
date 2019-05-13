@@ -80,6 +80,8 @@ contract ERC20Interface {
 }
 
 contract DAIHardFactory {
+    using SafeMath for uint;
+
     event NewTrade(uint id, address tradeAddress, bool indexed initiatorIsCustodian);
 
     ERC20Interface public daiContract;
@@ -126,12 +128,12 @@ contract DAIHardFactory {
         uint[7] memory newUintArgs; // Note that this structure is not the same as the above comment describes. See below in DAIHardTrade.open.
 
         if (initiatorIsCustodian) {
-            initialTransfer = SafeMath.add(SafeMath.add(uintArgs[0], uintArgs[3]), getDevFee(uintArgs[0]));
+            initialTransfer = uintArgs[0].add(uintArgs[3].add(getDevFee(uintArgs[0])));
 
             newUintArgs = [uintArgs[1], uintArgs[2], uintArgs[3], getDevFee(uintArgs[0]), uintArgs[4], uintArgs[5], uintArgs[6]];
         }
         else {
-            initialTransfer = SafeMath.add(SafeMath.add(uintArgs[1], uintArgs[3]), getDevFee(uintArgs[0]));
+            initialTransfer = uintArgs[1].add(uintArgs[3].add(getDevFee(uintArgs[0])));
 
             newUintArgs = [uintArgs[0], uintArgs[2], uintArgs[3], getDevFee(uintArgs[0]), uintArgs[4], uintArgs[5], uintArgs[6]];
         }
@@ -157,6 +159,8 @@ contract DAIHardFactory {
 }
 
 contract DAIHardTrade {
+    using SafeMath for uint;
+
     enum Phase {Created, Open, Committed, Claimed, Closed}
     Phase public phase;
 
@@ -287,13 +291,13 @@ contract DAIHardTrade {
         initiatorIsCustodian = _initiatorIsCustodian;
         if (initiatorIsCustodian) {
             custodian = initiator;
-            tradeAmount = SafeMath.sub(getBalance(), SafeMath.add(pokeReward, founderFee));
+            tradeAmount = getBalance().sub(pokeReward.add(founderFee));
             beneficiaryDeposit = responderDeposit;
         }
         else {
             beneficiary = initiator;
             tradeAmount = responderDeposit;
-            beneficiaryDeposit = SafeMath.sub(getBalance(), SafeMath.add(pokeReward, founderFee));
+            beneficiaryDeposit = getBalance().sub(pokeReward.add(founderFee));
         }
 
         require(beneficiaryDeposit <= tradeAmount, "A beneficiaryDeposit greater than tradeAmount is not allowed.");
@@ -344,7 +348,7 @@ contract DAIHardTrade {
     view
     inPhase(Phase.Open)
     returns(bool available) {
-        return (block.timestamp >= SafeMath.add(phaseStartTimestamps[uint(Phase.Open)], autorecallInterval));
+        return (block.timestamp >= phaseStartTimestamps[uint(Phase.Open)].add(autorecallInterval));
     }
 
     function commit(string calldata commPubkey)
@@ -400,13 +404,13 @@ contract DAIHardTrade {
         // See the note below about avoiding assert() or require() to test this.
 
         // Send back deposits minus burned amounts.
-        require(daiContract.transfer(beneficiary, SafeMath.sub(beneficiaryDeposit, abortPunishment)), "Token transfer to Beneficiary failed!");
-        require(daiContract.transfer(custodian, SafeMath.sub(tradeAmount, abortPunishment)), "Token transfer to Custodian failed!");
+        require(daiContract.transfer(beneficiary, beneficiaryDeposit.sub(abortPunishment)), "Token transfer to Beneficiary failed!");
+        require(daiContract.transfer(custodian, tradeAmount.sub(abortPunishment)), "Token transfer to Custodian failed!");
 
         uint sendBackToInitiator = founderFee;
         //If there was a pokeReward left, it should be sent back to the initiator
         if (!pokeRewardSent) {
-            sendBackToInitiator = SafeMath.add(sendBackToInitiator, pokeReward);
+            sendBackToInitiator = sendBackToInitiator.add(pokeReward);
         }
         
         require(daiContract.transfer(initiator, sendBackToInitiator), "Token refund of founderFee+pokeReward to Initiator failed!");
@@ -428,7 +432,7 @@ contract DAIHardTrade {
     view
     inPhase(Phase.Committed)
     returns(bool passed) {
-        return (block.timestamp >= SafeMath.add(phaseStartTimestamps[uint(Phase.Committed)], autoabortInterval));
+        return (block.timestamp >= phaseStartTimestamps[uint(Phase.Committed)].add(autoabortInterval));
     }
 
     function claim()
@@ -486,7 +490,7 @@ contract DAIHardTrade {
     view
     inPhase(Phase.Claimed)
     returns(bool available) {
-        return (block.timestamp >= SafeMath.add(phaseStartTimestamps[uint(Phase.Claimed)], autoreleaseInterval));
+        return (block.timestamp >= phaseStartTimestamps[uint(Phase.Claimed)].add(autoreleaseInterval));
     }
 
     function burn()
