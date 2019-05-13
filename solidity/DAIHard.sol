@@ -351,13 +351,13 @@ contract DAIHardTrade {
         return (block.timestamp >= phaseStartTimestamps[uint(Phase.Open)].add(autorecallInterval));
     }
 
-    function commit(string calldata commPubkey)
+    function commit(address payable _responder, string calldata commPubkey)
     external
     inPhase(Phase.Open) {
         require(daiContract.transferFrom(msg.sender, address(this), getResponderDeposit()), "Can't transfer the required deposit from the DAI contract. Did you call approve first?");
         require(!autorecallAvailable(), "autorecallInterval has passed; this offer has expired.");
 
-        responder = msg.sender;
+        responder = _responder;
 
         if (initiatorIsCustodian) {
             beneficiary = responder;
