@@ -5,6 +5,7 @@ module ElementHelpers exposing
     , blueButton
     , bulletPointString
     , closeableModal
+    , coloredMargin
     , comingSoonMsg
     , coolCurrencyHbreak
     , currencySelector
@@ -31,7 +32,6 @@ module ElementHelpers exposing
     , inverseBlueButton
     , lightBlue
     , lightGray
-    , margin
     , maybeErrorElement
     , mediumGray
     , modal
@@ -49,6 +49,7 @@ module ElementHelpers exposing
     , textInputWithElement
     , tokenValue
     , txProcessModal
+    , uncoloredMargin
     , white
     , withHeader
     , yellow
@@ -223,8 +224,8 @@ fiatValue fv =
         ]
 
 
-margin : Bool -> Float -> Element msg
-margin upIsGreen marginFloat =
+coloredMargin : Bool -> Float -> Element msg
+coloredMargin upIsGreen marginFloat =
     case marginFloatToConciseUnsignedString marginFloat of
         "0%" ->
             Element.el [ Element.Font.size 16 ] (Element.text "0%")
@@ -245,8 +246,25 @@ margin upIsGreen marginFloat =
                         red
             in
             Element.row [ Element.spacing 4 ]
-                [ marginSymbol [] isUp isGreen
+                [ marginSymbol [] isUp (Just isGreen)
                 , Element.el [ Element.Font.color textColor, Element.Font.size 16 ]
+                    (Element.text unsignedPercentString)
+                ]
+
+
+uncoloredMargin : Float -> Element msg
+uncoloredMargin marginFloat =
+    case marginFloatToConciseUnsignedString marginFloat of
+        "0%" ->
+            Element.el [ Element.Font.size 16 ] (Element.text "0%")
+
+        unsignedPercentString ->
+            let
+                isUp =
+                    marginFloat >= 0
+            in
+            Element.row [ Element.spacing 4 ]
+                [ Element.el [ Element.Font.size 18 ]
                     (Element.text unsignedPercentString)
                 ]
 
@@ -860,11 +878,11 @@ daiSymbolAndLabel =
         ]
 
 
-marginSymbol : List (Attribute msg) -> Bool -> Bool -> Element msg
-marginSymbol attributes isUp isGreen =
+marginSymbol : List (Attribute msg) -> Bool -> Maybe Bool -> Element msg
+marginSymbol attributes isUp maybeIsGreen =
     Images.toElement
         ((Element.height <| Element.px 34) :: attributes)
-        (Images.marginSymbol isUp (Just isGreen))
+        (Images.marginSymbol isUp maybeIsGreen)
 
 
 
@@ -920,7 +938,7 @@ marginFloatToConciseUnsignedString f =
                 n ->
                     String.fromFloat decimalRemainder
                         |> String.dropLeft 1
-                        |> String.left extraDigitsNeeded
+                        |> String.left (extraDigitsNeeded + 1)
     in
     preDecimalString ++ decimalString ++ "%"
 

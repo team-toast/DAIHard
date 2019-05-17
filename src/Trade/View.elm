@@ -186,30 +186,11 @@ marginElement trade maybeUserInfo =
         "At Margin"
         (case trade.derived.margin of
             Just marginFloat ->
-                renderMargin marginFloat maybeUserInfo
+                EH.uncoloredMargin marginFloat
 
             Nothing ->
                 EH.comingSoonMsg [] "Margin for non-USD currencies coming soon!"
         )
-
-
-renderMargin : Float -> Maybe UserInfo -> Element Msg
-renderMargin marginFloat maybeUserInfo =
-    let
-        marginString =
-            Margin.marginToString marginFloat ++ "%"
-
-        image =
-            if marginFloat == 0 then
-                Images.none
-
-            else
-                Images.marginSymbol (marginFloat > 0) Nothing
-    in
-    Element.row [ Element.spacing 5 ]
-        [ Element.text marginString
-        , Images.toElement [] image
-        ]
 
 
 type alias Stats =
@@ -387,7 +368,9 @@ statsModal address stats =
 
         statsBody =
             Element.column
-                [ Element.spacing 23 ]
+                [ Element.spacing 23
+                , Element.width Element.fill
+                ]
                 (List.map
                     (\( titleString, statString ) -> statEl titleString statString)
                     [ ( "First Trade"
@@ -413,6 +396,9 @@ statsModal address stats =
                             ++ " DAI Burned"
                       )
                     ]
+                    ++ [ Element.el [ Element.centerX ]
+                            (EH.blueButton "View Seller History" ViewSellerHistory)
+                       ]
                 )
 
         dateFormatter =
@@ -893,7 +879,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                             List.map makeParagraph
                                 [ [ Element.text "The Seller has deposited "
                                   , emphasizedText tradeAmountString
-                                  , Element.text " into this contract, and offers sell it for "
+                                  , Element.text " into this contract, and offers to sell it for "
                                   , emphasizedText fiatAmountString
                                   , Element.text ". To become the Buyer, you must deposit 1/3 of the trade amount "
                                   , emphasizedText <| "(" ++ buyerDepositString ++ ")"
@@ -1120,6 +1106,10 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                           , Element.text " to the Buyer. If he cannot verify payment, he will probably instead "
                           , scaryText "burn it all"
                           , Element.text "."
+                          ]
+                        , [ Element.text "If the Seller has not made a decision before the Release Window expires, the "
+                          , emphasizedText tradeAmountString
+                          , Element.text " will be automaticall released."
                           ]
                         ]
                     )

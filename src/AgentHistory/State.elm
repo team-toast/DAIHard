@@ -1,5 +1,6 @@
-module MyTrades.State exposing (init, subscriptions, update, updateUserInfo)
+module AgentHistory.State exposing (init, subscriptions, update, updateUserInfo)
 
+import AgentHistory.Types exposing (..)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import BigIntHelpers
@@ -14,7 +15,6 @@ import Eth.Types exposing (Address)
 import EthHelpers
 import FiatValue exposing (FiatValue)
 import Flip exposing (flip)
-import MyTrades.Types exposing (..)
 import Network exposing (..)
 import PaymentMethods exposing (PaymentMethod)
 import Routing
@@ -26,11 +26,12 @@ import TradeCache.State as TradeCache
 import TradeCache.Types as TradeCache exposing (TradeCache)
 
 
-init : EthHelpers.EthNode -> Maybe UserInfo -> ( Model, Cmd Msg )
-init ethNode maybeUserInfo =
+init : EthHelpers.EthNode -> Address -> BuyerOrSeller -> Maybe UserInfo -> ( Model, Cmd Msg )
+init ethNode agentAddress agentRole maybeUserInfo =
     ( { ethNode = ethNode
+      , agentAddress = agentAddress
+      , agentRole = agentRole
       , userInfo = maybeUserInfo
-      , viewUserRole = Seller
       , viewPhase = CTypes.Open
       }
     , Cmd.none
@@ -42,10 +43,10 @@ update msg prevModel =
     case msg of
         ViewUserRoleChanged role ->
             UpdateResult
-                { prevModel | viewUserRole = role }
+                prevModel
                 Cmd.none
                 ChainCmd.none
-                Nothing
+                (Just (Routing.AgentHistory prevModel.agentAddress role))
 
         ViewPhaseChanged phase ->
             UpdateResult

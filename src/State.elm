@@ -1,5 +1,6 @@
 port module State exposing (init, subscriptions, update)
 
+import AgentHistory.State
 import BigInt
 import Browser
 import Browser.Dom
@@ -16,7 +17,6 @@ import EthHelpers exposing (EthNode)
 import Json.Decode
 import Json.Encode
 import Marketplace.State
-import MyTrades.State
 import Network exposing (..)
 import Routing
 import Time
@@ -204,22 +204,29 @@ updateValidModel msg model =
             case model.submodel of
                 TradeModel tradeModel ->
                     let
-                        ( newTradeModel, tradeCmd, chainCmdOrder ) =
+                        updateResult =
                             Trade.State.update tradeMsg tradeModel
 
                         ( newTxSentry, chainCmd ) =
-                            ChainCmd.execute model.txSentry (ChainCmd.map TradeMsg chainCmdOrder)
+                            ChainCmd.execute model.txSentry (ChainCmd.map TradeMsg updateResult.chainCmd)
                     in
-                    ( Running
-                        { model
-                            | submodel = TradeModel newTradeModel
-                            , txSentry = newTxSentry
-                        }
-                    , Cmd.batch
-                        [ Cmd.map TradeMsg tradeCmd
-                        , chainCmd
-                        ]
-                    )
+                    case updateResult.newRoute of
+                        Nothing ->
+                            ( Running
+                                { model
+                                    | submodel = TradeModel updateResult.model
+                                    , txSentry = newTxSentry
+                                }
+                            , Cmd.batch
+                                [ Cmd.map TradeMsg updateResult.cmd
+                                , chainCmd
+                                ]
+                            )
+
+                        Just route ->
+                            ( Running model
+                            , beginRouteChange model.key route
+                            )
 
                 _ ->
                     ( Running model, Cmd.none )
@@ -245,25 +252,25 @@ updateValidModel msg model =
                 _ ->
                     ( Running model, Cmd.none )
 
-        MyTradesMsg myTradesMsg ->
+        AgentHistoryMsg agentHistoryMsg ->
             case model.submodel of
-                MyTradesModel myTradesModel ->
+                AgentHistoryModel agentHistoryModel ->
                     let
                         updateResult =
-                            MyTrades.State.update myTradesMsg myTradesModel
+                            AgentHistory.State.update agentHistoryMsg agentHistoryModel
 
                         ( newTxSentry, chainCmd ) =
-                            ChainCmd.execute model.txSentry (ChainCmd.map MyTradesMsg updateResult.chainCmd)
+                            ChainCmd.execute model.txSentry (ChainCmd.map AgentHistoryMsg updateResult.chainCmd)
                     in
                     case updateResult.newRoute of
                         Nothing ->
                             ( Running
                                 { model
-                                    | submodel = MyTradesModel updateResult.model
+                                    | submodel = AgentHistoryModel updateResult.model
                                     , txSentry = newTxSentry
                                 }
                             , Cmd.batch
-                                [ Cmd.map MyTradesMsg updateResult.cmd
+                                [ Cmd.map AgentHistoryMsg updateResult.cmd
                                 , chainCmd
                                 ]
                             )
@@ -386,17 +393,17 @@ gotoRoute oldModel route =
                 ]
             )
 
-        Routing.MyTrades ->
+        Routing.AgentHistory address agentRole ->
             let
-                ( myTradesModel, myTradesCmd ) =
-                    MyTrades.State.init oldModel.node oldModel.userInfo
+                ( agentHistoryModel, agentHistoryCmd ) =
+                    AgentHistory.State.init oldModel.node address agentRole oldModel.userInfo
             in
             ( Running
                 { oldModel
-                    | submodel = MyTradesModel myTradesModel
+                    | submodel = AgentHistoryModel agentHistoryModel
                 }
             , Cmd.batch
-                [ Cmd.map MyTradesMsg myTradesCmd
+                [ Cmd.map AgentHistoryMsg agentHistoryCmd
                 ]
             )
 
@@ -435,8 +442,8 @@ updateSubmodelUserInfo userInfo submodel =
             , Cmd.none
             )
 
-        MyTradesModel myTradesModel ->
-            ( MyTradesModel (myTradesModel |> MyTrades.State.updateUserInfo userInfo)
+        AgentHistoryModel agentHistoryModel ->
+            ( AgentHistoryModel (agentHistoryModel |> AgentHistory.State.updateUserInfo userInfo)
             , Cmd.none
             )
 
@@ -474,8 +481,8 @@ submodelSubscriptions model =
         MarketplaceModel marketplaceModel ->
             Sub.map MarketplaceMsg <| Marketplace.State.subscriptions marketplaceModel
 
-        MyTradesModel myTradesModel ->
-            Sub.map MyTradesMsg <| MyTrades.State.subscriptions myTradesModel
+        AgentHistoryModel agentHistoryModel ->
+            Sub.map AgentHistoryMsg <| AgentHistory.State.subscriptions agentHistoryModel
 
 
 port walletSentryPort : (Json.Decode.Value -> msg) -> Sub msg

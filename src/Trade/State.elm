@@ -23,6 +23,7 @@ import Maybe.Extra
 import Network exposing (..)
 import PaymentMethods exposing (PaymentMethod)
 import Result.Extra
+import Routing
 import Time
 import TokenValue
 import Trade.ChatHistory.SecureComm exposing (..)
@@ -79,7 +80,7 @@ updateUserInfo userInfo model =
     )
 
 
-update : Msg -> Model -> ( Model, Cmd Msg, ChainCmd Msg )
+update : Msg -> Model -> UpdateResult
 update msg prevModel =
     case msg of
         Refresh time ->
@@ -129,18 +130,20 @@ update msg prevModel =
             in
             case prevModel.trade of
                 CTypes.LoadedTrade tradeInfo ->
-                    ( newModel
-                    , Cmd.batch
-                        [ Contracts.Wrappers.getStateCmd prevModel.node tradeInfo.creationInfo.address StateFetched
-                        , decryptCmd
-                        , fetchCreationInfoCmd
-                        , fetchAllowanceCmd
-                        ]
-                    , ChainCmd.none
-                    )
+                    UpdateResult
+                        newModel
+                        (Cmd.batch
+                            [ Contracts.Wrappers.getStateCmd prevModel.node tradeInfo.creationInfo.address StateFetched
+                            , decryptCmd
+                            , fetchCreationInfoCmd
+                            , fetchAllowanceCmd
+                            ]
+                        )
+                        ChainCmd.none
+                        Nothing
 
                 _ ->
-                    ( newModel, Cmd.none, ChainCmd.none )
+                    justModelUpdate newModel
 
         AllowanceFetched fetchResult ->
             case fetchResult of
@@ -158,32 +161,20 @@ update msg prevModel =
                                     ( txChainStatus, chainCmd ) =
                                         initiateCommitCall trade.creationInfo.address userInfo.commPubkey
                                 in
-                                ( { newModel | txChainStatus = txChainStatus }
-                                , Cmd.none
-                                , chainCmd
-                                )
+                                justModelUpdate { newModel | txChainStatus = txChainStatus }
 
                             else
-                                ( newModel
-                                , Cmd.none
-                                , ChainCmd.none
-                                )
+                                justModelUpdate newModel
 
                         _ ->
-                            ( newModel
-                            , Cmd.none
-                            , ChainCmd.none
-                            )
+                            justModelUpdate newModel
 
                 Err e ->
                     let
                         _ =
                             Debug.log "Error fecthing allowance" e
                     in
-                    ( prevModel
-                    , Cmd.none
-                    , ChainCmd.none
-                    )
+                    justModelUpdate prevModel
 
         CreationInfoFetched fetchResult ->
             case fetchResult of
@@ -216,10 +207,11 @@ update msg prevModel =
                                 , Contracts.Wrappers.getParametersStateAndPhaseInfoCmd newModel.node newCreationInfo.address ParametersFetched StateFetched PhaseInfoFetched
                                 ]
                     in
-                    ( newModel
-                    , cmd
-                    , ChainCmd.none
-                    )
+                    UpdateResult
+                        newModel
+                        cmd
+                        ChainCmd.none
+                        Nothing
 
                 Err (Http.BadBody errstr) ->
                     Debug.todo "No contract at this id. Maybe should reload after some delay."
@@ -229,7 +221,7 @@ update msg prevModel =
                         _ =
                             Debug.log "can't fetch full state: " otherErr
                     in
-                    ( prevModel, Cmd.none, ChainCmd.none )
+                    justModelUpdate prevModel
 
         StateFetched fetchResult ->
             case fetchResult of
@@ -254,17 +246,18 @@ update msg prevModel =
                                         prevModel.expandedPhase
                             }
                     in
-                    ( newModel
-                    , tryBuildDecryptCmd newModel
-                    , ChainCmd.none
-                    )
+                    UpdateResult
+                        newModel
+                        (tryBuildDecryptCmd newModel)
+                        ChainCmd.none
+                        Nothing
 
                 _ ->
                     let
                         _ =
                             EthHelpers.logBadFetchResultMaybe fetchResult
                     in
-                    ( prevModel, Cmd.none, ChainCmd.none )
+                    justModelUpdate prevModel
 
         ParametersFetched fetchResult ->
             case fetchResult of
@@ -275,17 +268,18 @@ update msg prevModel =
                                 | trade = prevModel.trade |> CTypes.updateParameters parameters
                             }
                     in
-                    ( newModel
-                    , tryBuildDecryptCmd newModel
-                    , ChainCmd.none
-                    )
+                    UpdateResult
+                        newModel
+                        (tryBuildDecryptCmd newModel)
+                        ChainCmd.none
+                        Nothing
 
                 badResult ->
                     let
                         _ =
                             Debug.log "bad parametersFetched result" badResult
                     in
-                    ( prevModel, Cmd.none, ChainCmd.none )
+                    justModelUpdate prevModel
 
         PhaseInfoFetched fetchResult ->
             case fetchResult of
@@ -296,30 +290,32 @@ update msg prevModel =
                                 | trade = prevModel.trade |> CTypes.updatePhaseStartInfo phaseInfo
                             }
                     in
-                    ( newModel
-                    , tryBuildDecryptCmd newModel
-                    , ChainCmd.none
-                    )
+                    UpdateResult
+                        newModel
+                        (tryBuildDecryptCmd newModel)
+                        ChainCmd.none
+                        Nothing
 
                 _ ->
                     let
                         _ =
                             EthHelpers.logBadFetchResultMaybe fetchResult
                     in
-                    ( prevModel, Cmd.none, ChainCmd.none )
+                    justModelUpdate prevModel
 
         EventLogFetched log ->
             let
                 ( newModel, cmd ) =
                     handleNewLog log prevModel
             in
-            ( newModel, cmd, ChainCmd.none )
+            UpdateResult
+                newModel
+                cmd
+                ChainCmd.none
+                Nothing
 
         ExpandPhase phase ->
-            ( { prevModel | expandedPhase = phase }
-            , Cmd.none
-            , ChainCmd.none
-            )
+            justModelUpdate { prevModel | expandedPhase = phase }
 
         ToggleChat ->
             let
@@ -330,10 +326,7 @@ update msg prevModel =
                     else
                         True
             in
-            ( { prevModel | showChatHistory = showChat }
-            , Cmd.none
-            , ChainCmd.none
-            )
+            justModelUpdate { prevModel | showChatHistory = showChat }
 
         ToggleStatsModal ->
             let
@@ -344,22 +337,29 @@ update msg prevModel =
                     else
                         True
             in
-            ( { prevModel | showStatsModal = showStatsModal }
-            , Cmd.none
-            , ChainCmd.none
-            )
+            justModelUpdate { prevModel | showStatsModal = showStatsModal }
+
+        ViewSellerHistory ->
+            case prevModel.trade of
+                CTypes.LoadedTrade trade ->
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        ChainCmd.none
+                        (Just (Routing.AgentHistory trade.parameters.initiatorAddress Seller))
+
+                _ ->
+                    let
+                        _ =
+                            Debug.log "Trying to view a seller history, but the trade isn't loaded! Which seller??" ""
+                    in
+                    justModelUpdate prevModel
 
         CommitClicked trade userInfo depositAmount ->
-            ( { prevModel | txChainStatus = Just <| ConfirmingCommit trade userInfo depositAmount }
-            , Cmd.none
-            , ChainCmd.none
-            )
+            justModelUpdate { prevModel | txChainStatus = Just <| ConfirmingCommit trade userInfo depositAmount }
 
         AbortCommit ->
-            ( { prevModel | txChainStatus = Nothing }
-            , Cmd.none
-            , ChainCmd.none
-            )
+            justModelUpdate { prevModel | txChainStatus = Nothing }
 
         ConfirmCommit trade userInfo depositAmount ->
             let
@@ -393,10 +393,11 @@ update msg prevModel =
                         _ ->
                             ( Just ApproveNeedsSig, approveChainCmd )
             in
-            ( { prevModel | txChainStatus = txChainStatus }
-            , Cmd.none
-            , chainCmd
-            )
+            UpdateResult
+                { prevModel | txChainStatus = txChainStatus }
+                Cmd.none
+                chainCmd
+                Nothing
 
         StartContractAction actionMsg ->
             let
@@ -473,78 +474,55 @@ update msg prevModel =
                             , ChainCmd.none
                             )
             in
-            ( { prevModel
-                | txChainStatus = txChainStatus
-              }
-            , Cmd.none
-            , chainCmd
-            )
+            UpdateResult
+                { prevModel
+                    | txChainStatus = txChainStatus
+                }
+                Cmd.none
+                chainCmd
+                Nothing
 
         ApproveSigned txHashResult ->
             case txHashResult of
                 Ok txHash ->
-                    ( { prevModel | txChainStatus = Just <| ApproveMining txHash }
-                    , Cmd.none
-                    , ChainCmd.none
-                    )
+                    justModelUpdate { prevModel | txChainStatus = Just <| ApproveMining txHash }
 
                 Err errstr ->
                     let
                         _ =
                             Debug.log "Error signing Approve tx" errstr
                     in
-                    ( { prevModel | txChainStatus = Nothing }
-                    , Cmd.none
-                    , ChainCmd.none
-                    )
+                    justModelUpdate { prevModel | txChainStatus = Nothing }
 
         CommitSigned txHashResult ->
             case txHashResult of
                 Ok txHash ->
-                    ( { prevModel | txChainStatus = Just <| CommitMining txHash }
-                    , Cmd.none
-                    , ChainCmd.none
-                    )
+                    justModelUpdate { prevModel | txChainStatus = Just <| CommitMining txHash }
 
                 Err errstr ->
                     let
                         _ =
                             Debug.log "Error signing Commit tx" errstr
                     in
-                    ( { prevModel | txChainStatus = Nothing }
-                    , Cmd.none
-                    , ChainCmd.none
-                    )
+                    justModelUpdate { prevModel | txChainStatus = Nothing }
 
         CommitMined _ ->
-            ( { prevModel | txChainStatus = Nothing }
-            , Cmd.none
-            , ChainCmd.none
-            )
+            justModelUpdate { prevModel | txChainStatus = Nothing }
 
         ActionSigned action txHashResult ->
             case txHashResult of
                 Ok txHash ->
-                    ( { prevModel | txChainStatus = Just <| ActionMining action txHash }
-                    , Cmd.none
-                    , ChainCmd.none
-                    )
+                    justModelUpdate { prevModel | txChainStatus = Just <| ActionMining action txHash }
 
                 Err errstr ->
                     let
                         _ =
                             Debug.log "Error signing tx" errstr
                     in
-                    ( { prevModel | txChainStatus = Nothing }
-                    , Cmd.none
-                    , ChainCmd.none
-                    )
+                    justModelUpdate { prevModel | txChainStatus = Nothing }
 
         ActionMined action _ ->
-            ( { prevModel | txChainStatus = Nothing }
-            , Cmd.none
-            , ChainCmd.none
-            )
+            justModelUpdate { prevModel | txChainStatus = Nothing }
 
         EventSentryMsg eventMsg ->
             let
@@ -553,13 +531,14 @@ update msg prevModel =
                         eventMsg
                         prevModel.eventSentry
             in
-            ( { prevModel
-                | eventSentry =
-                    newEventSentry
-              }
-            , cmd
-            , ChainCmd.none
-            )
+            UpdateResult
+                { prevModel
+                    | eventSentry =
+                        newEventSentry
+                }
+                cmd
+                ChainCmd.none
+                Nothing
 
         ChatHistoryMsg chatHistoryMsg ->
             case prevModel.chatHistoryModel of
@@ -595,20 +574,22 @@ update msg prevModel =
                             else
                                 Cmd.none
                     in
-                    ( model
-                    , Cmd.batch
-                        [ decryptCmd
-                        , encryptCmd
-                        ]
-                    , ChainCmd.none
-                    )
+                    UpdateResult
+                        model
+                        (Cmd.batch
+                            [ decryptCmd
+                            , encryptCmd
+                            ]
+                        )
+                        ChainCmd.none
+                        Nothing
 
                 Nothing ->
                     let
                         _ =
                             Debug.log "Got a chat history message, but there is no chat history model!" ""
                     in
-                    ( prevModel, Cmd.none, ChainCmd.none )
+                    justModelUpdate prevModel
 
         EncryptionFinished encryptedMessagesValue ->
             let
@@ -629,7 +610,7 @@ update msg prevModel =
                                 _ =
                                     Debug.log "How did you click that button? You don't seem to be the Initiator or Responder..." ""
                             in
-                            ( prevModel, Cmd.none, ChainCmd.none )
+                            justModelUpdate prevModel
 
                         Just userRole ->
                             let
@@ -643,36 +624,38 @@ update msg prevModel =
                                             DHT.responderStatement tradeInfo.creationInfo.address initiatorMessage responderMessage
                                                 |> Eth.toSend
                             in
-                            ( prevModel
-                            , Cmd.none
-                            , ChainCmd.custom
-                                { onMined = Nothing
-                                , onSign = Nothing
-                                , onBroadcast = Nothing
-                                }
-                                txParams
-                            )
+                            UpdateResult
+                                prevModel
+                                Cmd.none
+                                (ChainCmd.custom
+                                    { onMined = Nothing
+                                    , onSign = Nothing
+                                    , onBroadcast = Nothing
+                                    }
+                                    txParams
+                                )
+                                Nothing
 
                 problematicBullshit ->
                     let
                         _ =
                             Debug.log "MessageSubmit called, but something has gone terribly wrong" problematicBullshit
                     in
-                    ( prevModel, Cmd.none, ChainCmd.none )
+                    justModelUpdate prevModel
 
         MessageSubmitMined (Ok txReceipt) ->
             let
                 _ =
                     Debug.log "Message submit mined!" ""
             in
-            ( prevModel, Cmd.none, ChainCmd.none )
+            justModelUpdate prevModel
 
         MessageSubmitMined (Err errstr) ->
             let
                 _ =
                     Debug.log "Error mining message submit" errstr
             in
-            ( prevModel, Cmd.none, ChainCmd.none )
+            justModelUpdate prevModel
 
 
 initiateCommitCall : Address -> String -> ( Maybe TxChainStatus, ChainCmd Msg )

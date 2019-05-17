@@ -1,6 +1,8 @@
 module View exposing (root)
 
+import AgentHistory.View
 import Browser
+import CommonTypes exposing (..)
 import Contracts.Types as CTypes
 import Create.View
 import Dict
@@ -15,7 +17,6 @@ import FiatValue
 import Landing.View
 import Marketplace.Types
 import Marketplace.View
-import MyTrades.View
 import Routing
 import Trade.View
 import Types exposing (..)
@@ -125,12 +126,12 @@ headerContent maybeValidModel =
                 Just userInfo ->
                     headerLink
                         "My Trades"
-                        (GotoRoute <| Routing.MyTrades)
+                        (GotoRoute <| Routing.AgentHistory userInfo.address Seller)
                         (Maybe.map
                             (\submodel ->
                                 case submodel of
-                                    MyTradesModel _ ->
-                                        True
+                                    AgentHistoryModel agentHistoryModel ->
+                                        agentHistoryModel.agentAddress == userInfo.address
 
                                     _ ->
                                         False
@@ -230,8 +231,8 @@ subModelElement maybeValidModel =
                     MarketplaceModel marketplaceModel ->
                         Element.map MarketplaceMsg (Marketplace.View.root model.time model.tradeCache marketplaceModel)
 
-                    MyTradesModel myTradesModel ->
-                        Element.map MyTradesMsg (MyTrades.View.root model.time model.tradeCache myTradesModel)
+                    AgentHistoryModel agentHistoryModel ->
+                        Element.map AgentHistoryMsg (AgentHistory.View.root model.time model.tradeCache agentHistoryModel)
 
             Failed errorMessageString ->
                 Element.el

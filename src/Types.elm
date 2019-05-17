@@ -1,5 +1,6 @@
 module Types exposing (Flags, Model(..), Msg(..), Submodel(..), ValidModel)
 
+import AgentHistory.Types
 import BigInt exposing (BigInt)
 import Browser
 import Browser.Navigation
@@ -11,7 +12,6 @@ import Eth.Types exposing (Address)
 import EthHelpers exposing (EthNode)
 import Json.Decode
 import Marketplace.Types
-import MyTrades.Types
 import Routing
 import Time
 import Trade.Types
@@ -48,7 +48,7 @@ type Submodel
     | CreateModel Create.Types.Model
     | TradeModel Trade.Types.Model
     | MarketplaceModel Marketplace.Types.Model
-    | MyTradesModel MyTrades.Types.Model
+    | AgentHistoryModel AgentHistory.Types.Model
 
 
 type Msg
@@ -63,6 +63,6 @@ type Msg
     | CreateMsg Create.Types.Msg
     | TradeMsg Trade.Types.Msg
     | MarketplaceMsg Marketplace.Types.Msg
-    | MyTradesMsg MyTrades.Types.Msg
+    | AgentHistoryMsg AgentHistory.Types.Msg
     | Fail String
     | NoOp
