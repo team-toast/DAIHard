@@ -85,9 +85,9 @@ contract DAIHardFactory {
     event NewTrade(uint id, address tradeAddress, bool indexed initiatorIsCustodian);
 
     ERC20Interface public daiContract;
-    address payable public founderFeeAddress;
+    address public founderFeeAddress;
 
-    constructor(ERC20Interface _daiContract, address payable _founderFeeAddress)
+    constructor(ERC20Interface _daiContract, address _founderFeeAddress)
     public {
         daiContract = _daiContract;
         founderFeeAddress = _founderFeeAddress;
@@ -129,7 +129,7 @@ contract DAIHardFactory {
     1 - devFeeAddress
     */
 
-    function createOpenTrade(address payable[2] calldata addressArgs,
+    function createOpenTrade(address[2] calldata addressArgs,
                              bool initiatorIsCustodian,
                              uint[8] calldata uintArgs,
                              string calldata terms,
@@ -189,7 +189,7 @@ contract DAIHardFactory {
     2 - devFeeAddress
     */
 
-    function createCommittedTrade(address payable[3] calldata addressArgs,
+    function createCommittedTrade(address[3] calldata addressArgs,
                                   bool initiatorIsCustodian,
                                   uint[7] calldata uintArgs,
                                   string calldata _terms,
@@ -256,16 +256,16 @@ contract DAIHardTrade {
     }
 
 
-    address payable public initiator;
-    address payable public responder;
+    address public initiator;
+    address public responder;
 
     // The contract only has two parties, but depending on how it's opened,
     // the initiator for example might be either the custodian OR the beneficiary,
     // so we need four 'role' variables to capture each possible combination.
 
     bool public initiatorIsCustodian;
-    address payable public custodian;
-    address payable public beneficiary;
+    address public custodian;
+    address public beneficiary;
 
     modifier onlyInitiator() {
         require(msg.sender == initiator, "msg.sender is not Initiator.");
@@ -284,18 +284,19 @@ contract DAIHardTrade {
         _;
     }
     modifier onlyContractParty() { // Must be one of the two parties involved in the contract
-        // Note this still covers the case in which responder still is 0x0, as msg.sender can never be 0x0.
+        // Note this still covers the case in which responder still is 0x0, as msg.sender can never be 0x0,
+        // in which case this will revert if msg.sender != initiator.
         require(msg.sender == initiator || msg.sender == responder, "msg.sender is not a party in this contract.");
         _;
     }
 
-    ERC20Interface daiContract;
-    address payable public founderFeeAddress;
-    address payable public devFeeAddress;
+    ERC20Interface public daiContract;
+    address public founderFeeAddress;
+    address public devFeeAddress;
 
     bool public pokeRewardSent;
 
-    constructor(ERC20Interface _daiContract, address payable _founderFeeAddress, address payable _devFeeAddress)
+    constructor(ERC20Interface _daiContract, address _founderFeeAddress, address _devFeeAddress)
     public {
         // If gas was not an issue we would leave the next three lines in for explicit clarity,
         // but technically they are a waste of gas, because we're simply setting them to the null values
@@ -348,7 +349,7 @@ contract DAIHardTrade {
     7 - devFee
     */
 
-    function beginInOpenPhase(address payable _initiator,
+    function beginInOpenPhase(address _initiator,
                               bool _initiatorIsCustodian,
                               uint[8] memory uintArgs,
                               string memory terms,
@@ -356,10 +357,8 @@ contract DAIHardTrade {
                               )
     public
     inPhase(Phase.Creating) {
-        // Note that we could check getBalance() > 0 here, but using SafeMath.sub below implicitly checks for this.
-
         uint responderDeposit = uintArgs[0];
-        abortPunishment - uintArgs[1];
+        abortPunishment = uintArgs[1];
         pokeReward = uintArgs[2];
 
         autorecallInterval = uintArgs[3];
@@ -400,8 +399,8 @@ contract DAIHardTrade {
     6 - devFee
     */
 
-    function beginInCommittedPhase(address payable _custodian,
-                                   address payable _beneficiary,
+    function beginInCommittedPhase(address _custodian,
+                                   address _beneficiary,
                                    bool _initiatorIsCustodian,
                                    uint[7] memory uintArgs,
                                    string memory terms,
@@ -410,8 +409,6 @@ contract DAIHardTrade {
                                    )
     public
     inPhase(Phase.Creating) {
-        // Note that we could check getBalance() > 0 here, but using SafeMath.sub below implicitly checks for this.
-
         beneficiaryDeposit = uintArgs[0];
         abortPunishment = uintArgs[1];
         pokeReward = uintArgs[2];
@@ -487,7 +484,7 @@ contract DAIHardTrade {
         return (block.timestamp >= phaseStartTimestamps[uint(Phase.Open)].add(autorecallInterval));
     }
 
-    function commit(address payable _responder, string calldata commPubkey)
+    function commit(address _responder, string calldata commPubkey)
     external
     inPhase(Phase.Open) {
         require(daiContract.transferFrom(msg.sender, address(this), getResponderDeposit()),
@@ -537,7 +534,7 @@ contract DAIHardTrade {
         // Instead of burning abortPunishment twice, just burn it all in one call (saves gas).
         require(daiContract.transfer(address(0x0), abortPunishment*2), "Token burn failed!");
         // Security note: The above line risks overflow, but only if abortPunishment >= (maxUint/2).
-        // This should never happen, as abortPunishment <= beneficiaryDeposit <= tradeAmount (as required in open()),
+        // This should never happen, as abortPunishment <= beneficiaryDeposit <= tradeAmount (as required in both beginIn*Phase functions),
         // which is ultimately limited by the amount of DAI the user deposited (which must be far less than maxUint/2).
         // See the note below about avoiding assert() or require() to test this.
 
@@ -553,13 +550,7 @@ contract DAIHardTrade {
         }
 
         require(daiContract.transfer(initiator, sendBackToInitiator), "Token refund of founderFee+devFee+pokeReward to Initiator failed!");
-
-        // There may be a wei or two left over in the contract due to integer division. Not a big deal.
-        // We could assert() or require() to test this, but then we'd risk locking the contract completely
-        // if a state somehow comes that always fails the assert.
-        // Better to let the function run, as at least then, in the case of a flaw, the abort mechanism "sort of" works,
-        // and will return some amount to the users.
-
+        
         changePhase(Phase.Closed);
         closedReason = ClosedReason.Aborted;
 
@@ -751,23 +742,17 @@ contract DAIHardTrade {
         }
         else return false;
 
-        if (phase == Phase.Open) {
-            if (autorecallAvailable()) {
-                internalRecall();
-                return true;
-            }
+        if (phase == Phase.Open && autorecallAvailable()) {
+            internalRecall();
+            return true;
         }
-        else if (phase == Phase.Committed) {
-            if (autoabortAvailable()) {
-                internalAbort();
-                return true;
-            }
+        else if (phase == Phase.Committed && autoabortAvailable()) {
+            internalAbort();
+            return true;
         }
-        else if (phase == Phase.Claimed) {
-            if (autoreleaseAvailable()) {
-                internalRelease();
-                return true;
-            }
+        else if (phase == Phase.Claimed && autoreleaseAvailable()) {
+            internalRelease();
+            return true;
         }
     }
 
