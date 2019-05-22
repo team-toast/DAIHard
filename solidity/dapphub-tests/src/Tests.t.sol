@@ -238,7 +238,6 @@ contract DAIHardTests is DSTest {
     }
 
     function test_autorecallAvailable() public {
-        
         alice.startOpenTrade(true, [uint(1000), uint(100), uint(15), uint(1), uint(11), uint(12), uint(13), uint(2)], address(0x2));
 
         assertTrue(!alice.trade().autorecallAvailable());
