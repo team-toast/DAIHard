@@ -335,7 +335,7 @@ contract DAIHardTrade {
 
     ------------------------------------------------------------ */
 
-    event Initiated(string fiatTransferMethods, string commPubkey);
+    event Initiated(string terms, string commPubkey);
 
     /*
     uintArgs:
