@@ -1,4 +1,4 @@
-module Contracts.Wrappers exposing (decodeParameters, getAllowanceCmd, getCreationInfoFromIdCmd, getDevFeeCmd, getExtraFeesCmd, getNumTradesCmd, getOpenedEventDataSentryCmd, getParametersAndStateCmd, getParametersCmd, getParametersStateAndPhaseInfoCmd, getStateCmd, openTrade)
+module Contracts.Wrappers exposing (getAllowanceCmd, getCreationInfoFromIdCmd, getFounderFeeCmd, getInitiatedEventDataSentryCmd, getNumTradesCmd, getParametersAndStateCmd, getParametersCmd, getParametersStateAndPhaseInfoCmd, getStateCmd, openTrade)
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -27,27 +27,20 @@ import TokenValue exposing (TokenValue)
 
 openTrade : Network -> CreateParameters -> Call Address
 openTrade network parameters =
-    let
-        encodedPaymentMethods =
-            Json.Encode.list PaymentMethods.encode
-                parameters.paymentMethods
-                |> Json.Encode.encode 0
-
-        encodedFiatData =
-            FiatValue.encode parameters.fiatPrice
-                |> Json.Encode.encode 0
-    in
-    DHF.openDAIHardTrade
+    DHF.createOpenTrade
         (factoryAddress network)
         parameters.initiatorAddress
-        (openModeToInitiatorIsBuyer parameters.openMode)
+        devFeeAddress
+        (parameters.initiatingParty == Seller)
         (TokenValue.getBigInt parameters.tradeAmount)
+        (TokenValue.getBigInt <| defaultBuyerDeposit parameters.tradeAmount)
+        (TokenValue.getBigInt <| defaultAbortPunishment parameters.tradeAmount)
         (TokenValue.getBigInt parameters.pokeReward)
         (TimeHelpers.posixToSecondsBigInt parameters.autorecallInterval)
         (TimeHelpers.posixToSecondsBigInt parameters.autoabortInterval)
         (TimeHelpers.posixToSecondsBigInt parameters.autoreleaseInterval)
-        encodedFiatData
-        encodedPaymentMethods
+        (TokenValue.getBigInt <| getDevFee parameters.tradeAmount)
+        (encodeTerms <| Terms parameters.price parameters.paymentMethods)
         parameters.initiatorCommPubkey
 
 
@@ -63,21 +56,15 @@ getAllowanceCmd ethNode owner spender msgConstructor =
         |> Task.attempt msgConstructor
 
 
-getDevFeeCmd : EthHelpers.EthNode -> BigInt -> (Result Http.Error BigInt -> msg) -> Cmd msg
-getDevFeeCmd ethNode tradeAmount msgConstructor =
-    Eth.call ethNode.http (DHF.getDevFee (factoryAddress ethNode.network) tradeAmount)
-        |> Task.attempt msgConstructor
-
-
-getExtraFeesCmd : EthHelpers.EthNode -> BigInt -> (Result Http.Error DHF.GetExtraFees -> msg) -> Cmd msg
-getExtraFeesCmd ethNode tradeAmount msgConstructor =
-    Eth.call ethNode.http (DHF.getExtraFees (factoryAddress ethNode.network) tradeAmount)
+getFounderFeeCmd : EthHelpers.EthNode -> BigInt -> (Result Http.Error BigInt -> msg) -> Cmd msg
+getFounderFeeCmd ethNode tradeAmount msgConstructor =
+    Eth.call ethNode.http (DHF.getFounderFee (factoryAddress ethNode.network) tradeAmount)
         |> Task.attempt msgConstructor
 
 
 getNumTradesCmd : EthHelpers.EthNode -> (Result Http.Error BigInt -> msg) -> Cmd msg
 getNumTradesCmd ethNode msgConstructor =
-    Eth.call ethNode.http (DHF.getNumTrades (factoryAddress ethNode.network))
+    Eth.call ethNode.http (DHF.numTrades (factoryAddress ethNode.network))
         |> Task.attempt msgConstructor
 
 
@@ -107,7 +94,7 @@ getParametersStateAndPhaseInfoCmd ethNode address parametersMsgConstructor state
 getParametersCmd : EthHelpers.EthNode -> Address -> (Result Http.Error (Result String TradeParameters) -> msg) -> Cmd msg
 getParametersCmd ethNode ttAddress msgConstructor =
     Eth.call ethNode.http (DHT.getParameters ttAddress)
-        |> Task.map (decodeParameters tokenDecimals)
+        |> Task.map decodeParameters
         |> Task.attempt msgConstructor
 
 
@@ -125,62 +112,22 @@ getPhaseStartInfoCmd ethNode ttAddress msgConstructor =
         |> Task.attempt msgConstructor
 
 
-getOpenedEventDataSentryCmd : EventSentry msg -> TradeCreationInfo -> (Result Json.Decode.Error DHT.Opened -> msg) -> ( EventSentry msg, Cmd msg )
-getOpenedEventDataSentryCmd eventSentry creationInfo msgConstructor =
+getInitiatedEventDataSentryCmd : EventSentry msg -> TradeCreationInfo -> (Result Json.Decode.Error DHT.Initiated -> msg) -> ( EventSentry msg, Cmd msg )
+getInitiatedEventDataSentryCmd eventSentry creationInfo msgConstructor =
     let
         logToMsg : Eth.Types.Log -> msg
         logToMsg log =
-            (Eth.Decode.event DHT.openedDecoder log).returnData
+            (Eth.Decode.event DHT.initiatedDecoder log).returnData
                 |> msgConstructor
 
         logFilter =
             { fromBlock = Eth.Types.BlockNum creationInfo.blocknum
             , toBlock = Eth.Types.BlockNum creationInfo.blocknum
             , address = creationInfo.address
-            , topics = [ Just <| Eth.Utils.keccak256 "Opened(string,string)" ]
+            , topics = [ Just <| Eth.Utils.keccak256 "Initiated(string,string)" ]
             }
     in
     EventSentry.watchOnce
         logToMsg
         eventSentry
         logFilter
-
-
-decodeParameters : Int -> DHT.GetParameters -> Result String TradeParameters
-decodeParameters numDecimals encodedParameters =
-    let
-        autorecallIntervalResult =
-            TimeHelpers.secondsBigIntToMaybePosix encodedParameters.autorecallInterval
-                |> Result.fromMaybe "error converting BigInt to Time.Posix"
-
-        depositDeadlineIntervalResult =
-            TimeHelpers.secondsBigIntToMaybePosix encodedParameters.autoabortInterval
-                |> Result.fromMaybe "error converting BigInt to Time.Posix"
-
-        autoreleaseIntervalResult =
-            TimeHelpers.secondsBigIntToMaybePosix encodedParameters.autoreleaseInterval
-                |> Result.fromMaybe "error converting BigInt to Time.Posix"
-
-        decodedFiatPrice =
-            Json.Decode.decodeString
-                FiatValue.decoder
-                encodedParameters.totalPrice
-                |> Result.mapError Json.Decode.errorToString
-    in
-    Result.map4
-        (\autorecallInterval depositDeadlineInterval autoreleaseInterval fiatPrice ->
-            { openMode = initiatorIsBuyerToOpenMode encodedParameters.initiatorIsBuyer
-            , tradeAmount = TokenValue.tokenValue numDecimals encodedParameters.daiAmount
-            , buyerDeposit = TokenValue.tokenValue numDecimals encodedParameters.buyerDeposit
-            , fiatPrice = fiatPrice
-            , autorecallInterval = autorecallInterval
-            , autoabortInterval = depositDeadlineInterval
-            , autoreleaseInterval = autoreleaseInterval
-            , initiatorAddress = encodedParameters.initiator
-            , pokeReward = TokenValue.tokenValue numDecimals encodedParameters.pokeReward
-            }
-        )
-        autorecallIntervalResult
-        depositDeadlineIntervalResult
-        autoreleaseIntervalResult
-        decodedFiatPrice

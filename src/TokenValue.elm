@@ -149,20 +149,20 @@ sub t1 t2 =
         |> updateValue t1
 
 
-mul : TokenValue -> TokenValue -> TokenValue
-mul t1 t2 =
+mul : TokenValue -> Int -> TokenValue
+mul t i =
     BigInt.mul
-        (getBigInt t1)
-        (getBigInt t2)
-        |> updateValue t1
+        (getBigInt t)
+        (BigInt.fromInt i)
+        |> updateValue t
 
 
-div : TokenValue -> TokenValue -> TokenValue
-div t1 t2 =
+div : TokenValue -> Int -> TokenValue
+div t i =
     BigInt.div
-        (getBigInt t1)
-        (getBigInt t2)
-        |> updateValue t1
+        (getBigInt t)
+        (BigInt.fromInt i)
+        |> updateValue t
 
 
 divByInt : TokenValue -> Int -> TokenValue

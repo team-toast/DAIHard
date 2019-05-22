@@ -1,80 +1,33 @@
 [
     {
-        "constant": true,
-        "inputs": [],
-        "name": "getNumTrades",
-        "outputs": [
-            {
-                "name": "num",
-                "type": "uint256"
-            }
-        ],
-        "payable": false,
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "constant": true,
-        "inputs": [
-            {
-                "name": "tradeAmount",
-                "type": "uint256"
-            }
-        ],
-        "name": "getDevFee",
-        "outputs": [
-            {
-                "name": "devFee",
-                "type": "uint256"
-            }
-        ],
-        "payable": false,
-        "stateMutability": "pure",
-        "type": "function"
-    },
-    {
-        "constant": true,
-        "inputs": [],
-        "name": "daiContract",
-        "outputs": [
-            {
-                "name": "",
-                "type": "address"
-            }
-        ],
-        "payable": false,
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
         "constant": false,
         "inputs": [
             {
-                "name": "_initiator",
-                "type": "address"
+                "name": "addressArgs",
+                "type": "address[3]"
             },
             {
-                "name": "initiatorIsBuyer",
+                "name": "initiatorIsCustodian",
                 "type": "bool"
             },
             {
                 "name": "uintArgs",
-                "type": "uint256[5]"
+                "type": "uint256[7]"
             },
             {
-                "name": "_totalPrice",
+                "name": "_terms",
                 "type": "string"
             },
             {
-                "name": "_fiatTransferMethods",
+                "name": "_initiatorCommPubkey",
                 "type": "string"
             },
             {
-                "name": "_commPubkey",
+                "name": "_responderCommPubkey",
                 "type": "string"
             }
         ],
-        "name": "openDAIHardTrade",
+        "name": "createCommittedTrade",
         "outputs": [
             {
                 "name": "",
@@ -86,32 +39,30 @@
         "type": "function"
     },
     {
-        "constant": true,
+        "constant": false,
         "inputs": [
             {
-                "name": "tradeAmount",
-                "type": "uint256"
-            }
-        ],
-        "name": "getExtraFees",
-        "outputs": [
-            {
-                "name": "buyerDeposit",
-                "type": "uint256"
+                "name": "addressArgs",
+                "type": "address[2]"
             },
             {
-                "name": "devFee",
-                "type": "uint256"
+                "name": "initiatorIsCustodian",
+                "type": "bool"
+            },
+            {
+                "name": "uintArgs",
+                "type": "uint256[8]"
+            },
+            {
+                "name": "terms",
+                "type": "string"
+            },
+            {
+                "name": "_commPubkey",
+                "type": "string"
             }
         ],
-        "payable": false,
-        "stateMutability": "pure",
-        "type": "function"
-    },
-    {
-        "constant": true,
-        "inputs": [],
-        "name": "devFeeAddress",
+        "name": "createOpenTrade",
         "outputs": [
             {
                 "name": "",
@@ -119,27 +70,45 @@
             }
         ],
         "payable": false,
-        "stateMutability": "view",
+        "stateMutability": "nonpayable",
         "type": "function"
     },
     {
-        "constant": true,
         "inputs": [
             {
-                "name": "tradeAmount",
-                "type": "uint256"
-            }
-        ],
-        "name": "getBuyerDeposit",
-        "outputs": [
+                "name": "_daiContract",
+                "type": "address"
+            },
             {
-                "name": "buyerDeposit",
-                "type": "uint256"
+                "name": "_founderFeeAddress",
+                "type": "address"
             }
         ],
         "payable": false,
-        "stateMutability": "pure",
-        "type": "function"
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "name": "id",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "name": "tradeAddress",
+                "type": "address"
+            },
+            {
+                "indexed": true,
+                "name": "initiatorIsCustodian",
+                "type": "bool"
+            }
+        ],
+        "name": "NewTrade",
+        "type": "event"
     },
     {
         "constant": true,
@@ -165,40 +134,64 @@
         "type": "function"
     },
     {
-        "inputs": [
+        "constant": true,
+        "inputs": [],
+        "name": "daiContract",
+        "outputs": [
             {
-                "name": "_daiContract",
-                "type": "address"
-            },
-            {
-                "name": "_devFeeAddress",
+                "name": "",
                 "type": "address"
             }
         ],
         "payable": false,
-        "stateMutability": "nonpayable",
-        "type": "constructor"
+        "stateMutability": "view",
+        "type": "function"
     },
     {
-        "anonymous": false,
-        "inputs": [
+        "constant": true,
+        "inputs": [],
+        "name": "founderFeeAddress",
+        "outputs": [
             {
-                "indexed": false,
-                "name": "id",
-                "type": "uint256"
-            },
-            {
-                "indexed": false,
-                "name": "tradeAddress",
+                "name": "",
                 "type": "address"
-            },
-            {
-                "indexed": true,
-                "name": "initiatorIsPayer",
-                "type": "bool"
             }
         ],
-        "name": "NewTrade",
-        "type": "event"
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [
+            {
+                "name": "tradeAmount",
+                "type": "uint256"
+            }
+        ],
+        "name": "getFounderFee",
+        "outputs": [
+            {
+                "name": "founderFee",
+                "type": "uint256"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "pure",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [],
+        "name": "numTrades",
+        "outputs": [
+            {
+                "name": "num",
+                "type": "uint256"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
     }
 ]

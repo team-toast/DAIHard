@@ -30,5 +30,5 @@ type Msg
     | ParametersFetched Int (Result Http.Error (Result String CTypes.TradeParameters))
     | StateFetched Int (Result Http.Error (Maybe CTypes.State))
     | PhaseStartInfoFetched Int (Result Http.Error (Maybe CTypes.PhaseStartInfo))
-    | OpenedEventDataFetched Int (Result Json.Decode.Error DHT.Opened)
+    | InitiatedEventDataFetched Int (Result Json.Decode.Error DHT.Initiated)
     | EventSentryMsg EventSentry.Msg

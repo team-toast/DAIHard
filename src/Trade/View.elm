@@ -48,7 +48,7 @@ root time tradeCache model =
                     , Element.spacing 40
                     ]
                     [ phasesElement tradeInfo model.expandedPhase model.userInfo time
-                    , PaymentMethods.viewList tradeInfo.paymentMethods Nothing
+                    , PaymentMethods.viewList tradeInfo.terms.paymentMethods Nothing
                     ]
                 ]
 
@@ -95,11 +95,11 @@ tradeStatusElement trade network =
             [ Element.text
                 (case trade.state.phase of
                     CTypes.Open ->
-                        case trade.parameters.openMode of
-                            CTypes.BuyerOpened ->
+                        case trade.parameters.initiatingParty of
+                            Buyer ->
                                 "Open Buy Offer"
 
-                            CTypes.SellerOpened ->
+                            Seller ->
                                 "Open Sell Offer"
 
                     CTypes.Committed ->
@@ -131,17 +131,17 @@ daiAmountElement trade maybeUserInfo =
                 (Maybe.map .address maybeUserInfo)
     in
     EH.withHeader
-        (case ( trade.parameters.openMode, maybeInitiatorOrResponder ) of
-            ( CTypes.BuyerOpened, Just Initiator ) ->
+        (case ( trade.parameters.initiatingParty, maybeInitiatorOrResponder ) of
+            ( Buyer, Just Initiator ) ->
                 "You're Buying"
 
-            ( CTypes.BuyerOpened, _ ) ->
+            ( Buyer, _ ) ->
                 "Buying"
 
-            ( CTypes.SellerOpened, Just Initiator ) ->
+            ( Seller, Just Initiator ) ->
                 "You're Selling"
 
-            ( CTypes.SellerOpened, _ ) ->
+            ( Seller, _ ) ->
                 "Selling"
         )
         (renderDaiAmount trade.parameters.tradeAmount)
@@ -164,7 +164,7 @@ fiatElement : FullTradeInfo -> Element Msg
 fiatElement trade =
     EH.withHeader
         "For Fiat"
-        (renderFiatAmount trade.parameters.fiatPrice)
+        (renderFiatAmount trade.terms.price)
 
 
 renderFiatAmount : FiatValue -> Element Msg
@@ -292,8 +292,8 @@ generateStatsForSeller tradeCache sellerAddress =
 
 statsElement : FullTradeInfo -> TradeCache -> Bool -> Element Msg
 statsElement trade tradeCache showModal =
-    case trade.parameters.openMode of
-        CTypes.SellerOpened ->
+    case trade.parameters.initiatingParty of
+        Seller ->
             let
                 sellerStats =
                     generateStatsForSeller tradeCache trade.parameters.initiatorAddress
@@ -346,7 +346,7 @@ statsElement trade tradeCache showModal =
                         ]
                     )
 
-        CTypes.BuyerOpened ->
+        Buyer ->
             Element.text "??"
 
 
@@ -827,7 +827,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
             TokenValue.toConciseString trade.parameters.tradeAmount ++ " DAI"
 
         fiatAmountString =
-            FiatValue.renderToStringFull trade.parameters.fiatPrice
+            FiatValue.renderToStringFull trade.terms.price
 
         buyerDepositString =
             TokenValue.toConciseString trade.parameters.buyerDeposit ++ " DAI"
@@ -841,9 +841,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                 ++ " DAI"
 
         abortPunishment =
-            TokenValue.div
-                trade.parameters.buyerDeposit
-                (TokenValue.tokenValue tokenDecimals <| BigInt.fromInt 4)
+            trade.parameters.abortPunishment
 
         abortPunishmentString =
             TokenValue.toConciseString
@@ -874,8 +872,8 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
             case ( viewPhase, maybeBuyerOrSeller ) of
                 ( CTypes.Open, Nothing ) ->
                     ( "Get it while it's hot"
-                    , case trade.parameters.openMode of
-                        CTypes.SellerOpened ->
+                    , case trade.parameters.initiatingParty of
+                        Seller ->
                             List.map makeParagraph
                                 [ [ Element.text "The Seller has deposited "
                                   , emphasizedText tradeAmountString
@@ -900,7 +898,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                                   ]
                                 ]
 
-                        CTypes.BuyerOpened ->
+                        Buyer ->
                             List.map makeParagraph
                                 [ [ Element.text "The Buyer is offering to buy "
                                   , emphasizedText tradeAmountString
@@ -1221,7 +1219,7 @@ getModalOrNone model =
                         |> TokenValue.toConciseString
 
                 fiatPriceString =
-                    FiatValue.renderToStringFull trade.parameters.fiatPrice
+                    FiatValue.renderToStringFull trade.terms.price
 
                 daiAmountString =
                     TokenValue.toConciseString trade.parameters.tradeAmount ++ " DAI"

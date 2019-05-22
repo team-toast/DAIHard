@@ -3,10 +3,11 @@ module Contracts.Generated.DAIHardTrade exposing
     , GetParameters
     , GetPhaseStartInfo
     , GetState
+    , Initiated
     , InitiatorStatementLog
-    , Opened
     , ResponderStatementLog
     , abort
+    , abortPunishment
     , abortedEvent
     , autoabortAvailable
     , autoabortInterval
@@ -14,33 +15,39 @@ module Contracts.Generated.DAIHardTrade exposing
     , autorecallInterval
     , autoreleaseAvailable
     , autoreleaseInterval
+    , beginInCommittedPhase
+    , beginInOpenPhase
+    , beneficiary
+    , beneficiaryDeposit
     , burn
     , burnedEvent
-    , buyer
-    , buyerDeposit
     , claim
     , claimedEvent
     , closedReason
     , commit
     , committedDecoder
     , committedEvent
-    , daiAmount
+    , custodian
+    , daiContract
     , devFee
+    , devFeeAddress
+    , founderFee
+    , founderFeeAddress
     , getBalance
     , getParameters
     , getParametersDecoder
     , getPhaseStartInfo
     , getPhaseStartInfoDecoder
+    , getResponderDeposit
     , getState
     , getStateDecoder
+    , initiatedDecoder
+    , initiatedEvent
     , initiator
-    , initiatorIsBuyer
+    , initiatorIsCustodian
     , initiatorStatement
     , initiatorStatementLogDecoder
     , initiatorStatementLogEvent
-    , open
-    , openedDecoder
-    , openedEvent
     , phase
     , phaseStartBlocknums
     , phaseStartTimestamps
@@ -49,17 +56,15 @@ module Contracts.Generated.DAIHardTrade exposing
     , pokeNeeded
     , pokeReward
     , pokeRewardSent
-    , price
     , recall
     , recalledEvent
     , release
     , releasedEvent
     , responder
-    , responderDeposit
     , responderStatement
     , responderStatementLogDecoder
     , responderStatementLogEvent
-    , seller
+    , tradeAmount
     )
 
 import Abi.Decode as AbiDecode exposing (abiDecode, andMap, data, toElmDecoder, topic)
@@ -91,6 +96,21 @@ abort contractAddress =
     , data = Just <| AbiEncode.functionCall "abort()" []
     , nonce = Nothing
     , decoder = Decode.succeed ()
+    }
+
+
+{-| "abortPunishment()" function
+-}
+abortPunishment : Address -> Call BigInt
+abortPunishment contractAddress =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "abortPunishment()" []
+    , nonce = Nothing
+    , decoder = toElmDecoder AbiDecode.uint
     }
 
 
@@ -184,6 +204,66 @@ autoreleaseInterval contractAddress =
     }
 
 
+{-| "beginInCommittedPhase(address,address,bool,uint256[7],string,string,string)" function
+-}
+beginInCommittedPhase : Address -> Address -> Address -> Bool -> BigInt -> String -> String -> String -> Call ()
+beginInCommittedPhase contractAddress custodian_ beneficiary_ initiatorIsCustodian_ uintArgs terms initiatorCommPubkey responderCommPubkey =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "beginInCommittedPhase(address,address,bool,uint256[7],string,string,string)" [ AbiEncode.address custodian_, AbiEncode.address beneficiary_, AbiEncode.bool initiatorIsCustodian_, AbiEncode.uint uintArgs, AbiEncode.string terms, AbiEncode.string initiatorCommPubkey, AbiEncode.string responderCommPubkey ]
+    , nonce = Nothing
+    , decoder = Decode.succeed ()
+    }
+
+
+{-| "beginInOpenPhase(address,bool,uint256[8],string,string)" function
+-}
+beginInOpenPhase : Address -> Address -> Bool -> BigInt -> String -> String -> Call ()
+beginInOpenPhase contractAddress initiator_ initiatorIsCustodian_ uintArgs terms commPubkey =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "beginInOpenPhase(address,bool,uint256[8],string,string)" [ AbiEncode.address initiator_, AbiEncode.bool initiatorIsCustodian_, AbiEncode.uint uintArgs, AbiEncode.string terms, AbiEncode.string commPubkey ]
+    , nonce = Nothing
+    , decoder = Decode.succeed ()
+    }
+
+
+{-| "beneficiary()" function
+-}
+beneficiary : Address -> Call Address
+beneficiary contractAddress =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "beneficiary()" []
+    , nonce = Nothing
+    , decoder = toElmDecoder AbiDecode.address
+    }
+
+
+{-| "beneficiaryDeposit()" function
+-}
+beneficiaryDeposit : Address -> Call BigInt
+beneficiaryDeposit contractAddress =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "beneficiaryDeposit()" []
+    , nonce = Nothing
+    , decoder = toElmDecoder AbiDecode.uint
+    }
+
+
 {-| "burn()" function
 -}
 burn : Address -> Call ()
@@ -196,36 +276,6 @@ burn contractAddress =
     , data = Just <| AbiEncode.functionCall "burn()" []
     , nonce = Nothing
     , decoder = Decode.succeed ()
-    }
-
-
-{-| "buyer()" function
--}
-buyer : Address -> Call Address
-buyer contractAddress =
-    { to = Just contractAddress
-    , from = Nothing
-    , gas = Nothing
-    , gasPrice = Nothing
-    , value = Nothing
-    , data = Just <| AbiEncode.functionCall "buyer()" []
-    , nonce = Nothing
-    , decoder = toElmDecoder AbiDecode.address
-    }
-
-
-{-| "buyerDeposit()" function
--}
-buyerDeposit : Address -> Call BigInt
-buyerDeposit contractAddress =
-    { to = Just contractAddress
-    , from = Nothing
-    , gas = Nothing
-    , gasPrice = Nothing
-    , value = Nothing
-    , data = Just <| AbiEncode.functionCall "buyerDeposit()" []
-    , nonce = Nothing
-    , decoder = toElmDecoder AbiDecode.uint
     }
 
 
@@ -259,33 +309,48 @@ closedReason contractAddress =
     }
 
 
-{-| "commit(string)" function
+{-| "commit(address,string)" function
 -}
-commit : Address -> String -> Call ()
-commit contractAddress commPubkey =
+commit : Address -> Address -> String -> Call ()
+commit contractAddress responder_ commPubkey =
     { to = Just contractAddress
     , from = Nothing
     , gas = Nothing
     , gasPrice = Nothing
     , value = Nothing
-    , data = Just <| AbiEncode.functionCall "commit(string)" [ AbiEncode.string commPubkey ]
+    , data = Just <| AbiEncode.functionCall "commit(address,string)" [ AbiEncode.address responder_, AbiEncode.string commPubkey ]
     , nonce = Nothing
     , decoder = Decode.succeed ()
     }
 
 
-{-| "daiAmount()" function
+{-| "custodian()" function
 -}
-daiAmount : Address -> Call BigInt
-daiAmount contractAddress =
+custodian : Address -> Call Address
+custodian contractAddress =
     { to = Just contractAddress
     , from = Nothing
     , gas = Nothing
     , gasPrice = Nothing
     , value = Nothing
-    , data = Just <| AbiEncode.functionCall "daiAmount()" []
+    , data = Just <| AbiEncode.functionCall "custodian()" []
     , nonce = Nothing
-    , decoder = toElmDecoder AbiDecode.uint
+    , decoder = toElmDecoder AbiDecode.address
+    }
+
+
+{-| "daiContract()" function
+-}
+daiContract : Address -> Call Address
+daiContract contractAddress =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "daiContract()" []
+    , nonce = Nothing
+    , decoder = toElmDecoder AbiDecode.address
     }
 
 
@@ -301,6 +366,51 @@ devFee contractAddress =
     , data = Just <| AbiEncode.functionCall "devFee()" []
     , nonce = Nothing
     , decoder = toElmDecoder AbiDecode.uint
+    }
+
+
+{-| "devFeeAddress()" function
+-}
+devFeeAddress : Address -> Call Address
+devFeeAddress contractAddress =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "devFeeAddress()" []
+    , nonce = Nothing
+    , decoder = toElmDecoder AbiDecode.address
+    }
+
+
+{-| "founderFee()" function
+-}
+founderFee : Address -> Call BigInt
+founderFee contractAddress =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "founderFee()" []
+    , nonce = Nothing
+    , decoder = toElmDecoder AbiDecode.uint
+    }
+
+
+{-| "founderFeeAddress()" function
+-}
+founderFeeAddress : Address -> Call Address
+founderFeeAddress contractAddress =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "founderFeeAddress()" []
+    , nonce = Nothing
+    , decoder = toElmDecoder AbiDecode.address
     }
 
 
@@ -323,10 +433,10 @@ getBalance contractAddress =
 -}
 type alias GetParameters =
     { initiator : Address
-    , initiatorIsBuyer : Bool
-    , daiAmount : BigInt
-    , totalPrice : String
-    , buyerDeposit : BigInt
+    , initiatorIsCustodian : Bool
+    , tradeAmount : BigInt
+    , beneficiaryDeposit : BigInt
+    , abortPunishment : BigInt
     , autorecallInterval : BigInt
     , autoabortInterval : BigInt
     , autoreleaseInterval : BigInt
@@ -353,7 +463,7 @@ getParametersDecoder =
         |> andMap AbiDecode.address
         |> andMap AbiDecode.bool
         |> andMap AbiDecode.uint
-        |> andMap AbiDecode.string
+        |> andMap AbiDecode.uint
         |> andMap AbiDecode.uint
         |> andMap AbiDecode.uint
         |> andMap AbiDecode.uint
@@ -407,6 +517,21 @@ getPhaseStartInfoDecoder =
         |> toElmDecoder
 
 
+{-| "getResponderDeposit()" function
+-}
+getResponderDeposit : Address -> Call BigInt
+getResponderDeposit contractAddress =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "getResponderDeposit()" []
+    , nonce = Nothing
+    , decoder = toElmDecoder AbiDecode.uint
+    }
+
+
 {-| "getState()" function
 -}
 type alias GetState =
@@ -457,16 +582,16 @@ initiator contractAddress =
     }
 
 
-{-| "initiatorIsBuyer()" function
+{-| "initiatorIsCustodian()" function
 -}
-initiatorIsBuyer : Address -> Call Bool
-initiatorIsBuyer contractAddress =
+initiatorIsCustodian : Address -> Call Bool
+initiatorIsCustodian contractAddress =
     { to = Just contractAddress
     , from = Nothing
     , gas = Nothing
     , gasPrice = Nothing
     , value = Nothing
-    , data = Just <| AbiEncode.functionCall "initiatorIsBuyer()" []
+    , data = Just <| AbiEncode.functionCall "initiatorIsCustodian()" []
     , nonce = Nothing
     , decoder = toElmDecoder AbiDecode.bool
     }
@@ -482,21 +607,6 @@ initiatorStatement contractAddress encryptedForInitiator encryptedForResponder =
     , gasPrice = Nothing
     , value = Nothing
     , data = Just <| AbiEncode.functionCall "initiatorStatement(string,string)" [ AbiEncode.string encryptedForInitiator, AbiEncode.string encryptedForResponder ]
-    , nonce = Nothing
-    , decoder = Decode.succeed ()
-    }
-
-
-{-| "open(address,bool,uint256[6],string,string,string)" function
--}
-open : Address -> Address -> Bool -> BigInt -> String -> String -> String -> Call ()
-open contractAddress initiator_ initiatorIsBuyer_ uintArgs price_ fiatTransferMethods commPubkey =
-    { to = Just contractAddress
-    , from = Nothing
-    , gas = Nothing
-    , gasPrice = Nothing
-    , value = Nothing
-    , data = Just <| AbiEncode.functionCall "open(address,bool,uint256[6],string,string,string)" [ AbiEncode.address initiator_, AbiEncode.bool initiatorIsBuyer_, AbiEncode.uint uintArgs, AbiEncode.string price_, AbiEncode.string fiatTransferMethods, AbiEncode.string commPubkey ]
     , nonce = Nothing
     , decoder = Decode.succeed ()
     }
@@ -607,21 +717,6 @@ pokeRewardSent contractAddress =
     }
 
 
-{-| "price()" function
--}
-price : Address -> Call String
-price contractAddress =
-    { to = Just contractAddress
-    , from = Nothing
-    , gas = Nothing
-    , gasPrice = Nothing
-    , value = Nothing
-    , data = Just <| AbiEncode.functionCall "price()" []
-    , nonce = Nothing
-    , decoder = toElmDecoder AbiDecode.string
-    }
-
-
 {-| "recall()" function
 -}
 recall : Address -> Call ()
@@ -667,21 +762,6 @@ responder contractAddress =
     }
 
 
-{-| "responderDeposit()" function
--}
-responderDeposit : Address -> Call BigInt
-responderDeposit contractAddress =
-    { to = Just contractAddress
-    , from = Nothing
-    , gas = Nothing
-    , gasPrice = Nothing
-    , value = Nothing
-    , data = Just <| AbiEncode.functionCall "responderDeposit()" []
-    , nonce = Nothing
-    , decoder = toElmDecoder AbiDecode.uint
-    }
-
-
 {-| "responderStatement(string,string)" function
 -}
 responderStatement : Address -> String -> String -> Call ()
@@ -697,18 +777,18 @@ responderStatement contractAddress encryptedForInitiator encryptedForResponder =
     }
 
 
-{-| "seller()" function
+{-| "tradeAmount()" function
 -}
-seller : Address -> Call Address
-seller contractAddress =
+tradeAmount : Address -> Call BigInt
+tradeAmount contractAddress =
     { to = Just contractAddress
     , from = Nothing
     , gas = Nothing
     , gasPrice = Nothing
     , value = Nothing
-    , data = Just <| AbiEncode.functionCall "seller()" []
+    , data = Just <| AbiEncode.functionCall "tradeAmount()" []
     , nonce = Nothing
-    , decoder = toElmDecoder AbiDecode.address
+    , decoder = toElmDecoder AbiDecode.uint
     }
 
 
@@ -769,6 +849,30 @@ committedDecoder =
         |> custom (data 1 AbiDecode.string)
 
 
+{-| "Initiated(string,string)" event
+-}
+type alias Initiated =
+    { terms : String
+    , commPubkey : String
+    }
+
+
+initiatedEvent : Address -> LogFilter
+initiatedEvent contractAddress =
+    { fromBlock = LatestBlock
+    , toBlock = LatestBlock
+    , address = contractAddress
+    , topics = [ Just <| U.keccak256 "Initiated(string,string)" ]
+    }
+
+
+initiatedDecoder : Decoder Initiated
+initiatedDecoder =
+    succeed Initiated
+        |> custom (data 0 AbiDecode.string)
+        |> custom (data 1 AbiDecode.string)
+
+
 {-| "InitiatorStatementLog(string,string)" event
 -}
 type alias InitiatorStatementLog =
@@ -789,30 +893,6 @@ initiatorStatementLogEvent contractAddress =
 initiatorStatementLogDecoder : Decoder InitiatorStatementLog
 initiatorStatementLogDecoder =
     succeed InitiatorStatementLog
-        |> custom (data 0 AbiDecode.string)
-        |> custom (data 1 AbiDecode.string)
-
-
-{-| "Opened(string,string)" event
--}
-type alias Opened =
-    { fiatTransferMethods : String
-    , commPubkey : String
-    }
-
-
-openedEvent : Address -> LogFilter
-openedEvent contractAddress =
-    { fromBlock = LatestBlock
-    , toBlock = LatestBlock
-    , address = contractAddress
-    , topics = [ Just <| U.keccak256 "Opened(string,string)" ]
-    }
-
-
-openedDecoder : Decoder Opened
-openedDecoder =
-    succeed Opened
         |> custom (data 0 AbiDecode.string)
         |> custom (data 1 AbiDecode.string)
 

@@ -1,4 +1,4 @@
-module Contracts.Types exposing (ClosedReason(..), CreateParameters, DAIHardEvent(..), FullTradeInfo, OpenMode(..), PartialTradeInfo, Phase(..), PhaseStartInfo, State, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, decodePhaseStartInfo, decodeState, eventDecoder, getBuyerOrSeller, getCurrentPhaseTimeoutInfo, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderRole, initiatorIsBuyerToOpenMode, initiatorOrResponderToBuyerOrSeller, openModeToInitiatorIsBuyer, partialTradeInfo, phaseIcon, phaseToInt, phaseToString, responderDeposit, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePaymentMethods, updatePhaseStartInfo, updateState)
+module Contracts.Types exposing (ClosedReason(..), CreateParameters, DAIHardEvent(..), FullTradeInfo, PartialTradeInfo, Phase(..), PhaseStartInfo, State, Terms, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, decodeParameters, decodePhaseStartInfo, decodeState, decodeTerms, defaultAbortPunishment, defaultBuyerDeposit, encodeTerms, eventDecoder, getBuyerOrSeller, getCurrentPhaseTimeoutInfo, getDevFee, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderRole, initiatorOrResponderToBuyerOrSeller, partialTradeInfo, phaseIcon, phaseToInt, phaseToString, responderDeposit, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePhaseStartInfo, updateState, updateTerms)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
@@ -12,6 +12,7 @@ import EthHelpers
 import FiatValue exposing (FiatValue)
 import Images exposing (Image)
 import Json.Decode
+import Json.Encode
 import Margin
 import Network exposing (..)
 import PaymentMethods exposing (PaymentMethod)
@@ -30,8 +31,8 @@ type alias PartialTradeInfo =
     , creationInfo : Maybe TradeCreationInfo
     , parameters : Maybe TradeParameters
     , state : Maybe State
+    , terms : Maybe Terms
     , phaseStartInfo : Maybe PhaseStartInfo
-    , paymentMethods : Maybe (List PaymentMethod)
     }
 
 
@@ -40,9 +41,9 @@ type alias FullTradeInfo =
     , creationInfo : TradeCreationInfo
     , parameters : TradeParameters
     , state : State
+    , terms : Terms
     , phaseStartInfo : PhaseStartInfo
     , derived : DerivedValues
-    , paymentMethods : List PaymentMethod
     }
 
 
@@ -58,10 +59,16 @@ type alias DerivedValues =
     }
 
 
+type alias Terms =
+    { price : FiatValue
+    , paymentMethods : List PaymentMethod
+    }
+
+
 type alias UserParameters =
-    { openMode : OpenMode
+    { initiatingParty : BuyerOrSeller
     , tradeAmount : TokenValue
-    , fiatPrice : FiatValue
+    , price : FiatValue
     , paymentMethods : List PaymentMethod
     , autorecallInterval : Time.Posix
     , autoabortInterval : Time.Posix
@@ -70,22 +77,24 @@ type alias UserParameters =
 
 
 type alias TradeParameters =
-    { openMode : OpenMode
+    { initiatingParty : BuyerOrSeller
     , tradeAmount : TokenValue
-    , fiatPrice : FiatValue
+    , buyerDeposit : TokenValue
+    , abortPunishment : TokenValue
     , autorecallInterval : Time.Posix
     , autoabortInterval : Time.Posix
     , autoreleaseInterval : Time.Posix
     , initiatorAddress : Address
-    , buyerDeposit : TokenValue
     , pokeReward : TokenValue
     }
 
 
 type alias CreateParameters =
-    { openMode : OpenMode
+    { initiatingParty : BuyerOrSeller
     , tradeAmount : TokenValue
-    , fiatPrice : FiatValue
+    , price : FiatValue
+    , buyerDeposit : TokenValue
+    , abortPunishment : TokenValue
     , autorecallInterval : Time.Posix
     , autoabortInterval : Time.Posix
     , autoreleaseInterval : Time.Posix
@@ -94,11 +103,6 @@ type alias CreateParameters =
     , initiatorCommPubkey : String
     , paymentMethods : List PaymentMethod
     }
-
-
-type OpenMode
-    = BuyerOpened
-    | SellerOpened
 
 
 type alias State =
@@ -126,7 +130,7 @@ type ClosedReason
 
 
 type DAIHardEvent
-    = OpenedEvent DHT.Opened
+    = InitiatedEvent DHT.Initiated
     | CommittedEvent DHT.Committed
     | RecalledEvent
     | ClaimedEvent
@@ -150,42 +154,38 @@ type alias PhaseStartInfo =
     }
 
 
-openModeToInitiatorIsBuyer : OpenMode -> Bool
-openModeToInitiatorIsBuyer openMode =
-    case openMode of
-        BuyerOpened ->
-            True
-
-        SellerOpened ->
-            False
+defaultBuyerDeposit : TokenValue -> TokenValue
+defaultBuyerDeposit tradeAmount =
+    TokenValue.div tradeAmount 3
 
 
-initiatorIsBuyerToOpenMode : Bool -> OpenMode
-initiatorIsBuyerToOpenMode initiatorIsBuyer =
-    if initiatorIsBuyer then
-        BuyerOpened
+defaultAbortPunishment : TokenValue -> TokenValue
+defaultAbortPunishment tradeAmount =
+    TokenValue.div tradeAmount 12
 
-    else
-        SellerOpened
+
+getDevFee : TokenValue -> TokenValue
+getDevFee tradeAmount =
+    TokenValue.div tradeAmount 200
 
 
 getResponderRole : TradeParameters -> BuyerOrSeller
 getResponderRole parameters =
-    case parameters.openMode of
-        BuyerOpened ->
+    case parameters.initiatingParty of
+        Buyer ->
             Seller
 
-        SellerOpened ->
+        Seller ->
             Buyer
 
 
 responderDeposit : TradeParameters -> TokenValue
 responderDeposit parameters =
-    case parameters.openMode of
-        BuyerOpened ->
+    case parameters.initiatingParty of
+        Buyer ->
             parameters.tradeAmount
 
-        SellerOpened ->
+        Seller ->
             parameters.buyerDeposit
 
 
@@ -250,42 +250,42 @@ updateState state trade =
             LoadedTrade { info | state = state }
 
 
-updatePaymentMethods : List PaymentMethod -> Trade -> Trade
-updatePaymentMethods paymentMethods trade =
+updateTerms : Terms -> Trade -> Trade
+updateTerms terms trade =
     case trade of
         PartiallyLoadedTrade pInfo ->
-            { pInfo | paymentMethods = Just paymentMethods }
+            { pInfo | terms = Just terms }
                 |> checkIfTradeLoaded
 
         LoadedTrade info ->
             let
                 _ =
-                    Debug.log "Trying to update payment methods on a trade that's already fully loaded!" ""
+                    Debug.log "Trying to update terms on a trade that's already fully loaded!" ""
             in
             trade
 
 
 checkIfTradeLoaded : PartialTradeInfo -> Trade
 checkIfTradeLoaded pInfo =
-    case ( ( pInfo.creationInfo, pInfo.parameters ), ( pInfo.state, pInfo.paymentMethods ), pInfo.phaseStartInfo ) of
-        ( ( Just creationInfo, Just parameters ), ( Just state, Just paymentMethods ), Just phaseStartInfo ) ->
+    case ( ( pInfo.creationInfo, pInfo.parameters ), ( pInfo.state, pInfo.terms ), pInfo.phaseStartInfo ) of
+        ( ( Just creationInfo, Just parameters ), ( Just state, Just terms ), Just phaseStartInfo ) ->
             LoadedTrade
                 (FullTradeInfo
                     pInfo.factoryID
                     creationInfo
                     parameters
                     state
+                    terms
                     phaseStartInfo
-                    (deriveValues parameters state)
-                    paymentMethods
+                    (deriveValues parameters state terms)
                 )
 
         _ ->
             PartiallyLoadedTrade pInfo
 
 
-deriveValues : TradeParameters -> State -> DerivedValues
-deriveValues parameters state =
+deriveValues : TradeParameters -> State -> Terms -> DerivedValues
+deriveValues parameters state terms =
     let
         currentPhaseInterval =
             case state.phase of
@@ -306,7 +306,7 @@ deriveValues parameters state =
             state.phaseStartTime
             currentPhaseInterval
     , margin =
-        Margin.margin parameters.tradeAmount parameters.fiatPrice
+        Margin.margin parameters.tradeAmount terms.price
     }
 
 
@@ -332,17 +332,17 @@ getBuyerOrSeller tradeInfo userAddress =
     getInitiatorOrResponder tradeInfo userAddress
         |> Maybe.map
             (\initiatorOrResponder ->
-                case ( initiatorOrResponder, tradeInfo.parameters.openMode ) of
-                    ( Initiator, SellerOpened ) ->
+                case ( initiatorOrResponder, tradeInfo.parameters.initiatingParty ) of
+                    ( Initiator, Seller ) ->
                         Seller
 
-                    ( Initiator, BuyerOpened ) ->
+                    ( Initiator, Buyer ) ->
                         Buyer
 
-                    ( Responder, SellerOpened ) ->
+                    ( Responder, Seller ) ->
                         Buyer
 
-                    ( Responder, BuyerOpened ) ->
+                    ( Responder, Buyer ) ->
                         Seller
             )
 
@@ -412,8 +412,8 @@ eventDecoder =
     eventSigDecoder
         |> Json.Decode.andThen
             (\hashedSig ->
-                if hashedSig == Eth.Utils.keccak256 "Opened(string,string)" then
-                    Json.Decode.map OpenedEvent DHT.openedDecoder
+                if hashedSig == Eth.Utils.keccak256 "Initiated(string,string)" then
+                    Json.Decode.map InitiatedEvent DHT.initiatedDecoder
 
                 else if hashedSig == Eth.Utils.keccak256 "Committed(address,string)" then
                     Json.Decode.map CommittedEvent DHT.committedDecoder
@@ -445,6 +445,44 @@ eventDecoder =
                 else
                     Json.Decode.fail "Unrecognized topic hash"
             )
+
+
+decodeParameters : DHT.GetParameters -> Result String TradeParameters
+decodeParameters encodedParameters =
+    let
+        autorecallIntervalResult =
+            TimeHelpers.secondsBigIntToMaybePosix encodedParameters.autorecallInterval
+                |> Result.fromMaybe "error converting BigInt to Time.Posix"
+
+        depositDeadlineIntervalResult =
+            TimeHelpers.secondsBigIntToMaybePosix encodedParameters.autoabortInterval
+                |> Result.fromMaybe "error converting BigInt to Time.Posix"
+
+        autoreleaseIntervalResult =
+            TimeHelpers.secondsBigIntToMaybePosix encodedParameters.autoreleaseInterval
+                |> Result.fromMaybe "error converting BigInt to Time.Posix"
+    in
+    Result.map3
+        (\autorecallInterval depositDeadlineInterval autoreleaseInterval ->
+            { initiatingParty =
+                if encodedParameters.initiatorIsCustodian then
+                    Seller
+
+                else
+                    Buyer
+            , tradeAmount = TokenValue.tokenValue tokenDecimals encodedParameters.tradeAmount
+            , buyerDeposit = TokenValue.tokenValue tokenDecimals encodedParameters.beneficiaryDeposit
+            , abortPunishment = TokenValue.tokenValue tokenDecimals encodedParameters.abortPunishment
+            , autorecallInterval = autorecallInterval
+            , autoabortInterval = depositDeadlineInterval
+            , autoreleaseInterval = autoreleaseInterval
+            , initiatorAddress = encodedParameters.initiator
+            , pokeReward = TokenValue.tokenValue tokenDecimals encodedParameters.pokeReward
+            }
+        )
+        autorecallIntervalResult
+        depositDeadlineIntervalResult
+        autoreleaseIntervalResult
 
 
 eventSigDecoder : Json.Decode.Decoder Eth.Types.Hex
@@ -559,9 +597,11 @@ buildCreateParameters initiatorInfo userParameters =
                 userParameters.tradeAmount
                 (BigInt.fromInt 0)
     in
-    { openMode = userParameters.openMode
+    { initiatingParty = userParameters.initiatingParty
     , tradeAmount = userParameters.tradeAmount
-    , fiatPrice = userParameters.fiatPrice
+    , buyerDeposit = defaultBuyerDeposit userParameters.tradeAmount
+    , abortPunishment = defaultAbortPunishment userParameters.tradeAmount
+    , price = userParameters.price
     , autorecallInterval = userParameters.autorecallInterval
     , autoabortInterval = userParameters.autoabortInterval
     , autoreleaseInterval = userParameters.autoreleaseInterval
@@ -618,19 +658,19 @@ decodePhaseStartInfo encoded =
         (TimeHelpers.secondsBigIntToMaybePosix encoded.v9)
 
 
-initiatorOrResponderToBuyerOrSeller : OpenMode -> InitiatorOrResponder -> BuyerOrSeller
-initiatorOrResponderToBuyerOrSeller openMode initiatorOrResponder =
-    case ( initiatorOrResponder, openMode ) of
-        ( Initiator, BuyerOpened ) ->
+initiatorOrResponderToBuyerOrSeller : BuyerOrSeller -> InitiatorOrResponder -> BuyerOrSeller
+initiatorOrResponderToBuyerOrSeller initiatingParty initiatorOrResponder =
+    case ( initiatorOrResponder, initiatingParty ) of
+        ( Initiator, Buyer ) ->
             Buyer
 
-        ( Initiator, SellerOpened ) ->
+        ( Initiator, Seller ) ->
             Seller
 
-        ( Responder, BuyerOpened ) ->
+        ( Responder, Buyer ) ->
             Seller
 
-        ( Responder, SellerOpened ) ->
+        ( Responder, Seller ) ->
             Buyer
 
 
@@ -648,3 +688,34 @@ phaseIcon phase =
 
         Closed ->
             Images.none
+
+
+encodeTerms : Terms -> String
+encodeTerms terms =
+    let
+        encodedPaymentMethods =
+            Json.Encode.list PaymentMethods.encode
+                terms.paymentMethods
+
+        encodedPrice =
+            FiatValue.encode terms.price
+    in
+    Json.Encode.object
+        [ ( "paymentmethods", encodedPaymentMethods )
+        , ( "price", encodedPrice )
+        ]
+        |> Json.Encode.encode 0
+
+
+decodeTerms : String -> Result Json.Decode.Error Terms
+decodeTerms encodedTerms =
+    let
+        decoder =
+            Json.Decode.map2
+                Terms
+                (Json.Decode.field "price" FiatValue.decoder)
+                (Json.Decode.field "paymentmethods"
+                    (Json.Decode.list PaymentMethods.decoder)
+                )
+    in
+    Json.Decode.decodeString decoder encodedTerms

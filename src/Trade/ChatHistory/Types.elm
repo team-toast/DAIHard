@@ -11,7 +11,7 @@ import Time
 type alias Model =
     { userInfo : UserInfo
     , userRole : BuyerOrSeller
-    , openMode : CTypes.OpenMode
+    , initiatingParty : BuyerOrSeller
     , history : Array Event
     , messageInput : String
     }
@@ -59,7 +59,7 @@ type alias EncryptedMessage =
 
 
 type StateChangeInfo
-    = Opened
+    = Initiated
     | Committed Address
     | Recalled
     | Claimed

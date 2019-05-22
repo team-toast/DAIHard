@@ -19,6 +19,7 @@ import Margin
 import PaymentMethods exposing (PaymentMethod)
 import Time
 import TimeHelpers
+import TokenValue exposing (TokenValue)
 import TradeCache.State as TradeCache
 import TradeCache.Types exposing (TradeCache)
 
@@ -259,10 +260,10 @@ viewTradeRow time userRole viewPhase trade =
 
             CTypes.Closed ->
                 Element.none
-        , cellMaker ( 1, viewTradeAmount trade )
-        , cellMaker ( 2, viewFiat trade )
+        , cellMaker ( 1, viewTradeAmount trade.parameters.tradeAmount )
+        , cellMaker ( 2, viewFiat trade.terms.price )
         , cellMaker ( 1, viewMargin trade (userRole == Seller) )
-        , cellMaker ( 6, viewPaymentMethods trade.paymentMethods )
+        , cellMaker ( 6, viewPaymentMethods trade.terms.paymentMethods )
         , cellMaker ( 2, viewTradeButton trade.factoryID )
         ]
 
@@ -339,14 +340,14 @@ pokeButton address =
         }
 
 
-viewTradeAmount : CTypes.FullTradeInfo -> Element Msg
-viewTradeAmount trade =
-    EH.daiValue trade.parameters.tradeAmount
+viewTradeAmount : TokenValue -> Element Msg
+viewTradeAmount tradeAmount =
+    EH.daiValue tradeAmount
 
 
-viewFiat : CTypes.FullTradeInfo -> Element Msg
-viewFiat trade =
-    EH.fiatValue trade.parameters.fiatPrice
+viewFiat : FiatValue -> Element Msg
+viewFiat price =
+    EH.fiatValue price
 
 
 viewMargin : CTypes.FullTradeInfo -> Bool -> Element Msg

@@ -3,7 +3,7 @@ module Marketplace.State exposing (init, subscriptions, update, updateUserInfo)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import BigIntHelpers
-import CommonTypes exposing (UserInfo)
+import CommonTypes exposing (..)
 import Contracts.Types as CTypes
 import Contracts.Wrappers
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
@@ -47,7 +47,7 @@ initialInputs =
     , maxFiat = ""
     , paymentMethod = ""
     , paymentMethodTerms = []
-    , openMode = CTypes.SellerOpened
+    , initiatingParty = Seller
     }
 
 
@@ -77,8 +77,8 @@ update msg model =
         --     , cmd
         --     , Nothing
         --     )
-        ChangeOfferType newOpenMode ->
-            ( { model | inputs = model.inputs |> updateOpenMode newOpenMode } |> applyInputs
+        ChangeOfferType initiatingParty ->
+            ( { model | inputs = model.inputs |> updateInitiatingParty initiatingParty } |> applyInputs
             , Cmd.none
             , Nothing
             )
@@ -184,7 +184,7 @@ update msg model =
                                 TokenValue.compare a.parameters.tradeAmount b.parameters.tradeAmount
 
                             Fiat ->
-                                FiatValue.compare a.parameters.fiatPrice b.parameters.fiatPrice
+                                FiatValue.compare a.terms.price b.terms.price
 
                             Margin ->
                                 Maybe.map2
@@ -275,7 +275,7 @@ applyInputs prevModel =
                             True
 
                         terms ->
-                            testTextMatch terms trade.paymentMethods
+                            testTextMatch terms trade.terms.paymentMethods
 
                 daiTest trade =
                     (case query.dai.min of
@@ -299,25 +299,25 @@ applyInputs prevModel =
                             True
 
                         Just fiatQuery ->
-                            (trade.parameters.fiatPrice.fiatType == fiatQuery.type_)
+                            (trade.terms.price.fiatType == fiatQuery.type_)
                                 && (case fiatQuery.min of
                                         Nothing ->
                                             True
 
                                         Just min ->
-                                            BigInt.compare trade.parameters.fiatPrice.amount min /= LT
+                                            BigInt.compare trade.terms.price.amount min /= LT
                                    )
                                 && (case fiatQuery.max of
                                         Nothing ->
                                             True
 
                                         Just max ->
-                                            BigInt.compare trade.parameters.fiatPrice.amount max /= GT
+                                            BigInt.compare trade.terms.price.amount max /= GT
                                    )
 
                 newFilterFunc now trade =
                     baseFilterFunc now trade
-                        && (trade.parameters.openMode == query.openMode)
+                        && (trade.parameters.initiatingParty == query.initiatingParty)
                         && searchTest now trade
                         && daiTest trade
                         && fiatTest trade
@@ -346,7 +346,7 @@ inputsToQuery inputs =
                     (String.Extra.nonEmpty inputs.fiatType)
             , paymentMethodTerms =
                 inputs.paymentMethodTerms
-            , openMode = Debug.log "OM" inputs.openMode
+            , initiatingParty = inputs.initiatingParty
             }
         )
         (interpretDaiAmount inputs.minDai
@@ -396,7 +396,7 @@ resetSearch model =
     { model
         | sortFunc = initialSortFunc
         , filterFunc = baseFilterFunc
-        , inputs = { initialInputs | openMode = model.inputs.openMode }
+        , inputs = { initialInputs | initiatingParty = model.inputs.initiatingParty }
     }
 
 

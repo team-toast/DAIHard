@@ -153,7 +153,7 @@ renderEvent userRole event =
             let
                 maybeElementInfo =
                     case stateChange of
-                        Opened ->
+                        Initiated ->
                             Just ( Element.rgb 0 0 1, EH.white, "Initiator opened the trade" )
 
                         Recalled ->

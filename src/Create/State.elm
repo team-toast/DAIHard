@@ -47,7 +47,7 @@ init node userInfo =
 
 
 initialInputs =
-    { openMode = CTypes.SellerOpened
+    { userRole = Seller
     , daiAmount = ""
     , fiatType = "USD"
     , fiatAmount = ""
@@ -99,13 +99,13 @@ update msg prevModel =
                 _ ->
                     justModelUpdate prevModel
 
-        ChangeType openMode ->
+        ChangeRole initiatingParty ->
             let
                 oldInputs =
                     prevModel.inputs
             in
             justModelUpdate
-                { prevModel | inputs = { oldInputs | openMode = openMode } }
+                { prevModel | inputs = { oldInputs | userRole = initiatingParty } }
 
         TradeAmountChanged newAmountStr ->
             let
@@ -239,10 +239,10 @@ update msg prevModel =
                             | txChainStatus = Just <| Confirm createParameters
                             , depositAmount = Nothing
                         }
-                        (Contracts.Wrappers.getExtraFeesCmd
+                        (Contracts.Wrappers.getFounderFeeCmd
                             prevModel.node
                             (TokenValue.getBigInt createParameters.tradeAmount)
-                            (ExtraFeesFetched createParameters)
+                            (FounderFeeFetched createParameters)
                         )
                         ChainCmd.none
                         Nothing
@@ -250,22 +250,24 @@ update msg prevModel =
                 Err inputErrors ->
                     justModelUpdate { prevModel | errors = inputErrors }
 
-        ExtraFeesFetched createParameters fetchResult ->
+        FounderFeeFetched createParameters fetchResult ->
             case fetchResult of
-                Ok fees ->
+                Ok founderFee ->
                     let
                         mainDepositAmount =
-                            case createParameters.openMode of
-                                CTypes.BuyerOpened ->
-                                    fees.buyerDeposit
+                            case createParameters.initiatingParty of
+                                Buyer ->
+                                    CTypes.defaultBuyerDeposit createParameters.tradeAmount
 
-                                CTypes.SellerOpened ->
-                                    TokenValue.getBigInt createParameters.tradeAmount
+                                Seller ->
+                                    createParameters.tradeAmount
 
                         fullDepositAmount =
                             mainDepositAmount
-                                |> BigInt.add fees.devFee
-                                |> BigInt.add (TokenValue.getBigInt createParameters.pokeReward)
+                                |> TokenValue.add (TokenValue.tokenValue tokenDecimals founderFee)
+                                |> TokenValue.add (CTypes.getDevFee createParameters.tradeAmount)
+                                |> TokenValue.add createParameters.pokeReward
+                                |> TokenValue.getBigInt
                     in
                     justModelUpdate { prevModel | depositAmount = Just fullDepositAmount }
 
@@ -507,9 +509,9 @@ validateInputs : Inputs -> Result Errors CTypes.UserParameters
 validateInputs inputs =
     Result.map3
         (\daiAmount fiatAmount paymentMethods ->
-            { openMode = inputs.openMode
+            { initiatingParty = inputs.userRole
             , tradeAmount = daiAmount
-            , fiatPrice = { fiatType = inputs.fiatType, amount = fiatAmount }
+            , price = { fiatType = inputs.fiatType, amount = fiatAmount }
             , autorecallInterval = inputs.autorecallInterval
             , autoabortInterval = inputs.autoabortInterval
             , autoreleaseInterval = inputs.autoreleaseInterval

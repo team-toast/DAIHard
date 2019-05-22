@@ -42,7 +42,7 @@ root time tradeCache model =
                 ]
                 (EH.withHeader
                     "Offer Type"
-                    (typeToggleElement model.inputs.openMode)
+                    (typeToggleElement model.inputs.initiatingParty)
                 )
             , searchInputElement model.inputs model.errors model.showCurrencyDropdown
             ]
@@ -91,8 +91,8 @@ searchInputElement inputs errors showCurrencyDropdown =
         ]
 
 
-typeToggleElement : CTypes.OpenMode -> Element Msg
-typeToggleElement openMode =
+typeToggleElement : BuyerOrSeller -> Element Msg
+typeToggleElement initiatingParty =
     let
         baseStyles =
             [ Element.Font.size 24
@@ -101,13 +101,13 @@ typeToggleElement openMode =
             ]
 
         ( buyStyles, sellStyles ) =
-            case openMode of
-                CTypes.BuyerOpened ->
+            case initiatingParty of
+                Buyer ->
                     ( baseStyles
                     , baseStyles ++ [ Element.Font.color EH.disabledTextColor ]
                     )
 
-                CTypes.SellerOpened ->
+                Seller ->
                     ( baseStyles ++ [ Element.Font.color EH.disabledTextColor ]
                     , baseStyles
                     )
@@ -117,10 +117,10 @@ typeToggleElement openMode =
         , Element.width Element.fill
         ]
         [ Element.el
-            ([ Element.Events.onClick <| ChangeOfferType CTypes.SellerOpened ] ++ sellStyles)
+            ([ Element.Events.onClick <| ChangeOfferType Seller ] ++ sellStyles)
             (Element.text "Selling DAI")
         , Element.el
-            ([ Element.Events.onClick <| ChangeOfferType CTypes.BuyerOpened ] ++ buyStyles)
+            ([ Element.Events.onClick <| ChangeOfferType Buyer ] ++ buyStyles)
             (Element.text "Buying DAI")
         ]
 
@@ -170,11 +170,11 @@ resultsElement time tradeCache model =
                 |> filterAndSortTrades time model.filterFunc model.sortFunc
 
         buyingOrSellingString =
-            case model.inputs.openMode of
-                CTypes.BuyerOpened ->
+            case model.inputs.initiatingParty of
+                Buyer ->
                     "Buying"
 
-                CTypes.SellerOpened ->
+                Seller ->
                     "Selling"
     in
     Element.column
@@ -205,7 +205,15 @@ resultsElement time tradeCache model =
             ]
             (visibleTrades
                 |> List.map
-                    (viewTradeRow time (model.inputs.openMode == CTypes.SellerOpened))
+                    (viewTradeRow time
+                        (case model.inputs.initiatingParty of
+                            Buyer ->
+                                Seller
+
+                            Seller ->
+                                Buyer
+                        )
+                    )
             )
         ]
 
@@ -382,8 +390,8 @@ withInputHeader title element =
         ]
 
 
-viewTradeRow : Time.Posix -> Bool -> CTypes.FullTradeInfo -> Element Msg
-viewTradeRow time asBuyer trade =
+viewTradeRow : Time.Posix -> BuyerOrSeller -> CTypes.FullTradeInfo -> Element Msg
+viewTradeRow time viewAsRole trade =
     Element.row
         [ Element.width Element.fill
         , Element.spacing 1
@@ -392,10 +400,10 @@ viewTradeRow time asBuyer trade =
             [ ( 1, viewExpiring time trade )
             , ( 1, viewTradeAmount trade )
             , ( 2, viewFiat trade )
-            , ( 1, viewMargin trade (not asBuyer) )
-            , ( 6, viewPaymentMethods trade.paymentMethods )
-            , ( 2, viewAutoabortWindow asBuyer trade )
-            , ( 2, viewAutoreleaseWindow asBuyer trade )
+            , ( 1, viewMargin trade (viewAsRole /= Buyer) )
+            , ( 6, viewPaymentMethods trade.terms.paymentMethods )
+            , ( 2, viewAutoabortWindow viewAsRole trade )
+            , ( 2, viewAutoreleaseWindow viewAsRole trade )
             , ( 2, viewTradeButton trade.factoryID )
             ]
         )
@@ -451,7 +459,7 @@ viewTradeAmount trade =
 
 viewFiat : CTypes.FullTradeInfo -> Element Msg
 viewFiat trade =
-    EH.fiatValue trade.parameters.fiatPrice
+    EH.fiatValue trade.terms.price
 
 
 viewMargin : CTypes.FullTradeInfo -> Bool -> Element Msg
@@ -469,15 +477,16 @@ viewPaymentMethods paymentMethods =
         |> Maybe.withDefault Element.none
 
 
-viewAutoabortWindow : Bool -> CTypes.FullTradeInfo -> Element Msg
-viewAutoabortWindow viewAsBuyer trade =
+viewAutoabortWindow : BuyerOrSeller -> CTypes.FullTradeInfo -> Element Msg
+viewAutoabortWindow viewAsRole trade =
     let
         lowValColor =
-            if viewAsBuyer then
-                EH.red
+            case viewAsRole of
+                Buyer ->
+                    EH.red
 
-            else
-                EH.green
+                Seller ->
+                    EH.green
 
         baseColor =
             if Time.posixToMillis trade.parameters.autoabortInterval < (1000 * 60 * 60 * 6) then
@@ -493,15 +502,16 @@ viewAutoabortWindow viewAsBuyer trade =
         trade.parameters.autoabortInterval
 
 
-viewAutoreleaseWindow : Bool -> CTypes.FullTradeInfo -> Element Msg
-viewAutoreleaseWindow viewAsBuyer trade =
+viewAutoreleaseWindow : BuyerOrSeller -> CTypes.FullTradeInfo -> Element Msg
+viewAutoreleaseWindow viewAsRole trade =
     let
         lowValColor =
-            if viewAsBuyer then
-                EH.green
+            case viewAsRole of
+                Buyer ->
+                    EH.green
 
-            else
-                EH.red
+                Seller ->
+                    EH.red
 
         baseColor =
             if Time.posixToMillis trade.parameters.autoabortInterval < (1000 * 60 * 60 * 6) then

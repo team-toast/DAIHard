@@ -2,7 +2,7 @@ module Create.Types exposing (Errors, Inputs, Model, Msg(..), TxChainStatus(..),
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
-import CommonTypes exposing (UserInfo)
+import CommonTypes exposing (..)
 import Contracts.Generated.DAIHardFactory as DHF
 import Contracts.Types as CTypes
 import Create.PMWizard.Types as PMWizard
@@ -31,7 +31,7 @@ type alias Model =
 
 type Msg
     = Refresh Time.Posix
-    | ChangeType CTypes.OpenMode
+    | ChangeRole BuyerOrSeller
     | TradeAmountChanged String
     | FiatTypeChanged String
     | FiatAmountChanged String
@@ -47,7 +47,7 @@ type Msg
     | AbortCreate
     | ConfirmCreate CTypes.CreateParameters BigInt
     | AllowanceFetched (Result Http.Error BigInt)
-    | ExtraFeesFetched CTypes.CreateParameters (Result Http.Error DHF.GetExtraFees)
+    | FounderFeeFetched CTypes.CreateParameters (Result Http.Error BigInt)
     | ApproveSigned CTypes.CreateParameters (Result String TxHash)
     | CreateSigned (Result String TxHash)
     | CreateMined (Result String TxReceipt)
@@ -64,7 +64,7 @@ type TxChainStatus
 
 
 type alias Inputs =
-    { openMode : CTypes.OpenMode
+    { userRole : BuyerOrSeller
     , daiAmount : String
     , fiatType : String
     , fiatAmount : String

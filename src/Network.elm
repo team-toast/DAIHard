@@ -1,4 +1,4 @@
-module Network exposing (Network(..), daiAddress, factoryAddress, tokenDecimals)
+module Network exposing (Network(..), daiAddress, devFeeAddress, factoryAddress, tokenDecimals)
 
 import Eth.Net
 import Eth.Types exposing (Address)
@@ -28,7 +28,12 @@ factoryAddress : Network -> Address
 factoryAddress network =
     case network of
         Mainnet ->
-            Eth.Utils.unsafeToAddress "0xEe7C042bdBA8EC063AaDF9f08F413E170Ed5443c"
+            Eth.Utils.unsafeToAddress "0x3833B7233F848350998e7775412d95655545c3Eb"
 
         Kovan ->
-            Eth.Utils.unsafeToAddress "0x178c4942615744EB91577dEa33e439b880077934"
+            Eth.Utils.unsafeToAddress "0x886D8E4B29bccaAe4e80f76687E57B3175B9cBB3"
+
+
+devFeeAddress : Address
+devFeeAddress =
+    Eth.Utils.unsafeToAddress "0x2b518987f8c21937B4d0b700b1224736a28fCA23"

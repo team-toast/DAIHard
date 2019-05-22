@@ -1,5 +1,6 @@
 module Create.PMWizard.View exposing (root)
 
+import CommonTypes exposing (..)
 import Contracts.Types as CTypes
 import Create.PMWizard.Types exposing (..)
 import Element exposing (Attribute, Element)
@@ -13,8 +14,8 @@ import Images exposing (Image)
 import PaymentMethods exposing (PaymentMethod)
 
 
-root : Model -> CTypes.OpenMode -> Element Msg
-root model openMode =
+root : Model -> BuyerOrSeller -> Element Msg
+root model userRole =
     Element.column
         [ Element.width <| Element.px 1050
         , Element.centerX
@@ -41,7 +42,7 @@ root model openMode =
             , EH.roundBottomCorners 8
             , Element.paddingXY 48 39
             ]
-            (bodyElement model openMode)
+            (bodyElement model userRole)
         ]
 
 
@@ -86,29 +87,29 @@ getTitle model =
     "Add Payment Methods"
 
 
-bodyElement : Model -> CTypes.OpenMode -> Element Msg
-bodyElement model openMode =
+bodyElement : Model -> BuyerOrSeller -> Element Msg
+bodyElement model userRole =
     case model of
         ChooseType ->
-            chooseTypeElement openMode
+            chooseTypeElement userRole
 
         Details paymentMethod ->
-            detailsElement paymentMethod openMode
+            detailsElement paymentMethod userRole
 
 
-chooseTypeElement : CTypes.OpenMode -> Element Msg
-chooseTypeElement openMode =
+chooseTypeElement : BuyerOrSeller -> Element Msg
+chooseTypeElement userRole =
     Element.column [ Element.spacing 32 ]
         [ Element.row [ Element.spacing 32 ]
-            [ pmTypeElement PaymentMethods.Cash openMode
-            , pmTypeElement PaymentMethods.Bank openMode
+            [ pmTypeElement PaymentMethods.Cash userRole
+            , pmTypeElement PaymentMethods.Bank userRole
             ]
-        , pmTypeElement PaymentMethods.Custom openMode
+        , pmTypeElement PaymentMethods.Custom userRole
         ]
 
 
-pmTypeElement : PaymentMethods.Type -> CTypes.OpenMode -> Element Msg
-pmTypeElement pmType openMode =
+pmTypeElement : PaymentMethods.Type -> BuyerOrSeller -> Element Msg
+pmTypeElement pmType userRole =
     let
         icon =
             PaymentMethods.typeToIcon pmType
@@ -117,7 +118,7 @@ pmTypeElement pmType openMode =
             typeTitle pmType
 
         summary =
-            typeSummary pmType openMode
+            typeSummary pmType userRole
 
         onClick =
             SelectType pmType
@@ -152,8 +153,8 @@ pmTypeElement pmType openMode =
         ]
 
 
-detailsElement : PaymentMethod -> CTypes.OpenMode -> Element Msg
-detailsElement paymentMethod openMode =
+detailsElement : PaymentMethod -> BuyerOrSeller -> Element Msg
+detailsElement paymentMethod userRole =
     Element.el
         [ Element.padding 20
         , Element.Background.color EH.white
@@ -174,7 +175,7 @@ detailsElement paymentMethod openMode =
                 , text = paymentMethod.info
                 , placeholder =
                     if paymentMethod.info == "" then
-                        Just <| inputPlaceholder paymentMethod openMode
+                        Just <| inputPlaceholder paymentMethod userRole
 
                     else
                         Nothing
@@ -204,27 +205,27 @@ typeTitle pmType =
             "Custom"
 
 
-typeSummary : PaymentMethods.Type -> CTypes.OpenMode -> String
-typeSummary pmType openMode =
-    case ( pmType, openMode ) of
-        ( PaymentMethods.Cash, CTypes.BuyerOpened ) ->
+typeSummary : PaymentMethods.Type -> BuyerOrSeller -> String
+typeSummary pmType userRole =
+    case ( pmType, userRole ) of
+        ( PaymentMethods.Cash, Buyer ) ->
             "Indicate specific or general locations where you’re happy to meet with the seller or drop off the cash."
 
-        ( PaymentMethods.Cash, CTypes.SellerOpened ) ->
+        ( PaymentMethods.Cash, Seller ) ->
             "Indicate specific or general locations where you’re happy to meet with the buyer or pick up the cash."
 
-        ( PaymentMethods.Bank, CTypes.BuyerOpened ) ->
+        ( PaymentMethods.Bank, Buyer ) ->
             "Indicate where you can make bank transfers to, either nationally or with specific banks."
 
-        ( PaymentMethods.Bank, CTypes.SellerOpened ) ->
+        ( PaymentMethods.Bank, Seller ) ->
             "Indicate where you will accept bank transfers from, either nationally or with specific banks."
 
         ( PaymentMethods.Custom, _ ) ->
             "Indicate specific, custom terms for this trade."
 
 
-inputPlaceholder : PaymentMethod -> CTypes.OpenMode -> Element.Input.Placeholder Msg
-inputPlaceholder paymentMethod openMode =
+inputPlaceholder : PaymentMethod -> BuyerOrSeller -> Element.Input.Placeholder Msg
+inputPlaceholder paymentMethod userRole =
     Element.Input.placeholder
         []
         (Element.text """Put lots of detail here. You can provide multiple options.

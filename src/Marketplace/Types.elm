@@ -1,4 +1,4 @@
-module Marketplace.Types exposing (Errors, FiatTypeAndRange, Model, Msg(..), Query, ResultColumnType(..), SearchInputs, TokenRange, noErrors, updateFiatTypeInput, updateMaxDaiInput, updateMaxFiatInput, updateMinDaiInput, updateMinFiatInput, updateOpenMode, updatePaymentMethodInput, updatePaymentMethodTerms)
+module Marketplace.Types exposing (Errors, FiatTypeAndRange, Model, Msg(..), Query, ResultColumnType(..), SearchInputs, TokenRange, noErrors, updateFiatTypeInput, updateInitiatingParty, updateMaxDaiInput, updateMaxFiatInput, updateMinDaiInput, updateMinFiatInput, updatePaymentMethodInput, updatePaymentMethodTerms)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
@@ -32,7 +32,7 @@ type alias Model =
 
 
 type Msg
-    = ChangeOfferType CTypes.OpenMode
+    = ChangeOfferType BuyerOrSeller
     | MinDaiChanged String
     | MaxDaiChanged String
     | FiatTypeInputChanged String
@@ -63,7 +63,7 @@ type alias SearchInputs =
     , maxFiat : String
     , paymentMethod : String
     , paymentMethodTerms : List String
-    , openMode : CTypes.OpenMode
+    , initiatingParty : BuyerOrSeller
     }
 
 
@@ -80,7 +80,7 @@ noErrors =
 
 
 type alias Query =
-    { openMode : CTypes.OpenMode
+    { initiatingParty : BuyerOrSeller
     , dai : TokenRange
     , fiat : Maybe FiatTypeAndRange
     , paymentMethodTerms : List String
@@ -100,9 +100,9 @@ type alias FiatTypeAndRange =
     }
 
 
-updateOpenMode : CTypes.OpenMode -> SearchInputs -> SearchInputs
-updateOpenMode openMode inputs =
-    { inputs | openMode = openMode }
+updateInitiatingParty : BuyerOrSeller -> SearchInputs -> SearchInputs
+updateInitiatingParty initiatingParty inputs =
+    { inputs | initiatingParty = initiatingParty }
 
 
 updatePaymentMethodInput : String -> SearchInputs -> SearchInputs

@@ -159,9 +159,13 @@ update msg prevModel =
                             if BigInt.compare allowance (CTypes.responderDeposit trade.parameters |> TokenValue.getBigInt) /= LT then
                                 let
                                     ( txChainStatus, chainCmd ) =
-                                        initiateCommitCall trade.creationInfo.address userInfo.commPubkey
+                                        initiateCommitCall trade.creationInfo.address userInfo.address userInfo.commPubkey
                                 in
-                                justModelUpdate { newModel | txChainStatus = txChainStatus }
+                                UpdateResult
+                                    { newModel | txChainStatus = txChainStatus }
+                                    Cmd.none
+                                    chainCmd
+                                    Nothing
 
                             else
                                 justModelUpdate newModel
@@ -385,7 +389,7 @@ update msg prevModel =
                     case prevModel.allowance of
                         Just allowance ->
                             if BigInt.compare allowance (CTypes.responderDeposit trade.parameters |> TokenValue.getBigInt) /= LT then
-                                initiateCommitCall trade.creationInfo.address userInfo.commPubkey
+                                initiateCommitCall trade.creationInfo.address userInfo.address userInfo.commPubkey
 
                             else
                                 ( Just ApproveNeedsSig, approveChainCmd )
@@ -658,11 +662,11 @@ update msg prevModel =
             justModelUpdate prevModel
 
 
-initiateCommitCall : Address -> String -> ( Maybe TxChainStatus, ChainCmd Msg )
-initiateCommitCall tradeAddress commPubkey =
+initiateCommitCall : Address -> Address -> String -> ( Maybe TxChainStatus, ChainCmd Msg )
+initiateCommitCall tradeAddress userAddress commPubkey =
     let
         txParams =
-            DHT.commit tradeAddress commPubkey
+            DHT.commit tradeAddress userAddress commPubkey
                 |> Eth.toSend
     in
     ( Just CommitNeedsSig
@@ -693,12 +697,11 @@ handleNewLog log prevModel =
             let
                 newTrade =
                     case event of
-                        CTypes.OpenedEvent data ->
-                            case PaymentMethods.decodePaymentMethodList data.fiatTransferMethods of
-                                Ok paymentMethods ->
+                        CTypes.InitiatedEvent data ->
+                            case CTypes.decodeTerms data.terms of
+                                Ok terms ->
                                     prevModel.trade
-                                        |> CTypes.updatePaymentMethods
-                                            paymentMethods
+                                        |> CTypes.updateTerms terms
 
                                 Err errStr ->
                                     let
@@ -712,7 +715,7 @@ handleNewLog log prevModel =
 
                 newSecureCommInfo =
                     case event of
-                        CTypes.OpenedEvent data ->
+                        CTypes.InitiatedEvent data ->
                             prevModel.secureCommInfo
                                 |> updateInitiatorPubkey data.commPubkey
 
@@ -779,7 +782,7 @@ tryInitChatHistory maybeTrade maybeUserInfo pendingEvents =
                     ChatHistory.init
                         userInfo
                         buyerOrSeller
-                        tradeInfo.parameters.openMode
+                        tradeInfo.parameters.initiatingParty
                         pendingEvents
                         |> Tuple.mapFirst Just
 

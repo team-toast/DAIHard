@@ -2,20 +2,6 @@
 	{
 		"constant": true,
 		"inputs": [],
-		"name": "seller",
-		"outputs": [
-			{
-				"name": "",
-				"type": "address"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
 		"name": "pokeRewardSent",
 		"outputs": [
 			{
@@ -35,20 +21,6 @@
 			{
 				"name": "",
 				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "initiatorIsBuyer",
-		"outputs": [
-			{
-				"name": "",
-				"type": "bool"
 			}
 		],
 		"payable": false,
@@ -103,6 +75,34 @@
 		"constant": true,
 		"inputs": [],
 		"name": "responder",
+		"outputs": [
+			{
+				"name": "",
+				"type": "address"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "founderFeeAddress",
+		"outputs": [
+			{
+				"name": "",
+				"type": "address"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "daiContract",
 		"outputs": [
 			{
 				"name": "",
@@ -194,11 +194,11 @@
 	{
 		"constant": true,
 		"inputs": [],
-		"name": "autorecallInterval",
+		"name": "custodian",
 		"outputs": [
 			{
 				"name": "",
-				"type": "uint256"
+				"type": "address"
 			}
 		],
 		"payable": false,
@@ -208,7 +208,21 @@
 	{
 		"constant": true,
 		"inputs": [],
-		"name": "responderDeposit",
+		"name": "beneficiary",
+		"outputs": [
+			{
+				"name": "",
+				"type": "address"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "autorecallInterval",
 		"outputs": [
 			{
 				"name": "",
@@ -229,9 +243,41 @@
 		"type": "function"
 	},
 	{
+		"constant": true,
+		"inputs": [],
+		"name": "getResponderDeposit",
+		"outputs": [
+			{
+				"name": "responderDeposit",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
 		"constant": false,
 		"inputs": [],
 		"name": "claim",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "_responder",
+				"type": "address"
+			},
+			{
+				"name": "commPubkey",
+				"type": "string"
+			}
+		],
+		"name": "commit",
 		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
@@ -245,6 +291,20 @@
 			{
 				"name": "",
 				"type": "address"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "initiatorIsCustodian",
+		"outputs": [
+			{
+				"name": "",
+				"type": "bool"
 			}
 		],
 		"payable": false,
@@ -287,20 +347,6 @@
 			{
 				"name": "",
 				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "buyer",
-		"outputs": [
-			{
-				"name": "",
-				"type": "address"
 			}
 		],
 		"payable": false,
@@ -381,11 +427,35 @@
 		"constant": false,
 		"inputs": [
 			{
-				"name": "commPubkey",
+				"name": "_custodian",
+				"type": "address"
+			},
+			{
+				"name": "_beneficiary",
+				"type": "address"
+			},
+			{
+				"name": "_initiatorIsCustodian",
+				"type": "bool"
+			},
+			{
+				"name": "uintArgs",
+				"type": "uint256[7]"
+			},
+			{
+				"name": "terms",
+				"type": "string"
+			},
+			{
+				"name": "initiatorCommPubkey",
+				"type": "string"
+			},
+			{
+				"name": "responderCommPubkey",
 				"type": "string"
 			}
 		],
-		"name": "commit",
+		"name": "beginInCommittedPhase",
 		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
@@ -412,21 +482,7 @@
 	{
 		"constant": true,
 		"inputs": [],
-		"name": "price",
-		"outputs": [
-			{
-				"name": "",
-				"type": "string"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "buyerDeposit",
+		"name": "abortPunishment",
 		"outputs": [
 			{
 				"name": "",
@@ -461,19 +517,19 @@
 				"type": "address"
 			},
 			{
-				"name": "initiatorIsBuyer",
+				"name": "initiatorIsCustodian",
 				"type": "bool"
 			},
 			{
-				"name": "daiAmount",
+				"name": "tradeAmount",
 				"type": "uint256"
 			},
 			{
-				"name": "totalPrice",
-				"type": "string"
+				"name": "beneficiaryDeposit",
+				"type": "uint256"
 			},
 			{
-				"name": "buyerDeposit",
+				"name": "abortPunishment",
 				"type": "uint256"
 			},
 			{
@@ -495,40 +551,6 @@
 		],
 		"payable": false,
 		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": false,
-		"inputs": [
-			{
-				"name": "_initiator",
-				"type": "address"
-			},
-			{
-				"name": "_initiatorIsBuyer",
-				"type": "bool"
-			},
-			{
-				"name": "uintArgs",
-				"type": "uint256[6]"
-			},
-			{
-				"name": "_price",
-				"type": "string"
-			},
-			{
-				"name": "fiatTransferMethods",
-				"type": "string"
-			},
-			{
-				"name": "commPubkey",
-				"type": "string"
-			}
-		],
-		"name": "open",
-		"outputs": [],
-		"payable": false,
-		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -561,8 +583,29 @@
 	},
 	{
 		"constant": false,
-		"inputs": [],
-		"name": "recall",
+		"inputs": [
+			{
+				"name": "_initiator",
+				"type": "address"
+			},
+			{
+				"name": "_initiatorIsCustodian",
+				"type": "bool"
+			},
+			{
+				"name": "uintArgs",
+				"type": "uint256[8]"
+			},
+			{
+				"name": "terms",
+				"type": "string"
+			},
+			{
+				"name": "commPubkey",
+				"type": "string"
+			}
+		],
+		"name": "beginInOpenPhase",
 		"outputs": [],
 		"payable": false,
 		"stateMutability": "nonpayable",
@@ -571,7 +614,7 @@
 	{
 		"constant": true,
 		"inputs": [],
-		"name": "daiAmount",
+		"name": "tradeAmount",
 		"outputs": [
 			{
 				"name": "",
@@ -580,6 +623,43 @@
 		],
 		"payable": false,
 		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "devFeeAddress",
+		"outputs": [
+			{
+				"name": "",
+				"type": "address"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "founderFee",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [],
+		"name": "recall",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -615,9 +695,27 @@
 		"type": "function"
 	},
 	{
+		"constant": true,
+		"inputs": [],
+		"name": "beneficiaryDeposit",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
 		"inputs": [
 			{
 				"name": "_daiContract",
+				"type": "address"
+			},
+			{
+				"name": "_founderFeeAddress",
 				"type": "address"
 			},
 			{
@@ -634,7 +732,7 @@
 		"inputs": [
 			{
 				"indexed": false,
-				"name": "fiatTransferMethods",
+				"name": "terms",
 				"type": "string"
 			},
 			{
@@ -643,7 +741,7 @@
 				"type": "string"
 			}
 		],
-		"name": "Opened",
+		"name": "Initiated",
 		"type": "event"
 	},
 	{
