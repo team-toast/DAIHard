@@ -80,15 +80,17 @@ contract ERC20Interface {
 }
 
 contract DAIHardFactory {
-    event NewTrade(uint id, address tradeAddress, bool indexed initiatorIsPayer);
+    using SafeMath for uint;
+
+    event NewTrade(uint id, address tradeAddress, bool indexed initiatorIsCustodian);
 
     ERC20Interface public daiContract;
-    address payable public devFeeAddress;
+    address public founderFeeAddress;
 
-    constructor(ERC20Interface _daiContract, address payable _devFeeAddress)
+    constructor(ERC20Interface _daiContract, address _founderFeeAddress)
     public {
         daiContract = _daiContract;
-        devFeeAddress = _devFeeAddress;
+        founderFeeAddress = _founderFeeAddress;
     }
 
     struct CreationInfo {
@@ -98,70 +100,130 @@ contract DAIHardFactory {
 
     CreationInfo[] public createdTrades;
 
-    function getBuyerDeposit(uint tradeAmount)
+    function getFounderFee(uint tradeAmount)
     public
     pure
-    returns (uint buyerDeposit) {
-        return tradeAmount / 3;
-    }
-
-    function getDevFee(uint tradeAmount)
-    public
-    pure
-    returns (uint devFee) {
-        return tradeAmount / 100;
-    }
-
-    function getExtraFees(uint tradeAmount)
-    public
-    pure
-    returns (uint buyerDeposit, uint devFee) {
-        return (getBuyerDeposit(tradeAmount), getDevFee(tradeAmount));
+    returns (uint founderFee) {
+        return tradeAmount / 200;
     }
 
     /*
     The Solidity compiler can't handle much stack depth,
     so we have to pack some args together in annoying ways...
-    Hence the 'uintArgs'. Here is its layout:
-    0 - daiAmount
-    1 - pokeReward
-    2 - autorecallInterval
-    3 - autoabortInterval
-    4 - autoreleaseInterval
+    Hence 'uintArgs' and 'addressArgs'.
+
+    Here are the layouts for createOpenTrade:
+
+    uintArgs:
+    0 - tradeAmount
+    1 - beneficiaryDeposit
+    2 - abortPunishment
+    3 - pokeReward
+    4 - autorecallInterval
+    5 - autoabortInterval
+    6 - autoreleaseInterval
+    7 - devFee
+
+    addressArgs:
+    0 - initiator
+    1 - devFeeAddress
     */
 
-    function openDAIHardTrade(address payable _initiator, bool initiatorIsBuyer, uint[5] calldata uintArgs, string calldata _totalPrice, string calldata _fiatTransferMethods, string calldata _commPubkey)
+    function createOpenTrade(address[2] calldata addressArgs,
+                             bool initiatorIsCustodian,
+                             uint[8] calldata uintArgs,
+                             string calldata terms,
+                             string calldata _commPubkey
+                             )
     external
     returns (DAIHardTrade) {
-        uint transferAmount;
-        uint[6] memory newUintArgs; // Note that this structure is not the same as the above comment describes. See below in DAIHardTrade.open.
+        uint initialTransfer;
+        uint[8] memory newUintArgs; // Note that this structure is not the same as the above comment describes. See below in DAIHardTrade.open.
 
-        if (initiatorIsBuyer) {
-            //transferAmount = getBuyerDeposit(uintArgs[0]) + uintArgs[1] + getDevFee(uintArgs[0]); (kept for legibility; SafeMath must be used)
-            transferAmount = SafeMath.add(SafeMath.add(getBuyerDeposit(uintArgs[0]), uintArgs[1]), getDevFee(uintArgs[0]));
+        if (initiatorIsCustodian) {
+            initialTransfer = uintArgs[0].add(uintArgs[3]).add(getFounderFee(uintArgs[0])).add(uintArgs[7]);
+            // tradeAmount + pokeReward + getFounderFee(tradeAmount) + devFee
 
-            newUintArgs = [uintArgs[0], uintArgs[1], getDevFee(uintArgs[0]), uintArgs[2], uintArgs[3], uintArgs[4]];
+            newUintArgs = [uintArgs[1], uintArgs[2], uintArgs[3], uintArgs[4], uintArgs[5], uintArgs[6], getFounderFee(uintArgs[0]), uintArgs[7]];
+            // see uintArgs comment above DAIHardTrade.beginInOpenPhase
         }
         else {
-            //transferAmount = uintArgs[0] + uintArgs[1] + getDevFee(uintArgs[0]);  (kept for legibility; SafeMath must be used)
-            transferAmount = SafeMath.add(SafeMath.add(uintArgs[0], uintArgs[1]), getDevFee(uintArgs[0]));
+            initialTransfer = uintArgs[1].add(uintArgs[3]).add(getFounderFee(uintArgs[0])).add(uintArgs[7]);
+            // beneficiaryDeposit + pokeReward + getFounderFee(tradeAmount) + devFee
 
-            newUintArgs = [getBuyerDeposit(uintArgs[0]), uintArgs[1], getDevFee(uintArgs[0]), uintArgs[2], uintArgs[3], uintArgs[4]];
+            newUintArgs = [uintArgs[0], uintArgs[2], uintArgs[3], uintArgs[4], uintArgs[5], uintArgs[6], getFounderFee(uintArgs[0]), uintArgs[7]];
+            // see uintArgs comment above DAIHardTrade.beginInOpenPhase
         }
 
-        //create the new trade and add its creationInfo to createdTrades
-        DAIHardTrade newTrade = new DAIHardTrade(daiContract, devFeeAddress);
+        // Create the new trade and add its creationInfo to createdTrades, and emit an event.
+        // This provides a DAIHard interface two options to find all created trades:
+        // scan for NewTrade events or read the createdTrades array.
+        DAIHardTrade newTrade = new DAIHardTrade(daiContract, founderFeeAddress, addressArgs[1]);
         createdTrades.push(CreationInfo(address(newTrade), block.number));
-        emit NewTrade(createdTrades.length - 1, address(newTrade), initiatorIsBuyer);
+        emit NewTrade(createdTrades.length - 1, address(newTrade), initiatorIsCustodian);
 
         //transfer DAI to the trade and open it
-        require(daiContract.transferFrom(msg.sender, address(newTrade), transferAmount), "Token transfer failed. Did you call approve() on the DAI contract?");
-        newTrade.open(_initiator, initiatorIsBuyer, newUintArgs, _totalPrice, _fiatTransferMethods, _commPubkey);
+        require(daiContract.transferFrom(msg.sender, address(newTrade), initialTransfer),
+                "Token transfer failed. Did you call approve() on the DAI contract?"
+                );
+        newTrade.beginInOpenPhase(addressArgs[0], initiatorIsCustodian, newUintArgs, terms, _commPubkey);
 
         return newTrade;
     }
 
-    function getNumTrades()
+    /*
+    Array layouts for createCommittedTrade:
+
+    uintArgs:
+    0 - tradeAmount
+    1 - beneficiaryDeposit
+    2 - abortPunishment
+    3 - pokeReward
+    4 - autoabortInterval
+    5 - autoreleaseInterval
+    6 - devFee
+
+    addressArgs:
+    0 - custodian
+    1 - beneficiary
+    2 - devFeeAddress
+    */
+
+    function createCommittedTrade(address[3] calldata addressArgs,
+                                  bool initiatorIsCustodian,
+                                  uint[7] calldata uintArgs,
+                                  string calldata _terms,
+                                  string calldata _initiatorCommPubkey,
+                                  string calldata _responderCommPubkey
+                                  )
+    external
+    returns (DAIHardTrade) {
+        uint initialTransfer = uintArgs[0].add(uintArgs[1]).add(uintArgs[3]).add(getFounderFee(uintArgs[0]).add(uintArgs[6]));
+        // initialTransfer = tradeAmount + beneficiaryDeposit + pokeReward + getFounderFee(tradeAmount) + devFee
+
+        uint[7] memory newUintArgs = [uintArgs[1], uintArgs[2], uintArgs[3], uintArgs[4], uintArgs[5], getFounderFee(uintArgs[0]), uintArgs[6]];
+        // see uintArgs comment above DAIHardTrade.beginInCommittedPhase
+
+        DAIHardTrade newTrade = new DAIHardTrade(daiContract, founderFeeAddress, addressArgs[2]);
+        createdTrades.push(CreationInfo(address(newTrade), block.number));
+        emit NewTrade(createdTrades.length - 1, address(newTrade), initiatorIsCustodian);
+
+        require(daiContract.transferFrom(msg.sender, address(newTrade), initialTransfer),
+                                         "Token transfer failed. Did you call approve() on the DAI contract?"
+                                         );
+        newTrade.beginInCommittedPhase(addressArgs[0],
+                                       addressArgs[1],
+                                       initiatorIsCustodian,
+                                       newUintArgs,
+                                       _terms,
+                                       _initiatorCommPubkey,
+                                       _responderCommPubkey
+                                       );
+
+        return newTrade;
+    }
+
+    function numTrades()
     external
     view
     returns (uint num) {
@@ -170,7 +232,9 @@ contract DAIHardFactory {
 }
 
 contract DAIHardTrade {
-    enum Phase {Created, Open, Committed, Claimed, Closed}
+    using SafeMath for uint;
+
+    enum Phase {Creating, Open, Committed, Claimed, Closed}
     Phase public phase;
 
     modifier inPhase(Phase p) {
@@ -192,15 +256,16 @@ contract DAIHardTrade {
     }
 
 
-    address payable public initiator;
-    address payable public responder;
+    address public initiator;
+    address public responder;
 
-    //The contract only has two parties, but depending on how it's opened,
-    //the initiator for example might be either the buyer OR the seller.
+    // The contract only has two parties, but depending on how it's opened,
+    // the initiator for example might be either the custodian OR the beneficiary,
+    // so we need four 'role' variables to capture each possible combination.
 
-    bool public initiatorIsBuyer;
-    address payable public buyer;
-    address payable public seller;
+    bool public initiatorIsCustodian;
+    address public custodian;
+    address public beneficiary;
 
     modifier onlyInitiator() {
         require(msg.sender == initiator, "msg.sender is not Initiator.");
@@ -210,47 +275,53 @@ contract DAIHardTrade {
         require(msg.sender == responder, "msg.sender is not Responder.");
         _;
     }
-    modifier onlyBuyer() {
-        require (msg.sender == buyer, "msg.sender is not Buyer.");
+    modifier onlyCustodian() {
+        require (msg.sender == custodian, "msg.sender is not Custodian.");
         _;
     }
-    modifier onlySeller() {
-        require (msg.sender == seller, "msg.sender is not Seller.");
+    modifier onlyBeneficiary() {
+        require (msg.sender == beneficiary, "msg.sender is not Beneficiary.");
         _;
     }
     modifier onlyContractParty() { // Must be one of the two parties involved in the contract
+        // Note this still covers the case in which responder still is 0x0, as msg.sender can never be 0x0,
+        // in which case this will revert if msg.sender != initiator.
         require(msg.sender == initiator || msg.sender == responder, "msg.sender is not a party in this contract.");
         _;
     }
 
-    ERC20Interface daiContract;
-    address payable devFeeAddress;
+    ERC20Interface public daiContract;
+    address public founderFeeAddress;
+    address public devFeeAddress;
 
-    constructor(ERC20Interface _daiContract, address payable _devFeeAddress)
+    bool public pokeRewardSent;
+
+    constructor(ERC20Interface _daiContract, address _founderFeeAddress, address _devFeeAddress)
     public {
-        changePhase(Phase.Created);
-        closedReason = ClosedReason.NotClosed;
+        // If gas was not an issue we would leave the next three lines in for explicit clarity,
+        // but technically they are a waste of gas, because we're simply setting them to the null values
+        // (which happens automatically anyway when the contract is instantiated)
+
+        // changePhase(Phase.Creating);
+        // closedReason = ClosedReason.NotClosed;
+        // pokeRewardSent = false;
 
         daiContract = _daiContract;
+        founderFeeAddress = _founderFeeAddress;
         devFeeAddress = _devFeeAddress;
-
-        pokeRewardSent = false;
     }
 
-    uint public daiAmount;
-    string public price;
-    uint public buyerDeposit;
-
-    uint public responderDeposit; // This will be equal to either daiAmount or buyerDeposit, depending on initiatorIsBuyer
+    uint public tradeAmount;
+    uint public beneficiaryDeposit;
+    uint public abortPunishment;
 
     uint public autorecallInterval;
     uint public autoabortInterval;
     uint public autoreleaseInterval;
 
     uint public pokeReward;
+    uint public founderFee;
     uint public devFee;
-
-    bool public pokeRewardSent;
 
     /* ---------------------- CREATED PHASE -----------------------
 
@@ -264,55 +335,117 @@ contract DAIHardTrade {
 
     ------------------------------------------------------------ */
 
-    event Opened(string fiatTransferMethods, string commPubkey);
+    event Initiated(string fiatTransferMethods, string commPubkey);
 
     /*
     uintArgs:
     0 - responderDeposit
-    1 - pokeReward
-    2 - devFee
+    1 - abortPunishment
+    2 - pokeReward
     3 - autorecallInterval
     4 - autoabortInterval
     5 - autoreleaseInterval
+    6 - founderFee
+    7 - devFee
     */
 
-    function open(address payable _initiator, bool _initiatorIsBuyer, uint[6] memory uintArgs, string memory _price, string memory fiatTransferMethods, string memory commPubkey)
+    function beginInOpenPhase(address _initiator,
+                              bool _initiatorIsCustodian,
+                              uint[8] memory uintArgs,
+                              string memory terms,
+                              string memory commPubkey
+                              )
     public
-    inPhase(Phase.Created) {
-        require(getBalance() > 0, "You can't open a trade without first depositing DAI.");
-
-        responderDeposit = uintArgs[0];
-        pokeReward = uintArgs[1];
-        devFee = uintArgs[2];
+    inPhase(Phase.Creating) {
+        uint responderDeposit = uintArgs[0];
+        abortPunishment = uintArgs[1];
+        pokeReward = uintArgs[2];
 
         autorecallInterval = uintArgs[3];
         autoabortInterval = uintArgs[4];
         autoreleaseInterval = uintArgs[5];
 
+        founderFee = uintArgs[6];
+        devFee = uintArgs[7];
+
         initiator = _initiator;
-        initiatorIsBuyer = _initiatorIsBuyer;
-        if (initiatorIsBuyer) {
-            buyer = initiator;
-            daiAmount = responderDeposit;
-            buyerDeposit = SafeMath.sub(getBalance(), SafeMath.add(pokeReward, devFee));
+        initiatorIsCustodian = _initiatorIsCustodian;
+        if (initiatorIsCustodian) {
+            custodian = initiator;
+            tradeAmount = getBalance().sub(pokeReward.add(founderFee).add(devFee));
+            beneficiaryDeposit = responderDeposit;
         }
         else {
-            seller = initiator;
-            daiAmount = SafeMath.sub(getBalance(), SafeMath.add(pokeReward, devFee));
-            buyerDeposit = responderDeposit;
+            beneficiary = initiator;
+            tradeAmount = responderDeposit;
+            beneficiaryDeposit = getBalance().sub(pokeReward.add(founderFee).add(devFee));
         }
 
-        price = _price;
+        require(beneficiaryDeposit <= tradeAmount, "A beneficiaryDeposit greater than tradeAmount is not allowed.");
+        require(abortPunishment <= beneficiaryDeposit, "An abortPunishment greater than beneficiaryDeposit is not allowed.");
 
         changePhase(Phase.Open);
-        emit Opened(fiatTransferMethods, commPubkey);
+        emit Initiated(terms, commPubkey);
+    }
+
+    /*
+    uintArgs:
+    0 - beneficiaryDeposit
+    1 - abortPunishment
+    2 - pokeReward
+    3 - autoabortInterval
+    4 - autoreleaseInterval
+    5 - founderFee
+    6 - devFee
+    */
+
+    function beginInCommittedPhase(address _custodian,
+                                   address _beneficiary,
+                                   bool _initiatorIsCustodian,
+                                   uint[7] memory uintArgs,
+                                   string memory terms,
+                                   string memory initiatorCommPubkey,
+                                   string memory responderCommPubkey
+                                   )
+    public
+    inPhase(Phase.Creating) {
+        beneficiaryDeposit = uintArgs[0];
+        abortPunishment = uintArgs[1];
+        pokeReward = uintArgs[2];
+
+        autoabortInterval = uintArgs[3];
+        autoreleaseInterval = uintArgs[4];
+
+        founderFee = uintArgs[5];
+        devFee = uintArgs[6];
+
+        custodian = _custodian;
+        beneficiary = _beneficiary;
+        initiatorIsCustodian = _initiatorIsCustodian;
+
+        if (initiatorIsCustodian) {
+            initiator = custodian;
+            responder = beneficiary;
+        }
+        else {
+            initiator = beneficiary;
+            responder = custodian;
+        }
+
+        tradeAmount = getBalance().sub(beneficiaryDeposit.add(pokeReward).add(founderFee).add(devFee));
+
+
+        changePhase(Phase.Committed);
+
+        emit Initiated(terms, initiatorCommPubkey);
+        emit Committed(responder, responderCommPubkey);
     }
 
     /* ---------------------- OPEN PHASE --------------------------
 
     In the Open phase, the Initiator waits for a Responder.
     We move to the Commited phase once someone becomes the Responder
-    by executing commit() and including msg.value = responderDeposit.
+    by executing commit() and including msg.value = getResponderDeposit.
 
     At any time, the Initiator can cancel the whole thing by calling recall().
 
@@ -324,7 +457,6 @@ contract DAIHardTrade {
     event Recalled();
     event Committed(address responder, string commPubkey);
 
-
     function recall()
     external
     inPhase(Phase.Open)
@@ -335,6 +467,8 @@ contract DAIHardTrade {
     function internalRecall()
     internal {
         require(daiContract.transfer(initiator, getBalance()), "Recall of DAI to initiator failed!");
+        // Note that this will also return the founderFee and devFee to the intiator,
+        // as well as the pokeReward if it hasn't yet been sent.
 
         changePhase(Phase.Closed);
         closedReason = ClosedReason.Recalled;
@@ -347,22 +481,24 @@ contract DAIHardTrade {
     view
     inPhase(Phase.Open)
     returns(bool available) {
-        return (block.timestamp >= SafeMath.add(phaseStartTimestamps[uint(Phase.Open)], autorecallInterval));
+        return (block.timestamp >= phaseStartTimestamps[uint(Phase.Open)].add(autorecallInterval));
     }
 
-    function commit(string calldata commPubkey)
+    function commit(address _responder, string calldata commPubkey)
     external
     inPhase(Phase.Open) {
-        require(daiContract.transferFrom(msg.sender, address(this), responderDeposit), "Can't transfer the required deposit from the DAI contract. Did you call approve first?");
+        require(daiContract.transferFrom(msg.sender, address(this), getResponderDeposit()),
+                                         "Can't transfer the required deposit from the DAI contract. Did you call approve first?"
+                                         );
         require(!autorecallAvailable(), "autorecallInterval has passed; this offer has expired.");
 
-        responder = msg.sender;
+        responder = _responder;
 
-        if (initiatorIsBuyer) {
-            seller = responder;
+        if (initiatorIsCustodian) {
+            beneficiary = responder;
         }
         else {
-            buyer = responder;
+            custodian = responder;
         }
 
         changePhase(Phase.Committed);
@@ -371,10 +507,10 @@ contract DAIHardTrade {
 
     /* ---------------------- COMMITTED PHASE ---------------------
 
-    In the Committed phase, the Buyer is expected to deposit fiat for the DAI,
+    In the Committed phase, the Beneficiary is expected to deposit fiat for the DAI,
     then call claim().
 
-    Otherwise, the Buyer can call abort(), which cancels the contract,
+    Otherwise, the Beneficiary can call abort(), which cancels the contract,
     incurs a small penalty on both parties, and returns the remainder to each party.
 
     After autoabortInterval has passed, the only state change allowed is to abort(),
@@ -388,35 +524,33 @@ contract DAIHardTrade {
     function abort()
     external
     inPhase(Phase.Committed)
-    onlyBuyer() {
+    onlyBeneficiary() {
         internalAbort();
     }
 
     function internalAbort()
     internal {
-        //Punishment amount is 1/4 the buyerDeposit for now,
-        //but in a future version this might be set by the Initiator.
-        //At that point, this code should be checked for overflow concerns in the following require statement.
-        uint burnAmount = buyerDeposit / 4;
+        // Punish both parties equally by burning abortPunishment.
+        // Instead of burning abortPunishment twice, just burn it all in one call (saves gas).
+        require(daiContract.transfer(address(0x0), abortPunishment*2), "Token burn failed!");
+        // Security note: The above line risks overflow, but only if abortPunishment >= (maxUint/2).
+        // This should never happen, as abortPunishment <= beneficiaryDeposit <= tradeAmount (as required in both beginIn*Phase functions),
+        // which is ultimately limited by the amount of DAI the user deposited (which must be far less than maxUint/2).
+        // See the note below about avoiding assert() or require() to test this.
 
-        //Punish both parties equally by burning burnAmount.
-        //Instead of burning burnAmount twice, just burn it all in one call (saves gas).
-        require(daiContract.transfer(address(0x0), burnAmount*2), "Token burn failed!");
+        // Send back deposits minus burned amounts.
+        require(daiContract.transfer(beneficiary, beneficiaryDeposit.sub(abortPunishment)), "Token transfer to Beneficiary failed!");
+        require(daiContract.transfer(custodian, tradeAmount.sub(abortPunishment)), "Token transfer to Custodian failed!");
 
-        //Send back deposits minus burned amounts.
-        require(daiContract.transfer(buyer, SafeMath.sub(buyerDeposit, burnAmount)), "Token transfer to Buyer failed!");
-        require(daiContract.transfer(seller, SafeMath.sub(daiAmount, burnAmount)), "Token transfer to Seller failed!");
-
-        uint sendBackToInitiator = devFee;
-        //If there was a pokeReward left, it should be sent back to the initiator
+        // Refund to initiator should include founderFee and devFee
+        uint sendBackToInitiator = founderFee.add(devFee);
+        // If there was a pokeReward left, it should also be sent back to the initiator
         if (!pokeRewardSent) {
-            sendBackToInitiator = SafeMath.add(sendBackToInitiator, pokeReward);
+            sendBackToInitiator = sendBackToInitiator.add(pokeReward);
         }
-        
-        require(daiContract.transfer(initiator, sendBackToInitiator), "Token refund of devFee+pokeReward to Initiator failed!");
-        
-        //There may be a wei or two left over in the contract due to integer division. Not a big deal.
 
+        require(daiContract.transfer(initiator, sendBackToInitiator), "Token refund of founderFee+devFee+pokeReward to Initiator failed!");
+        
         changePhase(Phase.Closed);
         closedReason = ClosedReason.Aborted;
 
@@ -428,13 +562,13 @@ contract DAIHardTrade {
     view
     inPhase(Phase.Committed)
     returns(bool passed) {
-        return (block.timestamp >= SafeMath.add(phaseStartTimestamps[uint(Phase.Committed)], autoabortInterval));
+        return (block.timestamp >= phaseStartTimestamps[uint(Phase.Committed)].add(autoabortInterval));
     }
 
     function claim()
     external
     inPhase(Phase.Committed)
-    onlyBuyer() {
+    onlyBeneficiary() {
         require(!autoabortAvailable(), "The deposit deadline has passed!");
 
         changePhase(Phase.Claimed);
@@ -443,9 +577,9 @@ contract DAIHardTrade {
 
     /* ---------------------- CLAIMED PHASE -----------------------
 
-    In the Claimed phase, the Seller can call release() or burn(),
-    and is expected to call burn() only if the Buyer did not transfer
-    the amount of money described in totalPrice.
+    In the Claimed phase, the Custodian can call release() or burn(),
+    and is expected to call burn() only if the Beneficiary did meet the terms
+    described in the 'terms' value logged with the Initiated event.
 
     After autoreleaseInterval has passed, the only state change allowed is to release,
     which can be triggered by anyone via poke().
@@ -458,7 +592,7 @@ contract DAIHardTrade {
     function release()
     external
     inPhase(Phase.Claimed)
-    onlySeller() {
+    onlyCustodian() {
         internalRelease();
     }
 
@@ -469,11 +603,13 @@ contract DAIHardTrade {
             require(daiContract.transfer(initiator, pokeReward), "Refund of pokeReward to Initiator failed!");
         }
 
-        //Upon successful resolution of trade, the devFee is sent to the developers of DAIHard.
+        // Upon successful resolution of trade, the founderFee is sent to the founders of DAIHard,
+        // and the devFee is sent to wherever the original Factory creation call specified.
+        require(daiContract.transfer(founderFeeAddress, founderFee), "Token transfer to founderFeeAddress failed!");
         require(daiContract.transfer(devFeeAddress, devFee), "Token transfer to devFeeAddress failed!");
 
-        //Release the remaining balance to the buyer.
-        require(daiContract.transfer(buyer, getBalance()), "Final release transfer to buyer failed!");
+        //Release the remaining balance to the beneficiary.
+        require(daiContract.transfer(beneficiary, getBalance()), "Final release transfer to beneficiary failed!");
 
         changePhase(Phase.Closed);
         closedReason = ClosedReason.Released;
@@ -486,14 +622,14 @@ contract DAIHardTrade {
     view
     inPhase(Phase.Claimed)
     returns(bool available) {
-        return (block.timestamp >= SafeMath.add(phaseStartTimestamps[uint(Phase.Claimed)], autoreleaseInterval));
+        return (block.timestamp >= phaseStartTimestamps[uint(Phase.Claimed)].add(autoreleaseInterval));
     }
 
     function burn()
     external
     inPhase(Phase.Claimed)
-    onlySeller() {
-        require(!autoreleaseAvailable());
+    onlyCustodian() {
+        require(!autoreleaseAvailable(), "autorelease has passed; you can no longer call burn.");
 
         internalBurn();
     }
@@ -501,6 +637,7 @@ contract DAIHardTrade {
     function internalBurn()
     internal {
         require(daiContract.transfer(address(0x0), getBalance()), "Final DAI burn failed!");
+        // Note that this also burns founderFee and devFee.
 
         changePhase(Phase.Closed);
         closedReason = ClosedReason.Burned;
@@ -509,6 +646,20 @@ contract DAIHardTrade {
     }
 
     /* ---------------------- OTHER METHODS ----------------------- */
+
+
+
+    function getResponderDeposit()
+    public
+    view
+    returns(uint responderDeposit) {
+        if (initiatorIsCustodian) {
+            return beneficiaryDeposit;
+        }
+        else {
+            return tradeAmount;
+        }
+    }
 
     function getState()
     external
@@ -527,9 +678,25 @@ contract DAIHardTrade {
     function getParameters()
     external
     view
-    returns (address initiator, bool initiatorIsBuyer, uint daiAmount, string memory totalPrice, uint buyerDeposit, uint autorecallInterval, uint autoabortInterval, uint autoreleaseInterval, uint pokeReward)
+    returns (address initiator,
+             bool initiatorIsCustodian,
+             uint tradeAmount,
+             uint beneficiaryDeposit,
+             uint autorecallInterval,
+             uint autoabortInterval,
+             uint autoreleaseInterval,
+             uint pokeReward
+             )
     {
-        return (this.initiator(), this.initiatorIsBuyer(), this.daiAmount(), this.price(), this.buyerDeposit(), this.autorecallInterval(), this.autoabortInterval(), this.autoreleaseInterval(), this.pokeReward());
+        return (this.initiator(),
+                this.initiatorIsCustodian(),
+                this.tradeAmount(),
+                this.beneficiaryDeposit(),
+                this.autorecallInterval(),
+                this.autoabortInterval(),
+                this.autoreleaseInterval(),
+                this.pokeReward()
+                );
     }
 
     function getPhaseStartInfo()
@@ -537,7 +704,17 @@ contract DAIHardTrade {
     view
     returns (uint, uint, uint, uint, uint, uint, uint, uint, uint, uint)
     {
-        return (phaseStartBlocknums[0], phaseStartBlocknums[1], phaseStartBlocknums[2], phaseStartBlocknums[3], phaseStartBlocknums[4], phaseStartTimestamps[0], phaseStartTimestamps[1], phaseStartTimestamps[2], phaseStartTimestamps[3], phaseStartTimestamps[4]);
+        return (phaseStartBlocknums[0],
+                phaseStartBlocknums[1],
+                phaseStartBlocknums[2],
+                phaseStartBlocknums[3],
+                phaseStartBlocknums[4],
+                phaseStartTimestamps[0],
+                phaseStartTimestamps[1],
+                phaseStartTimestamps[2],
+                phaseStartTimestamps[3],
+                phaseStartTimestamps[4]
+                );
     }
 
     // Poke function lets anyone move the contract along,
@@ -556,7 +733,7 @@ contract DAIHardTrade {
     }
 
     function poke()
-    external 
+    external
     returns (bool moved) {
         if (pokeNeeded()) {
             daiContract.transfer(msg.sender, pokeReward);
@@ -565,23 +742,17 @@ contract DAIHardTrade {
         }
         else return false;
 
-        if (phase == Phase.Open) {
-            if (autorecallAvailable()) {
-                internalRecall();
-                return true;
-            }
+        if (phase == Phase.Open && autorecallAvailable()) {
+            internalRecall();
+            return true;
         }
-        else if (phase == Phase.Committed) {
-            if (autoabortAvailable()) {
-                internalAbort();
-                return true;
-            }
+        else if (phase == Phase.Committed && autoabortAvailable()) {
+            internalAbort();
+            return true;
         }
-        else if (phase == Phase.Claimed) {
-            if (autoreleaseAvailable()) {
-                internalRelease();
-                return true;
-            }
+        else if (phase == Phase.Claimed && autoreleaseAvailable()) {
+            internalRelease();
+            return true;
         }
     }
 
@@ -595,14 +766,14 @@ contract DAIHardTrade {
     function initiatorStatement(string memory encryptedForInitiator, string memory encryptedForResponder)
     public
     onlyInitiator() {
-        require(phase >= Phase.Committed);
+        require(phase >= Phase.Committed, "You can only communicate once the trade contains two parties.");
         emit InitiatorStatementLog(encryptedForInitiator, encryptedForResponder);
     }
 
     function responderStatement(string memory encryptedForInitiator, string memory encryptedForResponder)
     public
     onlyResponder() {
-        require(phase >= Phase.Committed);
+        require(phase >= Phase.Committed, "You can only communicate once the trade contains two parties.");
         emit ResponderStatementLog(encryptedForInitiator, encryptedForResponder);
     }
 }
