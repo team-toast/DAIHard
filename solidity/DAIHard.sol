@@ -323,7 +323,7 @@ contract DAIHardTrade {
     uint public founderFee;
     uint public devFee;
 
-    /* ---------------------- CREATED PHASE -----------------------
+    /* ---------------------- CREATING PHASE -----------------------
 
     The only reason for this phase is so the Factory can have
     somewhere to send the DAI before the Trade is initiated with

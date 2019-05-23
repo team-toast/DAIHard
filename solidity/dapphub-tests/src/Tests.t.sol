@@ -20,6 +20,7 @@ contract DAIHardTests is DSTest {
 
     function setUp() public {
         hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
+        hevm.warp(0);
         
         token = new DSToken("AAA");
         token.mint(10000000000000000000000); // one milllllion DAI   http://gph.is/1OOxk4J
@@ -241,7 +242,9 @@ contract DAIHardTests is DSTest {
         alice.startOpenTrade(true, [uint(1000), uint(100), uint(15), uint(1), uint(11), uint(12), uint(13), uint(2)], address(0x2));
 
         assertTrue(!alice.trade().autorecallAvailable());
-        hevm.warp(20);
+        hevm.warp(10);
+        assertTrue(!alice.trade().autorecallAvailable());
+        hevm.warp(11);
         assertTrue(alice.trade().autorecallAvailable());
     }
 
@@ -250,7 +253,9 @@ contract DAIHardTests is DSTest {
         bob.do_commit(alice.trade());
 
         assertTrue(!alice.trade().autoabortAvailable());
-        hevm.warp(20);
+        hevm.warp(11);
+        assertTrue(!alice.trade().autoabortAvailable());
+        hevm.warp(12);
         assertTrue(alice.trade().autoabortAvailable());
     }
 
@@ -260,7 +265,9 @@ contract DAIHardTests is DSTest {
         bob.do_claim();
 
         assertTrue(!alice.trade().autoreleaseAvailable());
-        hevm.warp(20);
+        hevm.warp(12);
+        assertTrue(!alice.trade().autoreleaseAvailable());
+        hevm.warp(13);
         assertTrue(alice.trade().autoreleaseAvailable());
     }
 }
@@ -275,6 +282,18 @@ contract User {
         token = t;
         factory = f;
         token.approve(address(factory), 1000000);
+    }
+
+    modifier checkPhaseDoesntRegress() {
+        DAIHardTrade.Phase p1 = trade.phase();
+        _;
+        DAIHardTrade.Phase p2 = trade.phase();
+        assert(uint(p2) >= uint(p1));
+    }
+
+    modifier checkPokeRewardSentIsFalse() {
+        assert(!trade.pokeRewardSent());
+        _;
     }
 
     function setTrade(DAIHardTrade t)
@@ -304,10 +323,13 @@ contract User {
     }
 
     function do_recall()
+    checkPhaseDoesntRegress()
     public {
         trade.recall();
     }
     function do_autorecallAvailable()
+    checkPhaseDoesntRegress()
+    checkPokeRewardSentIsFalse()
     public
     returns (bool) {
         return trade.autorecallAvailable();
@@ -319,47 +341,66 @@ contract User {
         trade.commit(address(this), "");
     }
     function do_abort()
+    checkPhaseDoesntRegress()
+    checkPokeRewardSentIsFalse()
     public {
         trade.abort();
     }
     function do_autoabortAvailable()
+    checkPhaseDoesntRegress()
+    checkPokeRewardSentIsFalse()
     public
     returns (bool) {
         return trade.autoabortAvailable();
     }
     function do_claim()
+    checkPhaseDoesntRegress()
+    checkPokeRewardSentIsFalse()
     public {
         trade.claim();
     }
     function do_autoreleaseAvailable()
+    checkPhaseDoesntRegress()
+    checkPokeRewardSentIsFalse()
     public
     returns (bool) {
         return trade.autoreleaseAvailable();
     }
     function do_release()
+    checkPhaseDoesntRegress()
+    checkPokeRewardSentIsFalse()
     public {
         trade.release();
     }
     function do_burn()
+    checkPhaseDoesntRegress()
+    checkPokeRewardSentIsFalse()
     public {
         trade.burn();
     }
     function do_getState()
+    checkPhaseDoesntRegress()
+    checkPokeRewardSentIsFalse()
     public
     returns(uint balance, DAIHardTrade.Phase phase, uint phaseStartTimestamp, address responder, DAIHardTrade.ClosedReason closedReason) {
         return trade.getState();
     }
     function do_getBalance()
+    checkPhaseDoesntRegress()
+    checkPokeRewardSentIsFalse()
     public
     returns(uint) {
         return trade.getBalance();
     }
     function do_getParameters()
+    checkPhaseDoesntRegress()
+    checkPokeRewardSentIsFalse()
     public
     returns (address initiator,
              bool initiatorIsCustodian,
              uint tradeAmount,
              uint beneficiaryDeposit,
+             uint abortPunishment,
              uint autorecallInterval,
              uint autoabortInterval,
              uint autoreleaseInterval,
@@ -368,11 +409,15 @@ contract User {
         return trade.getParameters();
     }
     function do_pokeNeeded()
+    checkPhaseDoesntRegress()
+    checkPokeRewardSentIsFalse()
     public
     returns (bool) {
         return trade.pokeNeeded();
     }
     function do_poke()
+    checkPhaseDoesntRegress()
+    checkPokeRewardSentIsFalse()
     public {
         trade.poke();
     }
