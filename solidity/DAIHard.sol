@@ -162,7 +162,7 @@ contract DAIHardFactory {
         createdTrades.push(CreationInfo(address(newTrade), block.number));
         emit NewTrade(createdTrades.length - 1, address(newTrade), initiatorIsCustodian);
 
-        //transfer DAI to the trade and open it
+        // transfer DAI to the trade and open it
         require(daiContract.transferFrom(msg.sender, address(newTrade), initialTransfer),
                 "Token transfer failed. Did you call approve() on the DAI contract?"
                 );
@@ -294,7 +294,7 @@ contract DAIHardTrade {
     address public founderFeeAddress;
     address public devFeeAddress;
 
-    bool public pokeRewardSent;
+    bool public pokeRewardGranted;
 
     constructor(ERC20Interface _daiContract, address _founderFeeAddress, address _devFeeAddress)
     public {
@@ -304,7 +304,7 @@ contract DAIHardTrade {
 
         // changePhase(Phase.Creating);
         // closedReason = ClosedReason.NotClosed;
-        // pokeRewardSent = false;
+        // pokeRewardGranted = false;
 
         daiContract = _daiContract;
         founderFeeAddress = _founderFeeAddress;
@@ -325,13 +325,14 @@ contract DAIHardTrade {
 
     /* ---------------------- CREATING PHASE -----------------------
 
-    The only reason for this phase is so the Factory can have
-    somewhere to send the DAI before the Trade is initiated with
-    all the settings, and moved to the Open phase.
+    The only reason for this phase is so the Factory can have somewhere
+    to send the DAI before the Trade is truly initiated in the Opened phase.
+    This way the trade can take into account its balance
+    when setting its initial Open-phase state.
 
-    The Factory creates the DAIHardTrade and moves it past this state
-    in a single call, so any DAIHardTrade made by the factory should
-    never be "seen" in this state.
+    The Factory creates the DAIHardTrade and moves it past this state in a single call,
+    so any DAIHardTrade made by the factory should never be "seen" in this state
+    (the DH interface ignores trades not created by the Factory contract).
 
     ------------------------------------------------------------ */
 
@@ -356,7 +357,8 @@ contract DAIHardTrade {
                               string memory commPubkey
                               )
     public
-    inPhase(Phase.Creating) {
+    inPhase(Phase.Creating)
+    /* any caller */ {
         uint responderDeposit = uintArgs[0];
         abortPunishment = uintArgs[1];
         pokeReward = uintArgs[2];
@@ -408,7 +410,8 @@ contract DAIHardTrade {
                                    string memory responderCommPubkey
                                    )
     public
-    inPhase(Phase.Creating) {
+    inPhase(Phase.Creating)
+    /* any caller */{
         beneficiaryDeposit = uintArgs[0];
         abortPunishment = uintArgs[1];
         pokeReward = uintArgs[2];
@@ -443,14 +446,17 @@ contract DAIHardTrade {
 
     /* ---------------------- OPEN PHASE --------------------------
 
-    In the Open phase, the Initiator waits for a Responder.
-    We move to the Commited phase once someone becomes the Responder
-    by executing commit() and including msg.value = getResponderDeposit.
+    In the Open phase, the Initiator (who may be the Custodian or the Beneficiary)
+    waits for a Responder (who will claim the remaining role).
+    We move to the Commited phase once someone becomes the Responder by executing commit(),
+    which requires a successful withdraw of tokens from msg.sender of getResponderDeposit
+    (either tradeAmount or beneficiaryDeposit, depending on the role of the responder).
 
-    At any time, the Initiator can cancel the whole thing by calling recall().
+    At any time in this phase, the Initiator can cancel the whole thing by calling recall().
+    This returns the trade's entire balance including fees to the Initiator.
 
-    After autorecallInterval has passed, the only state change allowed is to recall(),
-    which can be triggered by anyone via poke().
+    After autorecallInterval has passed, the only state change allowed is to recall,
+    which at that point can be triggered by anyone via poke().
 
     ------------------------------------------------------------ */
 
@@ -466,14 +472,14 @@ contract DAIHardTrade {
 
     function internalRecall()
     internal {
-        require(daiContract.transfer(initiator, getBalance()), "Recall of DAI to initiator failed!");
-        // Note that this will also return the founderFee and devFee to the intiator,
-        // as well as the pokeReward if it hasn't yet been sent.
-
         changePhase(Phase.Closed);
         closedReason = ClosedReason.Recalled;
 
         emit Recalled();
+
+        require(daiContract.transfer(initiator, getBalance()), "Recall of DAI to initiator failed!");
+        // Note that this will also return the founderFee and devFee to the intiator,
+        // as well as the pokeReward if it hasn't yet been sent.
     }
 
     function autorecallAvailable()
@@ -486,10 +492,8 @@ contract DAIHardTrade {
 
     function commit(address _responder, string calldata commPubkey)
     external
-    inPhase(Phase.Open) {
-        require(daiContract.transferFrom(msg.sender, address(this), getResponderDeposit()),
-                                         "Can't transfer the required deposit from the DAI contract. Did you call approve first?"
-                                         );
+    inPhase(Phase.Open)
+    /* any caller */ {
         require(!autorecallAvailable(), "autorecallInterval has passed; this offer has expired.");
 
         responder = _responder;
@@ -503,6 +507,10 @@ contract DAIHardTrade {
 
         changePhase(Phase.Committed);
         emit Committed(responder, commPubkey);
+
+        require(daiContract.transferFrom(msg.sender, address(this), getResponderDeposit()),
+                                         "Can't transfer the required deposit from the DAI contract. Did you call approve first?"
+                                         );
     }
 
     /* ---------------------- COMMITTED PHASE ---------------------
@@ -513,7 +521,7 @@ contract DAIHardTrade {
     Otherwise, the Beneficiary can call abort(), which cancels the contract,
     incurs a small penalty on both parties, and returns the remainder to each party.
 
-    After autoabortInterval has passed, the only state change allowed is to abort(),
+    After autoabortInterval has passed, the only state change allowed is to abort,
     which can be triggered by anyone via poke().
 
     ------------------------------------------------------------ */
@@ -530,6 +538,11 @@ contract DAIHardTrade {
 
     function internalAbort()
     internal {
+        changePhase(Phase.Closed);
+        closedReason = ClosedReason.Aborted;
+
+        emit Aborted();
+
         // Punish both parties equally by burning abortPunishment.
         // Instead of burning abortPunishment twice, just burn it all in one call (saves gas).
         require(daiContract.transfer(address(0x0), abortPunishment*2), "Token burn failed!");
@@ -545,16 +558,11 @@ contract DAIHardTrade {
         // Refund to initiator should include founderFee and devFee
         uint sendBackToInitiator = founderFee.add(devFee);
         // If there was a pokeReward left, it should also be sent back to the initiator
-        if (!pokeRewardSent) {
+        if (!pokeRewardGranted) {
             sendBackToInitiator = sendBackToInitiator.add(pokeReward);
         }
 
         require(daiContract.transfer(initiator, sendBackToInitiator), "Token refund of founderFee+devFee+pokeReward to Initiator failed!");
-        
-        changePhase(Phase.Closed);
-        closedReason = ClosedReason.Aborted;
-
-        emit Aborted();
     }
 
     function autoabortAvailable()
@@ -584,6 +592,8 @@ contract DAIHardTrade {
     After autoreleaseInterval has passed, the only state change allowed is to release,
     which can be triggered by anyone via poke().
 
+    In the case of a burn, all fees are burned as well.
+
     ------------------------------------------------------------ */
 
     event Released();
@@ -598,8 +608,13 @@ contract DAIHardTrade {
 
     function internalRelease()
     internal {
+        changePhase(Phase.Closed);
+        closedReason = ClosedReason.Released;
+
+        emit Released();
+
         //If the pokeReward has not been sent, refund it to the initiator
-        if (!pokeRewardSent) {
+        if (!pokeRewardGranted) {
             require(daiContract.transfer(initiator, pokeReward), "Refund of pokeReward to Initiator failed!");
         }
 
@@ -610,11 +625,6 @@ contract DAIHardTrade {
 
         //Release the remaining balance to the beneficiary.
         require(daiContract.transfer(beneficiary, getBalance()), "Final release transfer to beneficiary failed!");
-
-        changePhase(Phase.Closed);
-        closedReason = ClosedReason.Released;
-
-        emit Released();
     }
 
     function autoreleaseAvailable()
@@ -636,22 +646,102 @@ contract DAIHardTrade {
 
     function internalBurn()
     internal {
-        require(daiContract.transfer(address(0x0), getBalance()), "Final DAI burn failed!");
-        // Note that this also burns founderFee and devFee.
-
         changePhase(Phase.Closed);
         closedReason = ClosedReason.Burned;
 
         emit Burned();
+
+        require(daiContract.transfer(address(0x0), getBalance()), "Final DAI burn failed!");
+        // Note that this also burns founderFee and devFee.
     }
 
-    /* ---------------------- OTHER METHODS ----------------------- */
+    /* ---------------------- ANY-PHASE METHODS ----------------------- */
 
+    /*
+    If the contract is due for some auto___ phase transition,
+    anyone can call the poke() function to trigger this transition,
+    and the caller will be rewarded with pokeReward.
+    */
 
+    event Poke();
+
+    function pokeNeeded()
+    public
+    view
+    /* any phase */
+    /* any caller */
+    returns (bool needed) {
+        return (  (phase == Phase.Open      && autorecallAvailable() )
+               || (phase == Phase.Committed && autoabortAvailable()  )
+               || (phase == Phase.Claimed   && autoreleaseAvailable())
+               );
+    }
+
+    function grantPokeRewardToSender()
+    internal {
+        require(!pokeRewardGranted, "The poke reward has already been sent!"); // Extra protection against re-entrancy
+        pokeRewardGranted = true;
+        daiContract.transfer(msg.sender, pokeReward);
+    }
+
+    function poke()
+    external
+    /* any phase */
+    /* any caller */
+    returns (bool moved) {
+        if (phase == Phase.Open && autorecallAvailable()) {
+            grantPokeRewardToSender();
+            emit Poke();
+
+            internalRecall();
+            return true;
+        }
+        else if (phase == Phase.Committed && autoabortAvailable()) {
+            grantPokeRewardToSender();
+            emit Poke();
+
+            internalAbort();
+            return true;
+        }
+        else if (phase == Phase.Claimed && autoreleaseAvailable()) {
+            grantPokeRewardToSender();
+            emit Poke();
+
+            internalRelease();
+            return true;
+        }
+        else return false;
+    }
+
+    /*
+    StatementLogs allow a starting point for any necessary communication,
+    and can be used anytime (even in the Closed phase).
+    */
+
+    event InitiatorStatementLog(string statement);
+    event ResponderStatementLog(string statement);
+
+    function initiatorStatement(string memory statement)
+    public
+    /* any phase */
+    onlyInitiator() {
+        emit InitiatorStatementLog(statement);
+    }
+
+    function responderStatement(string memory statement)
+    public
+    /* any phase */
+    onlyResponder() {
+        emit ResponderStatementLog(statement);
+    }
+
+    /* ---------------------- ANY-PHASE GETTERS ----------------------- */
 
     function getResponderDeposit()
     public
     view
+    /* any phase */
+    /* any caller */
     returns(uint responderDeposit) {
         if (initiatorIsCustodian) {
             return beneficiaryDeposit;
@@ -664,6 +754,8 @@ contract DAIHardTrade {
     function getState()
     external
     view
+    /* any phase */
+    /* any caller */
     returns(uint balance, Phase phase, uint phaseStartTimestamp, address responder, ClosedReason closedReason) {
         return (getBalance(), this.phase(), phaseStartTimestamps[uint(this.phase())], this.responder(), this.closedReason());
     }
@@ -671,6 +763,8 @@ contract DAIHardTrade {
     function getBalance()
     public
     view
+    /* any phase */
+    /* any caller */
     returns(uint) {
         return daiContract.balanceOf(address(this));
     }
@@ -678,6 +772,8 @@ contract DAIHardTrade {
     function getParameters()
     external
     view
+    /* any phase */
+    /* any caller */
     returns (address initiator,
              bool initiatorIsCustodian,
              uint tradeAmount,
@@ -704,6 +800,8 @@ contract DAIHardTrade {
     function getPhaseStartInfo()
     external
     view
+    /* any phase */
+    /* any caller */
     returns (uint, uint, uint, uint, uint, uint, uint, uint, uint, uint)
     {
         return (phaseStartBlocknums[0],
@@ -717,65 +815,5 @@ contract DAIHardTrade {
                 phaseStartTimestamps[3],
                 phaseStartTimestamps[4]
                 );
-    }
-
-    // Poke function lets anyone move the contract along,
-    // if it's due for some state transition.
-
-    event Poke();
-
-    function pokeNeeded()
-    public
-    view
-    returns (bool needed) {
-        return (  (phase == Phase.Open      && autorecallAvailable() )
-               || (phase == Phase.Committed && autoabortAvailable()  )
-               || (phase == Phase.Claimed   && autoreleaseAvailable())
-               );
-    }
-
-    function poke()
-    external
-    returns (bool moved) {
-        if (pokeNeeded()) {
-            daiContract.transfer(msg.sender, pokeReward);
-            pokeRewardSent = true;
-            emit Poke();
-        }
-        else return false;
-
-        if (phase == Phase.Open && autorecallAvailable()) {
-            internalRecall();
-            return true;
-        }
-        else if (phase == Phase.Committed && autoabortAvailable()) {
-            internalAbort();
-            return true;
-        }
-        else if (phase == Phase.Claimed && autoreleaseAvailable()) {
-            internalRelease();
-            return true;
-        }
-    }
-
-    // StatementLogs allow a starting point for any necessary communication,
-    // and can be used anytime by either party after a Responder commits (even in the Closed phase).
-
-
-    event InitiatorStatementLog(string encryptedForInitiator, string encryptedForResponder);
-    event ResponderStatementLog(string encryptedForInitiator, string encryptedForResponder);
-
-    function initiatorStatement(string memory encryptedForInitiator, string memory encryptedForResponder)
-    public
-    onlyInitiator() {
-        require(phase >= Phase.Committed, "You can only communicate once the trade contains two parties.");
-        emit InitiatorStatementLog(encryptedForInitiator, encryptedForResponder);
-    }
-
-    function responderStatement(string memory encryptedForInitiator, string memory encryptedForResponder)
-    public
-    onlyResponder() {
-        require(phase >= Phase.Committed, "You can only communicate once the trade contains two parties.");
-        emit ResponderStatementLog(encryptedForInitiator, encryptedForResponder);
     }
 }
