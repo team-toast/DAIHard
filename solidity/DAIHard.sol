@@ -358,7 +358,7 @@ contract DAIHardTrade {
                               )
     public
     inPhase(Phase.Creating)
-    /* any caller */ {
+    /* any msg.sender */ {
         uint responderDeposit = uintArgs[0];
         abortPunishment = uintArgs[1];
         pokeReward = uintArgs[2];
@@ -411,7 +411,7 @@ contract DAIHardTrade {
                                    )
     public
     inPhase(Phase.Creating)
-    /* any caller */{
+    /* any msg.sender */{
         beneficiaryDeposit = uintArgs[0];
         abortPunishment = uintArgs[1];
         pokeReward = uintArgs[2];
@@ -437,6 +437,8 @@ contract DAIHardTrade {
 
         tradeAmount = getBalance().sub(beneficiaryDeposit.add(pokeReward).add(founderFee).add(devFee));
 
+        require(beneficiaryDeposit <= tradeAmount, "A beneficiaryDeposit greater than tradeAmount is not allowed.");
+        require(abortPunishment <= beneficiaryDeposit, "An abortPunishment greater than beneficiaryDeposit is not allowed.");
 
         changePhase(Phase.Committed);
 
@@ -493,7 +495,7 @@ contract DAIHardTrade {
     function commit(address _responder, string calldata commPubkey)
     external
     inPhase(Phase.Open)
-    /* any caller */ {
+    /* any msg.sender */ {
         require(!autorecallAvailable(), "autorecallInterval has passed; this offer has expired.");
 
         responder = _responder;
@@ -669,7 +671,7 @@ contract DAIHardTrade {
     public
     view
     /* any phase */
-    /* any caller */
+    /* any msg.sender */
     returns (bool needed) {
         return (  (phase == Phase.Open      && autorecallAvailable() )
                || (phase == Phase.Committed && autoabortAvailable()  )
@@ -687,7 +689,7 @@ contract DAIHardTrade {
     function poke()
     external
     /* any phase */
-    /* any caller */
+    /* any msg.sender */
     returns (bool moved) {
         if (phase == Phase.Open && autorecallAvailable()) {
             grantPokeRewardToSender();
@@ -741,7 +743,7 @@ contract DAIHardTrade {
     public
     view
     /* any phase */
-    /* any caller */
+    /* any msg.sender */
     returns(uint responderDeposit) {
         if (initiatorIsCustodian) {
             return beneficiaryDeposit;
@@ -755,7 +757,7 @@ contract DAIHardTrade {
     external
     view
     /* any phase */
-    /* any caller */
+    /* any msg.sender */
     returns(uint balance, Phase phase, uint phaseStartTimestamp, address responder, ClosedReason closedReason) {
         return (getBalance(), this.phase(), phaseStartTimestamps[uint(this.phase())], this.responder(), this.closedReason());
     }
@@ -764,7 +766,7 @@ contract DAIHardTrade {
     public
     view
     /* any phase */
-    /* any caller */
+    /* any msg.sender */
     returns(uint) {
         return daiContract.balanceOf(address(this));
     }
@@ -773,7 +775,7 @@ contract DAIHardTrade {
     external
     view
     /* any phase */
-    /* any caller */
+    /* any msg.sender */
     returns (address initiator,
              bool initiatorIsCustodian,
              uint tradeAmount,
@@ -801,7 +803,7 @@ contract DAIHardTrade {
     external
     view
     /* any phase */
-    /* any caller */
+    /* any msg.sender */
     returns (uint, uint, uint, uint, uint, uint, uint, uint, uint, uint)
     {
         return (phaseStartBlocknums[0],
