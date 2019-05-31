@@ -12,4 +12,11 @@ Each line thus enumerated is given a **spec code**, and given a character code (
 - E: **E**ssential; a test must be written for this case
 - W: Test **W**ritten and passed
 
-The tests we've written can be easily found by searching in src/Tests.t.sol for the case spec code.
+The tests we've written can be easily found by searching in solidity/dapphub-tests/src/Tests.t.sol for the case spec code.
+
+To run the tests, you have to initialize dapphub:
+- Install dapphub if it's not already installed
+- `cd solidity/dapphub-tests`
+- `dapp init` (this will give an error. Ignore it.)
+- `dapp install ds-token`
+- `dapp test`
