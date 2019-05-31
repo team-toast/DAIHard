@@ -597,7 +597,7 @@ contract DAIHardTests is DSTest {
         assertTrue(success);
     }
 
-    function test_09040_givenCommittedTrade_whenBeneficiaryCallsClaimBeforeAutoabort_assertClaimedPhase() public {
+    function test_09040_givenCommittedTrade_whenBeneficiaryCallsClaimBeforeAutoabort_assertJudgmentPhase() public {
         /* ---- Set up: Alice opens trade as custodian, then bob commits ---- */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
@@ -607,11 +607,11 @@ contract DAIHardTests is DSTest {
         /* ---- Action: bob calls claim ---- */
         bob.do_claim();
 
-        /* ---- Assert Claimed phase ---- */
-        assertEq(uint(trade.phase()), uint(DAIHardTrade.Phase.Claimed));
+        /* ---- Assert Judgment phase ---- */
+        assertEq(uint(trade.phase()), uint(DAIHardTrade.Phase.Judgment));
     }
 
-    function test_10010_givenTradeNotInClaimedPhase_whenCustodianCallsRelease_assertFail() public {
+    function test_10010_givenTradeNotInJudgmentPhase_whenCustodianCallsRelease_assertFail() public {
         bytes memory doReleaseCallSig = abi.encodeWithSignature("do_release()");
 
         /* ---- Set up: Alice opens trade as custodian and Bob commits ---- */
@@ -632,7 +632,7 @@ contract DAIHardTests is DSTest {
         assertTrue(success);
     }
 
-    function test_10020_givenClaimedTrade_whenNonCustodianCallsRelease_assertFail() public {
+    function test_10020_givenJudgmentPhaseTrade_whenNonCustodianCallsRelease_assertFail() public {
         bytes memory doReleaseCallSig = abi.encodeWithSignature("do_release()");
 
         /* ---- Set up: Alice opens trade as custodian, then Bob commits and claims ---- */
@@ -653,7 +653,7 @@ contract DAIHardTests is DSTest {
         assertTrue(success);
     }
 
-    function test_10070_givenClaimedTrade_whenCustodianCallsRelease_assertExpectedTokenTransfersAndProperlyClosedState() public {
+    function test_10070_givenJudgmentPhaseTrade_whenCustodianCallsRelease_assertExpectedTokenTransfersAndProperlyClosedState() public {
         uint bobStartingBalance = token.balanceOf(address(bob));
 
         /* ---- Set up: Alice opens trade as custodian, then bob commits and claims ---- */
@@ -685,7 +685,7 @@ contract DAIHardTests is DSTest {
         assertEq(uint(trade.closedReason()), uint(DAIHardTrade.ClosedReason.Released));
     }
 
-    function test_11030_11040_givenClaimedTrade_assertAutoreleaseAvailableReturnsExpectedValuesAccordingToTimeCalled() public {
+    function test_11030_11040_givenJudgmentPhaseTrade_assertAutoreleaseAvailableReturnsExpectedValuesAccordingToTimeCalled() public {
         /* ---- Set up: Alice opens a trade, then Bob commits and claims */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
@@ -707,7 +707,7 @@ contract DAIHardTests is DSTest {
         assertTrue(trade.autoreleaseAvailable());
     }
 
-    function test_12010_givenTradeNotInClaimedPhase_whenCustodianCallsBurn_assertFail() public {
+    function test_12010_givenTradeNotInJudgmentPhase_whenCustodianCallsBurn_assertFail() public {
         bytes memory doBurnCallSig = abi.encodeWithSignature("do_burn()");
 
         /* ---- Set up: Alice opens trade as custodian and Bob commits ---- */
@@ -728,7 +728,7 @@ contract DAIHardTests is DSTest {
         assertTrue(success);
     }
 
-    function test_12020_givenClaimedTrade_whenNonCustodianCallsReleaseBurnFail() public {
+    function test_12020_givenJudgmentPhaseTrade_whenNonCustodianCallsReleaseBurnFail() public {
         bytes memory doBurnCallSig = abi.encodeWithSignature("do_burn()");
 
         /* ---- Set up: Alice opens trade as custodian, then Bob commits and claims ---- */
@@ -749,7 +749,7 @@ contract DAIHardTests is DSTest {
         assertTrue(success);
     }
 
-    function test_12030_givenClaimedTrade_whenCustodianCallsBurnAfterAutoreleaseInterval_assertFail() public {
+    function test_12030_givenJudgmentPhaseTrade_whenCustodianCallsBurnAfterAutoreleaseInterval_assertFail() public {
         bytes memory doBurnCallSig = abi.encodeWithSignature("do_burn()");
 
         /* ---- Set up: Alice opens trade as custodian, then bob commits and claims ---- */
@@ -772,7 +772,7 @@ contract DAIHardTests is DSTest {
         assertTrue(success);
     }
 
-    function test_12050_givenClaimedTrade_whenCustodianCallsBurn_assertAllTokensBurnedAndTradeProperlyClosed() public {
+    function test_12050_givenJudgmentPhaseTrade_whenCustodianCallsBurn_assertAllTokensBurnedAndTradeProperlyClosed() public {
         /* ---- Set up: Alice opens trade, then bob commits and claims ---- */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
