@@ -130,3 +130,11 @@ Each party can make a statement by calling `initiatorStatement` or `responderSta
 Used in conjunction with the `initiatorCommPubkey` and `responderCommPubkey` emitted in earlier events, these statements can support public-key encryption.
 
 Because each statement costs gas to execute, it is expected that users of a long-term trade will use this as a jumping-off point to move to another means of communication.
+
+## DevFee and FounderFee
+
+When a trade is first created, additional fees are deposited into the Trade. If the Trade is recalled or aborted, these fees are returned to the initiator; if the Trade is burned, so are these fees; but if the Trade is released, these fees are intended to go to the founders and developers, respectively.
+
+The founderFee is always 0.5% of the trade amount, and the founderFeeAddress is always the same for as long as the Factory exists.
+
+The devFee is more flexible. A user or interface can set the devFee amount and devFeeAddress to whatever they want. Ideally this will incentivize others to build third-party interfaces that can capture this fee. Our pilot interface sets this at 0.5%, meaning each Trade takes a total 1% fee.
