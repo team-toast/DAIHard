@@ -234,7 +234,7 @@ contract DAIHardFactory {
 contract DAIHardTrade {
     using SafeMath for uint;
 
-    enum Phase {Creating, Open, Committed, Claimed, Closed}
+    enum Phase {Creating, Open, Committed, Judgment, Closed}
     Phase public phase;
 
     modifier inPhase(Phase p) {
@@ -581,13 +581,13 @@ contract DAIHardTrade {
     onlyBeneficiary() {
         require(!autoabortAvailable(), "The deposit deadline has passed!");
 
-        changePhase(Phase.Claimed);
+        changePhase(Phase.Judgment);
         emit Claimed();
     }
 
     /* ---------------------- CLAIMED PHASE -----------------------
 
-    In the Claimed phase, the Custodian can call release() or burn(),
+    In the Judgment phase, the Custodian can call release() or burn(),
     and is expected to call burn() only if the Beneficiary did meet the terms
     described in the 'terms' value logged with the Initiated event.
 
@@ -603,7 +603,7 @@ contract DAIHardTrade {
 
     function release()
     external
-    inPhase(Phase.Claimed)
+    inPhase(Phase.Judgment)
     onlyCustodian() {
         internalRelease();
     }
@@ -632,14 +632,14 @@ contract DAIHardTrade {
     function autoreleaseAvailable()
     public
     view
-    inPhase(Phase.Claimed)
+    inPhase(Phase.Judgment)
     returns(bool available) {
-        return (block.timestamp >= phaseStartTimestamps[uint(Phase.Claimed)].add(autoreleaseInterval));
+        return (block.timestamp >= phaseStartTimestamps[uint(Phase.Judgment)].add(autoreleaseInterval));
     }
 
     function burn()
     external
-    inPhase(Phase.Claimed)
+    inPhase(Phase.Judgment)
     onlyCustodian() {
         require(!autoreleaseAvailable(), "autorelease has passed; you can no longer call burn.");
 
@@ -675,7 +675,7 @@ contract DAIHardTrade {
     returns (bool needed) {
         return (  (phase == Phase.Open      && autorecallAvailable() )
                || (phase == Phase.Committed && autoabortAvailable()  )
-               || (phase == Phase.Claimed   && autoreleaseAvailable())
+               || (phase == Phase.Judgment  && autoreleaseAvailable())
                );
     }
 
@@ -705,7 +705,7 @@ contract DAIHardTrade {
             internalAbort();
             return true;
         }
-        else if (phase == Phase.Claimed && autoreleaseAvailable()) {
+        else if (phase == Phase.Judgment && autoreleaseAvailable()) {
             grantPokeRewardToSender();
             emit Poke();
 
