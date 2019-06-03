@@ -1,6 +1,7 @@
 This is a short document intended for potential auditors, that collects all of our security analysis and documentation, and describes specifically what we are looking for in an audit.
 
-To get acquainted with the contract and its intended behavior, see these two documents:
+To get acquainted with the contract and its intended behavior, take a look at these links:
+- [(Failed) launch post](https://www.reddit.com/r/ethereum/comments/bdetr2/daihard_the_unkillable_cryptofiat_gateway_any/)
 - [Medium post on the game theory](https://medium.com/@coinop.logan/daihard-game-theory-21a456ef224e)
 - [High-level, thorough description of all intended functionality in the contracts](high_level_feature_spec.md)
 
