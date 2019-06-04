@@ -1,7 +1,7 @@
-module TimeHelpers exposing (HumanReadableInterval, add, compare, daysStrToMaybePosix, getRatio, isNegative, negativeToZero, posixToMillisBigInt, posixToSeconds, posixToSecondsBigInt, secondsBigIntToMaybePosix, sub, toHumanReadableInterval, toString)
+module Helpers.Time exposing (HumanReadableInterval, add, compare, daysStrToMaybePosix, getRatio, isNegative, negativeToZero, posixToMillisBigInt, posixToSeconds, posixToSecondsBigInt, secondsBigIntToMaybePosix, sub, toHumanReadableInterval, toString)
 
 import BigInt exposing (BigInt)
-import BigIntHelpers
+import Helpers.BigInt as BigIntHelpers
 import Time
 
 

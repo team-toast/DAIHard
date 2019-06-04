@@ -9,7 +9,7 @@ import Create.Types
 import Eth.Sentry.Tx as TxSentry exposing (TxSentry)
 import Eth.Sentry.Wallet as WalletSentry exposing (WalletSentry)
 import Eth.Types exposing (Address)
-import EthHelpers exposing (EthNode)
+import Helpers.Eth as EthHelpers exposing (EthNode)
 import Json.Decode
 import Marketplace.Types
 import Routing

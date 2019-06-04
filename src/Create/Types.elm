@@ -1,13 +1,13 @@
 module Create.Types exposing (Errors, Inputs, Model, Msg(..), TxChainStatus(..), UpdateResult, interpretMarginString, justModelUpdate, noErrors)
 
 import BigInt exposing (BigInt)
-import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
 import Contracts.Generated.DAIHardFactory as DHF
 import Contracts.Types as CTypes
 import Create.PMWizard.Types as PMWizard
 import Eth.Types exposing (Address, TxHash, TxReceipt)
-import EthHelpers exposing (EthNode)
+import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
+import Helpers.Eth as EthHelpers exposing (EthNode)
 import Http
 import PaymentMethods exposing (PaymentMethod)
 import Routing

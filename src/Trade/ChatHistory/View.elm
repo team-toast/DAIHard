@@ -8,7 +8,7 @@ import Element.Background
 import Element.Border
 import Element.Font
 import Element.Input
-import ElementHelpers as EH
+import Helpers.Element as EH
 import Eth.Utils
 import Trade.ChatHistory.Types exposing (..)
 

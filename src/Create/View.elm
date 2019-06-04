@@ -12,15 +12,15 @@ import Element.Border
 import Element.Events
 import Element.Font
 import Element.Input
-import ElementHelpers as EH
-import EthHelpers
 import FiatValue
+import Helpers.Element as EH
+import Helpers.Eth as EthHelpers
+import Helpers.Time as TimeHelpers
 import Images exposing (Image)
 import List.Extra
 import Maybe.Extra
 import PaymentMethods exposing (PaymentMethod)
 import Time
-import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 

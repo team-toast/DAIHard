@@ -12,7 +12,7 @@ import Element.Border
 import Element.Events
 import Element.Font
 import Element.Input
-import ElementHelpers as EH
+import Helpers.Element as EH
 import FiatValue
 import Landing.View
 import Marketplace.Types

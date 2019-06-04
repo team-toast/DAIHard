@@ -9,8 +9,8 @@ import Contracts.Types as CTypes
 import Dict exposing (Dict)
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
-import EthHelpers exposing (EthNode)
 import FiatValue exposing (FiatValue)
+import Helpers.Eth as EthHelpers exposing (EthNode)
 import Http
 import Json.Decode
 import PaymentMethods exposing (PaymentMethod)

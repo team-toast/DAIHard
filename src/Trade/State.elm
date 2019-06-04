@@ -2,8 +2,6 @@ port module Trade.State exposing (init, subscriptions, update, updateUserInfo)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
-import BigIntHelpers
-import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
 import Config
 import Contracts.Generated.DAIHardTrade as DHT
@@ -16,7 +14,9 @@ import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Sentry.Tx exposing (CustomSend)
 import Eth.Types exposing (Address)
 import Eth.Utils
-import EthHelpers
+import Helpers.BigInt as BigIntHelpers
+import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
+import Helpers.Eth as EthHelpers
 import Http
 import Json.Decode
 import Json.Encode

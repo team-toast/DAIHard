@@ -2,12 +2,12 @@ module TradeCache.State exposing (init, initAndStartCaching, loadedTrades, start
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
-import BigIntHelpers
 import Contracts.Types as CTypes
 import Contracts.Wrappers
 import Dict exposing (Dict)
 import Eth.Sentry.Event as EventSentry
-import EthHelpers
+import Helpers.BigInt as BigIntHelpers
+import Helpers.Eth as EthHelpers
 import PaymentMethods exposing (PaymentMethod)
 import Time
 import TradeCache.Types exposing (..)

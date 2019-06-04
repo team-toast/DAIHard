@@ -9,15 +9,15 @@ import Element.Border
 import Element.Events
 import Element.Font
 import Element.Input
-import ElementHelpers as EH
+import Helpers.Element as EH
 import FiatValue exposing (FiatValue)
+import Helpers.Time as TimeHelpers
 import Html.Events.Extra
 import Images exposing (Image)
 import Margin
 import Marketplace.Types exposing (..)
 import PaymentMethods exposing (PaymentMethod)
 import Time
-import TimeHelpers
 import TradeCache.State as TradeCache
 import TradeCache.Types exposing (TradeCache)
 

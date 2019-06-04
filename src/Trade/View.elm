@@ -14,16 +14,16 @@ import Element.Border
 import Element.Events
 import Element.Font
 import Element.Input
-import ElementHelpers as EH
 import Eth.Types exposing (Address)
 import Eth.Utils
-import EthHelpers exposing (EthNode)
 import FiatValue exposing (FiatValue)
+import Helpers.Element as EH
+import Helpers.Eth as EthHelpers exposing (EthNode)
+import Helpers.Time as TimeHelpers
 import Images exposing (Image)
 import Margin
 import PaymentMethods exposing (PaymentMethod)
 import Time
-import TimeHelpers
 import TokenValue exposing (TokenValue)
 import Trade.ChatHistory.View as ChatHistory
 import Trade.Types exposing (..)

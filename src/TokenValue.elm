@@ -1,8 +1,8 @@
 module TokenValue exposing (TokenValue, add, compare, decoder, div, encode, fromString, getEvmValue, getFloatValueWithWarning, isZero, mul, sub, toConciseString, tokenValue, zero)
 
 import BigInt exposing (BigInt)
-import BigIntHelpers
 import Config
+import Helpers.BigInt as BigIntHelpers
 import Json.Decode
 import Json.Encode
 

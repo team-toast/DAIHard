@@ -9,7 +9,7 @@ import Element.Border
 import Element.Events
 import Element.Font
 import Element.Input
-import ElementHelpers as EH
+import Helpers.Element as EH
 import Images exposing (Image)
 import PaymentMethods exposing (PaymentMethod)
 

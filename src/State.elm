@@ -5,7 +5,6 @@ import BigInt
 import Browser
 import Browser.Dom
 import Browser.Navigation
-import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (UserInfo)
 import Config
 import Create.State
@@ -14,7 +13,8 @@ import Eth.Sentry.Tx as TxSentry
 import Eth.Sentry.Wallet as WalletSentry exposing (WalletSentry)
 import Eth.Types exposing (Address)
 import Eth.Utils
-import EthHelpers exposing (EthNode)
+import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
+import Helpers.Eth as EthHelpers exposing (EthNode)
 import Json.Decode
 import Json.Encode
 import Marketplace.State

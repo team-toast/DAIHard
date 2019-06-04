@@ -1,4 +1,4 @@
-module ElementHelpers exposing
+module Helpers.Element exposing
     ( activePhaseBackgroundColor
     , black
     , blue
@@ -70,8 +70,9 @@ import Element.Font
 import Element.Input
 import Eth.Types exposing (Address)
 import Eth.Utils
-import EthHelpers
 import FiatValue exposing (FiatValue)
+import Helpers.Eth as EthHelpers
+import Helpers.Time as TimeHelpers
 import Html.Attributes
 import Html.Events
 import Html.Styled
@@ -82,7 +83,6 @@ import List.Extra
 import Maybe.Extra
 import Task
 import Time
-import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 

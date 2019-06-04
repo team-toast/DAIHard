@@ -1,4 +1,4 @@
-module EthHelpers exposing (EthNode, addressIfNot0x0, ethNode, getLogAt, intToNetwork, logBadFetchResultMaybe, makeEtherscanAddressUrl, makeEtherscanTxUrl)
+module Helpers.Eth exposing (EthNode, addressIfNot0x0, ethNode, getLogAt, intToNetwork, logBadFetchResultMaybe, makeEtherscanAddressUrl, makeEtherscanTxUrl)
 
 import Array
 import BigInt exposing (BigInt)

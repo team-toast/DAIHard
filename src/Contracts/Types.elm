@@ -9,15 +9,15 @@ import Contracts.Generated.DAIHardTrade as DHT
 import Eth.Decode
 import Eth.Types exposing (Address)
 import Eth.Utils
-import EthHelpers
 import FiatValue exposing (FiatValue)
+import Helpers.Eth as EthHelpers
+import Helpers.Time as TimeHelpers
 import Images exposing (Image)
 import Json.Decode
 import Json.Encode
 import Margin
 import PaymentMethods exposing (PaymentMethod)
 import Time
-import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 

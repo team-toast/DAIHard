@@ -7,7 +7,7 @@ import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Types as CTypes
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
-import EthHelpers exposing (EthNode)
+import Helpers.Eth as EthHelpers exposing (EthNode)
 import Http
 import Json.Decode
 import Time

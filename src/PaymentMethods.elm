@@ -19,7 +19,7 @@ import Element.Background
 import Element.Border
 import Element.Events
 import Element.Font
-import ElementHelpers as EH
+import Helpers.Element as EH
 import Images exposing (Image)
 import Json.Decode
 import Json.Encode

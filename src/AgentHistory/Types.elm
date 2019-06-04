@@ -2,7 +2,6 @@ module AgentHistory.Types exposing (Model, Msg(..), UpdateResult)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
-import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
 import Contracts.Generated.DAIHardFactory as DHF
 import Contracts.Generated.DAIHardTrade as DHT
@@ -10,8 +9,9 @@ import Contracts.Types as CTypes
 import Dict exposing (Dict)
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
-import EthHelpers exposing (EthNode)
 import FiatValue exposing (FiatValue)
+import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
+import Helpers.Eth as EthHelpers exposing (EthNode)
 import Http
 import Json.Decode
 import PaymentMethods exposing (PaymentMethod)
