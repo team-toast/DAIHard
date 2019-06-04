@@ -3,6 +3,7 @@ module Contracts.Types exposing (ClosedReason(..), CreateParameters, DAIHardEven
 import Abi.Decode
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
+import Config
 import Contracts.Generated.DAIHardFactory as DHF
 import Contracts.Generated.DAIHardTrade as DHT
 import Eth.Decode
@@ -14,7 +15,6 @@ import Images exposing (Image)
 import Json.Decode
 import Json.Encode
 import Margin
-import Network exposing (..)
 import PaymentMethods exposing (PaymentMethod)
 import Time
 import TimeHelpers
@@ -470,14 +470,14 @@ decodeParameters encodedParameters =
 
                 else
                     Buyer
-            , tradeAmount = TokenValue.tokenValue tokenDecimals encodedParameters.tradeAmount
-            , buyerDeposit = TokenValue.tokenValue tokenDecimals encodedParameters.beneficiaryDeposit
-            , abortPunishment = TokenValue.tokenValue tokenDecimals encodedParameters.abortPunishment
+            , tradeAmount = TokenValue.tokenValue encodedParameters.tradeAmount
+            , buyerDeposit = TokenValue.tokenValue encodedParameters.beneficiaryDeposit
+            , abortPunishment = TokenValue.tokenValue encodedParameters.abortPunishment
             , autorecallInterval = autorecallInterval
             , autoabortInterval = depositDeadlineInterval
             , autoreleaseInterval = autoreleaseInterval
             , initiatorAddress = encodedParameters.initiator
-            , pokeReward = TokenValue.tokenValue tokenDecimals encodedParameters.pokeReward
+            , pokeReward = TokenValue.tokenValue encodedParameters.pokeReward
             }
         )
         autorecallIntervalResult
@@ -496,7 +496,7 @@ txReceiptToCreatedTradeSellId network txReceipt =
         |> List.filter
             (\log ->
                 (Eth.Utils.addressToString >> String.toLower) log.address
-                    == (Eth.Utils.addressToString >> String.toLower) (factoryAddress network)
+                    == (Eth.Utils.addressToString >> String.toLower) (Config.factoryAddress network)
             )
         |> List.head
         |> Result.fromMaybe "No log found from that factoryAddress in that txReceipt"
@@ -593,9 +593,7 @@ buildCreateParameters : UserInfo -> UserParameters -> CreateParameters
 buildCreateParameters initiatorInfo userParameters =
     let
         pokeReward =
-            TokenValue.updateValue
-                userParameters.tradeAmount
-                (BigInt.fromInt 0)
+            TokenValue.zero
     in
     { initiatingParty = userParameters.initiatingParty
     , tradeAmount = userParameters.tradeAmount
@@ -612,8 +610,8 @@ buildCreateParameters initiatorInfo userParameters =
     }
 
 
-decodeState : Int -> DHT.GetState -> Maybe State
-decodeState numDecimals encodedState =
+decodeState : DHT.GetState -> Maybe State
+decodeState encodedState =
     let
         maybePhase =
             bigIntToPhase encodedState.phase
@@ -626,7 +624,7 @@ decodeState numDecimals encodedState =
     in
     Maybe.map3
         (\phase phaseStartTime closedReason ->
-            { balance = TokenValue.tokenValue numDecimals encodedState.balance
+            { balance = TokenValue.tokenValue encodedState.balance
             , phase = phase
             , phaseStartTime = phaseStartTime
             , responder = EthHelpers.addressIfNot0x0 encodedState.responder

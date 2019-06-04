@@ -5,6 +5,7 @@ import BigInt exposing (BigInt)
 import Collage exposing (Collage)
 import Collage.Render
 import CommonTypes exposing (..)
+import Config
 import Contracts.Types as CTypes exposing (FullTradeInfo)
 import DateFormat
 import Element exposing (Attribute, Element)
@@ -20,7 +21,6 @@ import EthHelpers exposing (EthNode)
 import FiatValue exposing (FiatValue)
 import Images exposing (Image)
 import Margin
-import Network exposing (..)
 import PaymentMethods exposing (PaymentMethod)
 import Time
 import TimeHelpers
@@ -256,8 +256,8 @@ generateStatsForSeller tradeCache sellerAddress =
                     { numBurns = 0
                     , numReleases = 0
                     , numAborts = 0
-                    , amountBurned = TokenValue.zero tokenDecimals
-                    , amountReleased = TokenValue.zero tokenDecimals
+                    , amountBurned = TokenValue.zero
+                    , amountReleased = TokenValue.zero
                     }
 
         numTrades =
@@ -458,7 +458,7 @@ actionButtonsElement currentTime trade userInfo =
                         let
                             depositAmount =
                                 CTypes.responderDeposit trade.parameters
-                                    |> TokenValue.getBigInt
+                                    |> TokenValue.getEvmValue
                         in
                         [ EH.redButton "Deposit and Commit to Trade" <| CommitClicked trade userInfo depositAmount ]
 
@@ -1215,7 +1215,7 @@ getModalOrNone model =
         Just (ConfirmingCommit trade userInfo deposit) ->
             let
                 depositAmountString =
-                    TokenValue.tokenValue tokenDecimals deposit
+                    TokenValue.tokenValue deposit
                         |> TokenValue.toConciseString
 
                 fiatPriceString =

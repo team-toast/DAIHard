@@ -4,6 +4,7 @@ import Array exposing (Array)
 import BigInt exposing (BigInt)
 import BigIntHelpers
 import CommonTypes exposing (..)
+import Config
 import Contracts.Types as CTypes
 import Contracts.Wrappers
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
@@ -12,7 +13,6 @@ import EthHelpers
 import FiatValue exposing (FiatValue)
 import Flip exposing (flip)
 import Marketplace.Types exposing (..)
-import Network exposing (..)
 import PaymentMethods exposing (PaymentMethod)
 import Routing
 import String.Extra
@@ -369,7 +369,7 @@ interpretDaiAmount input =
         Ok Nothing
 
     else
-        case TokenValue.fromString tokenDecimals input of
+        case TokenValue.fromString input of
             Nothing ->
                 Err "I can't interpret this number"
 

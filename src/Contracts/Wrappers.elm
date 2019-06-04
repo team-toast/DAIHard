@@ -2,6 +2,7 @@ module Contracts.Wrappers exposing (getAllowanceCmd, getCreationInfoFromIdCmd, g
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
+import Config
 import Contracts.Generated.DAIHardFactory as DHF
 import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Generated.ERC20Token as TokenContract
@@ -17,7 +18,6 @@ import Flip exposing (flip)
 import Http
 import Json.Decode
 import Json.Encode
-import Network exposing (..)
 import PaymentMethods
 import Task
 import Time
@@ -28,18 +28,18 @@ import TokenValue exposing (TokenValue)
 openTrade : Network -> CreateParameters -> Call Address
 openTrade network parameters =
     DHF.createOpenTrade
-        (factoryAddress network)
+        (Config.factoryAddress network)
         parameters.initiatorAddress
-        devFeeAddress
+        Config.devFeeAddress
         (parameters.initiatingParty == Seller)
-        (TokenValue.getBigInt parameters.tradeAmount)
-        (TokenValue.getBigInt <| defaultBuyerDeposit parameters.tradeAmount)
-        (TokenValue.getBigInt <| defaultAbortPunishment parameters.tradeAmount)
-        (TokenValue.getBigInt parameters.pokeReward)
+        (TokenValue.getEvmValue parameters.tradeAmount)
+        (TokenValue.getEvmValue <| defaultBuyerDeposit parameters.tradeAmount)
+        (TokenValue.getEvmValue <| defaultAbortPunishment parameters.tradeAmount)
+        (TokenValue.getEvmValue parameters.pokeReward)
         (TimeHelpers.posixToSecondsBigInt parameters.autorecallInterval)
         (TimeHelpers.posixToSecondsBigInt parameters.autoabortInterval)
         (TimeHelpers.posixToSecondsBigInt parameters.autoreleaseInterval)
-        (TokenValue.getBigInt <| getDevFee parameters.tradeAmount)
+        (TokenValue.getEvmValue <| getDevFee parameters.tradeAmount)
         (encodeTerms <| Terms parameters.price parameters.paymentMethods)
         parameters.initiatorCommPubkey
 
@@ -49,7 +49,7 @@ getAllowanceCmd ethNode owner spender msgConstructor =
     Eth.call
         ethNode.http
         (TokenContract.allowance
-            (daiAddress ethNode.network)
+            (Config.daiAddress ethNode.network)
             owner
             spender
         )
@@ -58,19 +58,19 @@ getAllowanceCmd ethNode owner spender msgConstructor =
 
 getFounderFeeCmd : EthHelpers.EthNode -> BigInt -> (Result Http.Error BigInt -> msg) -> Cmd msg
 getFounderFeeCmd ethNode tradeAmount msgConstructor =
-    Eth.call ethNode.http (DHF.getFounderFee (factoryAddress ethNode.network) tradeAmount)
+    Eth.call ethNode.http (DHF.getFounderFee (Config.factoryAddress ethNode.network) tradeAmount)
         |> Task.attempt msgConstructor
 
 
 getNumTradesCmd : EthHelpers.EthNode -> (Result Http.Error BigInt -> msg) -> Cmd msg
 getNumTradesCmd ethNode msgConstructor =
-    Eth.call ethNode.http (DHF.numTrades (factoryAddress ethNode.network))
+    Eth.call ethNode.http (DHF.numTrades (Config.factoryAddress ethNode.network))
         |> Task.attempt msgConstructor
 
 
 getCreationInfoFromIdCmd : EthHelpers.EthNode -> BigInt -> (Result Http.Error DHF.CreatedTrade -> msg) -> Cmd msg
 getCreationInfoFromIdCmd ethNode ttId msgConstructor =
-    Eth.call ethNode.http (DHF.createdTrades (factoryAddress ethNode.network) ttId)
+    Eth.call ethNode.http (DHF.createdTrades (Config.factoryAddress ethNode.network) ttId)
         |> Task.attempt msgConstructor
 
 
@@ -101,7 +101,7 @@ getParametersCmd ethNode ttAddress msgConstructor =
 getStateCmd : EthHelpers.EthNode -> Address -> (Result Http.Error (Maybe State) -> msg) -> Cmd msg
 getStateCmd ethNode ttAddress msgConstructor =
     Eth.call ethNode.http (DHT.getState ttAddress)
-        |> Task.map (decodeState tokenDecimals)
+        |> Task.map decodeState
         |> Task.attempt msgConstructor
 
 

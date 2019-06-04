@@ -7,6 +7,7 @@ import Browser.Dom
 import Browser.Navigation
 import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (UserInfo)
+import Config
 import Create.State
 import Eth.Net
 import Eth.Sentry.Tx as TxSentry
@@ -17,7 +18,6 @@ import EthHelpers exposing (EthNode)
 import Json.Decode
 import Json.Encode
 import Marketplace.State
-import Network exposing (..)
 import Routing
 import Time
 import Trade.State

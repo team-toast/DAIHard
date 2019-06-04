@@ -2,11 +2,12 @@ module EthHelpers exposing (EthNode, addressIfNot0x0, ethNode, getLogAt, intToNe
 
 import Array
 import BigInt exposing (BigInt)
+import CommonTypes exposing (..)
+import Config
 import Eth.Net as Net
 import Eth.Sentry.Tx as TxSentry
 import Eth.Types exposing (Address, HttpProvider, TxHash, WebsocketProvider)
 import Eth.Utils
-import Network exposing (..)
 
 
 type alias EthNode =

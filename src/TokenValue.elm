@@ -1,69 +1,41 @@
-module TokenValue exposing (TokenValue, add, compare, decoder, div, divByInt, encode, fromString, getBigInt, getFloatValueWithWarning, isZero, mul, numDecimals, renderToString, sub, toConciseString, tokenValue, updateValue, updateViaString, zero)
+module TokenValue exposing (TokenValue, add, compare, decoder, div, encode, fromString, getEvmValue, getFloatValueWithWarning, isZero, mul, sub, toConciseString, tokenValue, zero)
 
 import BigInt exposing (BigInt)
 import BigIntHelpers
+import Config
 import Json.Decode
 import Json.Encode
 
 
 type TokenValue
-    = TokenValue
-        { numDecimals : Int
-        , value : BigInt
-        }
+    = TokenValue BigInt
 
 
-tokenValue : Int -> BigInt -> TokenValue
-tokenValue numDecimals_ value_ =
-    TokenValue
-        { numDecimals = numDecimals_
-        , value = value_
-        }
+tokenValue : BigInt -> TokenValue
+tokenValue evmValue =
+    TokenValue evmValue
 
 
-fromString : Int -> String -> Maybe TokenValue
-fromString numDecimals_ s =
-    updateViaString (zero numDecimals_) s
+fromString : String -> Maybe TokenValue
+fromString s =
+    Maybe.map
+        TokenValue
+        (userStringToEvmValue s)
 
 
-zero : Int -> TokenValue
-zero numDecimals_ =
-    TokenValue
-        { numDecimals = numDecimals_
-        , value = BigInt.fromInt 0
-        }
+zero : TokenValue
+zero =
+    TokenValue <| BigInt.fromInt 0
 
 
 isZero : TokenValue -> Bool
 isZero tv =
-    BigInt.fromInt 0 == getBigInt tv
+    getEvmValue tv == BigInt.fromInt 0
 
 
-updateValue : TokenValue -> BigInt -> TokenValue
-updateValue (TokenValue tokens) newValue =
-    TokenValue { tokens | value = newValue }
-
-
-updateViaString : TokenValue -> String -> Maybe TokenValue
-updateViaString (TokenValue originalTokens) s =
-    case stringToEvmValue originalTokens.numDecimals s of
-        Just newValue ->
-            Just (updateValue (TokenValue originalTokens) newValue)
-
-        Nothing ->
-            Nothing
-
-
-numDecimals : TokenValue -> Int
-numDecimals tokens_ =
-    case tokens_ of
-        TokenValue tokens ->
-            tokens.numDecimals
-
-
-getBigInt : TokenValue -> BigInt
-getBigInt (TokenValue tokens) =
-    tokens.value
+getEvmValue : TokenValue -> BigInt
+getEvmValue (TokenValue tokens) =
+    tokens
 
 
 getFloatValueWithWarning : TokenValue -> Float
@@ -71,7 +43,7 @@ getFloatValueWithWarning tokens =
     let
         toFloat =
             tokens
-                |> renderToString Nothing
+                |> toFloatString Nothing
                 |> String.toFloat
     in
     case toFloat of
@@ -86,21 +58,21 @@ getFloatValueWithWarning tokens =
             0
 
 
-renderToString : Maybe Int -> TokenValue -> String
-renderToString maxDigitsAfterDecimal tokens =
+toFloatString : Maybe Int -> TokenValue -> String
+toFloatString maxDigitsAfterDecimal tokens =
     case maxDigitsAfterDecimal of
         Nothing ->
-            evmValueToString (numDecimals tokens) (getBigInt tokens)
+            evmValueToUserFloatString (getEvmValue tokens)
 
         Just maxDigits ->
-            evmValueToTruncatedString (numDecimals tokens) maxDigits (getBigInt tokens)
+            evmValueToTruncatedUserFloatString maxDigits (getEvmValue tokens)
 
 
 toConciseString : TokenValue -> String
 toConciseString tv =
     let
         s =
-            evmValueToString (numDecimals tv) (getBigInt tv)
+            evmValueToUserFloatString (getEvmValue tv)
     in
     case String.indexes "." s of
         [] ->
@@ -136,68 +108,62 @@ toConciseString tv =
 add : TokenValue -> TokenValue -> TokenValue
 add t1 t2 =
     BigInt.add
-        (getBigInt t1)
-        (getBigInt t2)
-        |> updateValue t1
+        (getEvmValue t1)
+        (getEvmValue t2)
+        |> TokenValue
 
 
 sub : TokenValue -> TokenValue -> TokenValue
 sub t1 t2 =
     BigInt.sub
-        (getBigInt t1)
-        (getBigInt t2)
-        |> updateValue t1
+        (getEvmValue t1)
+        (getEvmValue t2)
+        |> TokenValue
 
 
 mul : TokenValue -> Int -> TokenValue
 mul t i =
     BigInt.mul
-        (getBigInt t)
+        (getEvmValue t)
         (BigInt.fromInt i)
-        |> updateValue t
+        |> TokenValue
 
 
 div : TokenValue -> Int -> TokenValue
 div t i =
     BigInt.div
-        (getBigInt t)
+        (getEvmValue t)
         (BigInt.fromInt i)
-        |> updateValue t
-
-
-divByInt : TokenValue -> Int -> TokenValue
-divByInt t i =
-    BigInt.div
-        (getBigInt t)
-        (BigInt.fromInt i)
-        |> updateValue t
+        |> TokenValue
 
 
 compare : TokenValue -> TokenValue -> Order
 compare t1 t2 =
     BigInt.compare
-        (getBigInt t1)
-        (getBigInt t2)
+        (getEvmValue t1)
+        (getEvmValue t2)
 
 
 encode : TokenValue -> Json.Encode.Value
 encode tv =
     tv
-        |> getBigInt
+        |> getEvmValue
         |> BigIntHelpers.encode
 
 
-decoder : Int -> Json.Decode.Decoder TokenValue
-decoder decimals =
-    Json.Decode.map (tokenValue decimals) BigIntHelpers.decoder
+decoder : Json.Decode.Decoder TokenValue
+decoder =
+    Json.Decode.map
+        tokenValue
+        BigIntHelpers.decoder
 
 
 
 -- Internal
 
 
-stringToEvmValue : Int -> String -> Maybe BigInt
-stringToEvmValue numDecimals_ amountString =
+userStringToEvmValue : String -> Maybe BigInt
+userStringToEvmValue amountString =
     if amountString == "" then
         Nothing
 
@@ -207,7 +173,7 @@ stringToEvmValue numDecimals_ amountString =
                 pullAnyFirstDecimalOffToRight amountString
 
             numDigitsLeftToMove =
-                numDecimals_ - numDigitsMoved
+                Config.tokenDecimals - numDigitsMoved
 
             maybeBigIntAmount =
                 BigInt.fromString newString
@@ -250,11 +216,11 @@ pullAnyFirstDecimalOffToRight numString =
             ( newString, numDigitsMoved )
 
 
-evmValueToTruncatedString : Int -> Int -> BigInt -> String
-evmValueToTruncatedString numDecimals_ maxDigitsAfterDecimal evmValue =
+evmValueToTruncatedUserFloatString : Int -> BigInt -> String
+evmValueToTruncatedUserFloatString maxDigitsAfterDecimal evmValue =
     let
         untruncatedString =
-            evmValueToString numDecimals_ evmValue
+            evmValueToUserFloatString evmValue
 
         maybeDecimalPos =
             List.head (String.indexes "." untruncatedString)
@@ -271,18 +237,18 @@ evmValueToTruncatedString numDecimals_ maxDigitsAfterDecimal evmValue =
                 String.left (decimalPos + 1 + maxDigitsAfterDecimal) untruncatedString
 
 
-evmValueToString : Int -> BigInt -> String
-evmValueToString numDecimals_ evmValue =
+evmValueToUserFloatString : BigInt -> String
+evmValueToUserFloatString evmValue =
     let
         zeroPaddedString =
             evmValue
                 |> BigInt.toString
-                |> String.padLeft numDecimals_ '0'
+                |> String.padLeft Config.tokenDecimals '0'
 
         withDecimalString =
-            String.dropRight numDecimals_ zeroPaddedString
+            String.dropRight Config.tokenDecimals zeroPaddedString
                 ++ "."
-                ++ String.right numDecimals_ zeroPaddedString
+                ++ String.right Config.tokenDecimals zeroPaddedString
     in
     removeUnnecessaryZerosAndDots withDecimalString
 

@@ -1,5 +1,6 @@
-module Network exposing (Network(..), daiAddress, devFeeAddress, factoryAddress, tokenDecimals)
+module Config exposing (daiAddress, devFeeAddress, factoryAddress, tokenDecimals)
 
+import CommonTypes exposing (..)
 import Eth.Net
 import Eth.Types exposing (Address)
 import Eth.Utils
@@ -7,11 +8,6 @@ import Eth.Utils
 
 tokenDecimals =
     18
-
-
-type Network
-    = Mainnet
-    | Kovan
 
 
 daiAddress : Network -> Address

@@ -47,7 +47,6 @@ module ElementHelpers exposing
     , subtleShadow
     , testBorderStyles
     , textInputWithElement
-    , tokenValue
     , txProcessModal
     , uncoloredMargin
     , white
@@ -60,6 +59,7 @@ import Collage exposing (Collage)
 import Collage.Render
 import Color exposing (Color)
 import CommonTypes exposing (..)
+import Config
 import Css
 import Dict
 import Element exposing (Attribute, Element)
@@ -80,7 +80,6 @@ import Json.Decode
 import List
 import List.Extra
 import Maybe.Extra
-import Network exposing (..)
 import Task
 import Time
 import TimeHelpers
@@ -176,15 +175,6 @@ fakeLink name =
 
 
 -- RENDERERS
-
-
-tokenValue : TokenValue -> Element msg
-tokenValue tv =
-    let
-        s =
-            TokenValue.renderToString Nothing tv ++ " DAI"
-    in
-    Element.el [ Element.Font.color (Element.rgb 0 0 1) ] (Element.text s)
 
 
 daiValue : TokenValue -> Element msg

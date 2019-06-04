@@ -2,6 +2,7 @@ module Create.View exposing (root)
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
+import Config
 import Contracts.Types as CTypes
 import Create.PMWizard.View as PMWizard
 import Create.Types exposing (..)
@@ -17,7 +18,6 @@ import FiatValue
 import Images exposing (Image)
 import List.Extra
 import Maybe.Extra
-import Network exposing (..)
 import PaymentMethods exposing (PaymentMethod)
 import Time
 import TimeHelpers
@@ -251,7 +251,7 @@ devFeeNotifyElement : Model -> Element Msg
 devFeeNotifyElement model =
     let
         topText =
-            case TokenValue.fromString tokenDecimals model.inputs.daiAmount of
+            case TokenValue.fromString model.inputs.daiAmount of
                 Just daiAmount ->
                     "There is a 1% fee of "
                         ++ TokenValue.toConciseString
@@ -475,7 +475,7 @@ txChainStatusModal txChainStatus model =
                 ( depositAmountEl, confirmButton ) =
                     case model.depositAmount of
                         Just depositAmount ->
-                            ( TokenValue.tokenValue tokenDecimals depositAmount
+                            ( TokenValue.tokenValue depositAmount
                                 |> TokenValue.toConciseString
                                 |> Element.text
                             , EH.redButton "Yes, I definitely want to open this trade." (ConfirmCreate createParameters depositAmount)

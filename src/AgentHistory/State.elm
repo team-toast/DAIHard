@@ -6,6 +6,7 @@ import BigInt exposing (BigInt)
 import BigIntHelpers
 import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
+import Config exposing (..)
 import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Types as CTypes
 import Contracts.Wrappers
@@ -15,7 +16,6 @@ import Eth.Types exposing (Address)
 import EthHelpers
 import FiatValue exposing (FiatValue)
 import Flip exposing (flip)
-import Network exposing (..)
 import PaymentMethods exposing (PaymentMethod)
 import Routing
 import String.Extra

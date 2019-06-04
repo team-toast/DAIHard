@@ -4,6 +4,7 @@ import BigInt exposing (BigInt)
 import BigIntHelpers
 import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
+import Config
 import Contracts.Generated.ERC20Token as TokenContract
 import Contracts.Types as CTypes
 import Contracts.Wrappers
@@ -16,7 +17,6 @@ import FiatValue exposing (FiatValue)
 import Flip exposing (flip)
 import Margin
 import Maybe.Extra
-import Network exposing (..)
 import PaymentMethods exposing (PaymentMethod)
 import Routing
 import Time
@@ -68,7 +68,7 @@ updateUserInfo userInfo model =
             Contracts.Wrappers.getAllowanceCmd
                 model.node
                 uInfo.address
-                (factoryAddress model.node.network)
+                (Config.factoryAddress model.node.network)
                 AllowanceFetched
 
         Nothing ->
@@ -87,7 +87,7 @@ update msg prevModel =
                             Contracts.Wrappers.getAllowanceCmd
                                 prevModel.node
                                 userInfo.address
-                                (factoryAddress prevModel.node.network)
+                                (Config.factoryAddress prevModel.node.network)
                                 AllowanceFetched
                     in
                     UpdateResult
@@ -241,7 +241,7 @@ update msg prevModel =
                         }
                         (Contracts.Wrappers.getFounderFeeCmd
                             prevModel.node
-                            (TokenValue.getBigInt createParameters.tradeAmount)
+                            (TokenValue.getEvmValue createParameters.tradeAmount)
                             (FounderFeeFetched createParameters)
                         )
                         ChainCmd.none
@@ -264,10 +264,10 @@ update msg prevModel =
 
                         fullDepositAmount =
                             mainDepositAmount
-                                |> TokenValue.add (TokenValue.tokenValue tokenDecimals founderFee)
+                                |> TokenValue.add (TokenValue.tokenValue founderFee)
                                 |> TokenValue.add (CTypes.getDevFee createParameters.tradeAmount)
                                 |> TokenValue.add createParameters.pokeReward
-                                |> TokenValue.getBigInt
+                                |> TokenValue.getEvmValue
                     in
                     justModelUpdate { prevModel | depositAmount = Just fullDepositAmount }
 
@@ -287,8 +287,8 @@ update msg prevModel =
                     let
                         txParams =
                             TokenContract.approve
-                                (daiAddress prevModel.node.network)
-                                (factoryAddress prevModel.node.network)
+                                (Config.daiAddress prevModel.node.network)
+                                (Config.factoryAddress prevModel.node.network)
                                 fullDepositAmount
                                 |> Eth.toSend
 
@@ -535,7 +535,7 @@ interpretDaiAmount input =
         Err "You must specify a trade amount."
 
     else
-        case TokenValue.fromString tokenDecimals input of
+        case TokenValue.fromString input of
             Nothing ->
                 Err "I don't understand this number."
 

@@ -5,6 +5,7 @@ import BigInt exposing (BigInt)
 import BigIntHelpers
 import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
+import Config
 import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Generated.ERC20Token as TokenContract
 import Contracts.Types as CTypes
@@ -20,7 +21,6 @@ import Http
 import Json.Decode
 import Json.Encode
 import Maybe.Extra
-import Network exposing (..)
 import PaymentMethods exposing (PaymentMethod)
 import Result.Extra
 import Routing
@@ -156,7 +156,7 @@ update msg prevModel =
                     in
                     case ( newModel.txChainStatus, newModel.trade, newModel.userInfo ) of
                         ( Just (ApproveMining _), CTypes.LoadedTrade trade, Just userInfo ) ->
-                            if BigInt.compare allowance (CTypes.responderDeposit trade.parameters |> TokenValue.getBigInt) /= LT then
+                            if BigInt.compare allowance (CTypes.responderDeposit trade.parameters |> TokenValue.getEvmValue) /= LT then
                                 let
                                     ( txChainStatus, chainCmd ) =
                                         initiateCommitCall trade.creationInfo.address userInfo.address userInfo.commPubkey
@@ -373,7 +373,7 @@ update msg prevModel =
                             let
                                 txParams =
                                     TokenContract.approve
-                                        (daiAddress prevModel.node.network)
+                                        (Config.daiAddress prevModel.node.network)
                                         trade.creationInfo.address
                                         depositAmount
                                         |> Eth.toSend
@@ -388,7 +388,7 @@ update msg prevModel =
                     in
                     case prevModel.allowance of
                         Just allowance ->
-                            if BigInt.compare allowance (CTypes.responderDeposit trade.parameters |> TokenValue.getBigInt) /= LT then
+                            if BigInt.compare allowance (CTypes.responderDeposit trade.parameters |> TokenValue.getEvmValue) /= LT then
                                 initiateCommitCall trade.creationInfo.address userInfo.address userInfo.commPubkey
 
                             else

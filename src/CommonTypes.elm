@@ -1,9 +1,13 @@
-module CommonTypes exposing (BuyerOrSeller(..), InitiatorOrResponder(..), UserInfo)
+module CommonTypes exposing (BuyerOrSeller(..), InitiatorOrResponder(..), Network(..), UserInfo)
 
 import Eth.Types exposing (Address)
 import Json.Decode
 import Json.Encode
-import TokenValue exposing (TokenValue)
+
+
+type Network
+    = Mainnet
+    | Kovan
 
 
 type alias UserInfo =
