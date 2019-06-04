@@ -23,10 +23,11 @@ import TradeCache.State as TradeCache
 import TradeCache.Types as TradeCache exposing (TradeCache)
 
 
-init : EthHelpers.EthNode -> Maybe UserInfo -> ( Model, Cmd Msg )
-init ethNode maybeUserInfo =
+init : EthHelpers.EthNode -> BuyerOrSeller -> Maybe UserInfo -> ( Model, Cmd Msg )
+init ethNode browsingRole maybeUserInfo =
     ( { ethNode = ethNode
       , userInfo = maybeUserInfo
+      , browsingRole = browsingRole
       , inputs = initialInputs
       , errors = noErrors
       , showCurrencyDropdown = False
@@ -47,7 +48,6 @@ initialInputs =
     , maxFiat = ""
     , paymentMethod = ""
     , paymentMethodTerms = []
-    , initiatingParty = Seller
     }
 
 
@@ -77,12 +77,6 @@ update msg model =
         --     , cmd
         --     , Nothing
         --     )
-        ChangeOfferType initiatingParty ->
-            ( { model | inputs = model.inputs |> updateInitiatingParty initiatingParty } |> applyInputs
-            , Cmd.none
-            , Nothing
-            )
-
         MinDaiChanged input ->
             ( { model | inputs = model.inputs |> updateMinDaiInput input }
             , Cmd.none
@@ -317,7 +311,7 @@ applyInputs prevModel =
 
                 newFilterFunc now trade =
                     baseFilterFunc now trade
-                        && (trade.parameters.initiatingParty == query.initiatingParty)
+                        && (trade.parameters.initiatingParty /= model.browsingRole)
                         && searchTest now trade
                         && daiTest trade
                         && fiatTest trade
@@ -346,7 +340,6 @@ inputsToQuery inputs =
                     (String.Extra.nonEmpty inputs.fiatType)
             , paymentMethodTerms =
                 inputs.paymentMethodTerms
-            , initiatingParty = inputs.initiatingParty
             }
         )
         (interpretDaiAmount inputs.minDai
@@ -396,7 +389,7 @@ resetSearch model =
     { model
         | sortFunc = initialSortFunc
         , filterFunc = baseFilterFunc
-        , inputs = { initialInputs | initiatingParty = model.inputs.initiatingParty }
+        , inputs = initialInputs
     }
 
 

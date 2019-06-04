@@ -379,10 +379,10 @@ gotoRoute oldModel route =
                 ]
             )
 
-        Routing.Marketplace ->
+        Routing.Marketplace browsingRole ->
             let
                 ( marketplaceModel, marketplaceCmd ) =
-                    Marketplace.State.init oldModel.node oldModel.userInfo
+                    Marketplace.State.init oldModel.node browsingRole oldModel.userInfo
             in
             ( Running
                 { oldModel

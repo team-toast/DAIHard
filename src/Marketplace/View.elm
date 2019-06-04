@@ -9,8 +9,8 @@ import Element.Border
 import Element.Events
 import Element.Font
 import Element.Input
-import Helpers.Element as EH
 import FiatValue exposing (FiatValue)
+import Helpers.Element as EH
 import Helpers.Time as TimeHelpers
 import Html.Events.Extra
 import Images exposing (Image)
@@ -36,15 +36,7 @@ root time tradeCache model =
             , Element.spacing 10
             , Element.padding 30
             ]
-            [ Element.el
-                [ Element.alignTop
-                , Element.width (Element.fill |> Element.maximum 300)
-                ]
-                (EH.withHeader
-                    "Offer Type"
-                    (typeToggleElement model.inputs.initiatingParty)
-                )
-            , searchInputElement model.inputs model.errors model.showCurrencyDropdown
+            [ searchInputElement model.inputs model.errors model.showCurrencyDropdown
             ]
         , resultsElement time tradeCache model
         ]
@@ -88,40 +80,6 @@ searchInputElement inputs errors showCurrencyDropdown =
                 [ applyButton, resetButton ]
                 |> withInputHeader " "
             ]
-        ]
-
-
-typeToggleElement : BuyerOrSeller -> Element Msg
-typeToggleElement initiatingParty =
-    let
-        baseStyles =
-            [ Element.Font.size 24
-            , Element.Font.medium
-            , Element.pointer
-            ]
-
-        ( buyStyles, sellStyles ) =
-            case initiatingParty of
-                Buyer ->
-                    ( baseStyles
-                    , baseStyles ++ [ Element.Font.color EH.disabledTextColor ]
-                    )
-
-                Seller ->
-                    ( baseStyles ++ [ Element.Font.color EH.disabledTextColor ]
-                    , baseStyles
-                    )
-    in
-    Element.wrappedRow
-        [ Element.spacing 20
-        , Element.width Element.fill
-        ]
-        [ Element.el
-            ([ Element.Events.onClick <| ChangeOfferType Seller ] ++ sellStyles)
-            (Element.text "Selling DAI")
-        , Element.el
-            ([ Element.Events.onClick <| ChangeOfferType Buyer ] ++ buyStyles)
-            (Element.text "Buying DAI")
         ]
 
 
@@ -170,12 +128,12 @@ resultsElement time tradeCache model =
                 |> filterAndSortTrades time model.filterFunc model.sortFunc
 
         buyingOrSellingString =
-            case model.inputs.initiatingParty of
+            case model.browsingRole of
                 Buyer ->
-                    "Buying"
+                    "Selling"
 
                 Seller ->
-                    "Selling"
+                    "Buying"
     in
     Element.column
         [ Element.width Element.fill
@@ -205,15 +163,7 @@ resultsElement time tradeCache model =
             ]
             (visibleTrades
                 |> List.map
-                    (viewTradeRow time
-                        (case model.inputs.initiatingParty of
-                            Buyer ->
-                                Seller
-
-                            Seller ->
-                                Buyer
-                        )
-                    )
+                    (viewTradeRow time model.browsingRole)
             )
         ]
 

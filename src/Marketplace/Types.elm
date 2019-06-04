@@ -1,4 +1,4 @@
-module Marketplace.Types exposing (Errors, FiatTypeAndRange, Model, Msg(..), Query, ResultColumnType(..), SearchInputs, TokenRange, noErrors, updateFiatTypeInput, updateInitiatingParty, updateMaxDaiInput, updateMaxFiatInput, updateMinDaiInput, updateMinFiatInput, updatePaymentMethodInput, updatePaymentMethodTerms)
+module Marketplace.Types exposing (Errors, FiatTypeAndRange, Model, Msg(..), Query, ResultColumnType(..), SearchInputs, TokenRange, noErrors, updateFiatTypeInput, updateMaxDaiInput, updateMaxFiatInput, updateMinDaiInput, updateMinFiatInput, updatePaymentMethodInput, updatePaymentMethodTerms)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
@@ -23,6 +23,7 @@ import TradeCache.Types as TradeCache exposing (TradeCache)
 type alias Model =
     { ethNode : EthNode
     , userInfo : Maybe UserInfo
+    , browsingRole : BuyerOrSeller
     , inputs : SearchInputs
     , errors : Errors
     , showCurrencyDropdown : Bool
@@ -32,8 +33,7 @@ type alias Model =
 
 
 type Msg
-    = ChangeOfferType BuyerOrSeller
-    | MinDaiChanged String
+    = MinDaiChanged String
     | MaxDaiChanged String
     | FiatTypeInputChanged String
     | MinFiatChanged String
@@ -63,7 +63,6 @@ type alias SearchInputs =
     , maxFiat : String
     , paymentMethod : String
     , paymentMethodTerms : List String
-    , initiatingParty : BuyerOrSeller
     }
 
 
@@ -80,8 +79,7 @@ noErrors =
 
 
 type alias Query =
-    { initiatingParty : BuyerOrSeller
-    , dai : TokenRange
+    { dai : TokenRange
     , fiat : Maybe FiatTypeAndRange
     , paymentMethodTerms : List String
     }
@@ -98,11 +96,6 @@ type alias FiatTypeAndRange =
     , min : Maybe BigInt
     , max : Maybe BigInt
     }
-
-
-updateInitiatingParty : BuyerOrSeller -> SearchInputs -> SearchInputs
-updateInitiatingParty initiatingParty inputs =
-    { inputs | initiatingParty = initiatingParty }
 
 
 updatePaymentMethodInput : String -> SearchInputs -> SearchInputs
