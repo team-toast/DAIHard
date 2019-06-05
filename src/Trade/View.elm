@@ -105,8 +105,8 @@ tradeStatusElement trade network =
                     CTypes.Committed ->
                         "Committed"
 
-                    CTypes.Claimed ->
-                        "Claimed"
+                    CTypes.Judgment ->
+                        "Judgment"
 
                     CTypes.Closed ->
                         "Closed"
@@ -467,7 +467,7 @@ actionButtonsElement currentTime trade userInfo =
                         , Element.map StartContractAction <| EH.redButton "Confirm Payment" Claim
                         ]
 
-                    ( CTypes.Claimed, _, Just Seller ) ->
+                    ( CTypes.Judgment, _, Just Seller ) ->
                         [ Element.map StartContractAction <| EH.redButton "Burn it All!" Burn
                         , Element.map StartContractAction <| EH.blueButton "Release Everything" Release
                         ]
@@ -507,7 +507,7 @@ phasesElement trade expandedPhase maybeUserInfo currentTime =
             _ ->
                 [ phaseElement CTypes.Open trade maybeUserInfo (expandedPhase == CTypes.Open) currentTime
                 , phaseElement CTypes.Committed trade maybeUserInfo (expandedPhase == CTypes.Committed) currentTime
-                , phaseElement CTypes.Claimed trade maybeUserInfo (expandedPhase == CTypes.Claimed) currentTime
+                , phaseElement CTypes.Judgment trade maybeUserInfo (expandedPhase == CTypes.Judgment) currentTime
                 ]
 
 
@@ -560,7 +560,7 @@ phaseElement viewPhase trade maybeUserInfo expanded currentTime =
                 CTypes.Committed ->
                     trade.parameters.autoabortInterval
 
-                CTypes.Claimed ->
+                CTypes.Judgment ->
                     trade.parameters.autoreleaseInterval
 
                 _ ->
@@ -668,7 +668,7 @@ phaseStatusElement viewPhase trade currentTime =
                         CTypes.Committed ->
                             "Payment Window"
 
-                        CTypes.Claimed ->
+                        CTypes.Judgment ->
                             "Release Window"
 
                         CTypes.Closed ->
@@ -1052,7 +1052,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                         ]
                     )
 
-                ( CTypes.Claimed, Just Buyer ) ->
+                ( CTypes.Judgment, Just Buyer ) ->
                     ( "Judgement"
                     , List.map makeParagraph
                         [ [ Element.text "If the Seller confirms receipt of payment, or fails to decide within the release window, the combined balance of "
@@ -1072,7 +1072,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                         ]
                     )
 
-                ( CTypes.Claimed, Just Seller ) ->
+                ( CTypes.Judgment, Just Seller ) ->
                     ( "Judgement"
                     , List.map makeParagraph
                         [ [ Element.text "By pushing the contract to the final stage, the Buyer has indicated that the transfer has taken place, and awaits your judgement."
@@ -1092,7 +1092,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                         ]
                     )
 
-                ( CTypes.Claimed, Nothing ) ->
+                ( CTypes.Judgment, Nothing ) ->
                     ( "Judgement"
                     , List.map makeParagraph
                         [ [ Element.text "The Buyer has indicated that the transfer has taken place, and awaits the Seller's judgement on the fact of the matter."

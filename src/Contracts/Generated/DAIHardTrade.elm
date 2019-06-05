@@ -55,7 +55,7 @@ module Contracts.Generated.DAIHardTrade exposing
     , pokeEvent
     , pokeNeeded
     , pokeReward
-    , pokeRewardSent
+    , pokeRewardGranted
     , recall
     , recalledEvent
     , release
@@ -597,16 +597,16 @@ initiatorIsCustodian contractAddress =
     }
 
 
-{-| "initiatorStatement(string,string)" function
+{-| "initiatorStatement(string)" function
 -}
-initiatorStatement : Address -> String -> String -> Call ()
-initiatorStatement contractAddress encryptedForInitiator encryptedForResponder =
+initiatorStatement : Address -> String -> Call ()
+initiatorStatement contractAddress statement =
     { to = Just contractAddress
     , from = Nothing
     , gas = Nothing
     , gasPrice = Nothing
     , value = Nothing
-    , data = Just <| AbiEncode.functionCall "initiatorStatement(string,string)" [ AbiEncode.string encryptedForInitiator, AbiEncode.string encryptedForResponder ]
+    , data = Just <| AbiEncode.functionCall "initiatorStatement(string)" [ AbiEncode.string statement ]
     , nonce = Nothing
     , decoder = Decode.succeed ()
     }
@@ -702,16 +702,16 @@ pokeReward contractAddress =
     }
 
 
-{-| "pokeRewardSent()" function
+{-| "pokeRewardGranted()" function
 -}
-pokeRewardSent : Address -> Call Bool
-pokeRewardSent contractAddress =
+pokeRewardGranted : Address -> Call Bool
+pokeRewardGranted contractAddress =
     { to = Just contractAddress
     , from = Nothing
     , gas = Nothing
     , gasPrice = Nothing
     , value = Nothing
-    , data = Just <| AbiEncode.functionCall "pokeRewardSent()" []
+    , data = Just <| AbiEncode.functionCall "pokeRewardGranted()" []
     , nonce = Nothing
     , decoder = toElmDecoder AbiDecode.bool
     }
@@ -762,16 +762,16 @@ responder contractAddress =
     }
 
 
-{-| "responderStatement(string,string)" function
+{-| "responderStatement(string)" function
 -}
-responderStatement : Address -> String -> String -> Call ()
-responderStatement contractAddress encryptedForInitiator encryptedForResponder =
+responderStatement : Address -> String -> Call ()
+responderStatement contractAddress statement =
     { to = Just contractAddress
     , from = Nothing
     , gas = Nothing
     , gasPrice = Nothing
     , value = Nothing
-    , data = Just <| AbiEncode.functionCall "responderStatement(string,string)" [ AbiEncode.string encryptedForInitiator, AbiEncode.string encryptedForResponder ]
+    , data = Just <| AbiEncode.functionCall "responderStatement(string)" [ AbiEncode.string statement ]
     , nonce = Nothing
     , decoder = Decode.succeed ()
     }
@@ -873,12 +873,10 @@ initiatedDecoder =
         |> custom (data 1 AbiDecode.string)
 
 
-{-| "InitiatorStatementLog(string,string)" event
+{-| "InitiatorStatementLog(string)" event
 -}
 type alias InitiatorStatementLog =
-    { encryptedForInitiator : String
-    , encryptedForResponder : String
-    }
+    { statement : String }
 
 
 initiatorStatementLogEvent : Address -> LogFilter
@@ -886,7 +884,7 @@ initiatorStatementLogEvent contractAddress =
     { fromBlock = LatestBlock
     , toBlock = LatestBlock
     , address = contractAddress
-    , topics = [ Just <| U.keccak256 "InitiatorStatementLog(string,string)" ]
+    , topics = [ Just <| U.keccak256 "InitiatorStatementLog(string)" ]
     }
 
 
@@ -894,7 +892,6 @@ initiatorStatementLogDecoder : Decoder InitiatorStatementLog
 initiatorStatementLogDecoder =
     succeed InitiatorStatementLog
         |> custom (data 0 AbiDecode.string)
-        |> custom (data 1 AbiDecode.string)
 
 
 {-| "Poke()" event
@@ -930,12 +927,10 @@ releasedEvent contractAddress =
     }
 
 
-{-| "ResponderStatementLog(string,string)" event
+{-| "ResponderStatementLog(string)" event
 -}
 type alias ResponderStatementLog =
-    { encryptedForInitiator : String
-    , encryptedForResponder : String
-    }
+    { statement : String }
 
 
 responderStatementLogEvent : Address -> LogFilter
@@ -943,7 +938,7 @@ responderStatementLogEvent contractAddress =
     { fromBlock = LatestBlock
     , toBlock = LatestBlock
     , address = contractAddress
-    , topics = [ Just <| U.keccak256 "ResponderStatementLog(string,string)" ]
+    , topics = [ Just <| U.keccak256 "ResponderStatementLog(string)" ]
     }
 
 
@@ -951,4 +946,3 @@ responderStatementLogDecoder : Decoder ResponderStatementLog
 responderStatementLogDecoder =
     succeed ResponderStatementLog
         |> custom (data 0 AbiDecode.string)
-        |> custom (data 1 AbiDecode.string)

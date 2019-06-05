@@ -2,20 +2,6 @@
 	{
 		"constant": true,
 		"inputs": [],
-		"name": "pokeRewardSent",
-		"outputs": [
-			{
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
 		"name": "getBalance",
 		"outputs": [
 			{
@@ -74,6 +60,20 @@
 	{
 		"constant": true,
 		"inputs": [],
+		"name": "pokeRewardGranted",
+		"outputs": [
+			{
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
 		"name": "responder",
 		"outputs": [
 			{
@@ -111,6 +111,20 @@
 		],
 		"payable": false,
 		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "statement",
+				"type": "string"
+			}
+		],
+		"name": "initiatorStatement",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -231,6 +245,20 @@
 		],
 		"payable": false,
 		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "statement",
+				"type": "string"
+			}
+		],
+		"name": "responderStatement",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -462,24 +490,6 @@
 		"type": "function"
 	},
 	{
-		"constant": false,
-		"inputs": [
-			{
-				"name": "encryptedForInitiator",
-				"type": "string"
-			},
-			{
-				"name": "encryptedForResponder",
-				"type": "string"
-			}
-		],
-		"name": "responderStatement",
-		"outputs": [],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
 		"constant": true,
 		"inputs": [],
 		"name": "abortPunishment",
@@ -663,24 +673,6 @@
 		"type": "function"
 	},
 	{
-		"constant": false,
-		"inputs": [
-			{
-				"name": "encryptedForInitiator",
-				"type": "string"
-			},
-			{
-				"name": "encryptedForResponder",
-				"type": "string"
-			}
-		],
-		"name": "initiatorStatement",
-		"outputs": [],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
 		"constant": true,
 		"inputs": [],
 		"name": "autorecallAvailable",
@@ -802,12 +794,7 @@
 		"inputs": [
 			{
 				"indexed": false,
-				"name": "encryptedForInitiator",
-				"type": "string"
-			},
-			{
-				"indexed": false,
-				"name": "encryptedForResponder",
+				"name": "statement",
 				"type": "string"
 			}
 		],
@@ -819,12 +806,7 @@
 		"inputs": [
 			{
 				"indexed": false,
-				"name": "encryptedForInitiator",
-				"type": "string"
-			},
-			{
-				"indexed": false,
-				"name": "encryptedForResponder",
+				"name": "statement",
 				"type": "string"
 			}
 		],

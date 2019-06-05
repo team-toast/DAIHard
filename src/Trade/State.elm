@@ -599,15 +599,10 @@ update msg prevModel =
             let
                 encodedEncryptionMessages =
                     decodeEncryptionResult encryptedMessagesValue
-                        |> Result.map
-                            (\( initiatorMessage, responderMessage ) ->
-                                ( encodeEncryptedMessage initiatorMessage
-                                , encodeEncryptedMessage responderMessage
-                                )
-                            )
+                        |> Result.andThen encodeEncryptedMessages
             in
             case ( prevModel.userInfo, prevModel.trade, encodedEncryptionMessages ) of
-                ( Just userInfo, CTypes.LoadedTrade tradeInfo, Ok ( Ok initiatorMessage, Ok responderMessage ) ) ->
+                ( Just userInfo, CTypes.LoadedTrade tradeInfo, Ok encodedEncryptedMessages ) ->
                     case CTypes.getInitiatorOrResponder tradeInfo userInfo.address of
                         Nothing ->
                             let
@@ -621,11 +616,11 @@ update msg prevModel =
                                 txParams =
                                     case userRole of
                                         Initiator ->
-                                            DHT.initiatorStatement tradeInfo.creationInfo.address initiatorMessage responderMessage
+                                            DHT.initiatorStatement tradeInfo.creationInfo.address encodedEncryptedMessages
                                                 |> Eth.toSend
 
                                         Responder ->
-                                            DHT.responderStatement tradeInfo.creationInfo.address initiatorMessage responderMessage
+                                            DHT.responderStatement tradeInfo.creationInfo.address encodedEncryptedMessages
                                                 |> Eth.toSend
                             in
                             UpdateResult

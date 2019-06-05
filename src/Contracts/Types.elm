@@ -117,7 +117,7 @@ type alias State =
 type Phase
     = Open
     | Committed
-    | Claimed
+    | Judgment
     | Closed
 
 
@@ -295,7 +295,7 @@ deriveValues parameters state terms =
                 Committed ->
                     parameters.autoabortInterval
 
-                Claimed ->
+                Judgment ->
                     parameters.autoreleaseInterval
 
                 Closed ->
@@ -384,7 +384,7 @@ getPhaseInterval phase tradeInfo =
         Committed ->
             tradeInfo.parameters.autoabortInterval
 
-        Claimed ->
+        Judgment ->
             tradeInfo.parameters.autoreleaseInterval
 
         Closed ->
@@ -400,7 +400,7 @@ getPokeText phase =
         Committed ->
             "Aborting..."
 
-        Claimed ->
+        Judgment ->
             "Releasing..."
 
         Closed ->
@@ -433,10 +433,10 @@ eventDecoder =
                 else if hashedSig == Eth.Utils.keccak256 "Burned()" then
                     Json.Decode.succeed BurnedEvent
 
-                else if hashedSig == Eth.Utils.keccak256 "InitiatorStatementLog(string,string)" then
+                else if hashedSig == Eth.Utils.keccak256 "InitiatorStatementLog(string)" then
                     Json.Decode.map InitiatorStatementLogEvent DHT.initiatorStatementLogDecoder
 
-                else if hashedSig == Eth.Utils.keccak256 "ResponderStatementLog(string,string)" then
+                else if hashedSig == Eth.Utils.keccak256 "ResponderStatementLog(string)" then
                     Json.Decode.map ResponderStatementLogEvent DHT.responderStatementLogDecoder
 
                 else if hashedSig == Eth.Utils.keccak256 "Poke()" then
@@ -522,7 +522,7 @@ bigIntToPhase phase =
             Just Committed
 
         3 ->
-            Just Claimed
+            Just Judgment
 
         4 ->
             Just Closed
@@ -566,7 +566,7 @@ phaseToInt phase =
         Committed ->
             2
 
-        Claimed ->
+        Judgment ->
             3
 
         Closed ->
@@ -582,8 +582,8 @@ phaseToString phase =
         Committed ->
             "Committed"
 
-        Claimed ->
-            "Claimed"
+        Judgment ->
+            "Judgment"
 
         Closed ->
             "Closed"
@@ -681,8 +681,8 @@ phaseIcon phase =
         Committed ->
             Images.committedPhase
 
-        Claimed ->
-            Images.claimedPhase
+        Judgment ->
+            Images.judgmentPhase
 
         Closed ->
             Images.none

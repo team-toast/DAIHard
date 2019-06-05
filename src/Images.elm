@@ -3,13 +3,13 @@ module Images exposing
     , addButton
     , backButton
     , chatIcon
-    , claimedPhase
     , closeIcon
     , committedPhase
     , daiSymbol
     , downArrow
     , flame
     , image
+    , judgmentPhase
     , loadingArrows
     , marginSymbol
     , none
@@ -235,11 +235,11 @@ committedPhase =
         }
 
 
-claimedPhase : Image
-claimedPhase =
+judgmentPhase : Image
+judgmentPhase =
     JustImage
-        { src = "/DAIHard/static/img/phase-claimed.svg"
-        , description = "claimed phase"
+        { src = "/DAIHard/static/img/phase-judgment.svg"
+        , description = "judgment phase"
         }
 
 

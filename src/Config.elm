@@ -24,10 +24,10 @@ factoryAddress : Network -> Address
 factoryAddress network =
     case network of
         Mainnet ->
-            Eth.Utils.unsafeToAddress "0x3833B7233F848350998e7775412d95655545c3Eb"
+            Eth.Utils.unsafeToAddress "0x41a8a3C08932d285f2AF190c7338ABcC5cFfFBb4"
 
         Kovan ->
-            Eth.Utils.unsafeToAddress "0x886D8E4B29bccaAe4e80f76687E57B3175B9cBB3"
+            Eth.Utils.unsafeToAddress "0x4cd4742b61A840630e3509eC0eDb988edB55673f"
 
 
 devFeeAddress : Address

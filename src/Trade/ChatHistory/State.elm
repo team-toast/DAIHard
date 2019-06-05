@@ -149,13 +149,9 @@ handleNewEvent blocknum event prevModel =
                         Statement <|
                             { who = Initiator |> toBuyerOrSeller
                             , message =
-                                case
-                                    ( decodeEncryptedMessage data.encryptedForInitiator
-                                    , decodeEncryptedMessage data.encryptedForResponder
-                                    )
-                                of
-                                    ( Just decodedForInitiator, Just decodedForResponder ) ->
-                                        Encrypted ( decodedForInitiator, decodedForResponder )
+                                case decodeEncryptedMessages data.statement of
+                                    Just decodedMessages ->
+                                        Encrypted decodedMessages
 
                                     _ ->
                                         FailedDecode
@@ -167,13 +163,9 @@ handleNewEvent blocknum event prevModel =
                         Statement <|
                             { who = Responder |> toBuyerOrSeller
                             , message =
-                                case
-                                    ( decodeEncryptedMessage data.encryptedForInitiator
-                                    , decodeEncryptedMessage data.encryptedForResponder
-                                    )
-                                of
-                                    ( Just decodedForInitiator, Just decodedForResponder ) ->
-                                        Encrypted ( decodedForInitiator, decodedForResponder )
+                                case decodeEncryptedMessages data.statement of
+                                    Just decodedMessages ->
+                                        Encrypted decodedMessages
 
                                     _ ->
                                         FailedDecode

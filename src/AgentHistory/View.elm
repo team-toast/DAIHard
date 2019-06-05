@@ -10,9 +10,9 @@ import Element.Border
 import Element.Events
 import Element.Font
 import Element.Input
-import Helpers.Element as EH
 import Eth.Types exposing (Address)
 import FiatValue exposing (FiatValue)
+import Helpers.Element as EH
 import Helpers.Time as TimeHelpers
 import Html.Events.Extra
 import Images exposing (Image)
@@ -151,8 +151,8 @@ choosePhaseElement activePhase =
             )
             (Element.text "Payment Due")
         , Element.el
-            ([ Element.Events.onClick <| ViewPhaseChanged CTypes.Claimed ]
-                ++ phaseButtonStyles (activePhase == CTypes.Claimed)
+            ([ Element.Events.onClick <| ViewPhaseChanged CTypes.Judgment ]
+                ++ phaseButtonStyles (activePhase == CTypes.Judgment)
             )
             (Element.text "Release Due")
         , Element.el
@@ -201,7 +201,7 @@ resultsElement time tradeCache model =
                 CTypes.Committed ->
                     "Payment Due"
 
-                CTypes.Claimed ->
+                CTypes.Judgment ->
                     "Auto-Release"
 
                 CTypes.Closed ->
@@ -255,7 +255,7 @@ viewTradeRow time userRole viewPhase trade =
             CTypes.Committed ->
                 cellMaker ( 1, phaseCountdown time trade (userRole == Buyer) )
 
-            CTypes.Claimed ->
+            CTypes.Judgment ->
                 cellMaker ( 1, phaseCountdown time trade (userRole == Seller) )
 
             CTypes.Closed ->
