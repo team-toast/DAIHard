@@ -33,9 +33,9 @@ As mentioned in the security document, each function has either an `only[role]()
 
 ### Initiator and Responder
 
-If the trade is begun in an open mode, it has an **Initiator** but not yet a **Responder**. The Initiator has chosen all Trade settings (including the `terms`). He can also choose to recall, as described below in **Open Phase.**
+If the trade is begun in an open mode, it has an **Initiator** but not yet a **Responder**. The Initiator has chosen all Trade settings (including the `terms`). He can also choose to recall, as described below in **Open Phase.** When another user commits (more on this below in **Open Phase**), he becomes the **Responder**.
 
-When another user commits (more on this below in **Open Phase**), he becomes the **Responder**. Alternatively, the Trade may be started in a Committed phase right away, in which case both an Initiator and Responder are set from the beginning.
+Alternatively, the Trade may be started in a Committed phase right away, in which case both an Initiator and Responder are set from the beginning.
 
 After the Open Phase, the Initiator and Responder roles aren't very relevant, except that certain un-spent fees will return to the Initiator if the trade ends in an abort or recall, since they were first funded by the Initiator.
 
@@ -45,7 +45,7 @@ After the Open Phase, the Initiator and Responder roles aren't very relevant, ex
 
 The **Custodian** has deposited `tradeAmount` DAI into the Trade, and has the final burn/release decision in the Judgment phase (more on this below, under **Judgment Phase**). The Custodian can be thought of as a mixture of a *customer* and *judge*, and it is in the Custodian's interest to burn the DAI if the Beneficiary does not deliver whatever `terms` were set forth upon Trade creation. Otherwise, he can manually release or let the auto-release occur after `autoreleaseInterval` (more on this under **Phase Intervals, Auto\* Behavior, and Poke()**).
 
-The **Beneficiary** has deposited a smaller `beneficiaryDeposit` into the Trade, and has the claim/abort decision in the Committed phase (more on this below, under **Committed Phase**). Crucially, the Beneficiary is the only possible recipient of the Trade's balance once the trade moves to the Judgment phase. The Beneficiary can be thought of as a *worker*, *courier* or *entrepreneur*, and it's in the Beneficiary's interest to satisfy the Custodian regarding whatever `terms` were set forth upon Trade creation.
+The **Beneficiary** has deposited a smaller `beneficiaryDeposit` into the Trade, and has the claim/abort decision in the Committed phase (more on this below, under **Committed Phase**). Crucially, the Beneficiary is the only possible recipient of the Trade's balance once the trade moves to the Judgment phase *if the DAI is not burned*. The Beneficiary can be thought of as a *worker*, *courier* or *entrepreneur*, and it's in the Beneficiary's interest to satisfy the Custodian regarding whatever `terms` were set forth upon Trade creation.
 
 ## The `Initiated` Event and the `terms` Argument
 
@@ -69,7 +69,7 @@ Then the Factory calculates and sends the appropriate amount of DAI from msg.sen
 
 Finally, the Factory calls either beginInOpenPhase or beginInCommittedPhase. This moves the Trade into the appropriate phase, and sets the rest of the state variables.
 
-This 3-step process allows the Trade to take into account the amount of DAI it had been funded with, when setting its initial state.
+This 3-step process allows the Trade to take into account the amount of DAI it had been funded with, when setting its initial user-facing state.
 
 ### *Open* Phase
 
@@ -103,9 +103,9 @@ It is expected that the Custodian will burn if the Beneficiary has not met the t
 
 ### *Closed* Phase
 
-The Trade will never leave this state, and cannot undergo any state changes. However, it can still be used as a communication portal between the two parties, as the statement functionality is still allowed (see below, **Statements**).
+The Trade will never leave this phase, and cannot undergo any state changes. However, it can still be used as a communication portal between the two parties, as the statement functionality is still allowed (see below, **Statements**).
 
-In the Closed phase, there is also a `ClosedReason` variable, that describes how it was closed: via recall, abort, burn, or release.
+In the Closed phase, there is also a `ClosedReason` variable, that describes how it was closed: via recall, abort, burn, or release. This is intended to make reputation collation easier for interfaces.
 
 ## Phase Intervals, Auto* Behavior, and Poke()
 
@@ -117,9 +117,9 @@ Each functional, user-facing phase (Open, Committed, and Judgment) has a timeout
 
 Of course, an Ethereum smart contract can't actually trigger itself after some delay, so we have to work around this limitation.
 
-First, after an auto\*Interval has passed, all functions other than the default action are prevented from being called. This at least makes the contract game theoretically similar to if the default action was actually triggered. For example, after autorecallInterval in the Open phase, even though the Trade has not been technically recalled yet, the offer has functionally expired; no one could then commit and become the responder.
+First, after an auto\*Interval has passed, all functions other than the default action are prevented from being called. This at least makes the contract game theoretically similar to if the default action was actually triggered. For example, after autorecallInterval in the Open phase, even though the Trade has not been technically recalled yet, the `commit()` function can no longer be called; therefore, the offer has functionally expired.
 
-Second, we expose a `poke()` function to any msg.sender. This function checks if any default behavior is due, and if so, calls the relevant internal function. Additionally, if calling `poke()` did result in a state change, the caller is granted `pokeReward` DAI. `pokeReward` is a custom-set fee from the Initiator, designed to incentivize such poking behavior, thus simulating the contract automatically triggering itself.
+Second, we expose a `poke()` function to any msg.sender. This function checks if any default behavior is due, and if so, calls the relevant internal function. Additionally, if calling `poke()` did result in a state change, the caller is granted `pokeReward` DAI. `pokeReward` is a custom-set fee from the Initiator, designed to incentivize such poking behavior, thus simulating the contract automatically triggering itself (assuming there is some community of users or scripts that watches for such profitable poke opportunities).
 
 An Initiator who doesn't care about "automatically" triggering the default action can opt to set `pokeReward` to 0. Also note that a simple server could send low-gas `poke` commands to all trades needing a poke, as an added service.
 
@@ -133,7 +133,7 @@ Because each statement costs gas to execute, it is expected that users of a long
 
 ## DevFee and FounderFee
 
-When a trade is first created, additional fees are deposited into the Trade. If the Trade is recalled or aborted, these fees are returned to the initiator; if the Trade is burned, so are these fees; but if the Trade is released, these fees are intended to go to the founders and developers, respectively.
+When a trade is first created, additional fees are deposited into the Trade. If the Trade is recalled or aborted, these fees are returned to the initiator; if the Trade is burned, so are these fees; but if the Trade is released, these fees go to the `founderFeeAddress` and `devFeeAddress`.
 
 The founderFee is always 0.5% of the trade amount, and the founderFeeAddress is always the same for as long as the Factory exists.
 
