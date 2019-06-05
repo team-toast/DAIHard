@@ -13,7 +13,7 @@ The Factory has two other state variables, daiContract and founderFeeAddress, bu
 
 The Factory cannot pause or suicide, and does not have an owner.
 
-A final note: The Factory passes the founderFeeAddress to newly created trades, ensuring that if the trade resolves in a release, the founderFeeAddress will receive 0.05% of the trade value.
+A final note: The Factory passes the founderFeeAddress to newly created trades, ensuring that if the trade resolves in a release, the founderFeeAddress will receive 0.5% of the trade value.
 
 # DAIHardTrade
 
