@@ -307,7 +307,7 @@ phasesElement model =
                 model.inputs.autoabortInterval
                 model.inputs.userRole
         , Element.el [ Element.width <| Element.fillPortion 1 ] <|
-            claimedPhaseElement
+            judgmentPhaseElement
                 model.inputs.autoreleaseInterval
                 model.inputs.userRole
         ]
@@ -335,8 +335,8 @@ committedPhaseElement interval userRole =
         AutoabortIntervalChanged
 
 
-claimedPhaseElement : Time.Posix -> BuyerOrSeller -> Element Msg
-claimedPhaseElement interval userRole =
+judgmentPhaseElement : Time.Posix -> BuyerOrSeller -> Element Msg
+judgmentPhaseElement interval userRole =
     phaseElement
         Images.releaseWindowIcon
         "Release Window"
