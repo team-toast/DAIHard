@@ -11,8 +11,8 @@ module Trade.Types exposing
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
-import Contracts.Generated.DAIHardFactory as DHF
-import Contracts.Generated.DAIHardTrade as DHT
+import Contracts.Generated.DAIHardNativeFactory as DHF
+import Contracts.Generated.DAIHardNativeTrade as DHT
 import Contracts.Types as CTypes
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address, TxHash, TxReceipt)
@@ -37,7 +37,6 @@ type alias Model =
     , showStatsModal : Bool
     , secureCommInfo : SecureCommInfo
     , eventSentry : EventSentry Msg
-    , allowance : Maybe BigInt
     , txChainStatus : Maybe TxChainStatus
     }
 
@@ -47,7 +46,6 @@ type Msg
     | StateFetched (Result Http.Error (Maybe CTypes.State))
     | ParametersFetched (Result Http.Error (Result String CTypes.TradeParameters))
     | PhaseInfoFetched (Result Http.Error (Maybe CTypes.PhaseStartInfo))
-    | AllowanceFetched (Result Http.Error BigInt)
     | CommitClicked CTypes.FullTradeInfo UserInfo BigInt
     | AbortCommit
     | ConfirmCommit CTypes.FullTradeInfo UserInfo BigInt
@@ -56,7 +54,6 @@ type Msg
     | StartContractAction ContractAction
     | ActionMined ContractAction (Result String TxReceipt)
     | ActionSigned ContractAction (Result String TxHash)
-    | ApproveSigned (Result String TxHash)
     | Refresh Time.Posix
     | ExpandPhase CTypes.Phase
     | ToggleChat
@@ -88,8 +85,6 @@ justModelUpdate model =
 
 type TxChainStatus
     = ConfirmingCommit CTypes.FullTradeInfo UserInfo BigInt
-    | ApproveNeedsSig
-    | ApproveMining TxHash
     | CommitNeedsSig
     | CommitMining TxHash
     | ActionNeedsSig ContractAction

@@ -1,11 +1,10 @@
-module Contracts.Wrappers exposing (getAllowanceCmd, getCreationInfoFromIdCmd, getFounderFeeCmd, getInitiatedEventDataSentryCmd, getNumTradesCmd, getParametersAndStateCmd, getParametersCmd, getParametersStateAndPhaseInfoCmd, getStateCmd, openTrade)
+module Contracts.Wrappers exposing (getCreationInfoFromIdCmd, getInitiatedEventDataSentryCmd, getNumTradesCmd, getParametersAndStateCmd, getParametersCmd, getParametersStateAndPhaseInfoCmd, getStateCmd, openTrade)
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
 import Config
-import Contracts.Generated.DAIHardFactory as DHF
-import Contracts.Generated.DAIHardTrade as DHT
-import Contracts.Generated.ERC20Token as TokenContract
+import Contracts.Generated.DAIHardNativeFactory as DHF
+import Contracts.Generated.DAIHardNativeTrade as DHT
 import Contracts.Types exposing (..)
 import Eth
 import Eth.Decode
@@ -42,24 +41,8 @@ openTrade network parameters =
         (TokenValue.getEvmValue <| getDevFee parameters.tradeAmount)
         (encodeTerms <| Terms parameters.price parameters.paymentMethods)
         parameters.initiatorCommPubkey
-
-
-getAllowanceCmd : EthHelpers.EthNode -> Address -> Address -> (Result Http.Error BigInt -> msg) -> Cmd msg
-getAllowanceCmd ethNode owner spender msgConstructor =
-    Eth.call
-        ethNode.http
-        (TokenContract.allowance
-            (Config.daiAddress ethNode.network)
-            owner
-            spender
-        )
-        |> Task.attempt msgConstructor
-
-
-getFounderFeeCmd : EthHelpers.EthNode -> BigInt -> (Result Http.Error BigInt -> msg) -> Cmd msg
-getFounderFeeCmd ethNode tradeAmount msgConstructor =
-    Eth.call ethNode.http (DHF.getFounderFee (Config.factoryAddress ethNode.network) tradeAmount)
-        |> Task.attempt msgConstructor
+        |> EthHelpers.updateCallValue
+            (TokenValue.getEvmValue <| calculateFullInitialDeposit parameters)
 
 
 getNumTradesCmd : EthHelpers.EthNode -> (Result Http.Error BigInt -> msg) -> Cmd msg

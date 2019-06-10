@@ -1281,7 +1281,6 @@ getModalOrNone model =
                               , Element.text " of this trade. By doing so, you are agreeing to "
                               ]
                                 ++ agreeToWhatTextList
-                            , [ Element.text <| "(This ususally requires two Metamask signatures. Your DAI will not be deposited until the second transaction has been mined.)" ]
                             ]
                         )
                     , Element.el
@@ -1292,23 +1291,6 @@ getModalOrNone model =
                     ]
                 )
                 AbortCommit
-
-        Just ApproveNeedsSig ->
-            EH.txProcessModal
-                [ Element.text "Waiting for user signature for the approve call."
-                , Element.text "(check Metamask!)"
-                , Element.text "Note that there will be a second transaction to sign after this."
-                ]
-
-        Just (ApproveMining txHash) ->
-            EH.txProcessModal
-                [ Element.text "Mining the initial approve transaction..."
-                , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                    { url = EthHelpers.makeEtherscanTxUrl model.node.network txHash
-                    , label = Element.text "See the transaction on Etherscan"
-                    }
-                , Element.text "Funds will not be sent until you sign the next transaction."
-                ]
 
         Just CommitNeedsSig ->
             EH.txProcessModal

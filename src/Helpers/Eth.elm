@@ -1,4 +1,4 @@
-module Helpers.Eth exposing (EthNode, addressIfNot0x0, ethNode, getLogAt, intToNetwork, logBadFetchResultMaybe, makeEtherscanAddressUrl, makeEtherscanTxUrl)
+module Helpers.Eth exposing (EthNode, addressIfNot0x0, ethNode, getLogAt, intToNetwork, logBadFetchResultMaybe, makeEtherscanAddressUrl, makeEtherscanTxUrl, updateCallValue)
 
 import Array
 import BigInt exposing (BigInt)
@@ -105,6 +105,8 @@ makeEtherscanAddressUrl network address =
             "https://kovan.etherscan.io/address/" ++ Eth.Utils.addressToString address
 
 
-
--- Rinkeby ->
---     "https://rinkeby.etherscan.io/tx/" ++ Eth.Utils.txHashToString txHash
+updateCallValue : BigInt -> Eth.Types.Call a -> Eth.Types.Call a
+updateCallValue value call =
+    { call
+        | value = Just value
+    }

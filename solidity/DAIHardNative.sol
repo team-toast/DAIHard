@@ -65,7 +65,7 @@ library SafeMath {
     }
 }
 
-contract DAIHardFactory {
+contract DAIHardNativeFactory {
     using SafeMath for uint;
 
     event NewTrade(uint id, address tradeAddress, bool indexed initiatorIsCustodian);
@@ -121,32 +121,32 @@ contract DAIHardFactory {
                              )
     external
     payable
-    returns (DAIHardTrade) {
-        uint[8] memory newUintArgs; // Note that this structure is not the same as the above comment describes. See below in DAIHardTrade.open.
+    returns (DAIHardNativeTrade) {
+        uint[8] memory newUintArgs; // Note that this structure is not the same as the above comment describes. See below in DAIHardNativeTrade.open.
 
         if (initiatorIsCustodian) {
             // require: msg.value == tradeAmount + pokeReward + getFounderFee(tradeAmount) + devFee
             require(msg.value == uintArgs[0].add(uintArgs[3]).add(getFounderFee(uintArgs[0])).add(uintArgs[7]),"You didn't include the correct amount of value!");
 
             newUintArgs = [uintArgs[1], uintArgs[2], uintArgs[3], uintArgs[4], uintArgs[5], uintArgs[6], getFounderFee(uintArgs[0]), uintArgs[7]];
-            // see uintArgs comment above DAIHardTrade.beginInOpenPhase
+            // see uintArgs comment above DAIHardNativeTrade.beginInOpenPhase
         }
         else {
             // require: msg.value == beneficiaryDeposit + pokeReward + getFounderFee(tradeAmount) + devFee
             require(msg.value == uintArgs[1].add(uintArgs[3]).add(getFounderFee(uintArgs[0])).add(uintArgs[7]), "You didn't include the correct amount of value!");
 
             newUintArgs = [uintArgs[0], uintArgs[2], uintArgs[3], uintArgs[4], uintArgs[5], uintArgs[6], getFounderFee(uintArgs[0]), uintArgs[7]];
-            // see uintArgs comment above DAIHardTrade.beginInOpenPhase
+            // see uintArgs comment above DAIHardNativeTrade.beginInOpenPhase
         }
 
         // Create the new trade and add its creationInfo to createdTrades, and emit an event.
         // This provides a DAIHard interface two options to find all created trades:
         // scan for NewTrade events or read the createdTrades array.
-        DAIHardTrade newTrade = new DAIHardTrade(founderFeeAddress, addressArgs[1]);
+        DAIHardNativeTrade newTrade = new DAIHardNativeTrade(founderFeeAddress, addressArgs[1]);
         createdTrades.push(CreationInfo(address(newTrade), block.number));
         emit NewTrade(createdTrades.length - 1, address(newTrade), initiatorIsCustodian);
 
-        // transfer DAI to the trade and open it
+        // transfer value to the trade and open it
         newTrade.beginInOpenPhase.value(msg.value)(addressArgs[0], initiatorIsCustodian, newUintArgs, terms, _commPubkey);
 
         return newTrade;
@@ -179,16 +179,16 @@ contract DAIHardFactory {
                                   )
     external
     payable
-    returns (DAIHardTrade) {
+    returns (DAIHardNativeTrade) {
         //require: msg.value == tradeAmount + beneficiaryDeposit + pokeReward + getFounderFee(tradeAmount) + devFee
         require(msg.value == uintArgs[0].add(uintArgs[1]).add(uintArgs[3]).add(getFounderFee(uintArgs[0]).add(uintArgs[6])),
                 "You didn't include the correct amount of value!"
                 );
 
         uint[7] memory newUintArgs = [uintArgs[1], uintArgs[2], uintArgs[3], uintArgs[4], uintArgs[5], getFounderFee(uintArgs[0]), uintArgs[6]];
-        // see uintArgs comment above DAIHardTrade.beginInCommittedPhase
+        // see uintArgs comment above DAIHardNativeTrade.beginInCommittedPhase
 
-        DAIHardTrade newTrade = new DAIHardTrade(founderFeeAddress, addressArgs[2]);
+        DAIHardNativeTrade newTrade = new DAIHardNativeTrade(founderFeeAddress, addressArgs[2]);
         createdTrades.push(CreationInfo(address(newTrade), block.number));
         emit NewTrade(createdTrades.length - 1, address(newTrade), initiatorIsCustodian);
 
@@ -212,7 +212,7 @@ contract DAIHardFactory {
     }
 }
 
-contract DAIHardTrade {
+contract DAIHardNativeTrade {
     using SafeMath for uint;
 
     enum Phase {Creating, Open, Committed, Judgment, Closed}
@@ -305,12 +305,12 @@ contract DAIHardTrade {
     /* ---------------------- CREATING PHASE -----------------------
 
     The only reason for this phase is so the Factory can have somewhere
-    to send the DAI before the Trade is truly initiated in the Opened phase.
-    This way the trade can take into account its balance
-    when setting its initial Open-phase state.
+    to send the value before the Trade is truly initiated in the Opened phase.
+    We maintain this vestigial remnant from the ERC20 version of DAIHard,
+    to help avoid Solidity stack depth errors.
 
-    The Factory creates the DAIHardTrade and moves it past this state in a single call,
-    so any DAIHardTrade made by the factory should never be "seen" in this state
+    The Factory creates the DAIHardNativeTrade and moves it past this state in a single call,
+    so any DAIHardNativeTrade made by the factory should never be "seen" in this state
     (the DH interface ignores trades not created by the Factory contract).
 
     ------------------------------------------------------------ */
@@ -501,7 +501,7 @@ contract DAIHardTrade {
 
     /* ---------------------- COMMITTED PHASE ---------------------
 
-    In the Committed phase, the Beneficiary is expected to deposit fiat for the DAI,
+    In the Committed phase, the Beneficiary is expected to deliver fiat to the Custodian,
     then call claim().
 
     Otherwise, the Beneficiary can call abort(), which cancels the contract,
@@ -534,7 +534,7 @@ contract DAIHardTrade {
         address(0x0).transfer(abortPunishment*2);
         // Security note: The above line risks overflow, but only if abortPunishment >= (maxUint/2).
         // This should never happen, as abortPunishment <= beneficiaryDeposit <= tradeAmount (as required in both beginIn*Phase functions),
-        // which is ultimately limited by the amount of DAI the user deposited (which must be far less than maxUint/2).
+        // which is ultimately limited by the amount the user deposited (which must be far less than maxUint/2).
         // See the note below about avoiding assert() or require() to test this.
 
         // Send back deposits minus burned amounts.

@@ -1,11 +1,11 @@
-module Contracts.Types exposing (ClosedReason(..), CreateParameters, DAIHardEvent(..), FullTradeInfo, PartialTradeInfo, Phase(..), PhaseStartInfo, State, Terms, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, decodeParameters, decodePhaseStartInfo, decodeState, decodeTerms, defaultAbortPunishment, defaultBuyerDeposit, encodeTerms, eventDecoder, getBuyerOrSeller, getCurrentPhaseTimeoutInfo, getDevFee, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderRole, initiatorOrResponderToBuyerOrSeller, partialTradeInfo, phaseIcon, phaseToInt, phaseToString, responderDeposit, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePhaseStartInfo, updateState, updateTerms)
+module Contracts.Types exposing (ClosedReason(..), CreateParameters, DAIHardEvent(..), FullTradeInfo, PartialTradeInfo, Phase(..), PhaseStartInfo, State, Terms, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, calculateFullInitialDeposit, decodeParameters, decodePhaseStartInfo, decodeState, decodeTerms, defaultAbortPunishment, defaultBuyerDeposit, encodeTerms, eventDecoder, getBuyerOrSeller, getCurrentPhaseTimeoutInfo, getDevFee, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderRole, initiatorOrResponderToBuyerOrSeller, partialTradeInfo, phaseIcon, phaseToInt, phaseToString, responderDeposit, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePhaseStartInfo, updateState, updateTerms)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
 import Config
-import Contracts.Generated.DAIHardFactory as DHF
-import Contracts.Generated.DAIHardTrade as DHT
+import Contracts.Generated.DAIHardNativeFactory as DHF
+import Contracts.Generated.DAIHardNativeTrade as DHT
 import Eth.Decode
 import Eth.Types exposing (Address)
 import Eth.Utils
@@ -345,6 +345,24 @@ getBuyerOrSeller tradeInfo userAddress =
                     ( Responder, Buyer ) ->
                         Seller
             )
+
+
+calculateFullInitialDeposit : CreateParameters -> TokenValue
+calculateFullInitialDeposit createParameters =
+    let
+        founderFee =
+            TokenValue.div createParameters.tradeAmount 200
+    in
+    (case createParameters.initiatingParty of
+        Buyer ->
+            defaultBuyerDeposit createParameters.tradeAmount
+
+        Seller ->
+            createParameters.tradeAmount
+    )
+        |> TokenValue.add founderFee
+        |> TokenValue.add (getDevFee createParameters.tradeAmount)
+        |> TokenValue.add createParameters.pokeReward
 
 
 type TimeoutInfo

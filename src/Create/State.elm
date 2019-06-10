@@ -3,7 +3,6 @@ module Create.State exposing (init, subscriptions, update, updateUserInfo)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
 import Config
-import Contracts.Generated.ERC20Token as TokenContract
 import Contracts.Types as CTypes
 import Contracts.Wrappers
 import Create.PMWizard.State as PMWizard
@@ -37,7 +36,6 @@ init node userInfo =
             , createParameters = Nothing
             , txChainStatus = Nothing
             , depositAmount = Nothing
-            , allowance = Nothing
             }
     in
     ( model |> updateInputs initialInputs
@@ -63,16 +61,7 @@ updateUserInfo : Maybe UserInfo -> Model -> ( Model, Cmd Msg )
 updateUserInfo userInfo model =
     ( { model | userInfo = userInfo }
         |> updateInputs model.inputs
-    , case userInfo of
-        Just uInfo ->
-            Contracts.Wrappers.getAllowanceCmd
-                model.node
-                uInfo.address
-                (Config.factoryAddress model.node.network)
-                AllowanceFetched
-
-        Nothing ->
-            Cmd.none
+    , Cmd.none
     )
 
 
@@ -80,24 +69,7 @@ update : Msg -> Model -> UpdateResult
 update msg prevModel =
     case msg of
         Refresh time ->
-            case prevModel.userInfo of
-                Just userInfo ->
-                    let
-                        cmd =
-                            Contracts.Wrappers.getAllowanceCmd
-                                prevModel.node
-                                userInfo.address
-                                (Config.factoryAddress prevModel.node.network)
-                                AllowanceFetched
-                    in
-                    UpdateResult
-                        prevModel
-                        cmd
-                        ChainCmd.none
-                        Nothing
-
-                _ ->
-                    justModelUpdate prevModel
+            justModelUpdate prevModel
 
         ChangeRole initiatingParty ->
             let
@@ -234,136 +206,32 @@ update msg prevModel =
                         createParameters =
                             CTypes.buildCreateParameters userInfo userParameters
                     in
-                    UpdateResult
+                    justModelUpdate
                         { prevModel
                             | txChainStatus = Just <| Confirm createParameters
-                            , depositAmount = Nothing
+                            , depositAmount =
+                                Just <|
+                                    (CTypes.calculateFullInitialDeposit createParameters
+                                        |> TokenValue.getEvmValue
+                                    )
                         }
-                        (Contracts.Wrappers.getFounderFeeCmd
-                            prevModel.node
-                            (TokenValue.getEvmValue createParameters.tradeAmount)
-                            (FounderFeeFetched createParameters)
-                        )
-                        ChainCmd.none
-                        Nothing
 
                 Err inputErrors ->
                     justModelUpdate { prevModel | errors = inputErrors }
-
-        FounderFeeFetched createParameters fetchResult ->
-            case fetchResult of
-                Ok founderFee ->
-                    let
-                        mainDepositAmount =
-                            case createParameters.initiatingParty of
-                                Buyer ->
-                                    CTypes.defaultBuyerDeposit createParameters.tradeAmount
-
-                                Seller ->
-                                    createParameters.tradeAmount
-
-                        fullDepositAmount =
-                            mainDepositAmount
-                                |> TokenValue.add (TokenValue.tokenValue founderFee)
-                                |> TokenValue.add (CTypes.getDevFee createParameters.tradeAmount)
-                                |> TokenValue.add createParameters.pokeReward
-                                |> TokenValue.getEvmValue
-                    in
-                    justModelUpdate { prevModel | depositAmount = Just fullDepositAmount }
-
-                Err fetchErrStr ->
-                    let
-                        _ =
-                            Debug.log "Error fetching devFee: " fetchErrStr
-                    in
-                    justModelUpdate prevModel
 
         AbortCreate ->
             justModelUpdate { prevModel | txChainStatus = Nothing }
 
         ConfirmCreate createParameters fullDepositAmount ->
             let
-                approveChainCmd =
-                    let
-                        txParams =
-                            TokenContract.approve
-                                (Config.daiAddress prevModel.node.network)
-                                (Config.factoryAddress prevModel.node.network)
-                                fullDepositAmount
-                                |> Eth.toSend
-
-                        customSend =
-                            { onMined = Nothing
-                            , onSign = Just (ApproveSigned createParameters)
-                            , onBroadcast = Nothing
-                            }
-                    in
-                    ChainCmd.custom customSend txParams
-
                 ( txChainStatus, chainCmd ) =
-                    case prevModel.allowance of
-                        Just allowance ->
-                            if BigInt.compare allowance fullDepositAmount /= LT then
-                                initiateCreateCall prevModel.node.network createParameters
-
-                            else
-                                ( Just ApproveNeedsSig, approveChainCmd )
-
-                        Nothing ->
-                            ( Just ApproveNeedsSig, approveChainCmd )
+                    initiateCreateCall prevModel.node.network createParameters
             in
             { model = { prevModel | txChainStatus = txChainStatus }
             , cmd = Cmd.none
             , chainCmd = chainCmd
             , newRoute = Nothing
             }
-
-        ApproveSigned createParameters result ->
-            case result of
-                Ok txHash ->
-                    justModelUpdate { prevModel | txChainStatus = Just <| ApproveMining createParameters txHash }
-
-                Err e ->
-                    let
-                        _ =
-                            Debug.log "Error encountered when getting sig from user" e
-                    in
-                    justModelUpdate { prevModel | txChainStatus = Nothing }
-
-        AllowanceFetched fetchResult ->
-            case fetchResult of
-                Ok allowance ->
-                    let
-                        newModel =
-                            { prevModel
-                                | allowance = Just allowance
-                            }
-                    in
-                    case ( newModel.txChainStatus, newModel.depositAmount ) of
-                        ( Just (ApproveMining createParameters _), Just depositAmount ) ->
-                            if BigInt.compare allowance depositAmount /= LT then
-                                let
-                                    ( txChainStatus, chainCmd ) =
-                                        initiateCreateCall newModel.node.network createParameters
-                                in
-                                UpdateResult
-                                    { newModel | txChainStatus = txChainStatus }
-                                    Cmd.none
-                                    chainCmd
-                                    Nothing
-
-                            else
-                                justModelUpdate newModel
-
-                        _ ->
-                            justModelUpdate newModel
-
-                Err e ->
-                    let
-                        _ =
-                            Debug.log "Error fecthing allowance" e
-                    in
-                    justModelUpdate prevModel
 
         CreateSigned result ->
             case result of

@@ -3,8 +3,8 @@ module AgentHistory.Types exposing (Model, Msg(..), UpdateResult)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
-import Contracts.Generated.DAIHardFactory as DHF
-import Contracts.Generated.DAIHardTrade as DHT
+import Contracts.Generated.DAIHardNativeFactory as DHF
+import Contracts.Generated.DAIHardNativeTrade as DHT
 import Contracts.Types as CTypes
 import Dict exposing (Dict)
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)

@@ -1,11 +1,10 @@
-module Contracts.Generated.DAIHardFactory exposing
+module Contracts.Generated.DAIHardNativeFactory exposing
     ( CreatedTrade
     , NewTrade
     , createCommittedTrade
     , createOpenTrade
     , createdTrades
     , createdTradesDecoder
-    , daiContract
     , founderFeeAddress
     , getFounderFee
     , newTradeDecoder
@@ -122,21 +121,6 @@ createdTradesDecoder =
         |> andMap AbiDecode.address
         |> andMap AbiDecode.uint
         |> toElmDecoder
-
-
-{-| "daiContract()" function
--}
-daiContract : Address -> Call Address
-daiContract contractAddress =
-    { to = Just contractAddress
-    , from = Nothing
-    , gas = Nothing
-    , gasPrice = Nothing
-    , value = Nothing
-    , data = Just <| AbiEncode.functionCall "daiContract()" []
-    , nonce = Nothing
-    , decoder = toElmDecoder AbiDecode.address
-    }
 
 
 {-| "founderFeeAddress()" function

@@ -1,4 +1,4 @@
-module Config exposing (daiAddress, devFeeAddress, factoryAddress, tokenDecimals)
+module Config exposing (devFeeAddress, factoryAddress, tokenDecimals)
 
 import CommonTypes exposing (..)
 import Eth.Net
@@ -7,27 +7,18 @@ import Eth.Utils
 
 
 tokenDecimals =
+    -- We aren't dealing with an ERC20 token, but we still need this number for similar manipulation of ETH/wei values.
     18
-
-
-daiAddress : Network -> Address
-daiAddress network =
-    case network of
-        Mainnet ->
-            Eth.Utils.unsafeToAddress "0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359"
-
-        Kovan ->
-            Eth.Utils.unsafeToAddress "0xC4375B7De8af5a38a93548eb8453a498222C4fF2"
 
 
 factoryAddress : Network -> Address
 factoryAddress network =
     case network of
         Mainnet ->
-            Eth.Utils.unsafeToAddress "0x41a8a3C08932d285f2AF190c7338ABcC5cFfFBb4"
+            Eth.Utils.unsafeToAddress "0x9b92b0DFc385fD406fC72B839F43258AFfBC737E"
 
         Kovan ->
-            Eth.Utils.unsafeToAddress "0x4cd4742b61A840630e3509eC0eDb988edB55673f"
+            Eth.Utils.unsafeToAddress "0xe5696BA01F50a97335cc4Fbc81fC7b13C2Cbdf50"
 
 
 devFeeAddress : Address

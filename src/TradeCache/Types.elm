@@ -2,8 +2,8 @@ module TradeCache.Types exposing (Msg(..), TradeCache)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
-import Contracts.Generated.DAIHardFactory as DHF
-import Contracts.Generated.DAIHardTrade as DHT
+import Contracts.Generated.DAIHardNativeFactory as DHF
+import Contracts.Generated.DAIHardNativeTrade as DHT
 import Contracts.Types as CTypes
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)

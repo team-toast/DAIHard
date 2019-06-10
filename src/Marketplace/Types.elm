@@ -3,8 +3,8 @@ module Marketplace.Types exposing (Errors, FiatTypeAndRange, Model, Msg(..), Que
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
-import Contracts.Generated.DAIHardFactory as DHF
-import Contracts.Generated.DAIHardTrade as DHT
+import Contracts.Generated.DAIHardNativeFactory as DHF
+import Contracts.Generated.DAIHardNativeTrade as DHT
 import Contracts.Types as CTypes
 import Dict exposing (Dict)
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)

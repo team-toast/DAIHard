@@ -5,7 +5,7 @@ import Array exposing (Array)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
 import Config exposing (..)
-import Contracts.Generated.DAIHardTrade as DHT
+import Contracts.Generated.DAIHardNativeTrade as DHT
 import Contracts.Types as CTypes
 import Contracts.Wrappers
 import Eth

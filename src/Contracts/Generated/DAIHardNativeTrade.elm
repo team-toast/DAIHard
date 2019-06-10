@@ -1,4 +1,4 @@
-module Contracts.Generated.DAIHardTrade exposing
+module Contracts.Generated.DAIHardNativeTrade exposing
     ( Committed
     , GetParameters
     , GetPhaseStartInfo
@@ -28,7 +28,6 @@ module Contracts.Generated.DAIHardTrade exposing
     , committedDecoder
     , committedEvent
     , custodian
-    , daiContract
     , devFee
     , devFeeAddress
     , founderFee
@@ -334,21 +333,6 @@ custodian contractAddress =
     , gasPrice = Nothing
     , value = Nothing
     , data = Just <| AbiEncode.functionCall "custodian()" []
-    , nonce = Nothing
-    , decoder = toElmDecoder AbiDecode.address
-    }
-
-
-{-| "daiContract()" function
--}
-daiContract : Address -> Call Address
-daiContract contractAddress =
-    { to = Just contractAddress
-    , from = Nothing
-    , gas = Nothing
-    , gasPrice = Nothing
-    , value = Nothing
-    , data = Just <| AbiEncode.functionCall "daiContract()" []
     , nonce = Nothing
     , decoder = toElmDecoder AbiDecode.address
     }
