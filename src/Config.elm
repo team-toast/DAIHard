@@ -19,6 +19,9 @@ factoryAddress network =
 
         Kovan ->
             Eth.Utils.unsafeToAddress "0xe5696BA01F50a97335cc4Fbc81fC7b13C2Cbdf50"
+        
+        XDAI ->
+            Eth.Utils.unsafeToAddress "0x4078E3f7a5d475Eb615C643ce5729Cc0cC9Fb11D"
 
 
 devFeeAddress : Address

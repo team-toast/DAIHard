@@ -8,6 +8,7 @@ import Json.Encode
 type Network
     = Mainnet
     | Kovan
+    | XDAI
 
 
 type alias UserInfo =

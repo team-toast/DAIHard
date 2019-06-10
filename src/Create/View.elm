@@ -541,7 +541,7 @@ txChainStatusModal txChainStatus model =
             EH.txProcessModal
                 [ Element.text "Mining the final create call..."
                 , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                    { url = EthHelpers.makeEtherscanTxUrl model.node.network txHash
+                    { url = EthHelpers.makeViewTxUrl model.node.network txHash
                     , label = Element.text "See the transaction on Etherscan"
                     }
                 , Element.text "You will be redirected when it's mined."

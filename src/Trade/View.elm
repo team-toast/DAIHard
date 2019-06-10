@@ -1303,8 +1303,8 @@ getModalOrNone model =
             EH.txProcessModal
                 [ Element.text "Mining the final commit transaction..."
                 , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                    { url = EthHelpers.makeEtherscanTxUrl model.node.network txHash
-                    , label = Element.text "See the transaction on Etherscan"
+                    { url = EthHelpers.makeViewTxUrl model.node.network txHash
+                    , label = Element.text "See the transaction"
                     }
                 ]
 
