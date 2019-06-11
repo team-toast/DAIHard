@@ -1274,15 +1274,22 @@ getModalOrNone model =
                                 , Element.Font.color EH.permanentTextColor
                                 ]
                             )
-                            [ [ Element.text <| "You will deposit "
-                              , Element.el [ Element.Font.color EH.blue ] <| Element.text <| depositAmountString ++ " DAI"
-                              , Element.text ", thereby becoming the "
-                              , buyerOrSellerEl
-                              , Element.text " of this trade. By doing so, you are agreeing to "
-                              ]
+                            ([ [ Element.text <| "You will deposit "
+                               , Element.el [ Element.Font.color EH.blue ] <| Element.text <| depositAmountString ++ " DAI"
+                               , Element.text ", thereby becoming the "
+                               , buyerOrSellerEl
+                               , Element.text " of this trade. By doing so, you are agreeing to "
+                               ]
                                 ++ agreeToWhatTextList
-                            , [ Element.text <| "(This ususally requires two Metamask signatures. Your DAI will not be deposited until the second transaction has been mined.)" ]
-                            ]
+                             ]
+                                ++ (case model.node.network of
+                                        Eth _ ->
+                                            [ [ Element.text <| "(This ususally requires two Metamask signatures. Your DAI will not be deposited until the second transaction has been mined.)" ] ]
+
+                                        XDai ->
+                                            []
+                                   )
+                            )
                         )
                     , Element.el
                         [ Element.alignBottom
@@ -1304,7 +1311,7 @@ getModalOrNone model =
             EH.txProcessModal
                 [ Element.text "Mining the initial approve transaction..."
                 , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                    { url = EthHelpers.makeEtherscanTxUrl model.node.network txHash
+                    { url = EthHelpers.makeViewTxUrl model.node.network txHash
                     , label = Element.text "See the transaction on Etherscan"
                     }
                 , Element.text "Funds will not be sent until you sign the next transaction."
@@ -1321,8 +1328,8 @@ getModalOrNone model =
             EH.txProcessModal
                 [ Element.text "Mining the final commit transaction..."
                 , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                    { url = EthHelpers.makeEtherscanTxUrl model.node.network txHash
-                    , label = Element.text "See the transaction on Etherscan"
+                    { url = EthHelpers.makeViewTxUrl model.node.network txHash
+                    , label = Element.text "See the transaction"
                     }
                 ]
 

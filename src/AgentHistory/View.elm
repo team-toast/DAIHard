@@ -264,7 +264,7 @@ viewTradeRow time userRole viewPhase trade =
         , cellMaker ( 2, viewFiat trade.terms.price )
         , cellMaker ( 1, viewMargin trade (userRole == Seller) )
         , cellMaker ( 6, viewPaymentMethods trade.terms.paymentMethods )
-        , cellMaker ( 2, viewTradeButton trade.factoryID )
+        , cellMaker ( 2, viewTradeButton trade.id )
         ]
 
 

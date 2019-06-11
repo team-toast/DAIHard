@@ -2,7 +2,6 @@ module Trade.ChatHistory.State exposing (handleNewEvent, init, update)
 
 import Array exposing (Array)
 import CommonTypes exposing (..)
-import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Types as CTypes
 import Eth
 import Json.Decode

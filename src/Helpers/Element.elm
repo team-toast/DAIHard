@@ -1075,7 +1075,7 @@ etherscanAddressLink : List (Attribute msg) -> Network -> Address -> Element msg
 etherscanAddressLink attributes network address =
     Element.newTabLink
         attributes
-        { url = EthHelpers.makeEtherscanAddressUrl network address
+        { url = EthHelpers.makeViewAddressUrl network address
         , label = Element.text <| Eth.Utils.addressToString address
         }
 

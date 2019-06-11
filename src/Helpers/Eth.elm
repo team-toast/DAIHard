@@ -1,4 +1,4 @@
-module Helpers.Eth exposing (EthNode, addressIfNot0x0, ethNode, getLogAt, intToNetwork, logBadFetchResultMaybe, makeEtherscanAddressUrl, makeEtherscanTxUrl)
+module Helpers.Eth exposing (EthNode, addressIfNot0x0, ethNode, getLogAt, intToNetwork, logBadFetchResultMaybe, makeViewAddressUrl, makeViewTxUrl, updateCallValue)
 
 import Array
 import BigInt exposing (BigInt)
@@ -21,38 +21,39 @@ intToNetwork : Int -> Maybe Network
 intToNetwork i =
     case Net.toNetworkId i of
         Net.Mainnet ->
-            Just Mainnet
+            Just <| Eth Mainnet
 
         Net.Kovan ->
-            Just Kovan
+            Just <| Eth Kovan
 
         _ ->
-            Nothing
+            if i == 100 then
+                Just XDai
+
+            else
+                Nothing
 
 
 ethNode : Network -> EthNode
 ethNode network =
     case network of
-        Mainnet ->
+        Eth Mainnet ->
             EthNode
                 network
                 "https://mainnet.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9"
                 "wss://mainnet.infura.io/ws"
 
-        -- Ropsten ->
-        --     EthNode "https://ropsten.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9" "wss://ropsten.infura.io/ws"
-        Kovan ->
+        Eth Kovan ->
             EthNode
                 network
                 "https://kovan.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9"
                 "wss://kovan.infura.io/ws"
 
-
-
--- Rinkeby ->
---     EthNode "https://rinkeby.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9" "wss://rinkeby.infura.io/ws"
--- _ ->
---     EthNode "UnknownEthNetwork" "UnknownEthNetwork"
+        XDai ->
+            EthNode
+                network
+                "https://dai.poa.network"
+                ""
 
 
 addressIfNot0x0 : Address -> Maybe Address
@@ -83,28 +84,34 @@ logBadFetchResultMaybe fetchResult =
             Debug.log "can't fetch from Ethereum: " fetchResult
 
 
-makeEtherscanTxUrl : Network -> TxHash -> String
-makeEtherscanTxUrl network txHash =
+makeViewTxUrl : Network -> TxHash -> String
+makeViewTxUrl network txHash =
     case network of
-        Mainnet ->
+        Eth Mainnet ->
             "https://etherscan.io/tx/" ++ Eth.Utils.txHashToString txHash
 
-        -- Ropsten ->
-        --     "https://ropsten.etherscan.io/tx/" ++ Eth.Utils.txHashToString txHash
-        Kovan ->
+        Eth Kovan ->
             "https://kovan.etherscan.io/tx/" ++ Eth.Utils.txHashToString txHash
 
+        XDai ->
+            "https://blockscout.com/poa/dai/tx/" ++ Eth.Utils.txHashToString txHash
 
-makeEtherscanAddressUrl : Network -> Address -> String
-makeEtherscanAddressUrl network address =
+
+makeViewAddressUrl : Network -> Address -> String
+makeViewAddressUrl network address =
     case network of
-        Mainnet ->
+        Eth Mainnet ->
             "https://etherscan.io/address/" ++ Eth.Utils.addressToString address
 
-        Kovan ->
+        Eth Kovan ->
             "https://kovan.etherscan.io/address/" ++ Eth.Utils.addressToString address
 
+        XDai ->
+            "https://blockscout.com/poa/dai/address/" ++ Eth.Utils.addressToString address
 
 
--- Rinkeby ->
---     "https://rinkeby.etherscan.io/tx/" ++ Eth.Utils.txHashToString txHash
+updateCallValue : BigInt -> Eth.Types.Call a -> Eth.Types.Call a
+updateCallValue value call =
+    { call
+        | value = Just value
+    }

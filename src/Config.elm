@@ -1,4 +1,4 @@
-module Config exposing (daiAddress, devFeeAddress, factoryAddress, tokenDecimals)
+module Config exposing (daiContractAddress, devFeeAddress, factoryAddress, tokenDecimals)
 
 import CommonTypes exposing (..)
 import Eth.Net
@@ -10,9 +10,9 @@ tokenDecimals =
     18
 
 
-daiAddress : Network -> Address
-daiAddress network =
-    case network of
+daiContractAddress : EthNetwork -> Address
+daiContractAddress ethNetwork =
+    case ethNetwork of
         Mainnet ->
             Eth.Utils.unsafeToAddress "0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359"
 
@@ -23,11 +23,14 @@ daiAddress network =
 factoryAddress : Network -> Address
 factoryAddress network =
     case network of
-        Mainnet ->
+        Eth Mainnet ->
             Eth.Utils.unsafeToAddress "0x41a8a3C08932d285f2AF190c7338ABcC5cFfFBb4"
 
-        Kovan ->
+        Eth Kovan ->
             Eth.Utils.unsafeToAddress "0x4cd4742b61A840630e3509eC0eDb988edB55673f"
+
+        XDai ->
+            Eth.Utils.unsafeToAddress "0x4078E3f7a5d475Eb615C643ce5729Cc0cC9Fb11D"
 
 
 devFeeAddress : Address

@@ -2,7 +2,6 @@ module Create.Types exposing (Errors, Inputs, Model, Msg(..), TxChainStatus(..),
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
-import Contracts.Generated.DAIHardFactory as DHF
 import Contracts.Types as CTypes
 import Create.PMWizard.Types as PMWizard
 import Eth.Types exposing (Address, TxHash, TxReceipt)
@@ -47,7 +46,6 @@ type Msg
     | AbortCreate
     | ConfirmCreate CTypes.CreateParameters BigInt
     | AllowanceFetched (Result Http.Error BigInt)
-    | FounderFeeFetched CTypes.CreateParameters (Result Http.Error BigInt)
     | ApproveSigned CTypes.CreateParameters (Result String TxHash)
     | CreateSigned (Result String TxHash)
     | CreateMined (Result String TxReceipt)

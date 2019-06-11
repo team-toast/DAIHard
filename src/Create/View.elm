@@ -519,8 +519,14 @@ txChainStatusModal txChainStatus model =
                                      , depositAmountEl
                                      , Element.text " DAI (including the 1% dev fee) to open this trade."
                                      ]
-                                   , [ Element.text <| "This ususally requires two Metamask signatures. Your DAI will not be deposited until the final transaction has been mined." ]
                                    ]
+                                ++ (case model.node.network of
+                                        Eth _ ->
+                                            [ [ Element.text <| "This ususally requires two Metamask signatures. Your DAI will not be deposited until the final transaction has been mined." ] ]
+
+                                        XDai ->
+                                            []
+                                   )
                             )
                         )
                     , Element.el
@@ -543,7 +549,7 @@ txChainStatusModal txChainStatus model =
             EH.txProcessModal
                 [ Element.text "Mining the initial approve transaction..."
                 , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                    { url = EthHelpers.makeEtherscanTxUrl model.node.network txHash
+                    { url = EthHelpers.makeViewTxUrl model.node.network txHash
                     , label = Element.text "See the transaction on Etherscan"
                     }
                 , Element.text "Funds will not be sent until you sign the next transaction."
@@ -559,7 +565,7 @@ txChainStatusModal txChainStatus model =
             EH.txProcessModal
                 [ Element.text "Mining the final create call..."
                 , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                    { url = EthHelpers.makeEtherscanTxUrl model.node.network txHash
+                    { url = EthHelpers.makeViewTxUrl model.node.network txHash
                     , label = Element.text "See the transaction on Etherscan"
                     }
                 , Element.text "You will be redirected when it's mined."

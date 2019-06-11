@@ -354,7 +354,7 @@ viewTradeRow time viewAsRole trade =
             , ( 6, viewPaymentMethods trade.terms.paymentMethods )
             , ( 2, viewAutoabortWindow viewAsRole trade )
             , ( 2, viewAutoreleaseWindow viewAsRole trade )
-            , ( 2, viewTradeButton trade.factoryID )
+            , ( 2, viewTradeButton trade.id )
             ]
         )
 

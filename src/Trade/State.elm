@@ -4,6 +4,7 @@ import Array exposing (Array)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
 import Config
+import Contracts.Generated.DAIHardNativeTrade as DHNT
 import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Generated.ERC20Token as TokenContract
 import Contracts.Types as CTypes
@@ -67,10 +68,11 @@ getContractCreationInfoCmd node id =
 updateUserInfo : Maybe UserInfo -> Model -> ( Model, Cmd Msg )
 updateUserInfo userInfo model =
     ( { model | userInfo = userInfo }
-    , case ( userInfo, model.trade ) of
-        ( Just uInfo, CTypes.LoadedTrade trade ) ->
+    , case ( userInfo, model.trade, model.node.network ) of
+        ( Just uInfo, CTypes.LoadedTrade trade, Eth ethNetwork ) ->
             Contracts.Wrappers.getAllowanceCmd
                 model.node
+                ethNetwork
                 uInfo.address
                 trade.creationInfo.address
                 AllowanceFetched
@@ -90,7 +92,7 @@ update msg prevModel =
                         CTypes.PartiallyLoadedTrade pInfo ->
                             case pInfo.creationInfo of
                                 Nothing ->
-                                    getContractCreationInfoCmd prevModel.node pInfo.factoryID
+                                    getContractCreationInfoCmd prevModel.node pInfo.id
 
                                 _ ->
                                     Cmd.none
@@ -114,10 +116,11 @@ update msg prevModel =
                         Cmd.none
 
                 fetchAllowanceCmd =
-                    case ( prevModel.userInfo, prevModel.trade ) of
-                        ( Just userInfo, CTypes.LoadedTrade trade ) ->
+                    case ( prevModel.userInfo, prevModel.trade, prevModel.node.network ) of
+                        ( Just userInfo, CTypes.LoadedTrade trade, Eth ethNetwork ) ->
                             Contracts.Wrappers.getAllowanceCmd
                                 prevModel.node
+                                ethNetwork
                                 userInfo.address
                                 trade.creationInfo.address
                                 AllowanceFetched
@@ -159,7 +162,7 @@ update msg prevModel =
                             if BigInt.compare allowance (CTypes.responderDeposit trade.parameters |> TokenValue.getEvmValue) /= LT then
                                 let
                                     ( txChainStatus, chainCmd ) =
-                                        initiateCommitCall trade.creationInfo.address userInfo.address userInfo.commPubkey
+                                        initiateCommitCall prevModel.node trade userInfo.address userInfo.commPubkey
                                 in
                                 UpdateResult
                                     { newModel | txChainStatus = txChainStatus }
@@ -368,34 +371,39 @@ update msg prevModel =
         ConfirmCommit trade userInfo depositAmount ->
             let
                 ( txChainStatus, chainCmd ) =
-                    let
-                        approveChainCmd =
+                    case prevModel.node.network of
+                        XDai ->
+                            initiateCommitCall prevModel.node trade userInfo.address userInfo.commPubkey
+
+                        Eth ethNetwork ->
                             let
-                                txParams =
-                                    TokenContract.approve
-                                        (Config.daiAddress prevModel.node.network)
-                                        trade.creationInfo.address
-                                        depositAmount
-                                        |> Eth.toSend
+                                approveChainCmd =
+                                    let
+                                        txParams =
+                                            TokenContract.approve
+                                                (Config.daiContractAddress ethNetwork)
+                                                trade.creationInfo.address
+                                                depositAmount
+                                                |> Eth.toSend
 
-                                customSend =
-                                    { onMined = Nothing
-                                    , onSign = Just ApproveSigned
-                                    , onBroadcast = Nothing
-                                    }
+                                        customSend =
+                                            { onMined = Nothing
+                                            , onSign = Just ApproveSigned
+                                            , onBroadcast = Nothing
+                                            }
+                                    in
+                                    ChainCmd.custom customSend txParams
                             in
-                            ChainCmd.custom customSend txParams
-                    in
-                    case prevModel.allowance of
-                        Just allowance ->
-                            if BigInt.compare allowance (CTypes.responderDeposit trade.parameters |> TokenValue.getEvmValue) /= LT then
-                                initiateCommitCall trade.creationInfo.address userInfo.address userInfo.commPubkey
+                            case prevModel.allowance of
+                                Just allowance ->
+                                    if BigInt.compare allowance (CTypes.responderDeposit trade.parameters |> TokenValue.getEvmValue) /= LT then
+                                        initiateCommitCall prevModel.node trade userInfo.address userInfo.commPubkey
 
-                            else
-                                ( Just ApproveNeedsSig, approveChainCmd )
+                                    else
+                                        ( Just ApproveNeedsSig, approveChainCmd )
 
-                        _ ->
-                            ( Just ApproveNeedsSig, approveChainCmd )
+                                _ ->
+                                    ( Just ApproveNeedsSig, approveChainCmd )
             in
             UpdateResult
                 { prevModel | txChainStatus = txChainStatus }
@@ -657,11 +665,27 @@ update msg prevModel =
             justModelUpdate prevModel
 
 
-initiateCommitCall : Address -> Address -> String -> ( Maybe TxChainStatus, ChainCmd Msg )
-initiateCommitCall tradeAddress userAddress commPubkey =
+initiateCommitCall : EthHelpers.EthNode -> CTypes.FullTradeInfo -> Address -> String -> ( Maybe TxChainStatus, ChainCmd Msg )
+initiateCommitCall node trade userAddress commPubkey =
     let
+        commitConstructor =
+            case node.network of
+                Eth _ ->
+                    DHT.commit
+
+                XDai ->
+                    DHNT.commit
+
         txParams =
-            DHT.commit tradeAddress userAddress commPubkey
+            commitConstructor trade.creationInfo.address userAddress commPubkey
+                |> (case node.network of
+                        Eth _ ->
+                            identity
+
+                        XDai ->
+                            EthHelpers.updateCallValue
+                                (CTypes.responderDeposit trade.parameters |> TokenValue.getEvmValue)
+                   )
                 |> Eth.toSend
     in
     ( Just CommitNeedsSig

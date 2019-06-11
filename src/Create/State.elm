@@ -63,15 +63,16 @@ updateUserInfo : Maybe UserInfo -> Model -> ( Model, Cmd Msg )
 updateUserInfo userInfo model =
     ( { model | userInfo = userInfo }
         |> updateInputs model.inputs
-    , case userInfo of
-        Just uInfo ->
+    , case ( userInfo, model.node.network ) of
+        ( Just uInfo, Eth ethNetwork ) ->
             Contracts.Wrappers.getAllowanceCmd
                 model.node
+                ethNetwork
                 uInfo.address
                 (Config.factoryAddress model.node.network)
                 AllowanceFetched
 
-        Nothing ->
+        _ ->
             Cmd.none
     )
 
@@ -80,12 +81,13 @@ update : Msg -> Model -> UpdateResult
 update msg prevModel =
     case msg of
         Refresh time ->
-            case prevModel.userInfo of
-                Just userInfo ->
+            case ( prevModel.userInfo, prevModel.node.network ) of
+                ( Just userInfo, Eth ethNetwork ) ->
                     let
                         cmd =
                             Contracts.Wrappers.getAllowanceCmd
                                 prevModel.node
+                                ethNetwork
                                 userInfo.address
                                 (Config.factoryAddress prevModel.node.network)
                                 AllowanceFetched
@@ -234,83 +236,58 @@ update msg prevModel =
                         createParameters =
                             CTypes.buildCreateParameters userInfo userParameters
                     in
-                    UpdateResult
+                    justModelUpdate
                         { prevModel
                             | txChainStatus = Just <| Confirm createParameters
-                            , depositAmount = Nothing
+                            , depositAmount =
+                                Just <|
+                                    (CTypes.calculateFullInitialDeposit createParameters
+                                        |> TokenValue.getEvmValue
+                                    )
                         }
-                        (Contracts.Wrappers.getFounderFeeCmd
-                            prevModel.node
-                            (TokenValue.getEvmValue createParameters.tradeAmount)
-                            (FounderFeeFetched createParameters)
-                        )
-                        ChainCmd.none
-                        Nothing
 
                 Err inputErrors ->
                     justModelUpdate { prevModel | errors = inputErrors }
-
-        FounderFeeFetched createParameters fetchResult ->
-            case fetchResult of
-                Ok founderFee ->
-                    let
-                        mainDepositAmount =
-                            case createParameters.initiatingParty of
-                                Buyer ->
-                                    CTypes.defaultBuyerDeposit createParameters.tradeAmount
-
-                                Seller ->
-                                    createParameters.tradeAmount
-
-                        fullDepositAmount =
-                            mainDepositAmount
-                                |> TokenValue.add (TokenValue.tokenValue founderFee)
-                                |> TokenValue.add (CTypes.getDevFee createParameters.tradeAmount)
-                                |> TokenValue.add createParameters.pokeReward
-                                |> TokenValue.getEvmValue
-                    in
-                    justModelUpdate { prevModel | depositAmount = Just fullDepositAmount }
-
-                Err fetchErrStr ->
-                    let
-                        _ =
-                            Debug.log "Error fetching devFee: " fetchErrStr
-                    in
-                    justModelUpdate prevModel
 
         AbortCreate ->
             justModelUpdate { prevModel | txChainStatus = Nothing }
 
         ConfirmCreate createParameters fullDepositAmount ->
             let
-                approveChainCmd =
-                    let
-                        txParams =
-                            TokenContract.approve
-                                (Config.daiAddress prevModel.node.network)
-                                (Config.factoryAddress prevModel.node.network)
-                                fullDepositAmount
-                                |> Eth.toSend
-
-                        customSend =
-                            { onMined = Nothing
-                            , onSign = Just (ApproveSigned createParameters)
-                            , onBroadcast = Nothing
-                            }
-                    in
-                    ChainCmd.custom customSend txParams
-
                 ( txChainStatus, chainCmd ) =
-                    case prevModel.allowance of
-                        Just allowance ->
-                            if BigInt.compare allowance fullDepositAmount /= LT then
-                                initiateCreateCall prevModel.node.network createParameters
+                    case prevModel.node.network of
+                        XDai ->
+                            initiateCreateCall prevModel.node.network createParameters
 
-                            else
-                                ( Just ApproveNeedsSig, approveChainCmd )
+                        Eth ethNetwork ->
+                            let
+                                approveChainCmd =
+                                    let
+                                        txParams =
+                                            TokenContract.approve
+                                                (Config.daiContractAddress ethNetwork)
+                                                (Config.factoryAddress prevModel.node.network)
+                                                fullDepositAmount
+                                                |> Eth.toSend
 
-                        Nothing ->
-                            ( Just ApproveNeedsSig, approveChainCmd )
+                                        customSend =
+                                            { onMined = Nothing
+                                            , onSign = Just (ApproveSigned createParameters)
+                                            , onBroadcast = Nothing
+                                            }
+                                    in
+                                    ChainCmd.custom customSend txParams
+                            in
+                            case prevModel.allowance of
+                                Just allowance ->
+                                    if BigInt.compare allowance fullDepositAmount /= LT then
+                                        initiateCreateCall prevModel.node.network createParameters
+
+                                    else
+                                        ( Just ApproveNeedsSig, approveChainCmd )
+
+                                Nothing ->
+                                    ( Just ApproveNeedsSig, approveChainCmd )
             in
             { model = { prevModel | txChainStatus = txChainStatus }
             , cmd = Cmd.none
