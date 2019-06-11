@@ -10,14 +10,14 @@ module Trade.Types exposing
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
-import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
 import Contracts.Generated.DAIHardFactory as DHF
 import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Types as CTypes
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address, TxHash, TxReceipt)
-import EthHelpers
+import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
+import Helpers.Eth as EthHelpers
 import Http
 import Json.Decode
 import Routing

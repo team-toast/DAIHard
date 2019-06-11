@@ -10,15 +10,16 @@ import Element.Border
 import Element.Events
 import Element.Font
 import Element.Input
-import ElementHelpers as EH
 import Eth.Types exposing (Address)
 import FiatValue exposing (FiatValue)
+import Helpers.Element as EH
+import Helpers.Time as TimeHelpers
 import Html.Events.Extra
 import Images exposing (Image)
 import Margin
 import PaymentMethods exposing (PaymentMethod)
 import Time
-import TimeHelpers
+import TokenValue exposing (TokenValue)
 import TradeCache.State as TradeCache
 import TradeCache.Types exposing (TradeCache)
 
@@ -150,8 +151,8 @@ choosePhaseElement activePhase =
             )
             (Element.text "Payment Due")
         , Element.el
-            ([ Element.Events.onClick <| ViewPhaseChanged CTypes.Claimed ]
-                ++ phaseButtonStyles (activePhase == CTypes.Claimed)
+            ([ Element.Events.onClick <| ViewPhaseChanged CTypes.Judgment ]
+                ++ phaseButtonStyles (activePhase == CTypes.Judgment)
             )
             (Element.text "Release Due")
         , Element.el
@@ -200,7 +201,7 @@ resultsElement time tradeCache model =
                 CTypes.Committed ->
                     "Payment Due"
 
-                CTypes.Claimed ->
+                CTypes.Judgment ->
                     "Auto-Release"
 
                 CTypes.Closed ->
@@ -254,16 +255,16 @@ viewTradeRow time userRole viewPhase trade =
             CTypes.Committed ->
                 cellMaker ( 1, phaseCountdown time trade (userRole == Buyer) )
 
-            CTypes.Claimed ->
+            CTypes.Judgment ->
                 cellMaker ( 1, phaseCountdown time trade (userRole == Seller) )
 
             CTypes.Closed ->
                 Element.none
-        , cellMaker ( 1, viewTradeAmount trade )
-        , cellMaker ( 2, viewFiat trade )
+        , cellMaker ( 1, viewTradeAmount trade.parameters.tradeAmount )
+        , cellMaker ( 2, viewFiat trade.terms.price )
         , cellMaker ( 1, viewMargin trade (userRole == Seller) )
-        , cellMaker ( 6, viewPaymentMethods trade.paymentMethods )
-        , cellMaker ( 2, viewTradeButton trade.factoryID )
+        , cellMaker ( 6, viewPaymentMethods trade.terms.paymentMethods )
+        , cellMaker ( 2, viewTradeButton trade.id )
         ]
 
 
@@ -339,14 +340,14 @@ pokeButton address =
         }
 
 
-viewTradeAmount : CTypes.FullTradeInfo -> Element Msg
-viewTradeAmount trade =
-    EH.daiValue trade.parameters.tradeAmount
+viewTradeAmount : TokenValue -> Element Msg
+viewTradeAmount tradeAmount =
+    EH.daiValue tradeAmount
 
 
-viewFiat : CTypes.FullTradeInfo -> Element Msg
-viewFiat trade =
-    EH.fiatValue trade.parameters.fiatPrice
+viewFiat : FiatValue -> Element Msg
+viewFiat price =
+    EH.fiatValue price
 
 
 viewMargin : CTypes.FullTradeInfo -> Bool -> Element Msg

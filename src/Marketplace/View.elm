@@ -9,15 +9,15 @@ import Element.Border
 import Element.Events
 import Element.Font
 import Element.Input
-import ElementHelpers as EH
 import FiatValue exposing (FiatValue)
+import Helpers.Element as EH
+import Helpers.Time as TimeHelpers
 import Html.Events.Extra
 import Images exposing (Image)
 import Margin
 import Marketplace.Types exposing (..)
 import PaymentMethods exposing (PaymentMethod)
 import Time
-import TimeHelpers
 import TradeCache.State as TradeCache
 import TradeCache.Types exposing (TradeCache)
 
@@ -36,15 +36,7 @@ root time tradeCache model =
             , Element.spacing 10
             , Element.padding 30
             ]
-            [ Element.el
-                [ Element.alignTop
-                , Element.width (Element.fill |> Element.maximum 300)
-                ]
-                (EH.withHeader
-                    "Offer Type"
-                    (typeToggleElement model.inputs.openMode)
-                )
-            , searchInputElement model.inputs model.errors model.showCurrencyDropdown
+            [ searchInputElement model.inputs model.errors model.showCurrencyDropdown
             ]
         , resultsElement time tradeCache model
         ]
@@ -88,40 +80,6 @@ searchInputElement inputs errors showCurrencyDropdown =
                 [ applyButton, resetButton ]
                 |> withInputHeader " "
             ]
-        ]
-
-
-typeToggleElement : CTypes.OpenMode -> Element Msg
-typeToggleElement openMode =
-    let
-        baseStyles =
-            [ Element.Font.size 24
-            , Element.Font.medium
-            , Element.pointer
-            ]
-
-        ( buyStyles, sellStyles ) =
-            case openMode of
-                CTypes.BuyerOpened ->
-                    ( baseStyles
-                    , baseStyles ++ [ Element.Font.color EH.disabledTextColor ]
-                    )
-
-                CTypes.SellerOpened ->
-                    ( baseStyles ++ [ Element.Font.color EH.disabledTextColor ]
-                    , baseStyles
-                    )
-    in
-    Element.wrappedRow
-        [ Element.spacing 20
-        , Element.width Element.fill
-        ]
-        [ Element.el
-            ([ Element.Events.onClick <| ChangeOfferType CTypes.SellerOpened ] ++ sellStyles)
-            (Element.text "Selling DAI")
-        , Element.el
-            ([ Element.Events.onClick <| ChangeOfferType CTypes.BuyerOpened ] ++ buyStyles)
-            (Element.text "Buying DAI")
         ]
 
 
@@ -170,12 +128,12 @@ resultsElement time tradeCache model =
                 |> filterAndSortTrades time model.filterFunc model.sortFunc
 
         buyingOrSellingString =
-            case model.inputs.openMode of
-                CTypes.BuyerOpened ->
-                    "Buying"
-
-                CTypes.SellerOpened ->
+            case model.browsingRole of
+                Buyer ->
                     "Selling"
+
+                Seller ->
+                    "Buying"
     in
     Element.column
         [ Element.width Element.fill
@@ -205,7 +163,7 @@ resultsElement time tradeCache model =
             ]
             (visibleTrades
                 |> List.map
-                    (viewTradeRow time (model.inputs.openMode == CTypes.SellerOpened))
+                    (viewTradeRow time model.browsingRole)
             )
         ]
 
@@ -382,8 +340,8 @@ withInputHeader title element =
         ]
 
 
-viewTradeRow : Time.Posix -> Bool -> CTypes.FullTradeInfo -> Element Msg
-viewTradeRow time asBuyer trade =
+viewTradeRow : Time.Posix -> BuyerOrSeller -> CTypes.FullTradeInfo -> Element Msg
+viewTradeRow time viewAsRole trade =
     Element.row
         [ Element.width Element.fill
         , Element.spacing 1
@@ -392,11 +350,11 @@ viewTradeRow time asBuyer trade =
             [ ( 1, viewExpiring time trade )
             , ( 1, viewTradeAmount trade )
             , ( 2, viewFiat trade )
-            , ( 1, viewMargin trade (not asBuyer) )
-            , ( 6, viewPaymentMethods trade.paymentMethods )
-            , ( 2, viewAutoabortWindow asBuyer trade )
-            , ( 2, viewAutoreleaseWindow asBuyer trade )
-            , ( 2, viewTradeButton trade.factoryID )
+            , ( 1, viewMargin trade (viewAsRole /= Buyer) )
+            , ( 6, viewPaymentMethods trade.terms.paymentMethods )
+            , ( 2, viewAutoabortWindow viewAsRole trade )
+            , ( 2, viewAutoreleaseWindow viewAsRole trade )
+            , ( 2, viewTradeButton trade.id )
             ]
         )
 
@@ -451,7 +409,7 @@ viewTradeAmount trade =
 
 viewFiat : CTypes.FullTradeInfo -> Element Msg
 viewFiat trade =
-    EH.fiatValue trade.parameters.fiatPrice
+    EH.fiatValue trade.terms.price
 
 
 viewMargin : CTypes.FullTradeInfo -> Bool -> Element Msg
@@ -469,15 +427,16 @@ viewPaymentMethods paymentMethods =
         |> Maybe.withDefault Element.none
 
 
-viewAutoabortWindow : Bool -> CTypes.FullTradeInfo -> Element Msg
-viewAutoabortWindow viewAsBuyer trade =
+viewAutoabortWindow : BuyerOrSeller -> CTypes.FullTradeInfo -> Element Msg
+viewAutoabortWindow viewAsRole trade =
     let
         lowValColor =
-            if viewAsBuyer then
-                EH.red
+            case viewAsRole of
+                Buyer ->
+                    EH.red
 
-            else
-                EH.green
+                Seller ->
+                    EH.green
 
         baseColor =
             if Time.posixToMillis trade.parameters.autoabortInterval < (1000 * 60 * 60 * 6) then
@@ -493,15 +452,16 @@ viewAutoabortWindow viewAsBuyer trade =
         trade.parameters.autoabortInterval
 
 
-viewAutoreleaseWindow : Bool -> CTypes.FullTradeInfo -> Element Msg
-viewAutoreleaseWindow viewAsBuyer trade =
+viewAutoreleaseWindow : BuyerOrSeller -> CTypes.FullTradeInfo -> Element Msg
+viewAutoreleaseWindow viewAsRole trade =
     let
         lowValColor =
-            if viewAsBuyer then
-                EH.green
+            case viewAsRole of
+                Buyer ->
+                    EH.green
 
-            else
-                EH.red
+                Seller ->
+                    EH.red
 
         baseColor =
             if Time.posixToMillis trade.parameters.autoabortInterval < (1000 * 60 * 60 * 6) then

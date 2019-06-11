@@ -8,7 +8,7 @@ import Element.Background
 import Element.Border
 import Element.Font
 import Element.Input
-import ElementHelpers as EH
+import Helpers.Element as EH
 import Eth.Utils
 import Trade.ChatHistory.Types exposing (..)
 
@@ -153,7 +153,7 @@ renderEvent userRole event =
             let
                 maybeElementInfo =
                     case stateChange of
-                        Opened ->
+                        Initiated ->
                             Just ( Element.rgb 0 0 1, EH.white, "Initiator opened the trade" )
 
                         Recalled ->

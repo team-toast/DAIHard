@@ -1,6 +1,8 @@
 module Create.View exposing (root)
 
 import BigInt exposing (BigInt)
+import CommonTypes exposing (..)
+import Config
 import Contracts.Types as CTypes
 import Create.PMWizard.View as PMWizard
 import Create.Types exposing (..)
@@ -10,16 +12,15 @@ import Element.Border
 import Element.Events
 import Element.Font
 import Element.Input
-import ElementHelpers as EH
-import EthHelpers
 import FiatValue
+import Helpers.Element as EH
+import Helpers.Eth as EthHelpers
+import Helpers.Time as TimeHelpers
 import Images exposing (Image)
 import List.Extra
 import Maybe.Extra
-import Network exposing (..)
 import PaymentMethods exposing (PaymentMethod)
 import Time
-import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
@@ -73,11 +74,11 @@ tradeTypeElement : Model -> Element Msg
 tradeTypeElement model =
     EH.withHeader
         "Trade Type"
-        (typeToggleElement model.inputs.openMode)
+        (roleToggleElement model.inputs.userRole)
 
 
-typeToggleElement : CTypes.OpenMode -> Element Msg
-typeToggleElement openMode =
+roleToggleElement : BuyerOrSeller -> Element Msg
+roleToggleElement userRole =
     let
         baseStyles =
             [ Element.Font.size 24
@@ -86,23 +87,23 @@ typeToggleElement openMode =
             ]
 
         ( buyDaiStyles, sellDaiStyles ) =
-            case openMode of
-                CTypes.BuyerOpened ->
+            case userRole of
+                Buyer ->
                     ( baseStyles
                     , baseStyles ++ [ Element.Font.color EH.disabledTextColor ]
                     )
 
-                CTypes.SellerOpened ->
+                Seller ->
                     ( baseStyles ++ [ Element.Font.color EH.disabledTextColor ]
                     , baseStyles
                     )
     in
     Element.row [ Element.spacing 20 ]
         [ Element.el
-            ([ Element.Events.onClick <| ChangeType CTypes.SellerOpened ] ++ sellDaiStyles)
+            ([ Element.Events.onClick <| ChangeRole Seller ] ++ sellDaiStyles)
             (Element.text "Sell DAI")
         , Element.el
-            ([ Element.Events.onClick <| ChangeType CTypes.BuyerOpened ] ++ buyDaiStyles)
+            ([ Element.Events.onClick <| ChangeRole Buyer ] ++ buyDaiStyles)
             (Element.text "Buy DAI")
         ]
 
@@ -111,11 +112,11 @@ daiElement : Model -> Element Msg
 daiElement model =
     EH.niceBottomBorderEl <|
         EH.withHeader
-            (case model.inputs.openMode of
-                CTypes.BuyerOpened ->
+            (case model.inputs.userRole of
+                Buyer ->
                     "You're buying"
 
-                CTypes.SellerOpened ->
+                Seller ->
                     "You're selling"
             )
             (daiInputElement model.inputs.daiAmount model.errors.daiAmount)
@@ -183,7 +184,7 @@ marginElement model =
                     "At margin"
                     (marginInputElement
                         model.inputs.margin
-                        (model.inputs.openMode == CTypes.SellerOpened)
+                        (model.inputs.userRole == Seller)
                         model.errors.margin
                     )
 
@@ -250,18 +251,15 @@ devFeeNotifyElement : Model -> Element Msg
 devFeeNotifyElement model =
     let
         topText =
-            case TokenValue.fromString tokenDecimals model.inputs.daiAmount of
+            case TokenValue.fromString model.inputs.daiAmount of
                 Just daiAmount ->
-                    "There is a 1% dev fee of "
+                    "There is a 1% fee of "
                         ++ TokenValue.toConciseString
-                            (TokenValue.div
-                                daiAmount
-                                (TokenValue.tokenValue tokenDecimals (BigInt.fromInt 100))
-                            )
+                            (TokenValue.div daiAmount 100)
                         ++ " DAI."
 
                 Nothing ->
-                    "There is a 1% dev fee."
+                    "There is a 1% fee."
 
         bottomText =
             "This dev fee is only collected when trades resolve successfully. If the trade is burned or aborted, we all lose out."
@@ -303,60 +301,60 @@ phasesElement model =
         [ Element.el [ Element.width <| Element.fillPortion 1 ] <|
             openPhaseElement
                 model.inputs.autorecallInterval
-                model.inputs.openMode
+                model.inputs.userRole
         , Element.el [ Element.width <| Element.fillPortion 1 ] <|
             committedPhaseElement
                 model.inputs.autoabortInterval
-                model.inputs.openMode
+                model.inputs.userRole
         , Element.el [ Element.width <| Element.fillPortion 1 ] <|
-            claimedPhaseElement
+            judgmentPhaseElement
                 model.inputs.autoreleaseInterval
-                model.inputs.openMode
+                model.inputs.userRole
         ]
 
 
-openPhaseElement : Time.Posix -> CTypes.OpenMode -> Element Msg
-openPhaseElement interval openMode =
+openPhaseElement : Time.Posix -> BuyerOrSeller -> Element Msg
+openPhaseElement interval userRole =
     phaseElement
         Images.openWindowIcon
         "Open Window"
-        (openWindowSummary openMode)
+        (openWindowSummary userRole)
         interval
         Nothing
         AutorecallIntervalChanged
 
 
-committedPhaseElement : Time.Posix -> CTypes.OpenMode -> Element Msg
-committedPhaseElement interval openMode =
+committedPhaseElement : Time.Posix -> BuyerOrSeller -> Element Msg
+committedPhaseElement interval userRole =
     phaseElement
         Images.paymentWindowIcon
         "Payment Window"
-        (paymentWindowSummary openMode)
+        (paymentWindowSummary userRole)
         interval
         (Just EH.red)
         AutoabortIntervalChanged
 
 
-claimedPhaseElement : Time.Posix -> CTypes.OpenMode -> Element Msg
-claimedPhaseElement interval openMode =
+judgmentPhaseElement : Time.Posix -> BuyerOrSeller -> Element Msg
+judgmentPhaseElement interval userRole =
     phaseElement
         Images.releaseWindowIcon
         "Release Window"
-        (releaseWindowSummary openMode)
+        (releaseWindowSummary userRole)
         interval
         (Just EH.red)
         AutoreleaseIntervalChanged
 
 
-openWindowSummary : CTypes.OpenMode -> String
-openWindowSummary openMode =
+openWindowSummary : BuyerOrSeller -> String
+openWindowSummary userRole =
     let
         committingParty =
-            case openMode of
-                CTypes.BuyerOpened ->
+            case userRole of
+                Buyer ->
                     "Seller"
 
-                CTypes.SellerOpened ->
+                Seller ->
                     "Buyer"
     in
     "The offer will expire by this time window if a "
@@ -366,23 +364,23 @@ openWindowSummary openMode =
         ++ " commits."
 
 
-paymentWindowSummary : CTypes.OpenMode -> String
-paymentWindowSummary openMode =
-    case openMode of
-        CTypes.BuyerOpened ->
+paymentWindowSummary : BuyerOrSeller -> String
+paymentWindowSummary userRole =
+    case userRole of
+        Buyer ->
             "After committing, you have this time window to send the fiat funds to the Seller using one of your payment methods indicated below. If you fail to confirm payment within this window, 1/4 of your deposit is burned from both parties and the rest is refunded."
 
-        CTypes.SellerOpened ->
+        Seller ->
             "After committing, the Buyer has this time window to send the fiat funds to you using one of your payment methods indicated below. If the Buyer aborts or fails to confirm within this window, 1/12 of the trade amount is burned from both parties and the rest is refunded."
 
 
-releaseWindowSummary : CTypes.OpenMode -> String
-releaseWindowSummary openMode =
-    case openMode of
-        CTypes.BuyerOpened ->
+releaseWindowSummary : BuyerOrSeller -> String
+releaseWindowSummary userRole =
+    case userRole of
+        Buyer ->
             "Once you confirm payment, the Seller has this time window to decide whether to release the funds to you or burn everything. If he doesn't decide before the time is up, funds are released to you by default."
 
-        CTypes.SellerOpened ->
+        Seller ->
             "Once the Buyer confirms payment, you have this time window to decide whether to release the funds to the Buyer or burn everything. If you don't decide before the time is up, funds are released to the Buyer by default."
 
 
@@ -463,7 +461,7 @@ getModalOrNone model =
                     EH.modal (Element.rgba 0 0 0 0.6) <|
                         Element.map
                             PMWizardMsg
-                            (PMWizard.root pmModal model.inputs.openMode)
+                            (PMWizard.root pmModal model.inputs.userRole)
 
         Just txChainStatus ->
             txChainStatusModal txChainStatus model
@@ -477,7 +475,7 @@ txChainStatusModal txChainStatus model =
                 ( depositAmountEl, confirmButton ) =
                     case model.depositAmount of
                         Just depositAmount ->
-                            ( TokenValue.tokenValue tokenDecimals depositAmount
+                            ( TokenValue.tokenValue depositAmount
                                 |> TokenValue.toConciseString
                                 |> Element.text
                             , EH.redButton "Yes, I definitely want to open this trade." (ConfirmCreate createParameters depositAmount)
@@ -521,8 +519,14 @@ txChainStatusModal txChainStatus model =
                                      , depositAmountEl
                                      , Element.text " DAI (including the 1% dev fee) to open this trade."
                                      ]
-                                   , [ Element.text <| "This ususally requires two Metamask signatures. Your DAI will not be deposited until the final transaction has been mined." ]
                                    ]
+                                ++ (case model.node.network of
+                                        Eth _ ->
+                                            [ [ Element.text <| "This ususally requires two Metamask signatures. Your DAI will not be deposited until the final transaction has been mined." ] ]
+
+                                        XDai ->
+                                            []
+                                   )
                             )
                         )
                     , Element.el
@@ -545,7 +549,7 @@ txChainStatusModal txChainStatus model =
             EH.txProcessModal
                 [ Element.text "Mining the initial approve transaction..."
                 , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                    { url = EthHelpers.makeEtherscanTxUrl model.node.network txHash
+                    { url = EthHelpers.makeViewTxUrl model.node.network txHash
                     , label = Element.text "See the transaction on Etherscan"
                     }
                 , Element.text "Funds will not be sent until you sign the next transaction."
@@ -561,7 +565,7 @@ txChainStatusModal txChainStatus model =
             EH.txProcessModal
                 [ Element.text "Mining the final create call..."
                 , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                    { url = EthHelpers.makeEtherscanTxUrl model.node.network txHash
+                    { url = EthHelpers.makeViewTxUrl model.node.network txHash
                     , label = Element.text "See the transaction on Etherscan"
                     }
                 , Element.text "You will be redirected when it's mined."
@@ -572,22 +576,22 @@ getWarningParagraphs : CTypes.CreateParameters -> List (List (Element Msg))
 getWarningParagraphs createParameters =
     [ if TimeHelpers.compare createParameters.autoreleaseInterval (Time.millisToPosix (1000 * 60 * 20)) == LT then
         Just <|
-            case createParameters.openMode of
-                CTypes.BuyerOpened ->
+            case createParameters.initiatingParty of
+                Buyer ->
                     "That Release Window time is quite small! It might take a while to find a committed Seller."
 
-                CTypes.SellerOpened ->
+                Seller ->
                     "That Release Window time is quite small! This may attract scammers. Only create this trade if you know what you're doing."
 
       else
         Nothing
     , if TimeHelpers.compare createParameters.autoabortInterval (Time.millisToPosix (1000 * 60 * 60)) == LT then
         Just <|
-            case createParameters.openMode of
-                CTypes.BuyerOpened ->
+            case createParameters.initiatingParty of
+                Buyer ->
                     "That Payment Window time is quite small! If you fail to to 1. make the payment and 2. click \"confirm\" before this time is up, the trade will automatically abort, incurring the abort punishments on both parties."
 
-                CTypes.SellerOpened ->
+                Seller ->
                     "That Payment Window time is quite small! If the Buyer fails to to 1. make the payment and 2. click \"confirm\" before this time is up, the trade will automatically abort, incurring the abort punishments on both parties."
 
       else

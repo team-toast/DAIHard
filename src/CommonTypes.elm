@@ -1,9 +1,18 @@
-module CommonTypes exposing (BuyerOrSeller(..), InitiatorOrResponder(..), UserInfo)
+module CommonTypes exposing (BuyerOrSeller(..), EthNetwork(..), InitiatorOrResponder(..), Network(..), UserInfo)
 
 import Eth.Types exposing (Address)
 import Json.Decode
 import Json.Encode
-import TokenValue exposing (TokenValue)
+
+
+type Network
+    = Eth EthNetwork
+    | XDai
+
+
+type EthNetwork
+    = Mainnet
+    | Kovan
 
 
 type alias UserInfo =

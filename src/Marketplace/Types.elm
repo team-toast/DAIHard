@@ -1,16 +1,14 @@
-module Marketplace.Types exposing (Errors, FiatTypeAndRange, Model, Msg(..), Query, ResultColumnType(..), SearchInputs, TokenRange, noErrors, updateFiatTypeInput, updateMaxDaiInput, updateMaxFiatInput, updateMinDaiInput, updateMinFiatInput, updateOpenMode, updatePaymentMethodInput, updatePaymentMethodTerms)
+module Marketplace.Types exposing (Errors, FiatTypeAndRange, Model, Msg(..), Query, ResultColumnType(..), SearchInputs, TokenRange, noErrors, updateFiatTypeInput, updateMaxDaiInput, updateMaxFiatInput, updateMinDaiInput, updateMinFiatInput, updatePaymentMethodInput, updatePaymentMethodTerms)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
-import Contracts.Generated.DAIHardFactory as DHF
-import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Types as CTypes
 import Dict exposing (Dict)
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
-import EthHelpers exposing (EthNode)
 import FiatValue exposing (FiatValue)
+import Helpers.Eth as EthHelpers exposing (EthNode)
 import Http
 import Json.Decode
 import PaymentMethods exposing (PaymentMethod)
@@ -23,6 +21,7 @@ import TradeCache.Types as TradeCache exposing (TradeCache)
 type alias Model =
     { ethNode : EthNode
     , userInfo : Maybe UserInfo
+    , browsingRole : BuyerOrSeller
     , inputs : SearchInputs
     , errors : Errors
     , showCurrencyDropdown : Bool
@@ -32,8 +31,7 @@ type alias Model =
 
 
 type Msg
-    = ChangeOfferType CTypes.OpenMode
-    | MinDaiChanged String
+    = MinDaiChanged String
     | MaxDaiChanged String
     | FiatTypeInputChanged String
     | MinFiatChanged String
@@ -63,7 +61,6 @@ type alias SearchInputs =
     , maxFiat : String
     , paymentMethod : String
     , paymentMethodTerms : List String
-    , openMode : CTypes.OpenMode
     }
 
 
@@ -80,8 +77,7 @@ noErrors =
 
 
 type alias Query =
-    { openMode : CTypes.OpenMode
-    , dai : TokenRange
+    { dai : TokenRange
     , fiat : Maybe FiatTypeAndRange
     , paymentMethodTerms : List String
     }
@@ -98,11 +94,6 @@ type alias FiatTypeAndRange =
     , min : Maybe BigInt
     , max : Maybe BigInt
     }
-
-
-updateOpenMode : CTypes.OpenMode -> SearchInputs -> SearchInputs
-updateOpenMode openMode inputs =
-    { inputs | openMode = openMode }
 
 
 updatePaymentMethodInput : String -> SearchInputs -> SearchInputs

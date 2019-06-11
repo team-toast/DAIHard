@@ -1,4 +1,4 @@
-module ElementHelpers exposing
+module Helpers.Element exposing
     ( activePhaseBackgroundColor
     , black
     , blue
@@ -47,7 +47,6 @@ module ElementHelpers exposing
     , subtleShadow
     , testBorderStyles
     , textInputWithElement
-    , tokenValue
     , txProcessModal
     , uncoloredMargin
     , white
@@ -60,6 +59,7 @@ import Collage exposing (Collage)
 import Collage.Render
 import Color exposing (Color)
 import CommonTypes exposing (..)
+import Config
 import Css
 import Dict
 import Element exposing (Attribute, Element)
@@ -70,8 +70,9 @@ import Element.Font
 import Element.Input
 import Eth.Types exposing (Address)
 import Eth.Utils
-import EthHelpers
 import FiatValue exposing (FiatValue)
+import Helpers.Eth as EthHelpers
+import Helpers.Time as TimeHelpers
 import Html.Attributes
 import Html.Events
 import Html.Styled
@@ -80,10 +81,8 @@ import Json.Decode
 import List
 import List.Extra
 import Maybe.Extra
-import Network exposing (..)
 import Task
 import Time
-import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
@@ -176,15 +175,6 @@ fakeLink name =
 
 
 -- RENDERERS
-
-
-tokenValue : TokenValue -> Element msg
-tokenValue tv =
-    let
-        s =
-            TokenValue.renderToString Nothing tv ++ " DAI"
-    in
-    Element.el [ Element.Font.color (Element.rgb 0 0 1) ] (Element.text s)
 
 
 daiValue : TokenValue -> Element msg
@@ -1085,7 +1075,7 @@ etherscanAddressLink : List (Attribute msg) -> Network -> Address -> Element msg
 etherscanAddressLink attributes network address =
     Element.newTabLink
         attributes
-        { url = EthHelpers.makeEtherscanAddressUrl network address
+        { url = EthHelpers.makeViewAddressUrl network address
         , label = Element.text <| Eth.Utils.addressToString address
         }
 

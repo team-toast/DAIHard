@@ -1,9 +1,9 @@
 module FiatValue exposing (FiatValue, compare, currencyTypes, decoder, encode, getFloatValueWithWarning, renderToString, renderToStringFull, searchTypes, typeStringToCharStringDefaultEmpty, typeStringToSymbol)
 
 import BigInt exposing (BigInt)
-import BigIntHelpers
 import Dict exposing (Dict)
 import Element exposing (Element)
+import Helpers.BigInt as BigIntHelpers
 import Images exposing (Image)
 import Json.Decode
 import Json.Encode

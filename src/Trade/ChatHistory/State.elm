@@ -2,7 +2,6 @@ module Trade.ChatHistory.State exposing (handleNewEvent, init, update)
 
 import Array exposing (Array)
 import CommonTypes exposing (..)
-import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Types as CTypes
 import Eth
 import Json.Decode
@@ -12,12 +11,12 @@ import Trade.ChatHistory.SecureComm exposing (..)
 import Trade.ChatHistory.Types exposing (..)
 
 
-init : UserInfo -> BuyerOrSeller -> CTypes.OpenMode -> List ( Int, CTypes.DAIHardEvent ) -> ( Model, Bool )
-init userInfo buyerOrSeller openMode initialEvents =
+init : UserInfo -> BuyerOrSeller -> BuyerOrSeller -> List ( Int, CTypes.DAIHardEvent ) -> ( Model, Bool )
+init userInfo buyerOrSeller initiatingParty initialEvents =
     Model
         userInfo
         buyerOrSeller
-        openMode
+        initiatingParty
         Array.empty
         ""
         |> handleInitialEvents initialEvents
@@ -119,12 +118,12 @@ handleNewEvent : Int -> CTypes.DAIHardEvent -> Model -> ( Model, Bool )
 handleNewEvent blocknum event prevModel =
     let
         toBuyerOrSeller =
-            CTypes.initiatorOrResponderToBuyerOrSeller prevModel.openMode
+            CTypes.initiatorOrResponderToBuyerOrSeller prevModel.initiatingParty
 
         maybeHistoryEventInfo =
             case event of
-                CTypes.OpenedEvent _ ->
-                    Just <| StateChange Opened
+                CTypes.InitiatedEvent _ ->
+                    Just <| StateChange Initiated
 
                 CTypes.CommittedEvent data ->
                     Just <| StateChange (Committed data.responder)
@@ -149,13 +148,9 @@ handleNewEvent blocknum event prevModel =
                         Statement <|
                             { who = Initiator |> toBuyerOrSeller
                             , message =
-                                case
-                                    ( decodeEncryptedMessage data.encryptedForInitiator
-                                    , decodeEncryptedMessage data.encryptedForResponder
-                                    )
-                                of
-                                    ( Just decodedForInitiator, Just decodedForResponder ) ->
-                                        Encrypted ( decodedForInitiator, decodedForResponder )
+                                case decodeEncryptedMessages data.statement of
+                                    Just decodedMessages ->
+                                        Encrypted decodedMessages
 
                                     _ ->
                                         FailedDecode
@@ -167,13 +162,9 @@ handleNewEvent blocknum event prevModel =
                         Statement <|
                             { who = Responder |> toBuyerOrSeller
                             , message =
-                                case
-                                    ( decodeEncryptedMessage data.encryptedForInitiator
-                                    , decodeEncryptedMessage data.encryptedForResponder
-                                    )
-                                of
-                                    ( Just decodedForInitiator, Just decodedForResponder ) ->
-                                        Encrypted ( decodedForInitiator, decodedForResponder )
+                                case decodeEncryptedMessages data.statement of
+                                    Just decodedMessages ->
+                                        Encrypted decodedMessages
 
                                     _ ->
                                         FailedDecode

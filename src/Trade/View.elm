@@ -5,6 +5,7 @@ import BigInt exposing (BigInt)
 import Collage exposing (Collage)
 import Collage.Render
 import CommonTypes exposing (..)
+import Config
 import Contracts.Types as CTypes exposing (FullTradeInfo)
 import DateFormat
 import Element exposing (Attribute, Element)
@@ -13,17 +14,16 @@ import Element.Border
 import Element.Events
 import Element.Font
 import Element.Input
-import ElementHelpers as EH
 import Eth.Types exposing (Address)
 import Eth.Utils
-import EthHelpers exposing (EthNode)
 import FiatValue exposing (FiatValue)
+import Helpers.Element as EH
+import Helpers.Eth as EthHelpers exposing (EthNode)
+import Helpers.Time as TimeHelpers
 import Images exposing (Image)
 import Margin
-import Network exposing (..)
 import PaymentMethods exposing (PaymentMethod)
 import Time
-import TimeHelpers
 import TokenValue exposing (TokenValue)
 import Trade.ChatHistory.View as ChatHistory
 import Trade.Types exposing (..)
@@ -48,7 +48,7 @@ root time tradeCache model =
                     , Element.spacing 40
                     ]
                     [ phasesElement tradeInfo model.expandedPhase model.userInfo time
-                    , PaymentMethods.viewList tradeInfo.paymentMethods Nothing
+                    , PaymentMethods.viewList tradeInfo.terms.paymentMethods Nothing
                     ]
                 ]
 
@@ -95,18 +95,18 @@ tradeStatusElement trade network =
             [ Element.text
                 (case trade.state.phase of
                     CTypes.Open ->
-                        case trade.parameters.openMode of
-                            CTypes.BuyerOpened ->
+                        case trade.parameters.initiatingParty of
+                            Buyer ->
                                 "Open Buy Offer"
 
-                            CTypes.SellerOpened ->
+                            Seller ->
                                 "Open Sell Offer"
 
                     CTypes.Committed ->
                         "Committed"
 
-                    CTypes.Claimed ->
-                        "Claimed"
+                    CTypes.Judgment ->
+                        "Judgment"
 
                     CTypes.Closed ->
                         "Closed"
@@ -131,17 +131,17 @@ daiAmountElement trade maybeUserInfo =
                 (Maybe.map .address maybeUserInfo)
     in
     EH.withHeader
-        (case ( trade.parameters.openMode, maybeInitiatorOrResponder ) of
-            ( CTypes.BuyerOpened, Just Initiator ) ->
+        (case ( trade.parameters.initiatingParty, maybeInitiatorOrResponder ) of
+            ( Buyer, Just Initiator ) ->
                 "You're Buying"
 
-            ( CTypes.BuyerOpened, _ ) ->
+            ( Buyer, _ ) ->
                 "Buying"
 
-            ( CTypes.SellerOpened, Just Initiator ) ->
+            ( Seller, Just Initiator ) ->
                 "You're Selling"
 
-            ( CTypes.SellerOpened, _ ) ->
+            ( Seller, _ ) ->
                 "Selling"
         )
         (renderDaiAmount trade.parameters.tradeAmount)
@@ -164,7 +164,7 @@ fiatElement : FullTradeInfo -> Element Msg
 fiatElement trade =
     EH.withHeader
         "For Fiat"
-        (renderFiatAmount trade.parameters.fiatPrice)
+        (renderFiatAmount trade.terms.price)
 
 
 renderFiatAmount : FiatValue -> Element Msg
@@ -256,8 +256,8 @@ generateStatsForSeller tradeCache sellerAddress =
                     { numBurns = 0
                     , numReleases = 0
                     , numAborts = 0
-                    , amountBurned = TokenValue.zero tokenDecimals
-                    , amountReleased = TokenValue.zero tokenDecimals
+                    , amountBurned = TokenValue.zero
+                    , amountReleased = TokenValue.zero
                     }
 
         numTrades =
@@ -292,8 +292,8 @@ generateStatsForSeller tradeCache sellerAddress =
 
 statsElement : FullTradeInfo -> TradeCache -> Bool -> Element Msg
 statsElement trade tradeCache showModal =
-    case trade.parameters.openMode of
-        CTypes.SellerOpened ->
+    case trade.parameters.initiatingParty of
+        Seller ->
             let
                 sellerStats =
                     generateStatsForSeller tradeCache trade.parameters.initiatorAddress
@@ -346,7 +346,7 @@ statsElement trade tradeCache showModal =
                         ]
                     )
 
-        CTypes.BuyerOpened ->
+        Buyer ->
             Element.text "??"
 
 
@@ -458,7 +458,7 @@ actionButtonsElement currentTime trade userInfo =
                         let
                             depositAmount =
                                 CTypes.responderDeposit trade.parameters
-                                    |> TokenValue.getBigInt
+                                    |> TokenValue.getEvmValue
                         in
                         [ EH.redButton "Deposit and Commit to Trade" <| CommitClicked trade userInfo depositAmount ]
 
@@ -467,7 +467,7 @@ actionButtonsElement currentTime trade userInfo =
                         , Element.map StartContractAction <| EH.redButton "Confirm Payment" Claim
                         ]
 
-                    ( CTypes.Claimed, _, Just Seller ) ->
+                    ( CTypes.Judgment, _, Just Seller ) ->
                         [ Element.map StartContractAction <| EH.redButton "Burn it All!" Burn
                         , Element.map StartContractAction <| EH.blueButton "Release Everything" Release
                         ]
@@ -507,7 +507,7 @@ phasesElement trade expandedPhase maybeUserInfo currentTime =
             _ ->
                 [ phaseElement CTypes.Open trade maybeUserInfo (expandedPhase == CTypes.Open) currentTime
                 , phaseElement CTypes.Committed trade maybeUserInfo (expandedPhase == CTypes.Committed) currentTime
-                , phaseElement CTypes.Claimed trade maybeUserInfo (expandedPhase == CTypes.Claimed) currentTime
+                , phaseElement CTypes.Judgment trade maybeUserInfo (expandedPhase == CTypes.Judgment) currentTime
                 ]
 
 
@@ -560,7 +560,7 @@ phaseElement viewPhase trade maybeUserInfo expanded currentTime =
                 CTypes.Committed ->
                     trade.parameters.autoabortInterval
 
-                CTypes.Claimed ->
+                CTypes.Judgment ->
                     trade.parameters.autoreleaseInterval
 
                 _ ->
@@ -668,7 +668,7 @@ phaseStatusElement viewPhase trade currentTime =
                         CTypes.Committed ->
                             "Payment Window"
 
-                        CTypes.Claimed ->
+                        CTypes.Judgment ->
                             "Release Window"
 
                         CTypes.Closed ->
@@ -827,7 +827,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
             TokenValue.toConciseString trade.parameters.tradeAmount ++ " DAI"
 
         fiatAmountString =
-            FiatValue.renderToStringFull trade.parameters.fiatPrice
+            FiatValue.renderToStringFull trade.terms.price
 
         buyerDepositString =
             TokenValue.toConciseString trade.parameters.buyerDeposit ++ " DAI"
@@ -841,9 +841,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                 ++ " DAI"
 
         abortPunishment =
-            TokenValue.div
-                trade.parameters.buyerDeposit
-                (TokenValue.tokenValue tokenDecimals <| BigInt.fromInt 4)
+            trade.parameters.abortPunishment
 
         abortPunishmentString =
             TokenValue.toConciseString
@@ -874,8 +872,8 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
             case ( viewPhase, maybeBuyerOrSeller ) of
                 ( CTypes.Open, Nothing ) ->
                     ( "Get it while it's hot"
-                    , case trade.parameters.openMode of
-                        CTypes.SellerOpened ->
+                    , case trade.parameters.initiatingParty of
+                        Seller ->
                             List.map makeParagraph
                                 [ [ Element.text "The Seller has deposited "
                                   , emphasizedText tradeAmountString
@@ -900,7 +898,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                                   ]
                                 ]
 
-                        CTypes.BuyerOpened ->
+                        Buyer ->
                             List.map makeParagraph
                                 [ [ Element.text "The Buyer is offering to buy "
                                   , emphasizedText tradeAmountString
@@ -1054,7 +1052,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                         ]
                     )
 
-                ( CTypes.Claimed, Just Buyer ) ->
+                ( CTypes.Judgment, Just Buyer ) ->
                     ( "Judgement"
                     , List.map makeParagraph
                         [ [ Element.text "If the Seller confirms receipt of payment, or fails to decide within the release window, the combined balance of "
@@ -1074,7 +1072,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                         ]
                     )
 
-                ( CTypes.Claimed, Just Seller ) ->
+                ( CTypes.Judgment, Just Seller ) ->
                     ( "Judgement"
                     , List.map makeParagraph
                         [ [ Element.text "By pushing the contract to the final stage, the Buyer has indicated that the transfer has taken place, and awaits your judgement."
@@ -1094,7 +1092,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                         ]
                     )
 
-                ( CTypes.Claimed, Nothing ) ->
+                ( CTypes.Judgment, Nothing ) ->
                     ( "Judgement"
                     , List.map makeParagraph
                         [ [ Element.text "The Buyer has indicated that the transfer has taken place, and awaits the Seller's judgement on the fact of the matter."
@@ -1217,11 +1215,11 @@ getModalOrNone model =
         Just (ConfirmingCommit trade userInfo deposit) ->
             let
                 depositAmountString =
-                    TokenValue.tokenValue tokenDecimals deposit
+                    TokenValue.tokenValue deposit
                         |> TokenValue.toConciseString
 
                 fiatPriceString =
-                    FiatValue.renderToStringFull trade.parameters.fiatPrice
+                    FiatValue.renderToStringFull trade.terms.price
 
                 daiAmountString =
                     TokenValue.toConciseString trade.parameters.tradeAmount ++ " DAI"
@@ -1276,15 +1274,22 @@ getModalOrNone model =
                                 , Element.Font.color EH.permanentTextColor
                                 ]
                             )
-                            [ [ Element.text <| "You will deposit "
-                              , Element.el [ Element.Font.color EH.blue ] <| Element.text <| depositAmountString ++ " DAI"
-                              , Element.text ", thereby becoming the "
-                              , buyerOrSellerEl
-                              , Element.text " of this trade. By doing so, you are agreeing to "
-                              ]
+                            ([ [ Element.text <| "You will deposit "
+                               , Element.el [ Element.Font.color EH.blue ] <| Element.text <| depositAmountString ++ " DAI"
+                               , Element.text ", thereby becoming the "
+                               , buyerOrSellerEl
+                               , Element.text " of this trade. By doing so, you are agreeing to "
+                               ]
                                 ++ agreeToWhatTextList
-                            , [ Element.text <| "(This ususally requires two Metamask signatures. Your DAI will not be deposited until the second transaction has been mined.)" ]
-                            ]
+                             ]
+                                ++ (case model.node.network of
+                                        Eth _ ->
+                                            [ [ Element.text <| "(This ususally requires two Metamask signatures. Your DAI will not be deposited until the second transaction has been mined.)" ] ]
+
+                                        XDai ->
+                                            []
+                                   )
+                            )
                         )
                     , Element.el
                         [ Element.alignBottom
@@ -1306,7 +1311,7 @@ getModalOrNone model =
             EH.txProcessModal
                 [ Element.text "Mining the initial approve transaction..."
                 , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                    { url = EthHelpers.makeEtherscanTxUrl model.node.network txHash
+                    { url = EthHelpers.makeViewTxUrl model.node.network txHash
                     , label = Element.text "See the transaction on Etherscan"
                     }
                 , Element.text "Funds will not be sent until you sign the next transaction."
@@ -1323,8 +1328,8 @@ getModalOrNone model =
             EH.txProcessModal
                 [ Element.text "Mining the final commit transaction..."
                 , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                    { url = EthHelpers.makeEtherscanTxUrl model.node.network txHash
-                    , label = Element.text "See the transaction on Etherscan"
+                    { url = EthHelpers.makeViewTxUrl model.node.network txHash
+                    , label = Element.text "See the transaction"
                     }
                 ]
 

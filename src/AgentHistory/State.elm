@@ -3,24 +3,24 @@ module AgentHistory.State exposing (init, subscriptions, update, updateUserInfo)
 import AgentHistory.Types exposing (..)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
-import BigIntHelpers
-import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
+import Config exposing (..)
 import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Types as CTypes
 import Contracts.Wrappers
 import Eth
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
-import EthHelpers
 import FiatValue exposing (FiatValue)
 import Flip exposing (flip)
-import Network exposing (..)
+import Helpers.BigInt as BigIntHelpers
+import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
+import Helpers.Eth as EthHelpers
+import Helpers.Time as TimeHelpers
 import PaymentMethods exposing (PaymentMethod)
 import Routing
 import String.Extra
 import Time
-import TimeHelpers
 import TokenValue exposing (TokenValue)
 import TradeCache.State as TradeCache
 import TradeCache.Types as TradeCache exposing (TradeCache)

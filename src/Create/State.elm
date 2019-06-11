@@ -1,9 +1,8 @@
 module Create.State exposing (init, subscriptions, update, updateUserInfo)
 
 import BigInt exposing (BigInt)
-import BigIntHelpers
-import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
+import Config
 import Contracts.Generated.ERC20Token as TokenContract
 import Contracts.Types as CTypes
 import Contracts.Wrappers
@@ -11,16 +10,17 @@ import Create.PMWizard.State as PMWizard
 import Create.Types exposing (..)
 import Eth
 import Eth.Types exposing (Address)
-import EthHelpers
 import FiatValue exposing (FiatValue)
 import Flip exposing (flip)
+import Helpers.BigInt as BigIntHelpers
+import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
+import Helpers.Eth as EthHelpers
+import Helpers.Time as TimeHelpers
 import Margin
 import Maybe.Extra
-import Network exposing (..)
 import PaymentMethods exposing (PaymentMethod)
 import Routing
 import Time
-import TimeHelpers
 import TokenValue exposing (TokenValue)
 
 
@@ -47,7 +47,7 @@ init node userInfo =
 
 
 initialInputs =
-    { openMode = CTypes.SellerOpened
+    { userRole = Seller
     , daiAmount = ""
     , fiatType = "USD"
     , fiatAmount = ""
@@ -63,15 +63,16 @@ updateUserInfo : Maybe UserInfo -> Model -> ( Model, Cmd Msg )
 updateUserInfo userInfo model =
     ( { model | userInfo = userInfo }
         |> updateInputs model.inputs
-    , case userInfo of
-        Just uInfo ->
+    , case ( userInfo, model.node.network ) of
+        ( Just uInfo, Eth ethNetwork ) ->
             Contracts.Wrappers.getAllowanceCmd
                 model.node
+                ethNetwork
                 uInfo.address
-                (factoryAddress model.node.network)
+                (Config.factoryAddress model.node.network)
                 AllowanceFetched
 
-        Nothing ->
+        _ ->
             Cmd.none
     )
 
@@ -80,14 +81,15 @@ update : Msg -> Model -> UpdateResult
 update msg prevModel =
     case msg of
         Refresh time ->
-            case prevModel.userInfo of
-                Just userInfo ->
+            case ( prevModel.userInfo, prevModel.node.network ) of
+                ( Just userInfo, Eth ethNetwork ) ->
                     let
                         cmd =
                             Contracts.Wrappers.getAllowanceCmd
                                 prevModel.node
+                                ethNetwork
                                 userInfo.address
-                                (factoryAddress prevModel.node.network)
+                                (Config.factoryAddress prevModel.node.network)
                                 AllowanceFetched
                     in
                     UpdateResult
@@ -99,13 +101,13 @@ update msg prevModel =
                 _ ->
                     justModelUpdate prevModel
 
-        ChangeType openMode ->
+        ChangeRole initiatingParty ->
             let
                 oldInputs =
                     prevModel.inputs
             in
             justModelUpdate
-                { prevModel | inputs = { oldInputs | openMode = openMode } }
+                { prevModel | inputs = { oldInputs | userRole = initiatingParty } }
 
         TradeAmountChanged newAmountStr ->
             let
@@ -234,81 +236,58 @@ update msg prevModel =
                         createParameters =
                             CTypes.buildCreateParameters userInfo userParameters
                     in
-                    UpdateResult
+                    justModelUpdate
                         { prevModel
                             | txChainStatus = Just <| Confirm createParameters
-                            , depositAmount = Nothing
+                            , depositAmount =
+                                Just <|
+                                    (CTypes.calculateFullInitialDeposit createParameters
+                                        |> TokenValue.getEvmValue
+                                    )
                         }
-                        (Contracts.Wrappers.getExtraFeesCmd
-                            prevModel.node
-                            (TokenValue.getBigInt createParameters.tradeAmount)
-                            (ExtraFeesFetched createParameters)
-                        )
-                        ChainCmd.none
-                        Nothing
 
                 Err inputErrors ->
                     justModelUpdate { prevModel | errors = inputErrors }
-
-        ExtraFeesFetched createParameters fetchResult ->
-            case fetchResult of
-                Ok fees ->
-                    let
-                        mainDepositAmount =
-                            case createParameters.openMode of
-                                CTypes.BuyerOpened ->
-                                    fees.buyerDeposit
-
-                                CTypes.SellerOpened ->
-                                    TokenValue.getBigInt createParameters.tradeAmount
-
-                        fullDepositAmount =
-                            mainDepositAmount
-                                |> BigInt.add fees.devFee
-                                |> BigInt.add (TokenValue.getBigInt createParameters.pokeReward)
-                    in
-                    justModelUpdate { prevModel | depositAmount = Just fullDepositAmount }
-
-                Err fetchErrStr ->
-                    let
-                        _ =
-                            Debug.log "Error fetching devFee: " fetchErrStr
-                    in
-                    justModelUpdate prevModel
 
         AbortCreate ->
             justModelUpdate { prevModel | txChainStatus = Nothing }
 
         ConfirmCreate createParameters fullDepositAmount ->
             let
-                approveChainCmd =
-                    let
-                        txParams =
-                            TokenContract.approve
-                                (daiAddress prevModel.node.network)
-                                (factoryAddress prevModel.node.network)
-                                fullDepositAmount
-                                |> Eth.toSend
-
-                        customSend =
-                            { onMined = Nothing
-                            , onSign = Just (ApproveSigned createParameters)
-                            , onBroadcast = Nothing
-                            }
-                    in
-                    ChainCmd.custom customSend txParams
-
                 ( txChainStatus, chainCmd ) =
-                    case prevModel.allowance of
-                        Just allowance ->
-                            if BigInt.compare allowance fullDepositAmount /= LT then
-                                initiateCreateCall prevModel.node.network createParameters
+                    case prevModel.node.network of
+                        XDai ->
+                            initiateCreateCall prevModel.node.network createParameters
 
-                            else
-                                ( Just ApproveNeedsSig, approveChainCmd )
+                        Eth ethNetwork ->
+                            let
+                                approveChainCmd =
+                                    let
+                                        txParams =
+                                            TokenContract.approve
+                                                (Config.daiContractAddress ethNetwork)
+                                                (Config.factoryAddress prevModel.node.network)
+                                                fullDepositAmount
+                                                |> Eth.toSend
 
-                        Nothing ->
-                            ( Just ApproveNeedsSig, approveChainCmd )
+                                        customSend =
+                                            { onMined = Nothing
+                                            , onSign = Just (ApproveSigned createParameters)
+                                            , onBroadcast = Nothing
+                                            }
+                                    in
+                                    ChainCmd.custom customSend txParams
+                            in
+                            case prevModel.allowance of
+                                Just allowance ->
+                                    if BigInt.compare allowance fullDepositAmount /= LT then
+                                        initiateCreateCall prevModel.node.network createParameters
+
+                                    else
+                                        ( Just ApproveNeedsSig, approveChainCmd )
+
+                                Nothing ->
+                                    ( Just ApproveNeedsSig, approveChainCmd )
             in
             { model = { prevModel | txChainStatus = txChainStatus }
             , cmd = Cmd.none
@@ -507,9 +486,9 @@ validateInputs : Inputs -> Result Errors CTypes.UserParameters
 validateInputs inputs =
     Result.map3
         (\daiAmount fiatAmount paymentMethods ->
-            { openMode = inputs.openMode
+            { initiatingParty = inputs.userRole
             , tradeAmount = daiAmount
-            , fiatPrice = { fiatType = inputs.fiatType, amount = fiatAmount }
+            , price = { fiatType = inputs.fiatType, amount = fiatAmount }
             , autorecallInterval = inputs.autorecallInterval
             , autoabortInterval = inputs.autoabortInterval
             , autoreleaseInterval = inputs.autoreleaseInterval
@@ -533,7 +512,7 @@ interpretDaiAmount input =
         Err "You must specify a trade amount."
 
     else
-        case TokenValue.fromString tokenDecimals input of
+        case TokenValue.fromString input of
             Nothing ->
                 Err "I don't understand this number."
 

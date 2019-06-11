@@ -12,8 +12,8 @@ import Element.Border
 import Element.Events
 import Element.Font
 import Element.Input
-import ElementHelpers as EH
 import FiatValue
+import Helpers.Element as EH
 import Landing.View
 import Marketplace.Types
 import Marketplace.View
@@ -83,67 +83,78 @@ headerContent maybeValidModel =
                 Failed _ ->
                     ( Nothing, Nothing )
     in
-    Element.el
+    Element.row
         [ Element.width Element.fill
+        , Element.spacing 30
+        , Element.paddingXY 30 17
         ]
-        (Element.row
-            [ Element.width Element.fill
-            , Element.spacing 30
-            , Element.paddingXY 0 9
-            ]
-            [ logoElement
-            , headerLink
-                "Marketplace"
-                (GotoRoute <| Routing.Marketplace)
-                (Maybe.map
-                    (\submodel ->
-                        case submodel of
-                            MarketplaceModel _ ->
-                                True
+        [ headerLink
+            "Buy Dai"
+            (GotoRoute <| Routing.Marketplace Buyer)
+            (Maybe.map
+                (\submodel ->
+                    case submodel of
+                        MarketplaceModel marketplaceModel ->
+                            marketplaceModel.browsingRole == Buyer
 
-                            _ ->
-                                False
-                    )
-                    maybeCurrentSubmodel
-                    |> Maybe.withDefault False
+                        _ ->
+                            False
                 )
-            , headerLink
-                "Create a New Offer"
-                (GotoRoute Routing.Create)
-                (Maybe.map
-                    (\submodel ->
-                        case submodel of
-                            CreateModel _ ->
-                                True
+                maybeCurrentSubmodel
+                |> Maybe.withDefault False
+            )
+        , headerLink
+            "Sell Dai"
+            (GotoRoute <| Routing.Marketplace Seller)
+            (Maybe.map
+                (\submodel ->
+                    case submodel of
+                        MarketplaceModel marketplaceModel ->
+                            marketplaceModel.browsingRole == Seller
 
-                            _ ->
-                                False
-                    )
-                    maybeCurrentSubmodel
-                    |> Maybe.withDefault False
+                        _ ->
+                            False
                 )
-            , case maybeUserInfo of
-                Just userInfo ->
-                    headerLink
-                        "My Trades"
-                        (GotoRoute <| Routing.AgentHistory userInfo.address Seller)
-                        (Maybe.map
-                            (\submodel ->
-                                case submodel of
-                                    AgentHistoryModel agentHistoryModel ->
-                                        agentHistoryModel.agentAddress == userInfo.address
+                maybeCurrentSubmodel
+                |> Maybe.withDefault False
+            )
+        , headerLink
+            "Create a New Offer"
+            (GotoRoute Routing.Create)
+            (Maybe.map
+                (\submodel ->
+                    case submodel of
+                        CreateModel _ ->
+                            True
 
-                                    _ ->
-                                        False
-                            )
-                            maybeCurrentSubmodel
-                            |> Maybe.withDefault False
+                        _ ->
+                            False
+                )
+                maybeCurrentSubmodel
+                |> Maybe.withDefault False
+            )
+        , case maybeUserInfo of
+            Just userInfo ->
+                headerLink
+                    "My Trades"
+                    (GotoRoute <| Routing.AgentHistory userInfo.address Seller)
+                    (Maybe.map
+                        (\submodel ->
+                            case submodel of
+                                AgentHistoryModel agentHistoryModel ->
+                                    agentHistoryModel.agentAddress == userInfo.address
+
+                                _ ->
+                                    False
                         )
+                        maybeCurrentSubmodel
+                        |> Maybe.withDefault False
+                    )
 
-                Nothing ->
-                    Element.none
-            ]
-        )
+            Nothing ->
+                Element.none
+        , Element.el [ Element.alignRight ] logoElement
+        ]
 
 
 headerLink : String -> Msg -> Bool -> Element Msg
@@ -152,7 +163,7 @@ headerLink title onClick selected =
         extraStyles =
             if selected then
                 [ Element.Border.rounded 4
-                , Element.Background.color <| Element.rgba255 0 177 255 0.63
+                , Element.Background.color <| Element.rgb255 244 0 103
                 ]
 
             else
@@ -160,7 +171,7 @@ headerLink title onClick selected =
     in
     Element.el
         ([ Element.paddingXY 23 12
-         , Element.Font.size 20
+         , Element.Font.size 22
          , Element.Font.semiBold
          , Element.Font.color EH.white
          , Element.pointer
@@ -174,14 +185,18 @@ headerLink title onClick selected =
 logoElement : Element Msg
 logoElement =
     Element.el
-        [ Element.Font.size 22
+        [ Element.paddingXY 8 0
+        , Element.Font.size 29
         , Element.Font.color EH.white
         , Element.Font.bold
         , Element.pointer
-        , Element.padding 20
         , Element.Events.onClick <| GotoRoute Routing.Home
         ]
-        (Element.text "DAI | HARD")
+        (Element.paragraph []
+            [ Element.text "DAI"
+            , Element.el [ Element.Font.color EH.red ] <| Element.text "Hard"
+            ]
+        )
 
 
 dropdownStyles : List (Attribute Msg)
@@ -220,7 +235,7 @@ subModelElement maybeValidModel =
             Running model ->
                 case model.submodel of
                     BetaLandingPage ->
-                        Landing.View.root (GotoRoute <| Routing.Marketplace)
+                        Landing.View.root (GotoRoute <| Routing.Marketplace Buyer)
 
                     CreateModel createModel ->
                         Element.map CreateMsg (Create.View.root createModel)

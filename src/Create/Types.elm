@@ -1,13 +1,12 @@
 module Create.Types exposing (Errors, Inputs, Model, Msg(..), TxChainStatus(..), UpdateResult, interpretMarginString, justModelUpdate, noErrors)
 
 import BigInt exposing (BigInt)
-import ChainCmd exposing (ChainCmd)
-import CommonTypes exposing (UserInfo)
-import Contracts.Generated.DAIHardFactory as DHF
+import CommonTypes exposing (..)
 import Contracts.Types as CTypes
 import Create.PMWizard.Types as PMWizard
 import Eth.Types exposing (Address, TxHash, TxReceipt)
-import EthHelpers exposing (EthNode)
+import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
+import Helpers.Eth as EthHelpers exposing (EthNode)
 import Http
 import PaymentMethods exposing (PaymentMethod)
 import Routing
@@ -31,7 +30,7 @@ type alias Model =
 
 type Msg
     = Refresh Time.Posix
-    | ChangeType CTypes.OpenMode
+    | ChangeRole BuyerOrSeller
     | TradeAmountChanged String
     | FiatTypeChanged String
     | FiatAmountChanged String
@@ -47,7 +46,6 @@ type Msg
     | AbortCreate
     | ConfirmCreate CTypes.CreateParameters BigInt
     | AllowanceFetched (Result Http.Error BigInt)
-    | ExtraFeesFetched CTypes.CreateParameters (Result Http.Error DHF.GetExtraFees)
     | ApproveSigned CTypes.CreateParameters (Result String TxHash)
     | CreateSigned (Result String TxHash)
     | CreateMined (Result String TxReceipt)
@@ -64,7 +62,7 @@ type TxChainStatus
 
 
 type alias Inputs =
-    { openMode : CTypes.OpenMode
+    { userRole : BuyerOrSeller
     , daiAmount : String
     , fiatType : String
     , fiatAmount : String

@@ -15,7 +15,7 @@ type Route
     = Home
     | Create
     | Trade Int
-    | Marketplace
+    | Marketplace BuyerOrSeller
     | AgentHistory Address BuyerOrSeller
     | NotFound
 
@@ -27,7 +27,7 @@ routeParser =
                 [ Url.Parser.map Home Url.Parser.top
                 , Url.Parser.map Create (Url.Parser.s "create")
                 , Url.Parser.map Trade (Url.Parser.s "trade" </> Url.Parser.int)
-                , Url.Parser.map Marketplace (Url.Parser.s "marketplace")
+                , Url.Parser.map Marketplace (Url.Parser.s "marketplace" </> buyerOrSellerParser)
                 , Url.Parser.map AgentHistory (Url.Parser.s "history" </> addressParser </> buyerOrSellerParser)
                 , Url.Parser.map (\address -> AgentHistory address Seller) (Url.Parser.s "history" </> addressParser)
                 ]
@@ -57,6 +57,16 @@ buyerOrSellerParser =
         )
 
 
+buyerOrSellerToString : BuyerOrSeller -> String
+buyerOrSellerToString buyerOrSeller =
+    case buyerOrSeller of
+        Buyer ->
+            "buyer"
+
+        Seller ->
+            "seller"
+
+
 urlToRoute : Url -> Route
 urlToRoute url =
     Maybe.withDefault NotFound (Url.Parser.parse routeParser url)
@@ -74,8 +84,8 @@ routeToString route =
         Trade id ->
             Url.Builder.absolute [ "DAIHard", "trade", String.fromInt id ] []
 
-        Marketplace ->
-            Url.Builder.absolute [ "DAIHard", "marketplace" ] []
+        Marketplace buyerOrSeller ->
+            Url.Builder.absolute [ "DAIHard", "marketplace", buyerOrSellerToString buyerOrSeller ] []
 
         AgentHistory address buyerOrSeller ->
             Url.Builder.absolute

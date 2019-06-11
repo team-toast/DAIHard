@@ -1,4 +1,4 @@
-module Trade.ChatHistory.SecureComm exposing (FullCommInfo, PartialCommInfo, SecureCommInfo(..), checkIfCommInfoLoaded, decodeDecryptionResult, decodeEncryptedMessage, decodeEncryptionResult, decodeSizedStringHelper, encodeDecryptionArgs, encodeEncryptedMessage, encodeEncryptionArgs, encodeSizedStrings, partialCommInfo, updateInitiatorPubkey, updateResponderPubkey)
+module Trade.ChatHistory.SecureComm exposing (FullCommInfo, PartialCommInfo, SecureCommInfo(..), checkIfCommInfoLoaded, decodeDecryptionResult, decodeEncryptedMessages, decodeEncryptionResult, decodeSizedStringHelper, encodeDecryptionArgs, encodeEncryptedMessages, encodeEncryptionArgs, encodeSizedStrings, partialCommInfo, updateInitiatorPubkey, updateResponderPubkey)
 
 import Array exposing (Array)
 import CommonTypes exposing (..)
@@ -133,10 +133,18 @@ decodeDecryptionResult value =
         |> Result.mapError Json.Decode.errorToString
 
 
-encodeEncryptedMessage : EncryptedMessage -> Result String String
-encodeEncryptedMessage encryptedMessage =
+encodeEncryptedMessages : ( EncryptedMessage, EncryptedMessage ) -> Result String String
+encodeEncryptedMessages ( encryptedForInitiator, encryptedForResponder ) =
     encodeSizedStrings
-        [ encryptedMessage.encapsulatedKey, encryptedMessage.iv, encryptedMessage.tag, encryptedMessage.message ]
+        [ encryptedForInitiator.encapsulatedKey
+        , encryptedForInitiator.iv
+        , encryptedForInitiator.tag
+        , encryptedForInitiator.message
+        , encryptedForResponder.encapsulatedKey
+        , encryptedForResponder.iv
+        , encryptedForResponder.tag
+        , encryptedForResponder.message
+        ]
 
 
 encodeSizedStrings : List String -> Result String String
@@ -161,19 +169,29 @@ encodeSizedStrings strings =
         |> Result.map (String.join "")
 
 
-decodeEncryptedMessage : String -> Maybe EncryptedMessage
-decodeEncryptedMessage encoded =
+decodeEncryptedMessages : String -> Maybe ( EncryptedMessage, EncryptedMessage )
+decodeEncryptedMessages encoded =
     let
         stringArray =
             decodeSizedStringHelper (String.toList encoded) []
                 |> Array.fromList
     in
-    Maybe.map4
-        EncryptedMessage
-        (Array.get 0 stringArray)
-        (Array.get 1 stringArray)
-        (Array.get 2 stringArray)
-        (Array.get 3 stringArray)
+    Maybe.map2
+        Tuple.pair
+        (Maybe.map4
+            EncryptedMessage
+            (Array.get 0 stringArray)
+            (Array.get 1 stringArray)
+            (Array.get 2 stringArray)
+            (Array.get 3 stringArray)
+        )
+        (Maybe.map4
+            EncryptedMessage
+            (Array.get 4 stringArray)
+            (Array.get 5 stringArray)
+            (Array.get 6 stringArray)
+            (Array.get 7 stringArray)
+        )
 
 
 decodeSizedStringHelper : List Char -> List String -> List String

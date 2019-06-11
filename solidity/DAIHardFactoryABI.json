@@ -2,34 +2,15 @@
     {
         "constant": true,
         "inputs": [],
-        "name": "getNumTrades",
+        "name": "founderFeeAddress",
         "outputs": [
             {
-                "name": "num",
-                "type": "uint256"
+                "name": "",
+                "type": "address"
             }
         ],
         "payable": false,
         "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "constant": true,
-        "inputs": [
-            {
-                "name": "tradeAmount",
-                "type": "uint256"
-            }
-        ],
-        "name": "getDevFee",
-        "outputs": [
-            {
-                "name": "devFee",
-                "type": "uint256"
-            }
-        ],
-        "payable": false,
-        "stateMutability": "pure",
         "type": "function"
     },
     {
@@ -50,23 +31,19 @@
         "constant": false,
         "inputs": [
             {
-                "name": "_initiator",
-                "type": "address"
+                "name": "addressArgs",
+                "type": "address[2]"
             },
             {
-                "name": "initiatorIsBuyer",
+                "name": "initiatorIsCustodian",
                 "type": "bool"
             },
             {
                 "name": "uintArgs",
-                "type": "uint256[5]"
+                "type": "uint256[8]"
             },
             {
-                "name": "_totalPrice",
-                "type": "string"
-            },
-            {
-                "name": "_fiatTransferMethods",
+                "name": "terms",
                 "type": "string"
             },
             {
@@ -74,7 +51,46 @@
                 "type": "string"
             }
         ],
-        "name": "openDAIHardTrade",
+        "name": "createOpenTrade",
+        "outputs": [
+            {
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "constant": false,
+        "inputs": [
+            {
+                "name": "addressArgs",
+                "type": "address[3]"
+            },
+            {
+                "name": "initiatorIsCustodian",
+                "type": "bool"
+            },
+            {
+                "name": "uintArgs",
+                "type": "uint256[7]"
+            },
+            {
+                "name": "_terms",
+                "type": "string"
+            },
+            {
+                "name": "_initiatorCommPubkey",
+                "type": "string"
+            },
+            {
+                "name": "_responderCommPubkey",
+                "type": "string"
+            }
+        ],
+        "name": "createCommittedTrade",
         "outputs": [
             {
                 "name": "",
@@ -93,14 +109,10 @@
                 "type": "uint256"
             }
         ],
-        "name": "getExtraFees",
+        "name": "getFounderFee",
         "outputs": [
             {
-                "name": "buyerDeposit",
-                "type": "uint256"
-            },
-            {
-                "name": "devFee",
+                "name": "founderFee",
                 "type": "uint256"
             }
         ],
@@ -111,34 +123,15 @@
     {
         "constant": true,
         "inputs": [],
-        "name": "devFeeAddress",
+        "name": "numTrades",
         "outputs": [
             {
-                "name": "",
-                "type": "address"
+                "name": "num",
+                "type": "uint256"
             }
         ],
         "payable": false,
         "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "constant": true,
-        "inputs": [
-            {
-                "name": "tradeAmount",
-                "type": "uint256"
-            }
-        ],
-        "name": "getBuyerDeposit",
-        "outputs": [
-            {
-                "name": "buyerDeposit",
-                "type": "uint256"
-            }
-        ],
-        "payable": false,
-        "stateMutability": "pure",
         "type": "function"
     },
     {
@@ -171,7 +164,7 @@
                 "type": "address"
             },
             {
-                "name": "_devFeeAddress",
+                "name": "_founderFeeAddress",
                 "type": "address"
             }
         ],
@@ -194,7 +187,7 @@
             },
             {
                 "indexed": true,
-                "name": "initiatorIsPayer",
+                "name": "initiatorIsCustodian",
                 "type": "bool"
             }
         ],

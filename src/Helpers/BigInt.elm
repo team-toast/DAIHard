@@ -1,4 +1,4 @@
-module BigIntHelpers exposing (decoder, encode, toInt, toIntWithWarning, toStringWithCommas)
+module Helpers.BigInt exposing (decoder, encode, toInt, toIntWithWarning, toStringWithCommas)
 
 import BigInt exposing (BigInt)
 import Json.Decode

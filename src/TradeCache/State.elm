@@ -2,12 +2,12 @@ module TradeCache.State exposing (init, initAndStartCaching, loadedTrades, start
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
-import BigIntHelpers
 import Contracts.Types as CTypes
 import Contracts.Wrappers
 import Dict exposing (Dict)
 import Eth.Sentry.Event as EventSentry
-import EthHelpers
+import Helpers.BigInt as BigIntHelpers
+import Helpers.Eth as EthHelpers
 import PaymentMethods exposing (PaymentMethod)
 import Time
 import TradeCache.Types exposing (..)
@@ -164,7 +164,7 @@ update msg prevModel =
                                 |> updateTradeCreationInfo id creationInfo
 
                         ( newSentry, sentryCmd ) =
-                            Contracts.Wrappers.getOpenedEventDataSentryCmd prevModel.eventSentry creationInfo (OpenedEventDataFetched id)
+                            Contracts.Wrappers.getInitiatedEventDataSentryCmd prevModel.eventSentry creationInfo (InitiatedEventDataFetched id)
 
                         cmd =
                             Cmd.batch
@@ -225,14 +225,14 @@ update msg prevModel =
                     in
                     ( prevModel, Cmd.none )
 
-        OpenedEventDataFetched id fetchResult ->
+        InitiatedEventDataFetched id fetchResult ->
             case fetchResult of
-                Ok openedEventData ->
+                Ok initiatedEventData ->
                     let
                         newModel =
-                            case PaymentMethods.decodePaymentMethodList openedEventData.fiatTransferMethods of
-                                Ok paymentMethods ->
-                                    prevModel |> updateTradePaymentMethods id paymentMethods
+                            case CTypes.decodeTerms initiatedEventData.terms of
+                                Ok terms ->
+                                    prevModel |> updateTradeTerms id terms
 
                                 Err e ->
                                     let
@@ -397,13 +397,13 @@ updateTradePhaseStartInfo id phaseStartInfo tradeCache =
             tradeCache
 
 
-updateTradePaymentMethods : Int -> List PaymentMethod -> TradeCache -> TradeCache
-updateTradePaymentMethods id methods tradeCache =
+updateTradeTerms : Int -> CTypes.Terms -> TradeCache -> TradeCache
+updateTradeTerms id terms tradeCache =
     case Array.get id tradeCache.trades of
         Just trade ->
             let
                 newTrade =
-                    CTypes.updatePaymentMethods methods trade
+                    CTypes.updateTerms terms trade
 
                 newTradeArray =
                     Array.set id
