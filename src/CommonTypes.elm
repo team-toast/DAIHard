@@ -8,6 +8,8 @@ import Json.Encode
 type Network
     = Eth EthNetwork
     | XDai
+    | Rootstock
+    | RootstockTest
 
 
 type EthNetwork

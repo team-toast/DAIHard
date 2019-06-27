@@ -21,7 +21,7 @@ import TradeCache.Types as TradeCache exposing (TradeCache)
 
 
 type alias Model =
-    { ethNode : EthNode
+    { node : EthNode
     , agentAddress : Address
     , agentRole : BuyerOrSeller
     , userInfo : Maybe UserInfo

@@ -1,4 +1,4 @@
-module Helpers.Eth exposing (EthNode, addressIfNot0x0, ethNode, getLogAt, intToNetwork, logBadFetchResultMaybe, makeViewAddressUrl, makeViewTxUrl, updateCallValue)
+module Helpers.Eth exposing (EthNode, addressIfNot0x0, ethNode, getLogAt, intToNetwork, logBadFetchResultMaybe, makeViewAddressUrl, makeViewTxUrl, networkIdToNetwork, updateCallValue)
 
 import Array
 import BigInt exposing (BigInt)
@@ -17,21 +17,35 @@ type alias EthNode =
     }
 
 
-intToNetwork : Int -> Maybe Network
-intToNetwork i =
-    case Net.toNetworkId i of
+networkIdToNetwork : Net.NetworkId -> Maybe Network
+networkIdToNetwork networkId =
+    case networkId of
         Net.Mainnet ->
             Just <| Eth Mainnet
 
         Net.Kovan ->
             Just <| Eth Kovan
 
-        _ ->
-            if i == 100 then
-                Just XDai
+        Net.RskMain ->
+            Just Rootstock
 
-            else
-                Nothing
+        Net.RskTest ->
+            Just RootstockTest
+
+        Net.Private 100 ->
+            Just XDai
+
+        _ ->
+            let
+                _ =
+                    Debug.log "unknown network" networkId
+            in
+            Nothing
+
+
+intToNetwork : Int -> Maybe Network
+intToNetwork =
+    Net.toNetworkId >> networkIdToNetwork
 
 
 ethNode : Network -> EthNode
@@ -53,6 +67,18 @@ ethNode network =
             EthNode
                 network
                 "https://dai.poa.network"
+                ""
+
+        Rootstock ->
+            EthNode
+                network
+                "https://public-node.rsk.co/"
+                ""
+
+        RootstockTest ->
+            EthNode
+                network
+                "https://public-node.testnet.rsk.co/"
                 ""
 
 
@@ -96,6 +122,12 @@ makeViewTxUrl network txHash =
         XDai ->
             "https://blockscout.com/poa/dai/tx/" ++ Eth.Utils.txHashToString txHash
 
+        Rootstock ->
+            "https://explorer.rsk.co/tx/" ++ Eth.Utils.txHashToString txHash
+
+        RootstockTest ->
+            ""
+
 
 makeViewAddressUrl : Network -> Address -> String
 makeViewAddressUrl network address =
@@ -108,6 +140,12 @@ makeViewAddressUrl network address =
 
         XDai ->
             "https://blockscout.com/poa/dai/address/" ++ Eth.Utils.addressToString address
+
+        Rootstock ->
+            "https://explorer.rsk.co/address/" ++ Eth.Utils.addressToString address
+
+        RootstockTest ->
+            ""
 
 
 updateCallValue : BigInt -> Eth.Types.Call a -> Eth.Types.Call a

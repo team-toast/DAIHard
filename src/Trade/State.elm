@@ -33,7 +33,7 @@ import Trade.ChatHistory.Types as ChatHistory
 import Trade.Types exposing (..)
 
 
-init : EthHelpers.EthNode -> Maybe UserInfo -> Int -> ( Model, Cmd Msg, ChainCmd Msg )
+init : EthHelpers.EthNode -> Maybe UserInfo -> Int -> ( Model, Cmd Msg )
 init node userInfo tradeId =
     let
         getCreationInfoCmd =
@@ -56,7 +56,6 @@ init node userInfo tradeId =
       , txChainStatus = Nothing
       }
     , Cmd.batch [ getCreationInfoCmd, eventSentryCmd ]
-    , ChainCmd.none
     )
 
 

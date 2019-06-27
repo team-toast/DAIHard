@@ -1,4 +1,4 @@
-module Create.State exposing (init, subscriptions, update, updateUserInfo)
+module Create.State exposing (init, subscriptions, update, updateNode, updateUserInfo)
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -75,6 +75,11 @@ updateUserInfo userInfo model =
         _ ->
             Cmd.none
     )
+
+
+updateNode : EthHelpers.EthNode -> Model -> Model
+updateNode newNode model =
+    { model | node = newNode }
 
 
 update : Msg -> Model -> UpdateResult

@@ -1,4 +1,4 @@
-module Marketplace.State exposing (init, subscriptions, update, updateUserInfo)
+module Marketplace.State exposing (init, subscriptions, update, updateNode, updateUserInfo)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
@@ -25,7 +25,7 @@ import TradeCache.Types as TradeCache exposing (TradeCache)
 
 init : EthHelpers.EthNode -> BuyerOrSeller -> Maybe UserInfo -> ( Model, Cmd Msg )
 init ethNode browsingRole maybeUserInfo =
-    ( { ethNode = ethNode
+    ( { node = ethNode
       , userInfo = maybeUserInfo
       , browsingRole = browsingRole
       , inputs = initialInputs
@@ -431,6 +431,11 @@ noUpdate model =
 updateUserInfo : Maybe UserInfo -> Model -> Model
 updateUserInfo userInfo model =
     { model | userInfo = userInfo }
+
+
+updateNode : EthHelpers.EthNode -> Model -> Model
+updateNode newNode model =
+    { model | node = newNode }
 
 
 subscriptions : Model -> Sub Msg

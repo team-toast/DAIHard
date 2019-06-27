@@ -5,7 +5,7 @@ import BigInt
 import Browser
 import Browser.Dom
 import Browser.Navigation
-import CommonTypes exposing (UserInfo)
+import CommonTypes exposing (..)
 import Config
 import Create.State
 import Eth.Net
@@ -37,7 +37,7 @@ init flags url key =
     else
         case EthHelpers.intToNetwork flags.networkId of
             Nothing ->
-                ( Failed "Your provider (Metamask?) is set to an unsupported network. Switch to Kovan refresh."
+                ( Failed "Your provider (Metamask?) is set to an unsupported network. Switch to Kovan, Mainnet, or XDAI and refresh."
                 , Cmd.none
                 )
 
@@ -117,20 +117,73 @@ updateValidModel msg model =
             ( Running { model | time = newTime }, Cmd.none )
 
         WalletStatus walletSentry ->
-            ( Running
-                { model
-                    | userAddress = walletSentry.account
-                }
-            , case walletSentry.account of
+            case EthHelpers.networkIdToNetwork walletSentry.networkId of
                 Nothing ->
-                    Cmd.none
+                    ( Failed "Your provider (Metamask?) is set to an unsupported network. Switch to Kovan, Mainnet, or XDAI and refresh."
+                    , Cmd.none
+                    )
 
-                Just address ->
-                    genPrivkey <|
-                        encodeGenPrivkeyArgs
-                            address
-                            "Deriving keypair for encrypted communication on the DAIHard exchange. ONLY SIGN THIS on https://burnable-tech.github.io/DAIHard/. If you sign this elsewhere, you risk revealing any of your encrypted communication on DAIHard to an attacker."
-            )
+                Just newNetwork ->
+                    let
+                        oldNode =
+                            model.node
+
+                        ( newModel, cmdFromSubmodel, maybewNewRoute ) =
+                            if oldNode.network == newNetwork then
+                                ( { model
+                                    | userAddress = walletSentry.account
+                                  }
+                                , Cmd.none
+                                , Nothing
+                                )
+
+                            else
+                                let
+                                    newNode =
+                                        { oldNode | network = newNetwork }
+
+                                    ( submodel, updateNodeCmd, maybeRoute ) =
+                                        model.submodel |> updateSubmodelNode newNode
+
+                                    ( newTradeCache, tradeCacheCmd ) =
+                                        TradeCache.initAndStartCaching newNode
+                                in
+                                ( { model
+                                    | userAddress = walletSentry.account
+                                    , submodel = submodel
+                                    , tradeCache = newTradeCache
+                                    , node = newNode
+                                  }
+                                , Cmd.batch
+                                    [ updateNodeCmd
+                                    , Cmd.map TradeCacheMsg tradeCacheCmd
+                                    ]
+                                , maybeRoute
+                                )
+
+                        cmdFromNewAccount =
+                            case walletSentry.account of
+                                Nothing ->
+                                    Cmd.none
+
+                                Just address ->
+                                    genPrivkey <|
+                                        encodeGenPrivkeyArgs
+                                            address
+                                            "Deriving keypair for encrypted communication on the DAIHard exchange. ONLY SIGN THIS on https://burnable-tech.github.io/DAIHard/. If you sign this elsewhere, you risk revealing any of your encrypted communication on DAIHard to an attacker."
+                    in
+                    ( Running
+                        newModel
+                    , Cmd.batch
+                        [ cmdFromNewAccount
+                        , case maybewNewRoute of
+                            Just route ->
+                                beginRouteChange model.key route
+
+                            Nothing ->
+                                cmdFromSubmodel
+                        ]
+                    )
 
         UserPubkeySet commPubkeyValue ->
             case Json.Decode.decodeValue Json.Decode.string commPubkeyValue of
@@ -362,21 +415,14 @@ gotoRoute oldModel route =
 
         Routing.Trade id ->
             let
-                ( tradeModel, tradeCmd, chainCmdOrder ) =
+                ( tradeModel, tradeCmd ) =
                     Trade.State.init oldModel.node oldModel.userInfo id
-
-                ( newTxSentry, chainCmd ) =
-                    ChainCmd.execute oldModel.txSentry (ChainCmd.map TradeMsg chainCmdOrder)
             in
             ( Running
                 { oldModel
                     | submodel = TradeModel tradeModel
-                    , txSentry = newTxSentry
                 }
-            , Cmd.batch
-                [ Cmd.map TradeMsg tradeCmd
-                , chainCmd
-                ]
+            , Cmd.map TradeMsg tradeCmd
             )
 
         Routing.Marketplace browsingRole ->
@@ -445,6 +491,39 @@ updateSubmodelUserInfo userInfo submodel =
         AgentHistoryModel agentHistoryModel ->
             ( AgentHistoryModel (agentHistoryModel |> AgentHistory.State.updateUserInfo userInfo)
             , Cmd.none
+            )
+
+
+updateSubmodelNode : EthHelpers.EthNode -> Submodel -> ( Submodel, Cmd Msg, Maybe Routing.Route )
+updateSubmodelNode newNode submodel =
+    case submodel of
+        BetaLandingPage ->
+            ( submodel, Cmd.none, Nothing )
+
+        CreateModel createModel ->
+            ( CreateModel (createModel |> Create.State.updateNode newNode)
+            , Cmd.none
+            , Nothing
+            )
+
+        TradeModel tradeModel ->
+            -- Doesn't make sense to look at the same trade on a new network
+            -- so just redirect to marketplace
+            ( submodel
+            , Cmd.none
+            , Just <| Routing.Marketplace Buyer
+            )
+
+        MarketplaceModel marketplaceModel ->
+            ( MarketplaceModel (marketplaceModel |> Marketplace.State.updateNode newNode)
+            , Cmd.none
+            , Nothing
+            )
+
+        AgentHistoryModel agentHistoryModel ->
+            ( AgentHistoryModel (agentHistoryModel |> AgentHistory.State.updateNode newNode)
+            , Cmd.none
+            , Nothing
             )
 
 

@@ -1,4 +1,4 @@
-module AgentHistory.State exposing (init, subscriptions, update, updateUserInfo)
+module AgentHistory.State exposing (init, subscriptions, update, updateNode, updateUserInfo)
 
 import AgentHistory.Types exposing (..)
 import Array exposing (Array)
@@ -28,7 +28,7 @@ import TradeCache.Types as TradeCache exposing (TradeCache)
 
 init : EthHelpers.EthNode -> Address -> BuyerOrSeller -> Maybe UserInfo -> ( Model, Cmd Msg )
 init ethNode agentAddress agentRole maybeUserInfo =
-    ( { ethNode = ethNode
+    ( { node = ethNode
       , agentAddress = agentAddress
       , agentRole = agentRole
       , userInfo = maybeUserInfo
@@ -102,6 +102,11 @@ noUpdate model =
 updateUserInfo : Maybe UserInfo -> Model -> Model
 updateUserInfo userInfo model =
     { model | userInfo = userInfo }
+
+
+updateNode : EthHelpers.EthNode -> Model -> Model
+updateNode newNode model =
+    { model | node = newNode }
 
 
 subscriptions : Model -> Sub Msg
