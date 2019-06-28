@@ -9,7 +9,7 @@ import Create.Types
 import Eth.Sentry.Tx as TxSentry exposing (TxSentry)
 import Eth.Sentry.Wallet as WalletSentry exposing (WalletSentry)
 import Eth.Types exposing (Address)
-import Helpers.Eth as EthHelpers exposing (EthNode)
+import Helpers.Eth as EthHelpers exposing (Web3Context)
 import Json.Decode
 import Marketplace.Types
 import Routing
@@ -34,7 +34,7 @@ type Model
 type alias ValidModel =
     { key : Browser.Navigation.Key
     , time : Time.Posix
-    , node : EthNode
+    , web3Context : Web3Context
     , txSentry : TxSentry Msg
     , userAddress : Maybe Address
     , userInfo : Maybe UserInfo

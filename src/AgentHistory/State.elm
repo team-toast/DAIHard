@@ -1,4 +1,4 @@
-module AgentHistory.State exposing (init, subscriptions, update, updateNode, updateUserInfo)
+module AgentHistory.State exposing (init, subscriptions, update, updateWeb3Context, updateUserInfo)
 
 import AgentHistory.Types exposing (..)
 import Array exposing (Array)
@@ -26,9 +26,9 @@ import TradeCache.State as TradeCache
 import TradeCache.Types as TradeCache exposing (TradeCache)
 
 
-init : EthHelpers.EthNode -> Address -> BuyerOrSeller -> Maybe UserInfo -> ( Model, Cmd Msg )
-init ethNode agentAddress agentRole maybeUserInfo =
-    ( { node = ethNode
+init : EthHelpers.Web3Context -> Address -> BuyerOrSeller -> Maybe UserInfo -> ( Model, Cmd Msg )
+init web3Context agentAddress agentRole maybeUserInfo =
+    ( { web3Context = web3Context
       , agentAddress = agentAddress
       , agentRole = agentRole
       , userInfo = maybeUserInfo
@@ -104,9 +104,9 @@ updateUserInfo userInfo model =
     { model | userInfo = userInfo }
 
 
-updateNode : EthHelpers.EthNode -> Model -> Model
-updateNode newNode model =
-    { model | node = newNode }
+updateWeb3Context : EthHelpers.Web3Context -> Model -> Model
+updateWeb3Context newWeb3Context model =
+    { model | web3Context = newWeb3Context }
 
 
 subscriptions : Model -> Sub Msg

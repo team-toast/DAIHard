@@ -1071,11 +1071,11 @@ maybeErrorElement attributes maybeError =
                 )
 
 
-etherscanAddressLink : List (Attribute msg) -> Network -> Address -> Element msg
-etherscanAddressLink attributes network address =
+etherscanAddressLink : List (Attribute msg) -> FactoryType -> Address -> Element msg
+etherscanAddressLink attributes factoryType address =
     Element.newTabLink
         attributes
-        { url = EthHelpers.makeViewAddressUrl network address
+        { url = EthHelpers.makeViewAddressUrl factoryType address
         , label = Element.text <| Eth.Utils.addressToString address
         }
 

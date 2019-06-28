@@ -27,7 +27,7 @@ import Trade.ChatHistory.Types as ChatHistory
 
 
 type alias Model =
-    { node : EthHelpers.EthNode
+    { web3Context : EthHelpers.Web3Context
     , userInfo : Maybe UserInfo
     , trade : CTypes.Trade
     , expandedPhase : CTypes.Phase

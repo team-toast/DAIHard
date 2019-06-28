@@ -18,7 +18,7 @@ import Eth.Types exposing (Address)
 import Eth.Utils
 import FiatValue exposing (FiatValue)
 import Helpers.Element as EH
-import Helpers.Eth as EthHelpers exposing (EthNode)
+import Helpers.Eth as EthHelpers exposing (Web3Context)
 import Helpers.Time as TimeHelpers
 import Images exposing (Image)
 import Margin
@@ -41,7 +41,7 @@ root time tradeCache model =
                 , Element.inFront <| chatOverlayElement model
                 , Element.inFront <| getModalOrNone model
                 ]
-                [ header time tradeInfo model.userInfo model.node.network tradeCache model.showStatsModal
+                [ header time tradeInfo model.userInfo model.web3Context.factoryType tradeCache model.showStatsModal
                 , Element.column
                     [ Element.width Element.fill
                     , Element.paddingXY 40 0
@@ -61,10 +61,10 @@ root time tradeCache model =
                 (Element.text "Loading contract info...")
 
 
-header : Time.Posix -> FullTradeInfo -> Maybe UserInfo -> Network -> TradeCache -> Bool -> Element Msg
-header currentTime trade maybeUserInfo network tradeCache showStatsModal =
+header : Time.Posix -> FullTradeInfo -> Maybe UserInfo -> FactoryType -> TradeCache -> Bool -> Element Msg
+header currentTime trade maybeUserInfo factoryType tradeCache showStatsModal =
     EH.niceFloatingRow
-        [ tradeStatusElement trade network
+        [ tradeStatusElement trade factoryType
         , daiAmountElement trade maybeUserInfo
         , fiatElement trade
         , marginElement trade maybeUserInfo
@@ -83,8 +83,8 @@ header currentTime trade maybeUserInfo network tradeCache showStatsModal =
         ]
 
 
-tradeStatusElement : FullTradeInfo -> Network -> Element Msg
-tradeStatusElement trade network =
+tradeStatusElement : FullTradeInfo -> FactoryType -> Element Msg
+tradeStatusElement trade factoryType =
     EH.withHeader
         "Trade Status"
         (Element.column
@@ -116,7 +116,7 @@ tradeStatusElement trade network =
                 , Element.Font.color EH.blue
                 , Element.Font.underline
                 ]
-                network
+                factoryType
                 trade.creationInfo.address
             ]
         )
@@ -1282,11 +1282,11 @@ getModalOrNone model =
                                ]
                                 ++ agreeToWhatTextList
                              ]
-                                ++ (case model.node.network of
-                                        Eth _ ->
+                                ++ (case model.web3Context.factoryType of
+                                        Token _ ->
                                             [ [ Element.text <| "(This ususally requires two Metamask signatures. Your DAI will not be deposited until the second transaction has been mined.)" ] ]
 
-                                        XDai ->
+                                        _ ->
                                             []
                                    )
                             )
@@ -1311,7 +1311,7 @@ getModalOrNone model =
             EH.txProcessModal
                 [ Element.text "Mining the initial approve transaction..."
                 , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                    { url = EthHelpers.makeViewTxUrl model.node.network txHash
+                    { url = EthHelpers.makeViewTxUrl model.web3Context.factoryType txHash
                     , label = Element.text "See the transaction on Etherscan"
                     }
                 , Element.text "Funds will not be sent until you sign the next transaction."
@@ -1328,7 +1328,7 @@ getModalOrNone model =
             EH.txProcessModal
                 [ Element.text "Mining the final commit transaction..."
                 , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                    { url = EthHelpers.makeViewTxUrl model.node.network txHash
+                    { url = EthHelpers.makeViewTxUrl model.web3Context.factoryType txHash
                     , label = Element.text "See the transaction"
                     }
                 ]

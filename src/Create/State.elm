@@ -1,4 +1,4 @@
-module Create.State exposing (init, subscriptions, update, updateNode, updateUserInfo)
+module Create.State exposing (init, subscriptions, update, updateUserInfo, updateWeb3Context)
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -24,11 +24,11 @@ import Time
 import TokenValue exposing (TokenValue)
 
 
-init : EthHelpers.EthNode -> Maybe UserInfo -> ( Model, Cmd Msg, ChainCmd Msg )
-init node userInfo =
+init : EthHelpers.Web3Context -> Maybe UserInfo -> ( Model, Cmd Msg, ChainCmd Msg )
+init web3Context userInfo =
     let
         model =
-            { node = node
+            { web3Context = web3Context
             , userInfo = userInfo
             , inputs = initialInputs
             , errors = noErrors
@@ -63,13 +63,13 @@ updateUserInfo : Maybe UserInfo -> Model -> ( Model, Cmd Msg )
 updateUserInfo userInfo model =
     ( { model | userInfo = userInfo }
         |> updateInputs model.inputs
-    , case ( userInfo, model.node.network ) of
-        ( Just uInfo, Eth ethNetwork ) ->
+    , case ( userInfo, model.web3Context.factoryType ) of
+        ( Just uInfo, Token tokenType ) ->
             Contracts.Wrappers.getAllowanceCmd
-                model.node
-                ethNetwork
+                model.web3Context
+                tokenType
                 uInfo.address
-                (Config.factoryAddress model.node.network)
+                (Config.factoryAddress model.web3Context.factoryType)
                 AllowanceFetched
 
         _ ->
@@ -77,24 +77,24 @@ updateUserInfo userInfo model =
     )
 
 
-updateNode : EthHelpers.EthNode -> Model -> Model
-updateNode newNode model =
-    { model | node = newNode }
+updateWeb3Context : EthHelpers.Web3Context -> Model -> Model
+updateWeb3Context newWeb3Context model =
+    { model | web3Context = newWeb3Context }
 
 
 update : Msg -> Model -> UpdateResult
 update msg prevModel =
     case msg of
         Refresh time ->
-            case ( prevModel.userInfo, prevModel.node.network ) of
-                ( Just userInfo, Eth ethNetwork ) ->
+            case ( prevModel.userInfo, prevModel.web3Context.factoryType ) of
+                ( Just userInfo, Token tokenType ) ->
                     let
                         cmd =
                             Contracts.Wrappers.getAllowanceCmd
-                                prevModel.node
-                                ethNetwork
+                                prevModel.web3Context
+                                tokenType
                                 userInfo.address
-                                (Config.factoryAddress prevModel.node.network)
+                                (Config.factoryAddress prevModel.web3Context.factoryType)
                                 AllowanceFetched
                     in
                     UpdateResult
@@ -260,18 +260,18 @@ update msg prevModel =
         ConfirmCreate createParameters fullDepositAmount ->
             let
                 ( txChainStatus, chainCmd ) =
-                    case prevModel.node.network of
-                        XDai ->
-                            initiateCreateCall prevModel.node.network createParameters
+                    case prevModel.web3Context.factoryType of
+                        Native _ ->
+                            initiateCreateCall prevModel.web3Context.factoryType createParameters
 
-                        Eth ethNetwork ->
+                        Token tokenType ->
                             let
                                 approveChainCmd =
                                     let
                                         txParams =
                                             TokenContract.approve
-                                                (Config.daiContractAddress ethNetwork)
-                                                (Config.factoryAddress prevModel.node.network)
+                                                (Config.tokenContractAddress tokenType)
+                                                (Config.factoryAddress prevModel.web3Context.factoryType)
                                                 fullDepositAmount
                                                 |> Eth.toSend
 
@@ -286,7 +286,7 @@ update msg prevModel =
                             case prevModel.allowance of
                                 Just allowance ->
                                     if BigInt.compare allowance fullDepositAmount /= LT then
-                                        initiateCreateCall prevModel.node.network createParameters
+                                        initiateCreateCall prevModel.web3Context.factoryType createParameters
 
                                     else
                                         ( Just ApproveNeedsSig, approveChainCmd )
@@ -326,7 +326,7 @@ update msg prevModel =
                             if BigInt.compare allowance depositAmount /= LT then
                                 let
                                     ( txChainStatus, chainCmd ) =
-                                        initiateCreateCall newModel.node.network createParameters
+                                        initiateCreateCall newModel.web3Context.factoryType createParameters
                                 in
                                 UpdateResult
                                     { newModel | txChainStatus = txChainStatus }
@@ -369,7 +369,7 @@ update msg prevModel =
         CreateMined (Ok txReceipt) ->
             let
                 maybeId =
-                    CTypes.txReceiptToCreatedTradeSellId prevModel.node.network txReceipt
+                    CTypes.txReceiptToCreatedTradeSellId prevModel.web3Context.factoryType txReceipt
                         |> Result.toMaybe
                         |> Maybe.andThen BigIntHelpers.toInt
             in
@@ -431,12 +431,12 @@ update msg prevModel =
             justModelUpdate prevModel
 
 
-initiateCreateCall : Network -> CTypes.CreateParameters -> ( Maybe TxChainStatus, ChainCmd Msg )
-initiateCreateCall network parameters =
+initiateCreateCall : FactoryType -> CTypes.CreateParameters -> ( Maybe TxChainStatus, ChainCmd Msg )
+initiateCreateCall factoryType parameters =
     let
         txParams =
             Contracts.Wrappers.openTrade
-                network
+                factoryType
                 parameters
                 |> Eth.toSend
 

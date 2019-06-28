@@ -508,13 +508,13 @@ eventSigDecoder =
     Json.Decode.field "topics" (Json.Decode.index 0 Eth.Decode.hex)
 
 
-txReceiptToCreatedTradeSellId : Network -> Eth.Types.TxReceipt -> Result String BigInt
-txReceiptToCreatedTradeSellId network txReceipt =
+txReceiptToCreatedTradeSellId : FactoryType -> Eth.Types.TxReceipt -> Result String BigInt
+txReceiptToCreatedTradeSellId factoryType txReceipt =
     txReceipt.logs
         |> List.filter
             (\log ->
                 (Eth.Utils.addressToString >> String.toLower) log.address
-                    == (Eth.Utils.addressToString >> String.toLower) (Config.factoryAddress network)
+                    == (Eth.Utils.addressToString >> String.toLower) (Config.factoryAddress factoryType)
             )
         |> List.head
         |> Result.fromMaybe "No log found from that factoryAddress in that txReceipt"

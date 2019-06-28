@@ -9,7 +9,7 @@ import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
 import FiatValue exposing (FiatValue)
 import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
-import Helpers.Eth as EthHelpers exposing (EthNode)
+import Helpers.Eth as EthHelpers exposing (Web3Context)
 import Http
 import Json.Decode
 import PaymentMethods exposing (PaymentMethod)
@@ -21,7 +21,7 @@ import TradeCache.Types as TradeCache exposing (TradeCache)
 
 
 type alias Model =
-    { node : EthNode
+    { web3Context : Web3Context
     , agentAddress : Address
     , agentRole : BuyerOrSeller
     , userInfo : Maybe UserInfo

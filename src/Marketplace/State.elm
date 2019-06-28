@@ -1,4 +1,4 @@
-module Marketplace.State exposing (init, subscriptions, update, updateNode, updateUserInfo)
+module Marketplace.State exposing (init, subscriptions, update, updateWeb3Context, updateUserInfo)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
@@ -23,9 +23,9 @@ import TradeCache.State as TradeCache
 import TradeCache.Types as TradeCache exposing (TradeCache)
 
 
-init : EthHelpers.EthNode -> BuyerOrSeller -> Maybe UserInfo -> ( Model, Cmd Msg )
-init ethNode browsingRole maybeUserInfo =
-    ( { node = ethNode
+init : EthHelpers.Web3Context -> BuyerOrSeller -> Maybe UserInfo -> ( Model, Cmd Msg )
+init web3Context browsingRole maybeUserInfo =
+    ( { web3Context = web3Context
       , userInfo = maybeUserInfo
       , browsingRole = browsingRole
       , inputs = initialInputs
@@ -69,7 +69,7 @@ update msg model =
         --                                     address =
         --                                         info.creationInfo.address
         --                                 in
-        --                                 Contracts.Wrappers.getStateCmd model.ethNode address (StateFetched id)
+        --                                 Contracts.Wrappers.getStateCmd model.web3Context address (StateFetched id)
         --                     )
         --                 |> Cmd.batch
         --     in
@@ -433,9 +433,9 @@ updateUserInfo userInfo model =
     { model | userInfo = userInfo }
 
 
-updateNode : EthHelpers.EthNode -> Model -> Model
-updateNode newNode model =
-    { model | node = newNode }
+updateWeb3Context : EthHelpers.Web3Context -> Model -> Model
+updateWeb3Context newWeb3Context model =
+    { model | web3Context = newWeb3Context }
 
 
 subscriptions : Model -> Sub Msg

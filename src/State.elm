@@ -14,7 +14,7 @@ import Eth.Sentry.Wallet as WalletSentry exposing (WalletSentry)
 import Eth.Types exposing (Address)
 import Eth.Utils
 import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
-import Helpers.Eth as EthHelpers exposing (EthNode)
+import Helpers.Eth as EthHelpers exposing (Web3Context)
 import Json.Decode
 import Json.Encode
 import Marketplace.State
@@ -35,27 +35,27 @@ init flags url key =
         )
 
     else
-        case EthHelpers.intToNetwork flags.networkId of
+        case EthHelpers.intToFactoryType flags.networkId of
             Nothing ->
                 ( Failed "Your provider (Metamask?) is set to an unsupported network. Switch to Kovan, Mainnet, or XDAI and refresh."
                 , Cmd.none
                 )
 
-            Just network ->
+            Just factoryType ->
                 let
-                    node =
-                        EthHelpers.ethNode network
+                    web3Context =
+                        EthHelpers.web3Context factoryType
 
                     txSentry =
-                        TxSentry.init ( txOut, txIn ) TxSentryMsg node.http
+                        TxSentry.init ( txOut, txIn ) TxSentryMsg web3Context.httpProvider
 
                     ( tradeCache, tcCmd ) =
-                        TradeCache.initAndStartCaching node
+                        TradeCache.initAndStartCaching web3Context
 
                     ( model, fromUrlCmd ) =
                         { key = key
                         , time = Time.millisToPosix 0
-                        , node = node
+                        , web3Context = web3Context
                         , txSentry = txSentry
                         , userAddress = Nothing
                         , userInfo = Nothing
@@ -117,74 +117,67 @@ updateValidModel msg model =
             ( Running { model | time = newTime }, Cmd.none )
 
         WalletStatus walletSentry ->
-            case EthHelpers.networkIdToNetwork walletSentry.networkId of
-                Nothing ->
-                    ( Failed "Your provider (Metamask?) is set to an unsupported network. Switch to Kovan, Mainnet, or XDAI and refresh."
-                    , Cmd.none
-                    )
+            ( Running model, Cmd.none )
 
-                Just newNetwork ->
-                    let
-                        oldNode =
-                            model.node
-
-                        ( newModel, cmdFromSubmodel, maybewNewRoute ) =
-                            if oldNode.network == newNetwork then
-                                ( { model
-                                    | userAddress = walletSentry.account
-                                  }
-                                , Cmd.none
-                                , Nothing
-                                )
-
-                            else
-                                let
-                                    newNode =
-                                        { oldNode | network = newNetwork }
-
-                                    ( submodel, updateNodeCmd, maybeRoute ) =
-                                        model.submodel |> updateSubmodelNode newNode
-
-                                    ( newTradeCache, tradeCacheCmd ) =
-                                        TradeCache.initAndStartCaching newNode
-                                in
-                                ( { model
-                                    | userAddress = walletSentry.account
-                                    , submodel = submodel
-                                    , tradeCache = newTradeCache
-                                    , node = newNode
-                                  }
-                                , Cmd.batch
-                                    [ updateNodeCmd
-                                    , Cmd.map TradeCacheMsg tradeCacheCmd
-                                    ]
-                                , maybeRoute
-                                )
-
-                        cmdFromNewAccount =
-                            case walletSentry.account of
-                                Nothing ->
-                                    Cmd.none
-
-                                Just address ->
-                                    genPrivkey <|
-                                        encodeGenPrivkeyArgs
-                                            address
-                                            "Deriving keypair for encrypted communication on the DAIHard exchange. ONLY SIGN THIS on https://burnable-tech.github.io/DAIHard/. If you sign this elsewhere, you risk revealing any of your encrypted communication on DAIHard to an attacker."
-                    in
-                    ( Running
-                        newModel
-                    , Cmd.batch
-                        [ cmdFromNewAccount
-                        , case maybewNewRoute of
-                            Just route ->
-                                beginRouteChange model.key route
-
-                            Nothing ->
-                                cmdFromSubmodel
-                        ]
-                    )
-
+        -- case EthHelpers.networkIdToFactoryType walletSentry.networkId of
+        --     Nothing ->
+        --         ( Failed "Your provider (Metamask?) is set to an unsupported network. Switch to Kovan, Mainnet, or XDAI and refresh."
+        --         , Cmd.none
+        --         )
+        --     Just newFactoryType ->
+        --         let
+        --             oldWeb3Context =
+        --                 model.web3Context
+        --             ( newModel, cmdFromSubmodel, maybewNewRoute ) =
+        --                 if oldWeb3Context.network == newNetwork then
+        --                     ( { model
+        --                         | userAddress = walletSentry.account
+        --                       }
+        --                     , Cmd.none
+        --                     , Nothing
+        --                     )
+        --                 else
+        --                     let
+        --                         newWeb3Context =
+        --                             { oldWeb3Context | network = newNetwork }
+        --                         ( submodel, updateWeb3ContextCmd, maybeRoute ) =
+        --                             model.submodel |> updateSubmodelWeb3Context newWeb3Context
+        --                         ( newTradeCache, tradeCacheCmd ) =
+        --                             TradeCache.initAndStartCaching newWeb3Context
+        --                     in
+        --                     ( { model
+        --                         | userAddress = walletSentry.account
+        --                         , submodel = submodel
+        --                         , tradeCache = newTradeCache
+        --                         , web3Context = newWeb3Context
+        --                       }
+        --                     , Cmd.batch
+        --                         [ updateWeb3ContextCmd
+        --                         , Cmd.map TradeCacheMsg tradeCacheCmd
+        --                         ]
+        --                     , maybeRoute
+        --                     )
+        --             cmdFromNewAccount =
+        --                 case walletSentry.account of
+        --                     Nothing ->
+        --                         Cmd.none
+        --                     Just address ->
+        --                         genPrivkey <|
+        --                             encodeGenPrivkeyArgs
+        --                                 address
+        --                                 "Deriving keypair for encrypted communication on the DAIHard exchange. ONLY SIGN THIS on https://burnable-tech.github.io/DAIHard/. If you sign this elsewhere, you risk revealing any of your encrypted communication on DAIHard to an attacker."
+        --         in
+        --         ( Running
+        --             newModel
+        --         , Cmd.batch
+        --             [ cmdFromNewAccount
+        --             , case maybewNewRoute of
+        --                 Just route ->
+        --                     beginRouteChange model.key route
+        --                 Nothing ->
+        --                     cmdFromSubmodel
+        --             ]
+        --         )
         UserPubkeySet commPubkeyValue ->
             case Json.Decode.decodeValue Json.Decode.string commPubkeyValue of
                 Ok commPubkey ->
@@ -397,7 +390,7 @@ gotoRoute oldModel route =
         Routing.Create ->
             let
                 ( createModel, createCmd, chainCmdOrder ) =
-                    Create.State.init oldModel.node oldModel.userInfo
+                    Create.State.init oldModel.web3Context oldModel.userInfo
 
                 ( newTxSentry, chainCmd ) =
                     ChainCmd.execute oldModel.txSentry (ChainCmd.map CreateMsg chainCmdOrder)
@@ -416,7 +409,7 @@ gotoRoute oldModel route =
         Routing.Trade id ->
             let
                 ( tradeModel, tradeCmd ) =
-                    Trade.State.init oldModel.node oldModel.userInfo id
+                    Trade.State.init oldModel.web3Context oldModel.userInfo id
             in
             ( Running
                 { oldModel
@@ -428,7 +421,7 @@ gotoRoute oldModel route =
         Routing.Marketplace browsingRole ->
             let
                 ( marketplaceModel, marketplaceCmd ) =
-                    Marketplace.State.init oldModel.node browsingRole oldModel.userInfo
+                    Marketplace.State.init oldModel.web3Context browsingRole oldModel.userInfo
             in
             ( Running
                 { oldModel
@@ -442,7 +435,7 @@ gotoRoute oldModel route =
         Routing.AgentHistory address agentRole ->
             let
                 ( agentHistoryModel, agentHistoryCmd ) =
-                    AgentHistory.State.init oldModel.node address agentRole oldModel.userInfo
+                    AgentHistory.State.init oldModel.web3Context address agentRole oldModel.userInfo
             in
             ( Running
                 { oldModel
@@ -494,14 +487,14 @@ updateSubmodelUserInfo userInfo submodel =
             )
 
 
-updateSubmodelNode : EthHelpers.EthNode -> Submodel -> ( Submodel, Cmd Msg, Maybe Routing.Route )
-updateSubmodelNode newNode submodel =
+updateSubmodelWeb3Context : EthHelpers.Web3Context -> Submodel -> ( Submodel, Cmd Msg, Maybe Routing.Route )
+updateSubmodelWeb3Context newWeb3Context submodel =
     case submodel of
         BetaLandingPage ->
             ( submodel, Cmd.none, Nothing )
 
         CreateModel createModel ->
-            ( CreateModel (createModel |> Create.State.updateNode newNode)
+            ( CreateModel (createModel |> Create.State.updateWeb3Context newWeb3Context)
             , Cmd.none
             , Nothing
             )
@@ -515,13 +508,13 @@ updateSubmodelNode newNode submodel =
             )
 
         MarketplaceModel marketplaceModel ->
-            ( MarketplaceModel (marketplaceModel |> Marketplace.State.updateNode newNode)
+            ( MarketplaceModel (marketplaceModel |> Marketplace.State.updateWeb3Context newWeb3Context)
             , Cmd.none
             , Nothing
             )
 
         AgentHistoryModel agentHistoryModel ->
-            ( AgentHistoryModel (agentHistoryModel |> AgentHistory.State.updateNode newNode)
+            ( AgentHistoryModel (agentHistoryModel |> AgentHistory.State.updateWeb3Context newWeb3Context)
             , Cmd.none
             , Nothing
             )
