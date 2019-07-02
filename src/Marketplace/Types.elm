@@ -1,5 +1,6 @@
-module Marketplace.Types exposing (Errors, FiatTypeAndRange, Model, Msg(..), Query, ResultColumnType(..), SearchInputs, TokenRange, noErrors, updateFiatTypeInput, updateMaxDaiInput, updateMaxFiatInput, updateMinDaiInput, updateMinFiatInput, updatePaymentMethodInput, updatePaymentMethodTerms)
+module Marketplace.Types exposing (Errors, FiatTypeAndRange, Model, Msg(..), Query, ResultColumnType(..), SearchInputs, TokenRange, UpdateResult, noErrors, noUpdate, updateFiatTypeInput, updateMaxDaiInput, updateMaxFiatInput, updateMinDaiInput, updateMinFiatInput, updatePaymentMethodInput, updatePaymentMethodTerms)
 
+import AppCmd exposing (AppCmd)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -51,6 +52,21 @@ type Msg
 
 --| StateFetched Int (Result Http.Error (Maybe CTypes.State))
 --| Refresh Time.Posix
+
+
+type alias UpdateResult =
+    { model : Model
+    , cmd : Cmd Msg
+    , appCmds : List AppCmd
+    }
+
+
+noUpdate : Model -> UpdateResult
+noUpdate model =
+    UpdateResult
+        model
+        Cmd.none
+        []
 
 
 type alias SearchInputs =

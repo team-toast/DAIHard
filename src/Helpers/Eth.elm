@@ -1,4 +1,4 @@
-module Helpers.Eth exposing (Web3Context, addressIfNot0x0, getLogAt, intToFactoryType, logBadFetchResultMaybe, makeViewAddressUrl, makeViewTxUrl, networkIdToFactoryType, updateCallValue, web3Context)
+module Helpers.Eth exposing (Web3Context, addressIfNot0x0, factoryTypeToNetworkId, getLogAt, intToFactoryType, logBadFetchResultMaybe, makeViewAddressUrl, makeViewTxUrl, networkIdToFactoryType, updateCallValue, web3Context)
 
 import Array
 import BigInt exposing (BigInt)
@@ -43,6 +43,31 @@ networkIdToFactoryType networkId =
             Nothing
 
 
+factoryTypeToNetworkId : FactoryType -> Net.NetworkId
+factoryTypeToNetworkId factoryType =
+    case factoryType of
+        Token EthDai ->
+            Net.Mainnet
+
+        Native Eth ->
+            Net.Mainnet
+
+        Token KovanDai ->
+            Net.Kovan
+
+        Native Kovan ->
+            Net.Kovan
+
+        Native Rootstock ->
+            Net.RskMain
+
+        Native RootstockTest ->
+            Net.RskTest
+
+        Native XDai ->
+            Net.Private 100
+
+
 intToFactoryType : Int -> Maybe FactoryType
 intToFactoryType =
     Net.toNetworkId >> networkIdToFactoryType
@@ -84,13 +109,13 @@ web3Context factoryType =
         Native Rootstock ->
             Web3Context
                 factoryType
-                "https://public-node.rsk.co/"
+                "https://public-node.rsk.co"
                 ""
 
         Native RootstockTest ->
             Web3Context
                 factoryType
-                "https://public-node.testnet.rsk.co/"
+                "https://public-node.testnet.rsk.co"
                 ""
 
 

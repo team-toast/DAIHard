@@ -56,7 +56,9 @@ type Msg
     | UrlChanged Url
     | GotoRoute Routing.Route
     | Tick Time.Posix
+    | ConnectToWeb3
     | WalletStatus WalletSentry
+    | NetworkUpdate Json.Decode.Value
     | TxSentryMsg TxSentry.Msg
     | UserPubkeySet Json.Decode.Value
     | TradeCacheMsg TradeCache.Msg

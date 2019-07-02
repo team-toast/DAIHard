@@ -1,5 +1,6 @@
-module Marketplace.State exposing (init, subscriptions, update, updateWeb3Context, updateUserInfo)
+module Marketplace.State exposing (init, subscriptions, update, updateUserInfo, updateWeb3Context)
 
+import AppCmd
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -51,7 +52,7 @@ initialInputs =
     }
 
 
-update : Msg -> Model -> ( Model, Cmd Msg, Maybe Routing.Route )
+update : Msg -> Model -> UpdateResult
 update msg model =
     case msg of
         -- Refresh time ->
@@ -78,93 +79,96 @@ update msg model =
         --     , Nothing
         --     )
         MinDaiChanged input ->
-            ( { model | inputs = model.inputs |> updateMinDaiInput input }
-            , Cmd.none
-            , Nothing
-            )
+            UpdateResult
+                { model | inputs = model.inputs |> updateMinDaiInput input }
+                Cmd.none
+                []
 
         MaxDaiChanged input ->
-            ( { model | inputs = model.inputs |> updateMaxDaiInput input }
-            , Cmd.none
-            , Nothing
-            )
+            UpdateResult
+                { model | inputs = model.inputs |> updateMaxDaiInput input }
+                Cmd.none
+                []
 
         MinFiatChanged input ->
-            ( { model | inputs = model.inputs |> updateMinFiatInput input }
-            , Cmd.none
-            , Nothing
-            )
+            UpdateResult
+                { model | inputs = model.inputs |> updateMinFiatInput input }
+                Cmd.none
+                []
 
         MaxFiatChanged input ->
-            ( { model | inputs = model.inputs |> updateMaxFiatInput input }
-            , Cmd.none
-            , Nothing
-            )
+            UpdateResult
+                { model | inputs = model.inputs |> updateMaxFiatInput input }
+                Cmd.none
+                []
 
         FiatTypeInputChanged input ->
-            ( { model | inputs = model.inputs |> updateFiatTypeInput input }
-            , Cmd.none
-            , Nothing
-            )
+            UpdateResult
+                { model | inputs = model.inputs |> updateFiatTypeInput input }
+                Cmd.none
+                []
 
         ShowCurrencyDropdown flag ->
             let
                 oldInputs =
                     model.inputs
             in
-            ( { model
-                | showCurrencyDropdown = flag
-                , inputs =
-                    model.inputs
-                        |> (if flag then
-                                updateFiatTypeInput ""
+            UpdateResult
+                { model
+                    | showCurrencyDropdown = flag
+                    , inputs =
+                        model.inputs
+                            |> (if flag then
+                                    updateFiatTypeInput ""
 
-                            else
-                                identity
-                           )
-              }
-            , Cmd.none
-            , Nothing
-            )
+                                else
+                                    identity
+                               )
+                }
+                Cmd.none
+                []
 
         FiatTypeLostFocus ->
-            ( { model | showCurrencyDropdown = False }
-            , Cmd.none
-            , Nothing
-            )
+            UpdateResult
+                { model | showCurrencyDropdown = False }
+                Cmd.none
+                []
 
         PaymentMethodInputChanged input ->
-            ( { model | inputs = model.inputs |> updatePaymentMethodInput input }
-            , Cmd.none
-            , Nothing
-            )
+            UpdateResult
+                { model | inputs = model.inputs |> updatePaymentMethodInput input }
+                Cmd.none
+                []
 
         AddSearchTerm ->
-            ( model |> addPaymentInputTerm
-            , Cmd.none
-            , Nothing
-            )
+            UpdateResult
+                (model |> addPaymentInputTerm)
+                Cmd.none
+                []
 
         RemoveTerm term ->
-            ( model |> removePaymentInputTerm term
-            , Cmd.none
-            , Nothing
-            )
+            UpdateResult
+                (model |> removePaymentInputTerm term)
+                Cmd.none
+                []
 
         ApplyInputs ->
-            ( model |> applyInputs
-            , Cmd.none
-            , Nothing
-            )
+            UpdateResult
+                (model |> applyInputs)
+                Cmd.none
+                []
 
         ResetSearch ->
-            ( model |> resetSearch
-            , Cmd.none
-            , Nothing
-            )
+            UpdateResult
+                (model |> resetSearch)
+                Cmd.none
+                []
 
         TradeClicked id ->
-            ( model, Cmd.none, Just (Routing.Trade id) )
+            UpdateResult
+                model
+                Cmd.none
+                [ AppCmd.GotoRoute (Routing.Trade id) ]
 
         SortBy colType ascending ->
             let
@@ -207,10 +211,10 @@ update msg model =
                                 identity
                            )
             in
-            ( { model | sortFunc = newSortFunc }
-            , Cmd.none
-            , Nothing
-            )
+            UpdateResult
+                { model | sortFunc = newSortFunc }
+                Cmd.none
+                []
 
         NoOp ->
             noUpdate model
@@ -421,11 +425,6 @@ testTextMatch terms paymentMethods =
             (\method ->
                 searchForAllTerms method.info
             )
-
-
-noUpdate : Model -> ( Model, Cmd Msg, Maybe Routing.Route )
-noUpdate model =
-    ( model, Cmd.none, Nothing )
 
 
 updateUserInfo : Maybe UserInfo -> Model -> Model

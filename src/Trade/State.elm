@@ -1,5 +1,6 @@
 port module Trade.State exposing (init, subscriptions, update, updateUserInfo)
 
+import AppCmd
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -33,7 +34,7 @@ import Trade.ChatHistory.Types as ChatHistory
 import Trade.Types exposing (..)
 
 
-init : EthHelpers.Web3Context -> Maybe UserInfo -> Int -> ( Model, Cmd Msg )
+init : EthHelpers.Web3Context -> Maybe UserInfo -> Int -> UpdateResult
 init web3Context userInfo tradeId =
     let
         getCreationInfoCmd =
@@ -42,21 +43,23 @@ init web3Context userInfo tradeId =
         ( eventSentry, eventSentryCmd ) =
             EventSentry.init EventSentryMsg web3Context.httpProvider
     in
-    ( { web3Context = web3Context
-      , userInfo = userInfo
-      , trade = CTypes.partialTradeInfo tradeId
-      , expandedPhase = CTypes.Open
-      , chatHistoryModel = Nothing
-      , showChatHistory = False
-      , showStatsModal = False
-      , eventsWaitingForChatHistory = []
-      , secureCommInfo = partialCommInfo
-      , eventSentry = eventSentry
-      , allowance = Nothing
-      , txChainStatus = Nothing
-      }
-    , Cmd.batch [ getCreationInfoCmd, eventSentryCmd ]
-    )
+    UpdateResult
+        { web3Context = web3Context
+        , userInfo = userInfo
+        , trade = CTypes.partialTradeInfo tradeId
+        , expandedPhase = CTypes.Open
+        , chatHistoryModel = Nothing
+        , showChatHistory = False
+        , showStatsModal = False
+        , eventsWaitingForChatHistory = []
+        , secureCommInfo = partialCommInfo
+        , eventSentry = eventSentry
+        , allowance = Nothing
+        , txChainStatus = Nothing
+        }
+        (Cmd.batch [ getCreationInfoCmd, eventSentryCmd ])
+        ChainCmd.none
+        []
 
 
 getContractCreationInfoCmd : EthHelpers.Web3Context -> Int -> Cmd Msg
@@ -142,7 +145,7 @@ update msg prevModel =
                             ]
                         )
                         ChainCmd.none
-                        Nothing
+                        []
 
                 _ ->
                     justModelUpdate newModel
@@ -167,7 +170,7 @@ update msg prevModel =
                                     { newModel | txChainStatus = txChainStatus }
                                     Cmd.none
                                     chainCmd
-                                    Nothing
+                                    []
 
                             else
                                 justModelUpdate newModel
@@ -217,7 +220,7 @@ update msg prevModel =
                         newModel
                         cmd
                         ChainCmd.none
-                        Nothing
+                        []
 
                 Err (Http.BadBody errstr) ->
                     Debug.todo "No contract at this id. Maybe should reload after some delay."
@@ -256,7 +259,7 @@ update msg prevModel =
                         newModel
                         (tryBuildDecryptCmd newModel)
                         ChainCmd.none
-                        Nothing
+                        []
 
                 _ ->
                     let
@@ -278,7 +281,7 @@ update msg prevModel =
                         newModel
                         (tryBuildDecryptCmd newModel)
                         ChainCmd.none
-                        Nothing
+                        []
 
                 badResult ->
                     let
@@ -300,7 +303,7 @@ update msg prevModel =
                         newModel
                         (tryBuildDecryptCmd newModel)
                         ChainCmd.none
-                        Nothing
+                        []
 
                 _ ->
                     let
@@ -318,7 +321,7 @@ update msg prevModel =
                 newModel
                 cmd
                 ChainCmd.none
-                Nothing
+                []
 
         ExpandPhase phase ->
             justModelUpdate { prevModel | expandedPhase = phase }
@@ -352,7 +355,7 @@ update msg prevModel =
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        (Just (Routing.AgentHistory trade.parameters.initiatorAddress Seller))
+                        [ AppCmd.GotoRoute (Routing.AgentHistory trade.parameters.initiatorAddress Seller) ]
 
                 _ ->
                     let
@@ -408,7 +411,7 @@ update msg prevModel =
                 { prevModel | txChainStatus = txChainStatus }
                 Cmd.none
                 chainCmd
-                Nothing
+                []
 
         StartContractAction actionMsg ->
             let
@@ -491,7 +494,7 @@ update msg prevModel =
                 }
                 Cmd.none
                 chainCmd
-                Nothing
+                []
 
         ApproveSigned txHashResult ->
             case txHashResult of
@@ -549,7 +552,7 @@ update msg prevModel =
                 }
                 cmd
                 ChainCmd.none
-                Nothing
+                []
 
         ChatHistoryMsg chatHistoryMsg ->
             case prevModel.chatHistoryModel of
@@ -593,7 +596,7 @@ update msg prevModel =
                             ]
                         )
                         ChainCmd.none
-                        Nothing
+                        []
 
                 Nothing ->
                     let
@@ -640,7 +643,7 @@ update msg prevModel =
                                     }
                                     txParams
                                 )
-                                Nothing
+                                []
 
                 problematicBullshit ->
                     let

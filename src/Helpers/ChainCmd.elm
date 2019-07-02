@@ -1,4 +1,4 @@
-module Helpers.ChainCmd exposing (ChainCmd, custom, execute, map, none)
+port module Helpers.ChainCmd exposing (ChainCmd, custom, execute, map, none)
 
 import Eth.Sentry.Tx as TxSentry
 import Eth.Types

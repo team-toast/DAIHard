@@ -1,5 +1,6 @@
 module Create.Types exposing (Errors, Inputs, Model, Msg(..), TxChainStatus(..), UpdateResult, interpretMarginString, justModelUpdate, noErrors)
 
+import AppCmd exposing (AppCmd)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
@@ -90,7 +91,7 @@ type alias UpdateResult =
     { model : Model
     , cmd : Cmd Msg
     , chainCmd : ChainCmd Msg
-    , newRoute : Maybe Routing.Route
+    , appCmds : List AppCmd
     }
 
 
@@ -99,7 +100,7 @@ justModelUpdate model =
     { model = model
     , cmd = Cmd.none
     , chainCmd = ChainCmd.none
-    , newRoute = Nothing
+    , appCmds = []
     }
 
 

@@ -237,26 +237,26 @@ resultsElement time tradeCache model =
             ]
             (visibleTrades
                 |> List.map
-                    (viewTradeRow time model.agentRole model.viewPhase)
+                    (viewTradeRow time (model.userInfo /= Nothing) model.agentRole model.viewPhase)
             )
         ]
 
 
-viewTradeRow : Time.Posix -> BuyerOrSeller -> CTypes.Phase -> CTypes.FullTradeInfo -> Element Msg
-viewTradeRow time userRole viewPhase trade =
+viewTradeRow : Time.Posix -> Bool -> BuyerOrSeller -> CTypes.Phase -> CTypes.FullTradeInfo -> Element Msg
+viewTradeRow time web3Connected userRole viewPhase trade =
     Element.row
         [ Element.width Element.fill
         , Element.spacing 1
         ]
         [ case viewPhase of
             CTypes.Open ->
-                cellMaker ( 1, phaseCountdown time trade False )
+                cellMaker ( 1, phaseCountdown time trade False web3Connected )
 
             CTypes.Committed ->
-                cellMaker ( 1, phaseCountdown time trade (userRole == Buyer) )
+                cellMaker ( 1, phaseCountdown time trade (userRole == Buyer) web3Connected )
 
             CTypes.Judgment ->
-                cellMaker ( 1, phaseCountdown time trade (userRole == Seller) )
+                cellMaker ( 1, phaseCountdown time trade (userRole == Seller) web3Connected )
 
             CTypes.Closed ->
                 Element.none
@@ -285,8 +285,8 @@ cellMaker ( portion, cellElement ) =
             cellElement
 
 
-phaseCountdown : Time.Posix -> CTypes.FullTradeInfo -> Bool -> Element Msg
-phaseCountdown time trade userActionNeeded =
+phaseCountdown : Time.Posix -> CTypes.FullTradeInfo -> Bool -> Bool -> Element Msg
+phaseCountdown time trade userActionNeeded web3Connected =
     case CTypes.getCurrentPhaseTimeoutInfo time trade of
         CTypes.TimeLeft timeoutInfo ->
             let
@@ -308,15 +308,22 @@ phaseCountdown time trade userActionNeeded =
                 [ Element.spacing 4
                 , Element.width Element.fill
                 ]
-                [ Element.el
+                ([ Element.el
                     [ Element.centerX
                     , Element.Font.size 14
                     ]
                     (Element.text (CTypes.getPokeText trade.state.phase))
-                , Element.el
-                    [ Element.centerX ]
-                    (pokeButton trade.creationInfo.address)
-                ]
+                 ]
+                    ++ (if web3Connected then
+                            [ Element.el
+                                [ Element.centerX ]
+                                (pokeButton trade.creationInfo.address)
+                            ]
+
+                        else
+                            []
+                       )
+                )
 
 
 pokeButton : Address -> Element Msg

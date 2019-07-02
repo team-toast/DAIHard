@@ -5,7 +5,6 @@ import CommonTypes exposing (..)
 import Contracts.Types as CTypes
 import Eth.Types exposing (Address)
 import Eth.Utils
-import Marketplace.Types
 import Url exposing (Url)
 import Url.Builder
 import Url.Parser exposing ((</>), (<?>), Parser)

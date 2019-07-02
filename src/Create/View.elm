@@ -243,7 +243,7 @@ buttonsElement model =
                 EH.redButton "Open Trade" (CreateClicked userInfo)
 
             Nothing ->
-                EH.disabledButton "Open Trade" (Just "No account detected. Is Metamask unlocked?")
+                EH.disabledButton "Open Trade" Nothing
         ]
 
 

@@ -1,6 +1,7 @@
 port module State exposing (init, subscriptions, update)
 
 import AgentHistory.State
+import AppCmd exposing (AppCmd)
 import BigInt
 import Browser
 import Browser.Dom
@@ -116,68 +117,87 @@ updateValidModel msg model =
         Tick newTime ->
             ( Running { model | time = newTime }, Cmd.none )
 
-        WalletStatus walletSentry ->
-            ( Running model, Cmd.none )
+        NetworkUpdate newNetworkValue ->
+            let
+                _ =
+                    Debug.log "hi!" ""
 
-        -- case EthHelpers.networkIdToFactoryType walletSentry.networkId of
-        --     Nothing ->
-        --         ( Failed "Your provider (Metamask?) is set to an unsupported network. Switch to Kovan, Mainnet, or XDAI and refresh."
-        --         , Cmd.none
-        --         )
-        --     Just newFactoryType ->
-        --         let
-        --             oldWeb3Context =
-        --                 model.web3Context
-        --             ( newModel, cmdFromSubmodel, maybewNewRoute ) =
-        --                 if oldWeb3Context.network == newNetwork then
-        --                     ( { model
-        --                         | userAddress = walletSentry.account
-        --                       }
-        --                     , Cmd.none
-        --                     , Nothing
-        --                     )
-        --                 else
-        --                     let
-        --                         newWeb3Context =
-        --                             { oldWeb3Context | network = newNetwork }
-        --                         ( submodel, updateWeb3ContextCmd, maybeRoute ) =
-        --                             model.submodel |> updateSubmodelWeb3Context newWeb3Context
-        --                         ( newTradeCache, tradeCacheCmd ) =
-        --                             TradeCache.initAndStartCaching newWeb3Context
-        --                     in
-        --                     ( { model
-        --                         | userAddress = walletSentry.account
-        --                         , submodel = submodel
-        --                         , tradeCache = newTradeCache
-        --                         , web3Context = newWeb3Context
-        --                       }
-        --                     , Cmd.batch
-        --                         [ updateWeb3ContextCmd
-        --                         , Cmd.map TradeCacheMsg tradeCacheCmd
-        --                         ]
-        --                     , maybeRoute
-        --                     )
-        --             cmdFromNewAccount =
-        --                 case walletSentry.account of
-        --                     Nothing ->
-        --                         Cmd.none
-        --                     Just address ->
-        --                         genPrivkey <|
-        --                             encodeGenPrivkeyArgs
-        --                                 address
-        --                                 "Deriving keypair for encrypted communication on the DAIHard exchange. ONLY SIGN THIS on https://burnable-tech.github.io/DAIHard/. If you sign this elsewhere, you risk revealing any of your encrypted communication on DAIHard to an attacker."
-        --         in
-        --         ( Running
-        --             newModel
-        --         , Cmd.batch
-        --             [ cmdFromNewAccount
-        --             , case maybewNewRoute of
-        --                 Just route ->
-        --                     beginRouteChange model.key route
-        --                 Nothing ->
-        --                     cmdFromSubmodel
-        --             ]
-        --         )
+                newNetworkIdResult =
+                    Json.Decode.decodeValue Json.Decode.int newNetworkValue
+                        |> Result.map Eth.Net.toNetworkId
+
+                maybeNewFactoryType =
+                    newNetworkIdResult
+                        |> Result.toMaybe
+                        |> Maybe.andThen EthHelpers.networkIdToFactoryType
+            in
+            case ( newNetworkIdResult, maybeNewFactoryType ) of
+                ( Ok newNetworkId, Just newFactoryType ) ->
+                    if newNetworkId /= EthHelpers.factoryTypeToNetworkId model.web3Context.factoryType then
+                        let
+                            newWeb3Context =
+                                EthHelpers.web3Context newFactoryType
+
+                            ( submodel, submodelCmd, maybeRoute ) =
+                                model.submodel |> updateSubmodelWeb3Context newWeb3Context
+
+                            ( newTradeCache, tradeCacheCmd ) =
+                                TradeCache.initAndStartCaching newWeb3Context
+                        in
+                        ( Running
+                            { model
+                                | submodel = submodel
+                                , tradeCache = newTradeCache
+                                , web3Context = newWeb3Context
+                            }
+                        , Cmd.batch
+                            [ Cmd.map TradeCacheMsg tradeCacheCmd
+                            , case maybeRoute of
+                                Just newRoute ->
+                                    beginRouteChange model.key newRoute
+
+                                Nothing ->
+                                    submodelCmd
+                            ]
+                        )
+
+                    else
+                        ( Running model
+                        , Cmd.none
+                        )
+
+                _ ->
+                    let
+                        _ =
+                            Debug.log "Error decoding networkID or determining FactoryType from JS value" ( newNetworkIdResult, maybeNewFactoryType )
+                    in
+                    ( Running model, Cmd.none )
+
+        ConnectToWeb3 ->
+            ( Running model
+            , connectToWeb3 ()
+            )
+
+        WalletStatus walletSentry ->
+            let
+                genCommPubkeyCmd =
+                    case walletSentry.account of
+                        Nothing ->
+                            Cmd.none
+
+                        Just address ->
+                            genPrivkey <|
+                                encodeGenPrivkeyArgs
+                                    address
+                                    "Deriving keypair for encrypted communication on the DAIHard exchange. ONLY SIGN THIS on https://burnable-tech.github.io/DAIHard/. If you sign this elsewhere, you risk revealing any of your encrypted communication on DAIHard to an attacker."
+            in
+            ( Running
+                { model
+                    | userAddress = walletSentry.account
+                }
+            , genCommPubkeyCmd
+            )
+
         UserPubkeySet commPubkeyValue ->
             case Json.Decode.decodeValue Json.Decode.string commPubkeyValue of
                 Ok commPubkey ->
@@ -225,23 +245,17 @@ updateValidModel msg model =
                         ( newTxSentry, chainCmd ) =
                             ChainCmd.execute model.txSentry (ChainCmd.map CreateMsg updateResult.chainCmd)
                     in
-                    case updateResult.newRoute of
-                        Nothing ->
-                            ( Running
-                                { model
-                                    | submodel = CreateModel updateResult.model
-                                    , txSentry = newTxSentry
-                                }
-                            , Cmd.batch
-                                [ Cmd.map CreateMsg updateResult.cmd
-                                , chainCmd
-                                ]
-                            )
-
-                        Just route ->
-                            ( Running model
-                            , beginRouteChange model.key route
-                            )
+                    ( Running
+                        { model
+                            | submodel = CreateModel updateResult.model
+                            , txSentry = newTxSentry
+                        }
+                    , Cmd.batch
+                        [ Cmd.map CreateMsg updateResult.cmd
+                        , chainCmd
+                        ]
+                    )
+                        |> runAppCmds updateResult.appCmds
 
                 _ ->
                     ( Running model, Cmd.none )
@@ -256,23 +270,17 @@ updateValidModel msg model =
                         ( newTxSentry, chainCmd ) =
                             ChainCmd.execute model.txSentry (ChainCmd.map TradeMsg updateResult.chainCmd)
                     in
-                    case updateResult.newRoute of
-                        Nothing ->
-                            ( Running
-                                { model
-                                    | submodel = TradeModel updateResult.model
-                                    , txSentry = newTxSentry
-                                }
-                            , Cmd.batch
-                                [ Cmd.map TradeMsg updateResult.cmd
-                                , chainCmd
-                                ]
-                            )
-
-                        Just route ->
-                            ( Running model
-                            , beginRouteChange model.key route
-                            )
+                    ( Running
+                        { model
+                            | submodel = TradeModel updateResult.model
+                            , txSentry = newTxSentry
+                        }
+                    , Cmd.batch
+                        [ Cmd.map TradeMsg updateResult.cmd
+                        , chainCmd
+                        ]
+                    )
+                        |> runAppCmds updateResult.appCmds
 
                 _ ->
                     ( Running model, Cmd.none )
@@ -281,19 +289,13 @@ updateValidModel msg model =
             case model.submodel of
                 MarketplaceModel marketplaceModel ->
                     let
-                        ( newMarketplaceModel, marketplaceCmd, newRoute ) =
+                        updateResult =
                             Marketplace.State.update marketplaceMsg marketplaceModel
                     in
-                    case newRoute of
-                        Nothing ->
-                            ( Running { model | submodel = MarketplaceModel newMarketplaceModel }
-                            , Cmd.map MarketplaceMsg marketplaceCmd
-                            )
-
-                        Just route ->
-                            ( Running model
-                            , beginRouteChange model.key route
-                            )
+                    ( Running { model | submodel = MarketplaceModel updateResult.model }
+                    , Cmd.map MarketplaceMsg updateResult.cmd
+                    )
+                        |> runAppCmds updateResult.appCmds
 
                 _ ->
                     ( Running model, Cmd.none )
@@ -308,23 +310,17 @@ updateValidModel msg model =
                         ( newTxSentry, chainCmd ) =
                             ChainCmd.execute model.txSentry (ChainCmd.map AgentHistoryMsg updateResult.chainCmd)
                     in
-                    case updateResult.newRoute of
-                        Nothing ->
-                            ( Running
-                                { model
-                                    | submodel = AgentHistoryModel updateResult.model
-                                    , txSentry = newTxSentry
-                                }
-                            , Cmd.batch
-                                [ Cmd.map AgentHistoryMsg updateResult.cmd
-                                , chainCmd
-                                ]
-                            )
-
-                        Just route ->
-                            ( Running model
-                            , beginRouteChange model.key route
-                            )
+                    ( Running
+                        { model
+                            | submodel = AgentHistoryModel updateResult.model
+                            , txSentry = newTxSentry
+                        }
+                    , Cmd.batch
+                        [ Cmd.map AgentHistoryMsg updateResult.cmd
+                        , chainCmd
+                        ]
+                    )
+                        |> runAppCmds updateResult.appCmds
 
                 _ ->
                     ( Running model, Cmd.none )
@@ -352,6 +348,36 @@ updateValidModel msg model =
 
         NoOp ->
             ( Running model, Cmd.none )
+
+
+runAppCmds : List AppCmd -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+runAppCmds appCmds ( maybeValidModel, prevCmd ) =
+    List.foldl
+        runAppCmd
+        ( maybeValidModel, prevCmd )
+        appCmds
+
+
+runAppCmd : AppCmd -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+runAppCmd appCmd ( maybeValidModel, prevCmd ) =
+    case maybeValidModel of
+        Failed _ ->
+            ( maybeValidModel, prevCmd )
+
+        Running prevModel ->
+            case appCmd of
+                AppCmd.Web3Connect ->
+                    ( Running prevModel
+                    , Cmd.batch
+                        [ prevCmd
+                        , connectToWeb3 ()
+                        ]
+                    )
+
+                AppCmd.GotoRoute newRoute ->
+                    ( Running prevModel
+                    , beginRouteChange prevModel.key newRoute
+                    )
 
 
 encodeGenPrivkeyArgs : Address -> String -> Json.Decode.Value
@@ -389,34 +415,43 @@ gotoRoute oldModel route =
 
         Routing.Create ->
             let
-                ( createModel, createCmd, chainCmdOrder ) =
+                updateResult =
                     Create.State.init oldModel.web3Context oldModel.userInfo
 
                 ( newTxSentry, chainCmd ) =
-                    ChainCmd.execute oldModel.txSentry (ChainCmd.map CreateMsg chainCmdOrder)
+                    ChainCmd.execute oldModel.txSentry (ChainCmd.map CreateMsg updateResult.chainCmd)
             in
             ( Running
                 { oldModel
-                    | submodel = CreateModel createModel
+                    | submodel = CreateModel updateResult.model
                     , txSentry = newTxSentry
                 }
             , Cmd.batch
-                [ Cmd.map CreateMsg createCmd
+                [ Cmd.map CreateMsg updateResult.cmd
                 , chainCmd
                 ]
             )
+                |> runAppCmds updateResult.appCmds
 
         Routing.Trade id ->
             let
-                ( tradeModel, tradeCmd ) =
+                updateResult =
                     Trade.State.init oldModel.web3Context oldModel.userInfo id
+
+                ( newTxSentry, chainCmd ) =
+                    ChainCmd.execute oldModel.txSentry (ChainCmd.map TradeMsg updateResult.chainCmd)
             in
             ( Running
                 { oldModel
-                    | submodel = TradeModel tradeModel
+                    | submodel = TradeModel updateResult.model
+                    , txSentry = newTxSentry
                 }
-            , Cmd.map TradeMsg tradeCmd
+            , Cmd.batch
+                [ Cmd.map TradeMsg updateResult.cmd
+                , chainCmd
+                ]
             )
+                |> runAppCmds updateResult.appCmds
 
         Routing.Marketplace browsingRole ->
             let
@@ -530,6 +565,7 @@ subscriptions maybeValidModel =
                  , TxSentry.listen model.txSentry
                  , userPubkeyResult UserPubkeySet
                  , Sub.map TradeCacheMsg <| TradeCache.subscriptions model.tradeCache
+                 , networkSentryPort NetworkUpdate
                  ]
                     ++ [ submodelSubscriptions model ]
                 )
@@ -558,6 +594,12 @@ submodelSubscriptions model =
 
 
 port walletSentryPort : (Json.Decode.Value -> msg) -> Sub msg
+
+
+port networkSentryPort : (Json.Decode.Value -> msg) -> Sub msg
+
+
+port connectToWeb3 : () -> Cmd msg
 
 
 port txOut : Json.Decode.Value -> Cmd msg

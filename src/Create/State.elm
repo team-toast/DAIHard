@@ -1,5 +1,6 @@
 module Create.State exposing (init, subscriptions, update, updateUserInfo, updateWeb3Context)
 
+import AppCmd
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
 import Config
@@ -24,7 +25,7 @@ import Time
 import TokenValue exposing (TokenValue)
 
 
-init : EthHelpers.Web3Context -> Maybe UserInfo -> ( Model, Cmd Msg, ChainCmd Msg )
+init : EthHelpers.Web3Context -> Maybe UserInfo -> UpdateResult
 init web3Context userInfo =
     let
         model =
@@ -40,10 +41,11 @@ init web3Context userInfo =
             , allowance = Nothing
             }
     in
-    ( model |> updateInputs initialInputs
-    , Cmd.none
-    , ChainCmd.none
-    )
+    UpdateResult
+        (model |> updateInputs initialInputs)
+        Cmd.none
+        ChainCmd.none
+        []
 
 
 initialInputs =
@@ -101,7 +103,7 @@ update msg prevModel =
                         prevModel
                         cmd
                         ChainCmd.none
-                        Nothing
+                        []
 
                 _ ->
                     justModelUpdate prevModel
@@ -294,11 +296,11 @@ update msg prevModel =
                                 Nothing ->
                                     ( Just ApproveNeedsSig, approveChainCmd )
             in
-            { model = { prevModel | txChainStatus = txChainStatus }
-            , cmd = Cmd.none
-            , chainCmd = chainCmd
-            , newRoute = Nothing
-            }
+            UpdateResult
+                { prevModel | txChainStatus = txChainStatus }
+                Cmd.none
+                chainCmd
+                []
 
         ApproveSigned createParameters result ->
             case result of
@@ -332,7 +334,7 @@ update msg prevModel =
                                     { newModel | txChainStatus = txChainStatus }
                                     Cmd.none
                                     chainCmd
-                                    Nothing
+                                    []
 
                             else
                                 justModelUpdate newModel
@@ -375,11 +377,11 @@ update msg prevModel =
             in
             case maybeId of
                 Just id ->
-                    { model = prevModel
-                    , cmd = Cmd.none
-                    , chainCmd = ChainCmd.none
-                    , newRoute = Just (Routing.Trade id)
-                    }
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        ChainCmd.none
+                        [ AppCmd.GotoRoute (Routing.Trade id) ]
 
                 Nothing ->
                     let
@@ -418,7 +420,7 @@ update msg prevModel =
                         model
                         cmd
                         ChainCmd.none
-                        Nothing
+                        []
 
                 Nothing ->
                     let

@@ -1,6 +1,7 @@
-module AgentHistory.State exposing (init, subscriptions, update, updateWeb3Context, updateUserInfo)
+module AgentHistory.State exposing (init, subscriptions, update, updateUserInfo, updateWeb3Context)
 
 import AgentHistory.Types exposing (..)
+import AppCmd
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -46,14 +47,14 @@ update msg prevModel =
                 prevModel
                 Cmd.none
                 ChainCmd.none
-                (Just (Routing.AgentHistory prevModel.agentAddress role))
+                [ AppCmd.GotoRoute (Routing.AgentHistory prevModel.agentAddress role) ]
 
         ViewPhaseChanged phase ->
             UpdateResult
                 { prevModel | viewPhase = phase }
                 Cmd.none
                 ChainCmd.none
-                Nothing
+                []
 
         Poke address ->
             let
@@ -77,14 +78,14 @@ update msg prevModel =
                 prevModel
                 Cmd.none
                 chainCmd
-                Nothing
+                []
 
         TradeClicked id ->
             UpdateResult
                 prevModel
                 Cmd.none
                 ChainCmd.none
-                (Just (Routing.Trade id))
+                [ AppCmd.GotoRoute (Routing.Trade id) ]
 
         NoOp ->
             noUpdate prevModel
@@ -96,7 +97,7 @@ noUpdate model =
         model
         Cmd.none
         ChainCmd.none
-        Nothing
+        []
 
 
 updateUserInfo : Maybe UserInfo -> Model -> Model
