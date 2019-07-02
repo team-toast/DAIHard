@@ -552,7 +552,7 @@ txChainStatusModal txChainStatus model =
                     { url = EthHelpers.makeViewTxUrl model.web3Context.factoryType txHash
                     , label = Element.text "See the transaction on Etherscan"
                     }
-                , Element.text "Funds will not be sent until you sign the next transaction."
+                , Element.text "Funds will not leave your wallet until you sign the next transaction."
                 ]
 
         CreateNeedsSig ->

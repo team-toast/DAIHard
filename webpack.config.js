@@ -64,6 +64,7 @@ if (isDev === true) {
         devServer: {
             // serve index.html in place of 404 responses
             historyApiFallback: true,
+            headers: { 'Access-Control-Allow-Origin': '*' },
             contentBase: './assets',
             hot: true
         },
