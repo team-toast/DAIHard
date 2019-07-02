@@ -1,5 +1,6 @@
 port module Trade.State exposing (init, subscriptions, update, updateUserInfo)
 
+import AppCmd
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -33,46 +34,47 @@ import Trade.ChatHistory.Types as ChatHistory
 import Trade.Types exposing (..)
 
 
-init : EthHelpers.EthNode -> Maybe UserInfo -> Int -> ( Model, Cmd Msg, ChainCmd Msg )
-init node userInfo tradeId =
+init : EthHelpers.Web3Context -> Maybe UserInfo -> Int -> UpdateResult
+init web3Context userInfo tradeId =
     let
         getCreationInfoCmd =
-            getContractCreationInfoCmd node tradeId
+            getContractCreationInfoCmd web3Context tradeId
 
         ( eventSentry, eventSentryCmd ) =
-            EventSentry.init EventSentryMsg node.http
+            EventSentry.init EventSentryMsg web3Context.httpProvider
     in
-    ( { node = node
-      , userInfo = userInfo
-      , trade = CTypes.partialTradeInfo tradeId
-      , expandedPhase = CTypes.Open
-      , chatHistoryModel = Nothing
-      , showChatHistory = False
-      , showStatsModal = False
-      , eventsWaitingForChatHistory = []
-      , secureCommInfo = partialCommInfo
-      , eventSentry = eventSentry
-      , allowance = Nothing
-      , txChainStatus = Nothing
-      }
-    , Cmd.batch [ getCreationInfoCmd, eventSentryCmd ]
-    , ChainCmd.none
-    )
+    UpdateResult
+        { web3Context = web3Context
+        , userInfo = userInfo
+        , trade = CTypes.partialTradeInfo tradeId
+        , expandedPhase = CTypes.Open
+        , chatHistoryModel = Nothing
+        , showChatHistory = False
+        , showStatsModal = False
+        , eventsWaitingForChatHistory = []
+        , secureCommInfo = partialCommInfo
+        , eventSentry = eventSentry
+        , allowance = Nothing
+        , txChainStatus = Nothing
+        }
+        (Cmd.batch [ getCreationInfoCmd, eventSentryCmd ])
+        ChainCmd.none
+        []
 
 
-getContractCreationInfoCmd : EthHelpers.EthNode -> Int -> Cmd Msg
-getContractCreationInfoCmd node id =
-    Contracts.Wrappers.getCreationInfoFromIdCmd node (BigInt.fromInt id) CreationInfoFetched
+getContractCreationInfoCmd : EthHelpers.Web3Context -> Int -> Cmd Msg
+getContractCreationInfoCmd web3Context id =
+    Contracts.Wrappers.getCreationInfoFromIdCmd web3Context (BigInt.fromInt id) CreationInfoFetched
 
 
 updateUserInfo : Maybe UserInfo -> Model -> ( Model, Cmd Msg )
 updateUserInfo userInfo model =
     ( { model | userInfo = userInfo }
-    , case ( userInfo, model.trade, model.node.network ) of
-        ( Just uInfo, CTypes.LoadedTrade trade, Eth ethNetwork ) ->
+    , case ( userInfo, model.trade, model.web3Context.factoryType ) of
+        ( Just uInfo, CTypes.LoadedTrade trade, Token tokenType ) ->
             Contracts.Wrappers.getAllowanceCmd
-                model.node
-                ethNetwork
+                model.web3Context
+                tokenType
                 uInfo.address
                 trade.creationInfo.address
                 AllowanceFetched
@@ -92,7 +94,7 @@ update msg prevModel =
                         CTypes.PartiallyLoadedTrade pInfo ->
                             case pInfo.creationInfo of
                                 Nothing ->
-                                    getContractCreationInfoCmd prevModel.node pInfo.id
+                                    getContractCreationInfoCmd prevModel.web3Context pInfo.id
 
                                 _ ->
                                     Cmd.none
@@ -116,11 +118,11 @@ update msg prevModel =
                         Cmd.none
 
                 fetchAllowanceCmd =
-                    case ( prevModel.userInfo, prevModel.trade, prevModel.node.network ) of
-                        ( Just userInfo, CTypes.LoadedTrade trade, Eth ethNetwork ) ->
+                    case ( prevModel.userInfo, prevModel.trade, prevModel.web3Context.factoryType ) of
+                        ( Just userInfo, CTypes.LoadedTrade trade, Token tokenType ) ->
                             Contracts.Wrappers.getAllowanceCmd
-                                prevModel.node
-                                ethNetwork
+                                prevModel.web3Context
+                                tokenType
                                 userInfo.address
                                 trade.creationInfo.address
                                 AllowanceFetched
@@ -136,14 +138,14 @@ update msg prevModel =
                     UpdateResult
                         newModel
                         (Cmd.batch
-                            [ Contracts.Wrappers.getStateCmd prevModel.node tradeInfo.creationInfo.address StateFetched
+                            [ Contracts.Wrappers.getStateCmd prevModel.web3Context tradeInfo.creationInfo.address StateFetched
                             , decryptCmd
                             , fetchCreationInfoCmd
                             , fetchAllowanceCmd
                             ]
                         )
                         ChainCmd.none
-                        Nothing
+                        []
 
                 _ ->
                     justModelUpdate newModel
@@ -162,13 +164,13 @@ update msg prevModel =
                             if BigInt.compare allowance (CTypes.responderDeposit trade.parameters |> TokenValue.getEvmValue) /= LT then
                                 let
                                     ( txChainStatus, chainCmd ) =
-                                        initiateCommitCall prevModel.node trade userInfo.address userInfo.commPubkey
+                                        initiateCommitCall prevModel.web3Context trade userInfo.address userInfo.commPubkey
                                 in
                                 UpdateResult
                                     { newModel | txChainStatus = txChainStatus }
                                     Cmd.none
                                     chainCmd
-                                    Nothing
+                                    []
 
                             else
                                 justModelUpdate newModel
@@ -211,14 +213,14 @@ update msg prevModel =
                         cmd =
                             Cmd.batch
                                 [ sentryCmd
-                                , Contracts.Wrappers.getParametersStateAndPhaseInfoCmd newModel.node newCreationInfo.address ParametersFetched StateFetched PhaseInfoFetched
+                                , Contracts.Wrappers.getParametersStateAndPhaseInfoCmd newModel.web3Context newCreationInfo.address ParametersFetched StateFetched PhaseInfoFetched
                                 ]
                     in
                     UpdateResult
                         newModel
                         cmd
                         ChainCmd.none
-                        Nothing
+                        []
 
                 Err (Http.BadBody errstr) ->
                     Debug.todo "No contract at this id. Maybe should reload after some delay."
@@ -257,7 +259,7 @@ update msg prevModel =
                         newModel
                         (tryBuildDecryptCmd newModel)
                         ChainCmd.none
-                        Nothing
+                        []
 
                 _ ->
                     let
@@ -279,7 +281,7 @@ update msg prevModel =
                         newModel
                         (tryBuildDecryptCmd newModel)
                         ChainCmd.none
-                        Nothing
+                        []
 
                 badResult ->
                     let
@@ -301,7 +303,7 @@ update msg prevModel =
                         newModel
                         (tryBuildDecryptCmd newModel)
                         ChainCmd.none
-                        Nothing
+                        []
 
                 _ ->
                     let
@@ -319,7 +321,7 @@ update msg prevModel =
                 newModel
                 cmd
                 ChainCmd.none
-                Nothing
+                []
 
         ExpandPhase phase ->
             justModelUpdate { prevModel | expandedPhase = phase }
@@ -353,7 +355,7 @@ update msg prevModel =
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        (Just (Routing.AgentHistory trade.parameters.initiatorAddress Seller))
+                        [ AppCmd.GotoRoute (Routing.AgentHistory trade.parameters.initiatorAddress Seller) ]
 
                 _ ->
                     let
@@ -371,17 +373,17 @@ update msg prevModel =
         ConfirmCommit trade userInfo depositAmount ->
             let
                 ( txChainStatus, chainCmd ) =
-                    case prevModel.node.network of
-                        XDai ->
-                            initiateCommitCall prevModel.node trade userInfo.address userInfo.commPubkey
+                    case prevModel.web3Context.factoryType of
+                        Native _ ->
+                            initiateCommitCall prevModel.web3Context trade userInfo.address userInfo.commPubkey
 
-                        Eth ethNetwork ->
+                        Token tokenType ->
                             let
                                 approveChainCmd =
                                     let
                                         txParams =
                                             TokenContract.approve
-                                                (Config.daiContractAddress ethNetwork)
+                                                (Config.tokenContractAddress tokenType)
                                                 trade.creationInfo.address
                                                 depositAmount
                                                 |> Eth.toSend
@@ -397,7 +399,7 @@ update msg prevModel =
                             case prevModel.allowance of
                                 Just allowance ->
                                     if BigInt.compare allowance (CTypes.responderDeposit trade.parameters |> TokenValue.getEvmValue) /= LT then
-                                        initiateCommitCall prevModel.node trade userInfo.address userInfo.commPubkey
+                                        initiateCommitCall prevModel.web3Context trade userInfo.address userInfo.commPubkey
 
                                     else
                                         ( Just ApproveNeedsSig, approveChainCmd )
@@ -409,7 +411,7 @@ update msg prevModel =
                 { prevModel | txChainStatus = txChainStatus }
                 Cmd.none
                 chainCmd
-                Nothing
+                []
 
         StartContractAction actionMsg ->
             let
@@ -492,7 +494,7 @@ update msg prevModel =
                 }
                 Cmd.none
                 chainCmd
-                Nothing
+                []
 
         ApproveSigned txHashResult ->
             case txHashResult of
@@ -550,7 +552,7 @@ update msg prevModel =
                 }
                 cmd
                 ChainCmd.none
-                Nothing
+                []
 
         ChatHistoryMsg chatHistoryMsg ->
             case prevModel.chatHistoryModel of
@@ -594,7 +596,7 @@ update msg prevModel =
                             ]
                         )
                         ChainCmd.none
-                        Nothing
+                        []
 
                 Nothing ->
                     let
@@ -641,7 +643,7 @@ update msg prevModel =
                                     }
                                     txParams
                                 )
-                                Nothing
+                                []
 
                 problematicBullshit ->
                     let
@@ -665,24 +667,24 @@ update msg prevModel =
             justModelUpdate prevModel
 
 
-initiateCommitCall : EthHelpers.EthNode -> CTypes.FullTradeInfo -> Address -> String -> ( Maybe TxChainStatus, ChainCmd Msg )
-initiateCommitCall node trade userAddress commPubkey =
+initiateCommitCall : EthHelpers.Web3Context -> CTypes.FullTradeInfo -> Address -> String -> ( Maybe TxChainStatus, ChainCmd Msg )
+initiateCommitCall web3Context trade userAddress commPubkey =
     let
         commitConstructor =
-            case node.network of
-                Eth _ ->
+            case web3Context.factoryType of
+                Token _ ->
                     DHT.commit
 
-                XDai ->
+                Native _ ->
                     DHNT.commit
 
         txParams =
             commitConstructor trade.creationInfo.address userAddress commPubkey
-                |> (case node.network of
-                        Eth _ ->
+                |> (case web3Context.factoryType of
+                        Token _ ->
                             identity
 
-                        XDai ->
+                        Native _ ->
                             EthHelpers.updateCallValue
                                 (CTypes.responderDeposit trade.parameters |> TokenValue.getEvmValue)
                    )

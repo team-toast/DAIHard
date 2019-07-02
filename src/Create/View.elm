@@ -243,7 +243,7 @@ buttonsElement model =
                 EH.redButton "Open Trade" (CreateClicked userInfo)
 
             Nothing ->
-                EH.disabledButton "Open Trade" (Just "No account detected. Is Metamask unlocked?")
+                EH.disabledButton "Open Trade" Nothing
         ]
 
 
@@ -520,11 +520,11 @@ txChainStatusModal txChainStatus model =
                                      , Element.text " DAI (including the 1% dev fee) to open this trade."
                                      ]
                                    ]
-                                ++ (case model.node.network of
-                                        Eth _ ->
+                                ++ (case model.web3Context.factoryType of
+                                        Token _ ->
                                             [ [ Element.text <| "This ususally requires two Metamask signatures. Your DAI will not be deposited until the final transaction has been mined." ] ]
 
-                                        XDai ->
+                                        Native _ ->
                                             []
                                    )
                             )
@@ -549,7 +549,7 @@ txChainStatusModal txChainStatus model =
             EH.txProcessModal
                 [ Element.text "Mining the initial approve transaction..."
                 , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                    { url = EthHelpers.makeViewTxUrl model.node.network txHash
+                    { url = EthHelpers.makeViewTxUrl model.web3Context.factoryType txHash
                     , label = Element.text "See the transaction on Etherscan"
                     }
                 , Element.text "Funds will not be sent until you sign the next transaction."
@@ -565,7 +565,7 @@ txChainStatusModal txChainStatus model =
             EH.txProcessModal
                 [ Element.text "Mining the final create call..."
                 , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                    { url = EthHelpers.makeViewTxUrl model.node.network txHash
+                    { url = EthHelpers.makeViewTxUrl model.web3Context.factoryType txHash
                     , label = Element.text "See the transaction on Etherscan"
                     }
                 , Element.text "You will be redirected when it's mined."

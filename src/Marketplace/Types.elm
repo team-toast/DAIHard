@@ -1,5 +1,6 @@
-module Marketplace.Types exposing (Errors, FiatTypeAndRange, Model, Msg(..), Query, ResultColumnType(..), SearchInputs, TokenRange, noErrors, updateFiatTypeInput, updateMaxDaiInput, updateMaxFiatInput, updateMinDaiInput, updateMinFiatInput, updatePaymentMethodInput, updatePaymentMethodTerms)
+module Marketplace.Types exposing (Errors, FiatTypeAndRange, Model, Msg(..), Query, ResultColumnType(..), SearchInputs, TokenRange, UpdateResult, noErrors, noUpdate, updateFiatTypeInput, updateMaxDaiInput, updateMaxFiatInput, updateMinDaiInput, updateMinFiatInput, updatePaymentMethodInput, updatePaymentMethodTerms)
 
+import AppCmd exposing (AppCmd)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -8,7 +9,7 @@ import Dict exposing (Dict)
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
 import FiatValue exposing (FiatValue)
-import Helpers.Eth as EthHelpers exposing (EthNode)
+import Helpers.Eth as EthHelpers exposing (Web3Context)
 import Http
 import Json.Decode
 import PaymentMethods exposing (PaymentMethod)
@@ -19,7 +20,7 @@ import TradeCache.Types as TradeCache exposing (TradeCache)
 
 
 type alias Model =
-    { ethNode : EthNode
+    { web3Context : Web3Context
     , userInfo : Maybe UserInfo
     , browsingRole : BuyerOrSeller
     , inputs : SearchInputs
@@ -51,6 +52,21 @@ type Msg
 
 --| StateFetched Int (Result Http.Error (Maybe CTypes.State))
 --| Refresh Time.Posix
+
+
+type alias UpdateResult =
+    { model : Model
+    , cmd : Cmd Msg
+    , appCmds : List AppCmd
+    }
+
+
+noUpdate : Model -> UpdateResult
+noUpdate model =
+    UpdateResult
+        model
+        Cmd.none
+        []
 
 
 type alias SearchInputs =

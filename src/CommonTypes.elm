@@ -1,18 +1,26 @@
-module CommonTypes exposing (BuyerOrSeller(..), EthNetwork(..), InitiatorOrResponder(..), Network(..), UserInfo)
+module CommonTypes exposing (BuyerOrSeller(..), FactoryType(..), InitiatorOrResponder(..), NativeFactoryType(..), TokenFactoryType(..), UserInfo)
 
 import Eth.Types exposing (Address)
 import Json.Decode
 import Json.Encode
 
 
-type Network
-    = Eth EthNetwork
+type FactoryType
+    = Native NativeFactoryType
+    | Token TokenFactoryType
+
+
+type NativeFactoryType
+    = Eth
+    | Kovan
+    | Rootstock
+    | RootstockTest
     | XDai
 
 
-type EthNetwork
-    = Mainnet
-    | Kovan
+type TokenFactoryType
+    = EthDai
+    | KovanDai
 
 
 type alias UserInfo =

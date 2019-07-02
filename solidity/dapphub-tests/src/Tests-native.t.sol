@@ -1,12 +1,12 @@
-pragma solidity ^0.5.6;
+pragma solidity 0.5.6;
 
 import "ds-test/test.sol";
 
 import "src/../../DAIHardNative.sol";
 
-contract DAIHardTradeWithCheats is DAIHardTrade {
+contract DAIHardNativeTradeWithCheats is DAIHardNativeTrade {
     constructor(address payable _founderFeeAddress, address payable _devFeeAddress)
-    DAIHardTrade(_founderFeeAddress, _devFeeAddress)
+    DAIHardNativeTrade(_founderFeeAddress, _devFeeAddress)
     public {}
 
     function setPokeRewardGranted(bool f)
@@ -22,7 +22,7 @@ contract Hevm {
 contract DAIHardTests is DSTest {
     using SafeMath for uint256;
 
-    DAIHardFactory factory;
+    DAIHardNativeFactory factory;
     Hevm hevm;
 
     User alice;
@@ -57,7 +57,7 @@ contract DAIHardTests is DSTest {
         hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
         hevm.warp(0);
 
-        factory = new DAIHardFactory(founderFeeAddress);
+        factory = new DAIHardNativeFactory(founderFeeAddress);
 
         alice = new User(factory);
         alice.thisAddressPayable().transfer(1000000000000000000000);
@@ -73,7 +73,7 @@ contract DAIHardTests is DSTest {
         /* ---- Set up: [no scenario to set up] ---- */
 
         /* ---- Action: Manually create trade ---- */
-        DAIHardTrade t = new DAIHardTrade(founderFeeAddress, devFeeAddress);
+        DAIHardNativeTrade t = new DAIHardNativeTrade(founderFeeAddress, devFeeAddress);
 
         /* ---- Assert correct address vars ---- */
         assertEq(address(t.founderFeeAddress()), founderFeeAddress);
@@ -85,7 +85,7 @@ contract DAIHardTests is DSTest {
 
         /* ---- Set up: Manually create trade and move to Open phase ---- */
 
-        DAIHardTrade trade = new DAIHardTrade(founderFeeAddress, devFeeAddress);
+        DAIHardNativeTrade trade = new DAIHardNativeTrade(founderFeeAddress, devFeeAddress);
         (bool success, ) = address(trade).call.value(100000)(beginInOpenPhaseCallSig);
         assertTrue(success);
 
@@ -100,7 +100,7 @@ contract DAIHardTests is DSTest {
 
         /* ---- Set up: Manually create trade and move to Open phase ---- */
 
-        DAIHardTrade trade = new DAIHardTrade(founderFeeAddress, devFeeAddress);
+        DAIHardNativeTrade trade = new DAIHardNativeTrade(founderFeeAddress, devFeeAddress);
         (bool success, ) = address(trade).call.value(100000)(beginInCommittedPhaseCallSig);
         assertTrue(success);
 
@@ -118,7 +118,7 @@ contract DAIHardTests is DSTest {
         /* ---- Action: Alice creates an open trade as custodian ---- */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
 
         /* ---- Assert ---- */
 
@@ -132,8 +132,8 @@ contract DAIHardTests is DSTest {
         assertEq(trade.autoreleaseInterval(), defaultAutoreleaseInterval);
         assertEq(trade.initiator(), address(alice));
         assertEq(trade.devFeeAddress(), devFeeAddress);
-        assertTrue(trade.initiatorIsCustodian());
-        assertEq(uint(trade.phase()), uint(DAIHardTrade.Phase.Open));
+        assertTrue(trade.initiator() == trade.custodian());
+        assertEq(uint(trade.phase()), uint(DAIHardNativeTrade.Phase.Open));
         assertEq(trade.custodian(), address(alice));
         assertEq(trade.beneficiaryDeposit(), defaultBeneficiaryDeposit);
 
@@ -154,7 +154,7 @@ contract DAIHardTests is DSTest {
         /* ---- Action: Alice creates an open trade as beneficiary ---- */
 
         alice.startOpenTradeAsBeneficiary([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
 
         /* ---- Assert ---- */
 
@@ -168,8 +168,8 @@ contract DAIHardTests is DSTest {
         assertEq(trade.autoreleaseInterval(), defaultAutoreleaseInterval);
         assertEq(trade.initiator(), address(alice));
         assertEq(trade.devFeeAddress(), devFeeAddress);
-        assertTrue(! trade.initiatorIsCustodian());
-        assertEq(uint(trade.phase()), uint(DAIHardTrade.Phase.Open));
+        assertTrue(trade.initiator() != trade.custodian());
+        assertEq(uint(trade.phase()), uint(DAIHardNativeTrade.Phase.Open));
         assertEq(trade.beneficiary(), address(alice));
         assertEq(trade.tradeAmount(), defaultTradeAmount);
 
@@ -190,7 +190,7 @@ contract DAIHardTests is DSTest {
         /* ---- Action: Alice creates a committed trade, with her as custodian and bob as beneficiary ---- */
 
         alice.startCommittedTradeAsCustodian(bob.thisAddressPayable(), [defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
 
         /* ---- Assert ---- */
 
@@ -202,11 +202,11 @@ contract DAIHardTests is DSTest {
         assertEq(trade.autoreleaseInterval(), defaultAutoreleaseInterval);
         assertEq(trade.founderFee(), expectedFounderFee);
         assertEq(trade.devFee(), defaultDevFee);
-        assertTrue(trade.initiatorIsCustodian());
+        assertTrue(trade.initiator() == trade.custodian());
         assertEq(trade.custodian(), address(alice));
         assertEq(trade.beneficiary(), address(bob));
         assertEq(trade.devFeeAddress(), devFeeAddress);
-        assertEq(uint(trade.phase()), uint(DAIHardTrade.Phase.Committed));
+        assertEq(uint(trade.phase()), uint(DAIHardNativeTrade.Phase.Committed));
         assertEq(trade.initiator(), address(alice));
         assertEq(trade.responder(), address(bob));
 
@@ -227,7 +227,7 @@ contract DAIHardTests is DSTest {
         /* ---- Action: Alice creates a committed trade, with her as beneficiary and bob as custodian ---- */
 
         alice.startCommittedTradeAsBeneficiary(bob.thisAddressPayable(), [defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
 
         /* ---- Assert ---- */
 
@@ -239,11 +239,11 @@ contract DAIHardTests is DSTest {
         assertEq(trade.autoreleaseInterval(), defaultAutoreleaseInterval);
         assertEq(trade.founderFee(), expectedFounderFee);
         assertEq(trade.devFee(), defaultDevFee);
-        assertTrue(!trade.initiatorIsCustodian());
+        assertTrue(trade.initiator() != trade.custodian());
         assertEq(trade.custodian(), address(bob));
         assertEq(trade.beneficiary(), address(alice));
         assertEq(trade.devFeeAddress(), devFeeAddress);
-        assertEq(uint(trade.phase()), uint(DAIHardTrade.Phase.Committed));
+        assertEq(uint(trade.phase()), uint(DAIHardNativeTrade.Phase.Committed));
         assertEq(trade.initiator(), address(alice));
         assertEq(trade.responder(), address(bob));
 
@@ -262,9 +262,9 @@ contract DAIHardTests is DSTest {
         /* ---- Set up: Alice opens two trades as custodian and Bob commits to one ---- */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade_willRemainOpen = alice.trade();
+        DAIHardNativeTrade trade_willRemainOpen = alice.trade();
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade_willBeCommitted = alice.trade();
+        DAIHardNativeTrade trade_willBeCommitted = alice.trade();
         bob.do_commit(trade_willBeCommitted);
 
         /* ---- Action: Alice calls recall on both ---- */
@@ -285,7 +285,7 @@ contract DAIHardTests is DSTest {
         /* ---- Set up: Alice is the Initiator of an Open trade ---- */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
 
         /* ---- Action/assert: bob's recall fails, but Alice's succeeds ---- */
 
@@ -301,7 +301,7 @@ contract DAIHardTests is DSTest {
         /* ---- Set up: Alice is the Initiator of an Open trade ---- */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
 
         /* ---- Action: Alice recalls ---- */
 
@@ -310,8 +310,8 @@ contract DAIHardTests is DSTest {
         /* ---- Assert ---- */
 
         // Assert trade state: closed (recalled)
-        assertEq(uint(trade.phase()), uint(DAIHardTrade.Phase.Closed));
-        assertEq(uint(trade.closedReason()), uint(DAIHardTrade.ClosedReason.Recalled));
+        assertEq(uint(trade.phase()), uint(DAIHardNativeTrade.Phase.Closed));
+        assertEq(uint(trade.closedReason()), uint(DAIHardNativeTrade.ClosedReason.Recalled));
 
         // Assert trade has no remaining balance, and Alice has been fully refunded
         assertEq(trade.getBalance(), uint(0));
@@ -322,7 +322,7 @@ contract DAIHardTests is DSTest {
         /* ---- Set up: Alice opens trade ---- */
         
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
 
         /* ---- Action: [no action to perform] ---- */
 
@@ -342,7 +342,7 @@ contract DAIHardTests is DSTest {
         /* ---- Set up: Create an open trade and move it to committed phase ---- */
 
         alice.startOpenTradeAsBeneficiary([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
         bytes memory doCommitCallSig = abi.encodeWithSignature("do_commit(address)", address(trade));
         (bool success, ) = address(bob).call(doCommitCallSig);
         assertTrue(success);
@@ -356,7 +356,7 @@ contract DAIHardTests is DSTest {
         /* ---- Set up: create and open trade ---- */
 
         alice.startOpenTradeAsBeneficiary([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
         bytes memory doCommitCallSig = abi.encodeWithSignature("do_commit(address)", address(trade));
 
         /* ---- Action/Assert ---- */
@@ -376,7 +376,7 @@ contract DAIHardTests is DSTest {
         /* ---- Set up: Alice opens a trade as Custodian ---- */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
 
         uint bobStartingBalance = address(bob).balance;
         uint tradePreCommitBalance = trade.getBalance();
@@ -397,14 +397,14 @@ contract DAIHardTests is DSTest {
         assertEq(trade.beneficiary(), address(bob));
 
         // Assert Committed phase
-        assertEq(uint(trade.phase()), uint(DAIHardTrade.Phase.Committed));
+        assertEq(uint(trade.phase()), uint(DAIHardNativeTrade.Phase.Committed));
     }
 
     function test_06050_givenOpenTradeNeedingCustodian_whenBobCommitsBeforeAutorecallAvailable_assertExpectedTokenTransferAndCorrectlyCommittedTrade() public {
         /* ---- Set up: Alice opens a trade as Beneficiary ---- */
 
         alice.startOpenTradeAsBeneficiary([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
 
         uint bobStartingBalance = address(bob).balance;
         uint tradePreCommitBalance = trade.getBalance();
@@ -425,7 +425,7 @@ contract DAIHardTests is DSTest {
         assertEq(trade.custodian(), address(bob));
 
         // Assert Committed phase
-        assertEq(uint(trade.phase()), uint(DAIHardTrade.Phase.Committed));
+        assertEq(uint(trade.phase()), uint(DAIHardNativeTrade.Phase.Committed));
     }
 
     function test_07010_givenTradeNotInCommittedPhase_whenBeneficiaryCallsAbort_assertFail() public {
@@ -434,9 +434,9 @@ contract DAIHardTests is DSTest {
         /* Set up: Alice creates two trades, bob commits to both but only claims on one ---- */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade_willRemainCommitted = alice.trade();
+        DAIHardNativeTrade trade_willRemainCommitted = alice.trade();
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade_willBeClaimed = alice.trade();
+        DAIHardNativeTrade trade_willBeClaimed = alice.trade();
 
         bob.do_commit(trade_willRemainCommitted);
         bob.do_commit(trade_willBeClaimed);
@@ -463,7 +463,7 @@ contract DAIHardTests is DSTest {
         /* Set up: Alice creates a trade, bob commits ---- */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
 
         bob.do_commit(trade);
 
@@ -488,7 +488,7 @@ contract DAIHardTests is DSTest {
         /* ---- Set up: Alice opens a trade as custodian and Bob commits ---- */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
         bob.do_commit(trade);
 
         /* ---- Action: Bob aborts ---- */
@@ -506,15 +506,15 @@ contract DAIHardTests is DSTest {
         assertEq(trade.getBalance(), 0);
 
         // Assert trade is properly closed
-        assertEq(uint(trade.phase()), uint(DAIHardTrade.Phase.Closed));
-        assertEq(uint(trade.closedReason()), uint(DAIHardTrade.ClosedReason.Aborted));
+        assertEq(uint(trade.phase()), uint(DAIHardNativeTrade.Phase.Closed));
+        assertEq(uint(trade.closedReason()), uint(DAIHardNativeTrade.ClosedReason.Aborted));
     }
 
     function test_08030_08040_givenCommittedTrade_assertAutoabortAvailableReturnsExpectedValuesAccordingToTimeCalled() public {
         /* ---- Set up: Alice opens a trade, then Bob commits */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
         bob.do_commit(trade);
 
         /* ---- Action: [no action to perform] ---- */
@@ -537,7 +537,7 @@ contract DAIHardTests is DSTest {
         /* ---- Set up: Alice opens trade as custodian, then bob commits and claims ---- */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
         bob.do_commit(trade);
         (bool success, ) = address(bob).call(doClaimCallSig);
         assertTrue(success);
@@ -554,7 +554,7 @@ contract DAIHardTests is DSTest {
         /* ---- Set up: Alice opens trade as custodian, then bob commits ---- */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
         bob.do_commit(trade);
 
         /* ---- Action/Assert ---- */
@@ -575,7 +575,7 @@ contract DAIHardTests is DSTest {
         /* ---- Set up: Alice opens trade as custodian, then bob commits ---- */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
         bob.do_commit(trade);
 
         /* ---- Action/Assert ---- */
@@ -595,14 +595,14 @@ contract DAIHardTests is DSTest {
         /* ---- Set up: Alice opens trade as custodian, then bob commits ---- */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
         bob.do_commit(trade);
 
         /* ---- Action: bob calls claim ---- */
         bob.do_claim();
 
         /* ---- Assert Judgment phase ---- */
-        assertEq(uint(trade.phase()), uint(DAIHardTrade.Phase.Judgment));
+        assertEq(uint(trade.phase()), uint(DAIHardNativeTrade.Phase.Judgment));
     }
 
     function test_10010_givenTradeNotInJudgmentPhase_whenCustodianCallsRelease_assertFail() public {
@@ -611,7 +611,7 @@ contract DAIHardTests is DSTest {
         /* ---- Set up: Alice opens trade as custodian and Bob commits ---- */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
         bob.do_commit(trade);
 
         /* ---- Action/Assert ---- */
@@ -632,7 +632,7 @@ contract DAIHardTests is DSTest {
         /* ---- Set up: Alice opens trade as custodian, then Bob commits and claims ---- */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
         bob.do_commit(trade);
         bob.do_claim();
 
@@ -653,7 +653,7 @@ contract DAIHardTests is DSTest {
         /* ---- Set up: Alice opens trade as custodian, then bob commits and claims ---- */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
         uint aliceBalanceAfterOpen = address(alice).balance;
 
         bob.do_commit(trade);
@@ -675,15 +675,15 @@ contract DAIHardTests is DSTest {
         assertEq(address(devFeeAddress).balance, defaultDevFee);
 
         // Assert trade state is properly closed
-        assertEq(uint(trade.phase()), uint(DAIHardTrade.Phase.Closed));
-        assertEq(uint(trade.closedReason()), uint(DAIHardTrade.ClosedReason.Released));
+        assertEq(uint(trade.phase()), uint(DAIHardNativeTrade.Phase.Closed));
+        assertEq(uint(trade.closedReason()), uint(DAIHardNativeTrade.ClosedReason.Released));
     }
 
     function test_11030_11040_givenJudgmentPhaseTrade_assertAutoreleaseAvailableReturnsExpectedValuesAccordingToTimeCalled() public {
         /* ---- Set up: Alice opens a trade, then Bob commits and claims */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
         bob.do_commit(trade);
         bob.do_claim();
 
@@ -707,7 +707,7 @@ contract DAIHardTests is DSTest {
         /* ---- Set up: Alice opens trade as custodian and Bob commits ---- */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
         bob.do_commit(trade);
 
         /* ---- Action/Assert ---- */
@@ -728,7 +728,7 @@ contract DAIHardTests is DSTest {
         /* ---- Set up: Alice opens trade as custodian, then Bob commits and claims ---- */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
         bob.do_commit(trade);
         bob.do_claim();
 
@@ -749,7 +749,7 @@ contract DAIHardTests is DSTest {
         /* ---- Set up: Alice opens trade as custodian, then bob commits and claims ---- */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
         bob.do_commit(trade);
         bob.do_claim();
 
@@ -770,7 +770,7 @@ contract DAIHardTests is DSTest {
         /* ---- Set up: Alice opens trade, then bob commits and claims ---- */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
         uint aliceBalanceAfterOpen = address(alice).balance;
         bob.do_commit(trade);
         uint bobBalanceAfterCommit = address(bob).balance;
@@ -792,8 +792,8 @@ contract DAIHardTests is DSTest {
         assertEq(address(bob).balance, bobBalanceAfterCommit);
 
         // Assert the trade state is properly closed
-        assertEq(uint(trade.phase()), uint(DAIHardTrade.Phase.Closed));
-        assertEq(uint(trade.closedReason()), uint(DAIHardTrade.ClosedReason.Burned));
+        assertEq(uint(trade.phase()), uint(DAIHardNativeTrade.Phase.Closed));
+        assertEq(uint(trade.closedReason()), uint(DAIHardNativeTrade.ClosedReason.Burned));
     }
 
     function test_13010_givenTradeWithPokeNeededButPokeRewardSentIsTrue_whenPokeCalled_assertFail() public {
@@ -801,7 +801,7 @@ contract DAIHardTests is DSTest {
 
         /* ---- Set up: Open a trade, warp ahead so autorecallAvailable() is true, and cheat to set pokeRewardGranted to true ---- */
 
-        DAIHardTradeWithCheats cTrade = new DAIHardTradeWithCheats( founderFeeAddress, devFeeAddress);
+        DAIHardNativeTradeWithCheats cTrade = new DAIHardNativeTradeWithCheats( founderFeeAddress, devFeeAddress);
         cTrade.beginInOpenPhase.value(100000)(alice.thisAddressPayable(), true, [defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, expectedFounderFee, defaultDevFee], "", "");
         hevm.warp(defaultAutorecallInterval);
         cTrade.setPokeRewardGranted(true);
@@ -822,7 +822,7 @@ contract DAIHardTests is DSTest {
         /* ---- Set up: Open a trade ---- */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
 
         /* ---- Action/Assert: poke returns false ---- */
 
@@ -835,7 +835,7 @@ contract DAIHardTests is DSTest {
         /* ---- Set up: Alice opens a trade */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
 
         /* ---- Action and Assert: Carl (a third party) calls poke, first immediately and then after the Autorecall is available */
 
@@ -852,8 +852,8 @@ contract DAIHardTests is DSTest {
         assertEq(address(carl).balance, carlStartingBalance + defaultPokeReward);
 
         // Assert the trade is properly closed and has a balance of 0
-        assertEq(uint(trade.phase()), uint(DAIHardTrade.Phase.Closed));
-        assertEq(uint(trade.closedReason()), uint(DAIHardTrade.ClosedReason.Recalled));
+        assertEq(uint(trade.phase()), uint(DAIHardNativeTrade.Phase.Closed));
+        assertEq(uint(trade.closedReason()), uint(DAIHardNativeTrade.ClosedReason.Recalled));
         assertEq(trade.getBalance(), 0);
 
     }
@@ -863,7 +863,7 @@ contract DAIHardTests is DSTest {
         /* ---- Set up: Alice opens a trade, then Bob commits */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
         bob.do_commit(trade);
 
         /* ---- Action and Assert: Carl (a third party) calls poke, first immediately and then after the Autoabort is available */
@@ -881,8 +881,8 @@ contract DAIHardTests is DSTest {
         assertEq(address(carl).balance, carlStartingBalance + defaultPokeReward);
 
         // Assert the trade is properly closed and has a balance of 0
-        assertEq(uint(trade.phase()), uint(DAIHardTrade.Phase.Closed));
-        assertEq(uint(trade.closedReason()), uint(DAIHardTrade.ClosedReason.Aborted));
+        assertEq(uint(trade.phase()), uint(DAIHardNativeTrade.Phase.Closed));
+        assertEq(uint(trade.closedReason()), uint(DAIHardNativeTrade.ClosedReason.Aborted));
         assertEq(trade.getBalance(), 0);
 
     }
@@ -892,7 +892,7 @@ contract DAIHardTests is DSTest {
         /* ---- Set up: Alice opens a trade, then Bob commits and claims */
 
         alice.startOpenTradeAsCustodian([defaultTradeAmount, defaultBeneficiaryDeposit, defaultAbortPunishment, defaultPokeReward, defaultAutorecallInterval, defaultAutoabortInterval, defaultAutoreleaseInterval, defaultDevFee], devFeeAddress);
-        DAIHardTrade trade = alice.trade();
+        DAIHardNativeTrade trade = alice.trade();
         bob.do_commit(trade);
         bob.do_claim();
 
@@ -911,8 +911,8 @@ contract DAIHardTests is DSTest {
         assertEq(address(carl).balance, carlStartingBalance + defaultPokeReward);
 
         // Assert the trade is properly closed and has a balance of 0
-        assertEq(uint(trade.phase()), uint(DAIHardTrade.Phase.Closed));
-        assertEq(uint(trade.closedReason()), uint(DAIHardTrade.ClosedReason.Released));
+        assertEq(uint(trade.phase()), uint(DAIHardNativeTrade.Phase.Closed));
+        assertEq(uint(trade.closedReason()), uint(DAIHardNativeTrade.ClosedReason.Released));
         assertEq(trade.getBalance(), 0);
     }
 }
@@ -920,10 +920,10 @@ contract DAIHardTests is DSTest {
 contract User {
     using SafeMath for uint;
     
-    DAIHardFactory public factory;
-    DAIHardTrade public trade;
+    DAIHardNativeFactory public factory;
+    DAIHardNativeTrade public trade;
 
-    constructor(DAIHardFactory f)
+    constructor(DAIHardNativeFactory f)
     public {
         factory = f;
     }
@@ -933,9 +933,9 @@ contract User {
     payable {}
 
     modifier checkPhaseDoesntRegress() {
-        DAIHardTrade.Phase p1 = trade.phase();
+        DAIHardNativeTrade.Phase p1 = trade.phase();
         _;
-        DAIHardTrade.Phase p2 = trade.phase();
+        DAIHardNativeTrade.Phase p2 = trade.phase();
         assert(uint(p2) >= uint(p1));
     }
 
@@ -944,7 +944,7 @@ contract User {
         _;
     }
 
-    function setTrade(DAIHardTrade t)
+    function setTrade(DAIHardNativeTrade t)
     public {
         trade = t;
     }
@@ -989,7 +989,7 @@ contract User {
     returns (bool) {
         return trade.autorecallAvailable();
     }
-    function do_commit(DAIHardTrade t)
+    function do_commit(DAIHardNativeTrade t)
     public {
         trade = t;
         trade.commit.value(trade.getResponderDeposit())(thisAddressPayable(), "");
@@ -1036,7 +1036,7 @@ contract User {
     checkPhaseDoesntRegress()
     checkPokeRewardGrantedIsFalse()
     public
-    returns(uint balance, DAIHardTrade.Phase phase, uint phaseStartTimestamp, address responder, DAIHardTrade.ClosedReason closedReason) {
+    returns(uint balance, DAIHardNativeTrade.Phase phase, uint phaseStartTimestamp, address responder, DAIHardNativeTrade.ClosedReason closedReason) {
         return trade.getState();
     }
     function do_getBalance()
@@ -1051,7 +1051,6 @@ contract User {
     checkPokeRewardGrantedIsFalse()
     public
     returns (address initiator,
-             bool initiatorIsCustodian,
              uint tradeAmount,
              uint beneficiaryDeposit,
              uint abortPunishment,
@@ -1074,11 +1073,11 @@ contract User {
     checkPokeRewardGrantedIsFalse()
     public
     returns(bool) {
-        DAIHardTrade.Phase p1 = trade.phase();
+        DAIHardNativeTrade.Phase p1 = trade.phase();
         bool pokeNeeded = trade.poke();
-        DAIHardTrade.Phase p2 = trade.phase();
+        DAIHardNativeTrade.Phase p2 = trade.phase();
 
-        assert(  (pokeNeeded && p1 != DAIHardTrade.Phase.Closed && p2 == DAIHardTrade.Phase.Closed)
+        assert(  (pokeNeeded && p1 != DAIHardNativeTrade.Phase.Closed && p2 == DAIHardNativeTrade.Phase.Closed)
               || ((!pokeNeeded) && p1 == p2)
               );
         return pokeNeeded;

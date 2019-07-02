@@ -1,12 +1,13 @@
 module Create.Types exposing (Errors, Inputs, Model, Msg(..), TxChainStatus(..), UpdateResult, interpretMarginString, justModelUpdate, noErrors)
 
+import AppCmd exposing (AppCmd)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
 import Create.PMWizard.Types as PMWizard
 import Eth.Types exposing (Address, TxHash, TxReceipt)
 import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
-import Helpers.Eth as EthHelpers exposing (EthNode)
+import Helpers.Eth as EthHelpers exposing (Web3Context)
 import Http
 import PaymentMethods exposing (PaymentMethod)
 import Routing
@@ -15,7 +16,7 @@ import TokenValue exposing (TokenValue)
 
 
 type alias Model =
-    { node : EthNode
+    { web3Context : Web3Context
     , userInfo : Maybe UserInfo
     , inputs : Inputs
     , errors : Errors
@@ -90,7 +91,7 @@ type alias UpdateResult =
     { model : Model
     , cmd : Cmd Msg
     , chainCmd : ChainCmd Msg
-    , newRoute : Maybe Routing.Route
+    , appCmds : List AppCmd
     }
 
 
@@ -99,7 +100,7 @@ justModelUpdate model =
     { model = model
     , cmd = Cmd.none
     , chainCmd = ChainCmd.none
-    , newRoute = Nothing
+    , appCmds = []
     }
 
 

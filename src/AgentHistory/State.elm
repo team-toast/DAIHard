@@ -1,6 +1,7 @@
-module AgentHistory.State exposing (init, subscriptions, update, updateUserInfo)
+module AgentHistory.State exposing (init, subscriptions, update, updateUserInfo, updateWeb3Context)
 
 import AgentHistory.Types exposing (..)
+import AppCmd
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -26,9 +27,9 @@ import TradeCache.State as TradeCache
 import TradeCache.Types as TradeCache exposing (TradeCache)
 
 
-init : EthHelpers.EthNode -> Address -> BuyerOrSeller -> Maybe UserInfo -> ( Model, Cmd Msg )
-init ethNode agentAddress agentRole maybeUserInfo =
-    ( { ethNode = ethNode
+init : EthHelpers.Web3Context -> Address -> BuyerOrSeller -> Maybe UserInfo -> ( Model, Cmd Msg )
+init web3Context agentAddress agentRole maybeUserInfo =
+    ( { web3Context = web3Context
       , agentAddress = agentAddress
       , agentRole = agentRole
       , userInfo = maybeUserInfo
@@ -46,14 +47,14 @@ update msg prevModel =
                 prevModel
                 Cmd.none
                 ChainCmd.none
-                (Just (Routing.AgentHistory prevModel.agentAddress role))
+                [ AppCmd.GotoRoute (Routing.AgentHistory prevModel.agentAddress role) ]
 
         ViewPhaseChanged phase ->
             UpdateResult
                 { prevModel | viewPhase = phase }
                 Cmd.none
                 ChainCmd.none
-                Nothing
+                []
 
         Poke address ->
             let
@@ -77,14 +78,14 @@ update msg prevModel =
                 prevModel
                 Cmd.none
                 chainCmd
-                Nothing
+                []
 
         TradeClicked id ->
             UpdateResult
                 prevModel
                 Cmd.none
                 ChainCmd.none
-                (Just (Routing.Trade id))
+                [ AppCmd.GotoRoute (Routing.Trade id) ]
 
         NoOp ->
             noUpdate prevModel
@@ -96,12 +97,17 @@ noUpdate model =
         model
         Cmd.none
         ChainCmd.none
-        Nothing
+        []
 
 
 updateUserInfo : Maybe UserInfo -> Model -> Model
 updateUserInfo userInfo model =
     { model | userInfo = userInfo }
+
+
+updateWeb3Context : EthHelpers.Web3Context -> Model -> Model
+updateWeb3Context newWeb3Context model =
+    { model | web3Context = newWeb3Context }
 
 
 subscriptions : Model -> Sub Msg

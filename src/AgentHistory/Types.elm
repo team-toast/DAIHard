@@ -1,5 +1,6 @@
 module AgentHistory.Types exposing (Model, Msg(..), UpdateResult)
 
+import AppCmd exposing (AppCmd)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -9,7 +10,7 @@ import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
 import FiatValue exposing (FiatValue)
 import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
-import Helpers.Eth as EthHelpers exposing (EthNode)
+import Helpers.Eth as EthHelpers exposing (Web3Context)
 import Http
 import Json.Decode
 import PaymentMethods exposing (PaymentMethod)
@@ -21,7 +22,7 @@ import TradeCache.Types as TradeCache exposing (TradeCache)
 
 
 type alias Model =
-    { ethNode : EthNode
+    { web3Context : Web3Context
     , agentAddress : Address
     , agentRole : BuyerOrSeller
     , userInfo : Maybe UserInfo
@@ -41,5 +42,5 @@ type alias UpdateResult =
     { model : Model
     , cmd : Cmd Msg
     , chainCmd : ChainCmd Msg
-    , newRoute : Maybe Routing.Route
+    , appCmds : List AppCmd
     }

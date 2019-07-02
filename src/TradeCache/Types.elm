@@ -7,7 +7,7 @@ import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Types as CTypes
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
-import Helpers.Eth as EthHelpers exposing (EthNode)
+import Helpers.Eth as EthHelpers exposing (Web3Context)
 import Http
 import Json.Decode
 import Time
@@ -15,7 +15,7 @@ import TokenValue exposing (TokenValue)
 
 
 type alias TradeCache =
-    { ethNode : EthNode
+    { web3Context : Web3Context
     , eventSentry : EventSentry Msg
     , numTrades : Maybe Int
     , trades : Array CTypes.Trade

@@ -13,15 +13,15 @@ import Time
 import TradeCache.Types exposing (..)
 
 
-init : EthHelpers.EthNode -> ( TradeCache, Cmd Msg )
-init ethNode =
+init : EthHelpers.Web3Context -> ( TradeCache, Cmd Msg )
+init web3Context =
     let
         ( sentry, sentryCmd ) =
             EventSentry.init
                 EventSentryMsg
-                ethNode.http
+                web3Context.httpProvider
     in
-    ( { ethNode = ethNode
+    ( { web3Context = web3Context
       , eventSentry = sentry
       , numTrades = Nothing
       , trades = Array.empty
@@ -32,14 +32,14 @@ init ethNode =
 
 startCaching : TradeCache -> Cmd Msg
 startCaching tradeCache =
-    Contracts.Wrappers.getNumTradesCmd tradeCache.ethNode InitialNumTradesFetched
+    Contracts.Wrappers.getNumTradesCmd tradeCache.web3Context InitialNumTradesFetched
 
 
-initAndStartCaching : EthHelpers.EthNode -> ( TradeCache, Cmd Msg )
-initAndStartCaching ethNode =
+initAndStartCaching : EthHelpers.Web3Context -> ( TradeCache, Cmd Msg )
+initAndStartCaching web3Context =
     let
         ( tc, cmd1 ) =
-            init ethNode
+            init web3Context
     in
     ( tc
     , Cmd.batch
@@ -63,7 +63,7 @@ update msg prevModel =
                                         (List.range 0 (numTrades - 1)
                                             |> List.map
                                                 (\id ->
-                                                    Contracts.Wrappers.getCreationInfoFromIdCmd prevModel.ethNode (BigInt.fromInt id) (CreationInfoFetched id)
+                                                    Contracts.Wrappers.getCreationInfoFromIdCmd prevModel.web3Context (BigInt.fromInt id) (CreationInfoFetched id)
                                                 )
                                         )
 
@@ -95,7 +95,7 @@ update msg prevModel =
 
         CheckForNewTrades ->
             ( prevModel
-            , Contracts.Wrappers.getNumTradesCmd prevModel.ethNode NumTradesFetchedAgain
+            , Contracts.Wrappers.getNumTradesCmd prevModel.web3Context NumTradesFetchedAgain
             )
 
         NumTradesFetchedAgain fetchResult ->
@@ -110,7 +110,7 @@ update msg prevModel =
                                             (List.range oldNumTrades (newNumTrades - 1)
                                                 |> List.map
                                                     (\id ->
-                                                        Contracts.Wrappers.getCreationInfoFromIdCmd prevModel.ethNode (BigInt.fromInt id) (CreationInfoFetched id)
+                                                        Contracts.Wrappers.getCreationInfoFromIdCmd prevModel.web3Context (BigInt.fromInt id) (CreationInfoFetched id)
                                                     )
                                             )
 
@@ -168,7 +168,7 @@ update msg prevModel =
 
                         cmd =
                             Cmd.batch
-                                [ Contracts.Wrappers.getParametersStateAndPhaseInfoCmd prevModel.ethNode creationInfo.address (ParametersFetched id) (StateFetched id) (PhaseStartInfoFetched id)
+                                [ Contracts.Wrappers.getParametersStateAndPhaseInfoCmd prevModel.web3Context creationInfo.address (ParametersFetched id) (StateFetched id) (PhaseStartInfoFetched id)
                                 , sentryCmd
                                 ]
                     in

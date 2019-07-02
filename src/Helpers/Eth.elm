@@ -1,4 +1,4 @@
-module Helpers.Eth exposing (EthNode, addressIfNot0x0, ethNode, getLogAt, intToNetwork, logBadFetchResultMaybe, makeViewAddressUrl, makeViewTxUrl, updateCallValue)
+module Helpers.Eth exposing (Web3Context, addressIfNot0x0, factoryTypeToNetworkId, getLogAt, intToFactoryType, logBadFetchResultMaybe, makeViewAddressUrl, makeViewTxUrl, networkIdToFactoryType, updateCallValue, web3Context)
 
 import Array
 import BigInt exposing (BigInt)
@@ -10,49 +10,112 @@ import Eth.Types exposing (Address, HttpProvider, TxHash, WebsocketProvider)
 import Eth.Utils
 
 
-type alias EthNode =
-    { network : Network
-    , http : HttpProvider
-    , ws : WebsocketProvider
+type alias Web3Context =
+    { factoryType : FactoryType
+    , httpProvider : HttpProvider
+    , wsProvider : WebsocketProvider
     }
 
 
-intToNetwork : Int -> Maybe Network
-intToNetwork i =
-    case Net.toNetworkId i of
+networkIdToFactoryType : Net.NetworkId -> Maybe FactoryType
+networkIdToFactoryType networkId =
+    case networkId of
         Net.Mainnet ->
-            Just <| Eth Mainnet
+            Just <| Token EthDai
 
         Net.Kovan ->
-            Just <| Eth Kovan
+            Just <| Token KovanDai
+
+        Net.RskMain ->
+            Just <| Native Rootstock
+
+        Net.RskTest ->
+            Just <| Native RootstockTest
+
+        Net.Private 100 ->
+            Just <| Native XDai
 
         _ ->
-            if i == 100 then
-                Just XDai
+            let
+                _ =
+                    Debug.log "unknown network" networkId
+            in
+            Nothing
 
-            else
-                Nothing
+
+factoryTypeToNetworkId : FactoryType -> Net.NetworkId
+factoryTypeToNetworkId factoryType =
+    case factoryType of
+        Token EthDai ->
+            Net.Mainnet
+
+        Native Eth ->
+            Net.Mainnet
+
+        Token KovanDai ->
+            Net.Kovan
+
+        Native Kovan ->
+            Net.Kovan
+
+        Native Rootstock ->
+            Net.RskMain
+
+        Native RootstockTest ->
+            Net.RskTest
+
+        Native XDai ->
+            Net.Private 100
 
 
-ethNode : Network -> EthNode
-ethNode network =
-    case network of
-        Eth Mainnet ->
-            EthNode
-                network
+intToFactoryType : Int -> Maybe FactoryType
+intToFactoryType =
+    Net.toNetworkId >> networkIdToFactoryType
+
+
+web3Context : FactoryType -> Web3Context
+web3Context factoryType =
+    case factoryType of
+        Token EthDai ->
+            Web3Context
+                factoryType
                 "https://mainnet.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9"
                 "wss://mainnet.infura.io/ws"
 
-        Eth Kovan ->
-            EthNode
-                network
+        Native Eth ->
+            Web3Context
+                factoryType
+                "https://mainnet.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9"
+                "wss://mainnet.infura.io/ws"
+
+        Token KovanDai ->
+            Web3Context
+                factoryType
                 "https://kovan.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9"
                 "wss://kovan.infura.io/ws"
 
-        XDai ->
-            EthNode
-                network
+        Native Kovan ->
+            Web3Context
+                factoryType
+                "https://kovan.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9"
+                "wss://kovan.infura.io/ws"
+
+        Native XDai ->
+            Web3Context
+                factoryType
                 "https://dai.poa.network"
+                ""
+
+        Native Rootstock ->
+            Web3Context
+                factoryType
+                "https://public-node.rsk.co"
+                ""
+
+        Native RootstockTest ->
+            Web3Context
+                factoryType
+                "https://public-node.testnet.rsk.co"
                 ""
 
 
@@ -84,30 +147,54 @@ logBadFetchResultMaybe fetchResult =
             Debug.log "can't fetch from Ethereum: " fetchResult
 
 
-makeViewTxUrl : Network -> TxHash -> String
-makeViewTxUrl network txHash =
-    case network of
-        Eth Mainnet ->
+makeViewTxUrl : FactoryType -> TxHash -> String
+makeViewTxUrl factoryType txHash =
+    case factoryType of
+        Token EthDai ->
             "https://etherscan.io/tx/" ++ Eth.Utils.txHashToString txHash
 
-        Eth Kovan ->
+        Native Eth ->
+            "https://etherscan.io/tx/" ++ Eth.Utils.txHashToString txHash
+
+        Token KovanDai ->
             "https://kovan.etherscan.io/tx/" ++ Eth.Utils.txHashToString txHash
 
-        XDai ->
+        Native Kovan ->
+            "https://kovan.etherscan.io/tx/" ++ Eth.Utils.txHashToString txHash
+
+        Native XDai ->
             "https://blockscout.com/poa/dai/tx/" ++ Eth.Utils.txHashToString txHash
 
+        Native Rootstock ->
+            "https://explorer.rsk.co/tx/" ++ Eth.Utils.txHashToString txHash
 
-makeViewAddressUrl : Network -> Address -> String
-makeViewAddressUrl network address =
-    case network of
-        Eth Mainnet ->
+        Native RootstockTest ->
+            ""
+
+
+makeViewAddressUrl : FactoryType -> Address -> String
+makeViewAddressUrl factoryType address =
+    case factoryType of
+        Token EthDai ->
             "https://etherscan.io/address/" ++ Eth.Utils.addressToString address
 
-        Eth Kovan ->
+        Native Eth ->
+            "https://etherscan.io/address/" ++ Eth.Utils.addressToString address
+
+        Token KovanDai ->
             "https://kovan.etherscan.io/address/" ++ Eth.Utils.addressToString address
 
-        XDai ->
+        Native Kovan ->
+            "https://kovan.etherscan.io/address/" ++ Eth.Utils.addressToString address
+
+        Native XDai ->
             "https://blockscout.com/poa/dai/address/" ++ Eth.Utils.addressToString address
+
+        Native Rootstock ->
+            "https://explorer.rsk.co/address/" ++ Eth.Utils.addressToString address
+
+        Native RootstockTest ->
+            ""
 
 
 updateCallValue : BigInt -> Eth.Types.Call a -> Eth.Types.Call a

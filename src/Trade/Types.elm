@@ -8,6 +8,7 @@ module Trade.Types exposing
     , justModelUpdate
     )
 
+import AppCmd exposing (AppCmd)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -27,7 +28,7 @@ import Trade.ChatHistory.Types as ChatHistory
 
 
 type alias Model =
-    { node : EthHelpers.EthNode
+    { web3Context : EthHelpers.Web3Context
     , userInfo : Maybe UserInfo
     , trade : CTypes.Trade
     , expandedPhase : CTypes.Phase
@@ -73,7 +74,7 @@ type alias UpdateResult =
     { model : Model
     , cmd : Cmd Msg
     , chainCmd : ChainCmd Msg
-    , newRoute : Maybe Routing.Route
+    , appCmds : List AppCmd
     }
 
 
@@ -83,7 +84,7 @@ justModelUpdate model =
         model
         Cmd.none
         ChainCmd.none
-        Nothing
+        []
 
 
 type TxChainStatus

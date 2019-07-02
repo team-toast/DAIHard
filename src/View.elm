@@ -95,13 +95,17 @@ headerContent maybeValidModel =
                 (\submodel ->
                     case submodel of
                         MarketplaceModel marketplaceModel ->
-                            marketplaceModel.browsingRole == Buyer
+                            if marketplaceModel.browsingRole == Buyer then
+                                Active
+
+                            else
+                                Normal
 
                         _ ->
-                            False
+                            Normal
                 )
                 maybeCurrentSubmodel
-                |> Maybe.withDefault False
+                |> Maybe.withDefault Normal
             )
         , headerLink
             "Sell Dai"
@@ -110,13 +114,17 @@ headerContent maybeValidModel =
                 (\submodel ->
                     case submodel of
                         MarketplaceModel marketplaceModel ->
-                            marketplaceModel.browsingRole == Seller
+                            if marketplaceModel.browsingRole == Seller then
+                                Active
+
+                            else
+                                Normal
 
                         _ ->
-                            False
+                            Normal
                 )
                 maybeCurrentSubmodel
-                |> Maybe.withDefault False
+                |> Maybe.withDefault Normal
             )
         , headerLink
             "Create a New Offer"
@@ -125,13 +133,13 @@ headerContent maybeValidModel =
                 (\submodel ->
                     case submodel of
                         CreateModel _ ->
-                            True
+                            Active
 
                         _ ->
-                            False
+                            Normal
                 )
                 maybeCurrentSubmodel
-                |> Maybe.withDefault False
+                |> Maybe.withDefault Normal
             )
         , case maybeUserInfo of
             Just userInfo ->
@@ -142,32 +150,100 @@ headerContent maybeValidModel =
                         (\submodel ->
                             case submodel of
                                 AgentHistoryModel agentHistoryModel ->
-                                    agentHistoryModel.agentAddress == userInfo.address
+                                    if agentHistoryModel.agentAddress == userInfo.address then
+                                        Active
+
+                                    else
+                                        Normal
 
                                 _ ->
-                                    False
+                                    Normal
                         )
                         maybeCurrentSubmodel
-                        |> Maybe.withDefault False
+                        |> Maybe.withDefault Normal
                     )
 
             Nothing ->
-                Element.none
-        , Element.el [ Element.alignRight ] logoElement
+                headerLink
+                    "Connect to Wallet"
+                    ConnectToWeb3
+                    Important
+        , Element.column
+            [ Element.alignRight
+            , Element.spacing 0
+            , Element.paddingXY 8 0
+            ]
+            [ logoElement
+            , networkModeElement maybeValidModel
+            ]
         ]
 
 
-headerLink : String -> Msg -> Bool -> Element Msg
-headerLink title onClick selected =
+networkModeElement : Model -> Element Msg
+networkModeElement maybeValidModel =
+    Element.el
+        [ Element.Font.size 18
+        , Element.Font.color <| Element.rgb 0.8 0.8 1
+        , Element.Font.semiBold
+        , Element.Font.italic
+        , Element.centerX
+        ]
+        (Element.text (networkModeText maybeValidModel))
+
+
+networkModeText : Model -> String
+networkModeText maybeValidModel =
+    case maybeValidModel of
+        Failed _ ->
+            "plz refresh X_X"
+
+        Running model ->
+            case model.web3Context.factoryType of
+                Native Eth ->
+                    "Mainnet ETH"
+
+                Native Kovan ->
+                    "Testnet ETH"
+
+                Native Rootstock ->
+                    "Rootstock SBTC"
+
+                Native RootstockTest ->
+                    "RskTest SBTC"
+
+                Native XDai ->
+                    "xDai"
+
+                Token EthDai ->
+                    "Mainnet Dai"
+
+                Token KovanDai ->
+                    "Testnet Dai"
+
+
+type HeaderLinkStyle
+    = Normal
+    | Active
+    | Important
+
+
+headerLink : String -> Msg -> HeaderLinkStyle -> Element Msg
+headerLink title onClick style =
     let
         extraStyles =
-            if selected then
-                [ Element.Border.rounded 4
-                , Element.Background.color <| Element.rgb255 244 0 103
-                ]
+            case style of
+                Normal ->
+                    []
 
-            else
-                []
+                Active ->
+                    [ Element.Border.rounded 4
+                    , Element.Background.color <| Element.rgb 0 0 1
+                    ]
+
+                Important ->
+                    [ Element.Border.rounded 4
+                    , Element.Background.color <| Element.rgb 0.9 0 0
+                    ]
     in
     Element.el
         ([ Element.paddingXY 23 12
@@ -185,10 +261,10 @@ headerLink title onClick selected =
 logoElement : Element Msg
 logoElement =
     Element.el
-        [ Element.paddingXY 8 0
-        , Element.Font.size 29
+        [ Element.Font.size 29
         , Element.Font.color EH.white
         , Element.Font.bold
+        , Element.centerX
         , Element.pointer
         , Element.Events.onClick <| GotoRoute Routing.Home
         ]

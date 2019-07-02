@@ -174,7 +174,7 @@ fakeLink name =
 
 
 
--- RENDERERS
+-- VALUE RENDERERS
 
 
 daiValue : TokenValue -> Element msg
@@ -257,27 +257,6 @@ uncoloredMargin marginFloat =
                 [ Element.el [ Element.Font.size 18 ]
                     (Element.text unsignedPercentString)
                 ]
-
-
-pokeButton : msg -> Element msg
-pokeButton pokeMsg =
-    Element.Input.button
-        [ Element.Background.color <| Element.rgba255 16 7 234 0.2
-        , Element.padding 5
-        , Element.Border.rounded 4
-        , Element.width Element.fill
-        , Element.mouseOver [ Element.Background.color <| Element.rgba255 16 7 234 0.4 ]
-        ]
-        { onPress = Just pokeMsg
-        , label =
-            Element.el
-                [ Element.centerX
-                , Element.Font.color <| Element.rgb255 16 7 234
-                , Element.Font.medium
-                , Element.Font.size 14
-                ]
-                (Element.text "Poke")
-        }
 
 
 interval : List (Attribute msg) -> List (Attribute msg) -> ( Element.Color, Element.Color ) -> Time.Posix -> Element msg
@@ -412,6 +391,34 @@ elapsedBar ratio filledBarColor =
         ]
 
 
+bigTimeUnitElement : Int -> Element.Color -> String -> Int -> Element msg
+bigTimeUnitElement numDigits color labelString num =
+    let
+        numStr =
+            String.fromInt num
+                |> String.padLeft numDigits '0'
+    in
+    Element.el
+        [ Element.Font.size 22
+        , Element.Font.color color
+        ]
+        (Element.text <| numStr ++ labelString)
+
+
+fiatTypeToSymbolElement : String -> Element msg
+fiatTypeToSymbolElement fiatType =
+    case Dict.get fiatType FiatValue.currencyTypes of
+        Nothing ->
+            Element.text "*"
+
+        Just ( _, image ) ->
+            Images.toElement [ Element.height <| Element.px 26 ] image
+
+
+
+-- INPUTS
+
+
 intervalInput : Maybe Element.Color -> Time.Posix -> (Time.Posix -> msg) -> Element msg
 intervalInput maybeLowValColor i newIntervalMsg =
     let
@@ -486,101 +493,6 @@ intervalInput maybeLowValColor i newIntervalMsg =
         , bigTimeUnitElement 2 mc " min" hrInterval.min
             |> withModifyArrows (Time.millisToPosix <| 1000 * 60 * 5)
         ]
-
-
-bigTimeUnitElement : Int -> Element.Color -> String -> Int -> Element msg
-bigTimeUnitElement numDigits color labelString num =
-    let
-        numStr =
-            String.fromInt num
-                |> String.padLeft numDigits '0'
-    in
-    Element.el
-        [ Element.Font.size 22
-        , Element.Font.color color
-        ]
-        (Element.text <| numStr ++ labelString)
-
-
-button : ( Element.Color, Element.Color, Element.Color ) -> Element.Color -> String -> msg -> Element msg
-button ( bgColor, bgHoverColor, bgPressedColor ) textColor text msg =
-    Element.el
-        [ Element.Border.rounded 4
-        , Element.pointer
-        , Element.Events.onClick msg
-        , Element.paddingXY 25 17
-        , Element.Font.color textColor
-        , Element.Font.size 18
-        , Element.Font.semiBold
-        , Element.Background.color bgColor
-        , Element.mouseDown [ Element.Background.color bgPressedColor ]
-        , Element.mouseOver [ Element.Background.color bgHoverColor ]
-        ]
-        (Element.text text)
-
-
-blueButton : String -> msg -> Element msg
-blueButton text msg =
-    button
-        ( Element.rgba 0 0 1 1
-        , Element.rgba 0 0 1 0.8
-        , Element.rgba 0 0 1 0.6
-        )
-        white
-        text
-        msg
-
-
-inverseBlueButton : String -> msg -> Element msg
-inverseBlueButton text msg =
-    button
-        ( Element.rgba 0 0 1 0.05
-        , Element.rgba 0 0 1 0.1
-        , Element.rgba 0 0 1 0.2
-        )
-        blue
-        text
-        msg
-
-
-redButton : String -> msg -> Element msg
-redButton text msg =
-    button
-        ( Element.rgba 1 0 0 1
-        , Element.rgba 1 0 0 0.8
-        , Element.rgba 1 0 0 0.6
-        )
-        white
-        text
-        msg
-
-
-disabledButton : String -> Maybe String -> Element msg
-disabledButton text maybeTipText =
-    Element.el
-        [ Element.Border.rounded 4
-        , Element.paddingXY 25 17
-        , Element.Font.size 18
-        , Element.Font.semiBold
-        , Element.Background.color lightGray
-        , Element.above <|
-            maybeErrorElement
-                [ Element.moveUp 5 ]
-                maybeTipText
-        ]
-        (Element.text text)
-
-
-orangeButton : String -> msg -> Element msg
-orangeButton text msg =
-    button
-        ( Element.rgba 1 0.6 0.2 1
-        , Element.rgba 1 0.6 0.2 0.8
-        , Element.rgba 1 0.6 0.2 0.6
-        )
-        white
-        text
-        msg
 
 
 fancyInput : List (Attribute msg) -> ( Maybe (Element msg), Maybe (Element msg) ) -> String -> Maybe (Element.Input.Placeholder msg) -> String -> (String -> msg) -> Element msg
@@ -745,6 +657,116 @@ currencySelector showDropdown typeStringInput openCurrencySelectorMsg typeString
         ]
 
 
+
+-- BUTTONS
+
+
+button : ( Element.Color, Element.Color, Element.Color ) -> Element.Color -> String -> msg -> Element msg
+button ( bgColor, bgHoverColor, bgPressedColor ) textColor text msg =
+    Element.el
+        [ Element.Border.rounded 4
+        , Element.pointer
+        , Element.Events.onClick msg
+        , Element.paddingXY 25 17
+        , Element.Font.color textColor
+        , Element.Font.size 18
+        , Element.Font.semiBold
+        , Element.Background.color bgColor
+        , Element.mouseDown [ Element.Background.color bgPressedColor ]
+        , Element.mouseOver [ Element.Background.color bgHoverColor ]
+        ]
+        (Element.text text)
+
+
+pokeButton : msg -> Element msg
+pokeButton pokeMsg =
+    Element.Input.button
+        [ Element.Background.color <| Element.rgba255 16 7 234 0.2
+        , Element.padding 5
+        , Element.Border.rounded 4
+        , Element.width Element.fill
+        , Element.mouseOver [ Element.Background.color <| Element.rgba255 16 7 234 0.4 ]
+        ]
+        { onPress = Just pokeMsg
+        , label =
+            Element.el
+                [ Element.centerX
+                , Element.Font.color <| Element.rgb255 16 7 234
+                , Element.Font.medium
+                , Element.Font.size 14
+                ]
+                (Element.text "Poke")
+        }
+
+
+blueButton : String -> msg -> Element msg
+blueButton text msg =
+    button
+        ( Element.rgba 0 0 1 1
+        , Element.rgba 0 0 1 0.8
+        , Element.rgba 0 0 1 0.6
+        )
+        white
+        text
+        msg
+
+
+inverseBlueButton : String -> msg -> Element msg
+inverseBlueButton text msg =
+    button
+        ( Element.rgba 0 0 1 0.05
+        , Element.rgba 0 0 1 0.1
+        , Element.rgba 0 0 1 0.2
+        )
+        blue
+        text
+        msg
+
+
+redButton : String -> msg -> Element msg
+redButton text msg =
+    button
+        ( Element.rgba 1 0 0 1
+        , Element.rgba 1 0 0 0.8
+        , Element.rgba 1 0 0 0.6
+        )
+        white
+        text
+        msg
+
+
+disabledButton : String -> Maybe String -> Element msg
+disabledButton text maybeTipText =
+    Element.el
+        [ Element.Border.rounded 4
+        , Element.paddingXY 25 17
+        , Element.Font.size 18
+        , Element.Font.semiBold
+        , Element.Background.color lightGray
+        , Element.above <|
+            maybeErrorElement
+                [ Element.moveUp 5 ]
+                maybeTipText
+        ]
+        (Element.text text)
+
+
+orangeButton : String -> msg -> Element msg
+orangeButton text msg =
+    button
+        ( Element.rgba 1 0.6 0.2 1
+        , Element.rgba 1 0.6 0.2 0.8
+        , Element.rgba 1 0.6 0.2 0.6
+        )
+        white
+        text
+        msg
+
+
+
+-- STYLE HELPERS
+
+
 textWithoutTextCursor : String -> Element msg
 textWithoutTextCursor s =
     Html.Styled.styled
@@ -756,26 +778,12 @@ textWithoutTextCursor s =
         |> Element.html
 
 
-fiatTypeToSymbolElement : String -> Element msg
-fiatTypeToSymbolElement fiatType =
-    case Dict.get fiatType FiatValue.currencyTypes of
-        Nothing ->
-            Element.text "*"
-
-        Just ( _, image ) ->
-            Images.toElement [ Element.height <| Element.px 26 ] image
-
-
 onClickNoPropagation : msg -> Attribute msg
 onClickNoPropagation msg =
     Html.Events.stopPropagationOn
         "click"
         (Json.Decode.succeed ( msg, True ))
         |> Element.htmlAttribute
-
-
-
--- STYLE HELPERS
 
 
 roundBottomCorners : Int -> Attribute msg
@@ -1071,11 +1079,11 @@ maybeErrorElement attributes maybeError =
                 )
 
 
-etherscanAddressLink : List (Attribute msg) -> Network -> Address -> Element msg
-etherscanAddressLink attributes network address =
+etherscanAddressLink : List (Attribute msg) -> FactoryType -> Address -> Element msg
+etherscanAddressLink attributes factoryType address =
     Element.newTabLink
         attributes
-        { url = EthHelpers.makeViewAddressUrl network address
+        { url = EthHelpers.makeViewAddressUrl factoryType address
         , label = Element.text <| Eth.Utils.addressToString address
         }
 
