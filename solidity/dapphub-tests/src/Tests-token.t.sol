@@ -1,4 +1,4 @@
-pragma solidity ^0.5.6;
+pragma solidity 0.5.6;
 
 import "ds-test/test.sol";
 import "ds-token/token.sol";
@@ -138,7 +138,7 @@ contract DAIHardTests is DSTest {
         assertEq(trade.autoreleaseInterval(), defaultAutoreleaseInterval);
         assertEq(trade.initiator(), address(alice));
         assertEq(trade.devFeeAddress(), devFeeAddress);
-        assertTrue(trade.initiatorIsCustodian());
+        assertTrue(trade.initiator() == trade.custodian());
         assertEq(uint(trade.phase()), uint(DAIHardTrade.Phase.Open));
         assertEq(trade.custodian(), address(alice));
         assertEq(trade.beneficiaryDeposit(), defaultBeneficiaryDeposit);
@@ -174,7 +174,7 @@ contract DAIHardTests is DSTest {
         assertEq(trade.autoreleaseInterval(), defaultAutoreleaseInterval);
         assertEq(trade.initiator(), address(alice));
         assertEq(trade.devFeeAddress(), devFeeAddress);
-        assertTrue(! trade.initiatorIsCustodian());
+        assertTrue(trade.initiator() != trade.custodian());
         assertEq(uint(trade.phase()), uint(DAIHardTrade.Phase.Open));
         assertEq(trade.beneficiary(), address(alice));
         assertEq(trade.tradeAmount(), defaultTradeAmount);
@@ -208,7 +208,7 @@ contract DAIHardTests is DSTest {
         assertEq(trade.autoreleaseInterval(), defaultAutoreleaseInterval);
         assertEq(trade.founderFee(), expectedFounderFee);
         assertEq(trade.devFee(), defaultDevFee);
-        assertTrue(trade.initiatorIsCustodian());
+        assertTrue(trade.initiator() == trade.custodian());
         assertEq(trade.custodian(), address(alice));
         assertEq(trade.beneficiary(), address(bob));
         assertEq(trade.devFeeAddress(), devFeeAddress);
@@ -245,7 +245,7 @@ contract DAIHardTests is DSTest {
         assertEq(trade.autoreleaseInterval(), defaultAutoreleaseInterval);
         assertEq(trade.founderFee(), expectedFounderFee);
         assertEq(trade.devFee(), defaultDevFee);
-        assertTrue(!trade.initiatorIsCustodian());
+        assertTrue(trade.initiator() != trade.custodian());
         assertEq(trade.custodian(), address(bob));
         assertEq(trade.beneficiary(), address(alice));
         assertEq(trade.devFeeAddress(), devFeeAddress);
@@ -1056,7 +1056,6 @@ contract User {
     checkPokeRewardGrantedIsFalse()
     public
     returns (address initiator,
-             bool initiatorIsCustodian,
              uint tradeAmount,
              uint beneficiaryDeposit,
              uint abortPunishment,
