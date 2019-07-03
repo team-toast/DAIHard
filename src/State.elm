@@ -94,6 +94,23 @@ type alias EncryptedMessage =
 updateValidModel : Msg -> ValidModel -> ( Model, Cmd Msg )
 updateValidModel msg model =
     case msg of
+        AppCmd appCmd ->
+            case appCmd of
+                AppCmd.Web3Connect ->
+                    ( Running model
+                    , connectToWeb3 ()
+                    )
+
+                AppCmd.GotoRoute newRoute ->
+                    ( Running model
+                    , beginRouteChange model.key newRoute
+                    )
+
+                AppCmd.GTag gtag ->
+                    ( Running model
+                    , gTagOut (encodeGTag gtag) |> Debug.log "sending gtag cmd"
+                    )
+
         LinkClicked urlRequest ->
             let
                 cmd =
@@ -349,6 +366,13 @@ updateValidModel msg model =
         NoOp ->
             ( Running model, Cmd.none )
 
+        Test s ->
+            let
+                _ =
+                    Debug.log "test" s
+            in
+            ( Running model, Cmd.none )
+
 
 runAppCmds : List AppCmd -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 runAppCmds appCmds ( maybeValidModel, prevCmd ) =
@@ -360,24 +384,28 @@ runAppCmds appCmds ( maybeValidModel, prevCmd ) =
 
 runAppCmd : AppCmd -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 runAppCmd appCmd ( maybeValidModel, prevCmd ) =
-    case maybeValidModel of
-        Failed _ ->
-            ( maybeValidModel, prevCmd )
+    let
+        ( newModel, newCmd ) =
+            update
+                (AppCmd appCmd)
+                maybeValidModel
+    in
+    ( newModel
+    , Cmd.batch
+        [ prevCmd
+        , newCmd
+        ]
+    )
 
-        Running prevModel ->
-            case appCmd of
-                AppCmd.Web3Connect ->
-                    ( Running prevModel
-                    , Cmd.batch
-                        [ prevCmd
-                        , connectToWeb3 ()
-                        ]
-                    )
 
-                AppCmd.GotoRoute newRoute ->
-                    ( Running prevModel
-                    , beginRouteChange prevModel.key newRoute
-                    )
+encodeGTag : AppCmd.GTagData -> Json.Decode.Value
+encodeGTag gtag =
+    Json.Encode.object
+        [ ( "event", Json.Encode.string gtag.event )
+        , ( "category", Json.Encode.string gtag.category )
+        , ( "label", Json.Encode.string gtag.label )
+        , ( "value", Json.Encode.int gtag.value )
+        ]
 
 
 encodeGenPrivkeyArgs : Address -> String -> Json.Decode.Value
@@ -612,3 +640,6 @@ port genPrivkey : Json.Decode.Value -> Cmd msg
 
 
 port userPubkeyResult : (Json.Decode.Value -> msg) -> Sub msg
+
+
+port gTagOut : Json.Decode.Value -> Cmd msg

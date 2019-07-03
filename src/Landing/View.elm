@@ -1,14 +1,17 @@
 module Landing.View exposing (root)
 
+import AppCmd
 import Element exposing (Attribute, Element)
 import Element.Background
 import Element.Border
+import Element.Events
 import Element.Font
 import Helpers.Element as EH
 import Images exposing (Image)
+import Types exposing (..)
 
 
-root : msg -> Element msg
+root : Msg -> Element Msg
 root letsGoMsg =
     Element.column
         [ Element.width Element.fill
@@ -150,7 +153,17 @@ root letsGoMsg =
         --     , Element.el [ Element.width <| Element.px 1 ] Element.none
         --     , Element.el [ Element.width <| Element.px 1 ] Element.none
         --     ]
-        , Element.el [ Element.centerX ]
+        , Element.el
+            [ Element.centerX
+            , Element.Events.onClick <|
+                AppCmd <|
+                    AppCmd.GTag <|
+                        { event = "lets-go-clicked"
+                        , category = "landing-page"
+                        , label = "\"Let's Go\" clicked"
+                        , value = 0
+                        }
+            ]
             (EH.redButton "Okay, got it. let's go!" letsGoMsg)
         , EH.coolCurrencyHbreak True Element.fill
         ]
