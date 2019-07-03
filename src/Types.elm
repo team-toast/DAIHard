@@ -1,6 +1,7 @@
 module Types exposing (Flags, Model(..), Msg(..), Submodel(..), ValidModel)
 
 import AgentHistory.Types
+import AppCmd
 import BigInt exposing (BigInt)
 import Browser
 import Browser.Navigation
@@ -56,6 +57,7 @@ type Msg
     | UrlChanged Url
     | GotoRoute Routing.Route
     | Tick Time.Posix
+    | AppCmd AppCmd.AppCmd
     | ConnectToWeb3
     | WalletStatus WalletSentry
     | NetworkUpdate Json.Decode.Value
@@ -68,3 +70,4 @@ type Msg
     | AgentHistoryMsg AgentHistory.Types.Msg
     | Fail String
     | NoOp
+    | Test String

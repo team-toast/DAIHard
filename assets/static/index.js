@@ -78,6 +78,14 @@ function setupWeb3PortStuff(app) {
             app.ports.decryptionFinished.send({ id: id, message: result })
         });
 
+        app.ports.gTagOut.subscribe(function (data) {
+            gtag('event', data.event, {
+                'event_category': data.category,
+                'event_label': data.label,
+                'value': data.value
+            });
+        });
+
         if (window.ethereum && !window.web3Connected) {
             ethereum.enable();
             window.web3Connected = true;
