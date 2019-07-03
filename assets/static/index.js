@@ -15,9 +15,9 @@ window.addEventListener('load', function () {
 function startDapp() {
     if (typeof web3 !== 'undefined') {
         if (window.ethereum) {
-
             window.ethereum.autoRefreshOnNetworkChange = false;
         }
+
         web3.version.getNetwork(function (e, networkId) {
             window.app = Elm.App.init({
                 node: document.getElementById('elm'),
@@ -28,7 +28,9 @@ function startDapp() {
                 }
             });
 
-            setupWeb3PortStuff(app);
+            gtagPortStuff(app);
+
+            web3PortStuff(app, web3);
         });
     } else {
         window.app = Elm.App.init({
@@ -39,56 +41,78 @@ function startDapp() {
                 height: window.innerHeight
             }
         });
+
+        gtagPortStuff(app);
+
+        web3PortStuff(app, web3);
+
         console.log("Metamask not detected.");
     }
 }
 
-function setupWeb3PortStuff(app) {
-    app.ports.connectToWeb3.subscribe(function (args) {
-        if (window.ethereum && !window.web3Connected) {
-            window.web3 = new Web3(ethereum);
-        }
-
-        elm_ethereum_ports.txSentry(app.ports.txOut, app.ports.txIn, web3);
-        elm_ethereum_ports.walletSentry(app.ports.walletSentryPort, web3);
-        networkChangeNotifier.startWatching(app.ports.networkSentryPort, web3);
-
-
-        app.ports.genPrivkey.subscribe(function (args) {
-            secureComms.prepareKeypair(args.signSeedMsg, args.address, function (err, res) {
-                console.log("pubkey: ", res)
-                app.ports.userPubkeyResult.send(res);
-            })
+function gtagPortStuff(app) {
+    app.ports.gTagOut.subscribe(function (data) {
+        gtag('event', data.event, {
+            'event_category': data.category,
+            'event_label': data.label,
+            'value': data.value
         });
+    });
+}
 
-        app.ports.encryptToPubkeys.subscribe(function (data) {
-            var encryptedMessages = secureComms.encryptToPubkeys(data.message, data.pubkeyHexStrings);
+function web3PortStuff(app, web3) {
+    prepareWeb3PortsPreConnect(app, web3);
 
-            app.ports.encryptionFinished.send(encryptedMessages);
-        });
-
-        app.ports.decryptMessage.subscribe(function (data) {
-            var id = data.id;
-
-            var result = secureComms.decryptForUser(data.encapsulation, data.iv, data.tag, data.encrypted);
-            if (!result) {
-                console.log("Uh oh! Decryption didn't work...");
-            }
-
-            app.ports.decryptionFinished.send({ id: id, message: result })
-        });
-
-        app.ports.gTagOut.subscribe(function (data) {
-            gtag('event', data.event, {
-                'event_category': data.category,
-                'event_label': data.label,
-                'value': data.value
-            });
-        });
-
-        if (window.ethereum && !window.web3Connected) {
-            ethereum.enable();
-            window.web3Connected = true;
+    web3.eth.getAccounts(function (e, res) {
+        if (res && res.length > 0) {
+            connectAndPrepareRemainingWeb3Ports(app, web3);
         }
     });
+}
+
+function prepareWeb3PortsPreConnect(app, web3) {
+    networkChangeNotifier.startWatching(app.ports.networkSentryPort, web3);
+
+    app.ports.connectToWeb3.subscribe(function (data) {
+        connectAndPrepareRemainingWeb3Ports(app, web3);
+    });
+}
+
+function connectAndPrepareRemainingWeb3Ports(app, web3) {
+    if (window.ethereum && !window.web3Connected) {
+        window.web3 = new Web3(ethereum);
+    }
+
+    elm_ethereum_ports.txSentry(app.ports.txOut, app.ports.txIn, web3);
+    elm_ethereum_ports.walletSentry(app.ports.walletSentryPort, web3);
+    networkChangeNotifier.startWatching(app.ports.networkSentryPort, web3);
+
+    app.ports.genPrivkey.subscribe(function (args) {
+        secureComms.prepareKeypair(args.signSeedMsg, args.address, function (err, res) {
+            console.log("pubkey: ", res)
+            app.ports.userPubkeyResult.send(res);
+        })
+    });
+
+    app.ports.encryptToPubkeys.subscribe(function (data) {
+        var encryptedMessages = secureComms.encryptToPubkeys(data.message, data.pubkeyHexStrings);
+
+        app.ports.encryptionFinished.send(encryptedMessages);
+    });
+
+    app.ports.decryptMessage.subscribe(function (data) {
+        var id = data.id;
+
+        var result = secureComms.decryptForUser(data.encapsulation, data.iv, data.tag, data.encrypted);
+        if (!result) {
+            console.log("Uh oh! Decryption didn't work...");
+        }
+
+        app.ports.decryptionFinished.send({ id: id, message: result })
+    });
+
+    if (window.ethereum && !window.web3Connected) {
+        ethereum.enable();
+        window.web3Connected = true;
+    }
 }

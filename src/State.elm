@@ -108,7 +108,7 @@ updateValidModel msg model =
 
                 AppCmd.GTag gtag ->
                     ( Running model
-                    , gTagOut (encodeGTag gtag) |> Debug.log "sending gtag cmd"
+                    , gTagOut (encodeGTag gtag)
                     )
 
         LinkClicked urlRequest ->
@@ -136,9 +136,6 @@ updateValidModel msg model =
 
         NetworkUpdate newNetworkValue ->
             let
-                _ =
-                    Debug.log "hi!" ""
-
                 newNetworkIdResult =
                     Json.Decode.decodeValue Json.Decode.int newNetworkValue
                         |> Result.map Eth.Net.toNetworkId
