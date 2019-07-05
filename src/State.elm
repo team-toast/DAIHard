@@ -19,6 +19,7 @@ import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
 import Helpers.Eth as EthHelpers exposing (Web3Context)
 import Json.Decode
 import Json.Encode
+import List.Extra
 import Marketplace.State
 import Maybe.Extra
 import Routing
@@ -41,23 +42,34 @@ init flags url key =
             else
                 Nothing
 
-        ( factoryType, providerNotice ) =
+        ( factoryType, initialWeb3State ) =
             if flags.networkId == 0 then
                 ( Native XDai
-                , Just UN.noWeb3Provider
+                , NoWeb3
                 )
 
             else
                 case EthHelpers.intToFactoryType flags.networkId of
                     Nothing ->
                         ( Native XDai
-                        , Just UN.wrongWeb3Network
+                        , WrongNetwork
                         )
 
                     Just factoryType_ ->
                         ( factoryType_
-                        , Nothing
+                        , AllGood
                         )
+
+        providerNotice =
+            case initialWeb3State of
+                NoWeb3 ->
+                    Just UN.noWeb3Provider
+
+                WrongNetwork ->
+                    Just UN.wrongWeb3Network
+
+                AllGood ->
+                    Nothing
 
         userNotices =
             Maybe.Extra.values
@@ -74,6 +86,7 @@ init flags url key =
 
         ( model, fromUrlCmd ) =
             { key = key
+            , initialWeb3State = initialWeb3State
             , time = Time.millisToPosix 0
             , web3Context = web3Context
             , txSentry = txSentry
@@ -107,9 +120,8 @@ update msg model =
         AppCmd appCmd ->
             case appCmd of
                 AppCmd.Web3Connect ->
-                    ( model
-                    , connectToWeb3 ()
-                    )
+                    model
+                        |> update ConnectToWeb3
 
                 AppCmd.GotoRoute newRoute ->
                     ( model
@@ -125,6 +137,14 @@ update msg model =
                     ( model |> addUserNotice userNotice
                     , Cmd.none
                     )
+
+        DismissNotice id ->
+            ( { model
+                | userNotices =
+                    model.userNotices |> List.Extra.removeAt id
+              }
+            , Cmd.none
+            )
 
         LinkClicked urlRequest ->
             let
@@ -208,9 +228,16 @@ update msg model =
                     )
 
         ConnectToWeb3 ->
-            ( model
-            , connectToWeb3 ()
-            )
+            case model.initialWeb3State of
+                NoWeb3 ->
+                    ( model |> addUserNotice UN.cantConnectNoWeb3
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model
+                    , connectToWeb3 ()
+                    )
 
         WalletStatus walletSentry ->
             let
@@ -540,7 +567,7 @@ gotoRoute oldModel route =
 
         Routing.NotFound ->
             ( oldModel |> addUserNotice UN.invalidUrl
-            , Browser.Navigation.pushUrl oldModel.key newUrlString
+            , Cmd.none
             )
 
 

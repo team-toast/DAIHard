@@ -250,14 +250,14 @@ userNotices notices =
         , Element.spacing 10
         , Element.alignRight
         , Element.alignBottom
-        , Element.width <| Element.px 300 
+        , Element.width <| Element.px 300
         , Element.Font.size 15
         ]
-        (notices |> List.map userNotice)
+        (notices |> List.indexedMap userNotice)
 
 
-userNotice : UserNotice Msg -> Element Msg
-userNotice notice =
+userNotice : Int -> UserNotice Msg -> Element Msg
+userNotice id notice =
     let
         color =
             case notice.noticeType of
@@ -271,17 +271,42 @@ userNotice notice =
                     Element.rgb255 255 70 70
 
                 UN.ShouldBeImpossible ->
-                    Element.rgb255 100 100 100
+                    Element.rgb255 200 200 200
+
+        closeElement =
+            Element.el
+                [ Element.alignRight
+                , Element.alignTop
+                , Element.moveUp 5
+                , Element.moveRight 5
+                ]
+                (EH.closeButton (DismissNotice id))
     in
     Element.el
         [ Element.Background.color color
-        , Element.Border.rounded 4
-        , Element.padding 5
+        , Element.Border.rounded 10
+        , Element.padding 8
         , Element.width Element.fill
+        , Element.Border.width 1
+        , Element.Border.color <| Element.rgba 0 0 0 0.15
+        , EH.subtleShadow
         ]
         (notice.mainParagraphs
-            |> List.map (Element.paragraph [])
-            |> Element.column [ Element.spacing 2 ]
+            |> List.indexedMap
+                (\pNum paragraphLines ->
+                    Element.paragraph
+                        [ Element.width Element.fill ]
+                        (if pNum == 0 then
+                            closeElement :: paragraphLines
+
+                         else
+                            paragraphLines
+                        )
+                )
+            |> Element.column
+                [ Element.spacing 4
+                , Element.width Element.fill
+                ]
         )
 
 

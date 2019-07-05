@@ -1,4 +1,4 @@
-module Types exposing (Flags, Model, Msg(..), Submodel(..))
+module Types exposing (Flags, InitialWeb3State(..), Model, Msg(..), Submodel(..))
 
 import AgentHistory.Types
 import AppCmd
@@ -31,6 +31,7 @@ type alias Flags =
 
 type alias Model =
     { key : Browser.Navigation.Key
+    , initialWeb3State : InitialWeb3State
     , time : Time.Posix
     , web3Context : Web3Context
     , txSentry : TxSentry Msg
@@ -40,6 +41,12 @@ type alias Model =
     , submodel : Submodel
     , userNotices : List (UserNotice Msg)
     }
+
+
+type InitialWeb3State
+    = AllGood
+    | WrongNetwork
+    | NoWeb3
 
 
 type Submodel
@@ -66,5 +73,6 @@ type Msg
     | TradeMsg Trade.Types.Msg
     | MarketplaceMsg Marketplace.Types.Msg
     | AgentHistoryMsg AgentHistory.Types.Msg
+    | DismissNotice Int
     | NoOp
     | Test String

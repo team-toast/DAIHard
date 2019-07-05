@@ -1,6 +1,7 @@
-module UserNotice exposing (NoticeType(..), UserNotice, cantFindTradeWillRetry, fromBadFetchResultMaybe, invalidUrl, map, noWeb3Provider, placeholderNotice, screenToSmall, unexpectedError, walletError, web3FetchError, web3MiningError, web3SigError, wrongWeb3Network)
+module UserNotice exposing (NoticeType(..), UserNotice, cantConnectNoWeb3, cantFindTradeWillRetry, fromBadFetchResultMaybe, invalidUrl, map, noWeb3Provider, placeholderNotice, screenToSmall, unexpectedError, walletError, web3FetchError, web3MiningError, web3SigError, wrongWeb3Network)
 
 import Element exposing (Element)
+import Element.Font
 import Http
 
 
@@ -50,7 +51,9 @@ invalidUrl : UserNotice msg
 invalidUrl =
     { noticeType = Error
     , mainParagraphs =
-        [ [ Element.text "That is an invalid url" ] ]
+        [ [ Element.text "I don't understand that URL..." ]
+        , [ Element.text "I'll just set you down here. Maybe check the URL and try again?" ]
+        ]
     , showMoreParagraphs = Nothing
     }
 
@@ -59,12 +62,28 @@ noWeb3Provider : UserNotice msg
 noWeb3Provider =
     { noticeType = Caution
     , mainParagraphs =
-        [ [ Element.text "Can't connect to your web3 provider. Is "
-          , Element.newTabLink []
+        [ [ Element.text "No web3 provider detected. Is "
+          , Element.newTabLink [ Element.Font.color <| Element.rgb 0 0 1 ]
                 { url = "https://metamask.io/"
                 , label = Element.text "Metamask"
                 }
-          , Element.text "installed?"
+          , Element.text " or some other web3 provider installed and unlocked?"
+          ]
+        ]
+    , showMoreParagraphs = Nothing
+    }
+
+
+cantConnectNoWeb3 : UserNotice msg
+cantConnectNoWeb3 =
+    { noticeType = Error
+    , mainParagraphs =
+        [ [ Element.text "You need a web3 provider (such as "
+          , Element.newTabLink [ Element.Font.color <| Element.rgb 0 0 1 ]
+                { url = "https://metamask.io/"
+                , label = Element.text "Metamask"
+                }
+          , Element.text ") to Connect."
           ]
         ]
     , showMoreParagraphs = Nothing
