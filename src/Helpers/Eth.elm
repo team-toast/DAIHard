@@ -1,4 +1,4 @@
-module Helpers.Eth exposing (Web3Context, addressIfNot0x0, factoryTypeToNetworkId, getLogAt, intToFactoryType, logBadFetchResultMaybe, makeViewAddressUrl, makeViewTxUrl, networkIdToFactoryType, updateCallValue, web3Context)
+module Helpers.Eth exposing (Web3Context, addressIfNot0x0, factoryTypeToNetworkId, getLogAt, intToFactoryType, makeViewAddressUrl, makeViewTxUrl, networkIdToFactoryType, updateCallValue, web3Context)
 
 import Array
 import BigInt exposing (BigInt)
@@ -36,10 +36,6 @@ networkIdToFactoryType networkId =
             Just <| Native XDai
 
         _ ->
-            let
-                _ =
-                    Debug.log "unknown network" networkId
-            in
             Nothing
 
 
@@ -132,19 +128,6 @@ getLogAt : Int -> List Eth.Types.Log -> Maybe Eth.Types.Log
 getLogAt index logList =
     Array.fromList logList
         |> Array.get index
-
-
-logBadFetchResultMaybe : Result a (Maybe b) -> Result a (Maybe b)
-logBadFetchResultMaybe fetchResult =
-    case fetchResult of
-        Ok (Just a) ->
-            Debug.log "I'm confused about whether this is a bad fetch result or not!." fetchResult
-
-        Ok Nothing ->
-            Debug.log "The data was fetched, but could not be decoded." fetchResult
-
-        Err _ ->
-            Debug.log "can't fetch from Ethereum: " fetchResult
 
 
 makeViewTxUrl : FactoryType -> TxHash -> String

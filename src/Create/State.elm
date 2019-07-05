@@ -23,6 +23,7 @@ import PaymentMethods exposing (PaymentMethod)
 import Routing
 import Time
 import TokenValue exposing (TokenValue)
+import UserNotice as UN
 
 
 init : EthHelpers.Web3Context -> Maybe UserInfo -> UpdateResult
@@ -307,12 +308,12 @@ update msg prevModel =
                 Ok txHash ->
                     justModelUpdate { prevModel | txChainStatus = Just <| ApproveMining createParameters txHash }
 
-                Err e ->
-                    let
-                        _ =
-                            Debug.log "Error encountered when getting sig from user" e
-                    in
-                    justModelUpdate { prevModel | txChainStatus = Nothing }
+                Err s ->
+                    UpdateResult
+                        { prevModel | txChainStatus = Nothing }
+                        Cmd.none
+                        ChainCmd.none
+                        [ AppCmd.UserNotice <| UN.web3SigError "appove" s ]
 
         AllowanceFetched fetchResult ->
             case fetchResult of
@@ -342,31 +343,31 @@ update msg prevModel =
                         _ ->
                             justModelUpdate newModel
 
-                Err e ->
-                    let
-                        _ =
-                            Debug.log "Error fecthing allowance" e
-                    in
-                    justModelUpdate prevModel
+                Err httpError ->
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        ChainCmd.none
+                        [ AppCmd.UserNotice <| UN.web3FetchError "allowance" httpError ]
 
         CreateSigned result ->
             case result of
                 Ok txHash ->
                     justModelUpdate { prevModel | txChainStatus = Just <| CreateMining txHash }
 
-                Err e ->
-                    let
-                        _ =
-                            Debug.log "Error encountered when getting sig from user" e
-                    in
-                    justModelUpdate { prevModel | txChainStatus = Nothing }
+                Err s ->
+                    UpdateResult
+                        { prevModel | txChainStatus = Nothing }
+                        Cmd.none
+                        ChainCmd.none
+                        [ AppCmd.UserNotice <| UN.web3SigError "create" s ]
 
-        CreateMined (Err errstr) ->
-            let
-                _ =
-                    Debug.log "error mining create contract tx" errstr
-            in
-            justModelUpdate prevModel
+        CreateMined (Err s) ->
+            UpdateResult
+                prevModel
+                Cmd.none
+                ChainCmd.none
+                [ AppCmd.UserNotice <| UN.web3MiningError "create" s ]
 
         CreateMined (Ok txReceipt) ->
             let
@@ -384,11 +385,13 @@ update msg prevModel =
                         [ AppCmd.GotoRoute (Routing.Trade id) ]
 
                 Nothing ->
-                    let
-                        _ =
-                            Debug.log "Error getting the ID of the created contract. Here's the txReceipt" txReceipt
-                    in
-                    justModelUpdate prevModel
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        ChainCmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.unexpectedError "Error getting the ID of the created contract" txReceipt
+                        ]
 
         PMWizardMsg pmMsg ->
             case prevModel.addPMModal of
@@ -423,11 +426,13 @@ update msg prevModel =
                         []
 
                 Nothing ->
-                    let
-                        _ =
-                            Debug.log "Got a PMWizard message, but the modal is closed! That doesn't make sense! AHHHHH" ""
-                    in
-                    justModelUpdate prevModel
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        ChainCmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.unexpectedError "Got a PMWizard message, but the modal is closed! That doesn't make sense! AHHHHH" pmMsg
+                        ]
 
         NoOp ->
             justModelUpdate prevModel

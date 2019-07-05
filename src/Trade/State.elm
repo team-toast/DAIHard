@@ -24,14 +24,17 @@ import Json.Decode
 import Json.Encode
 import Maybe.Extra
 import PaymentMethods exposing (PaymentMethod)
+import Process
 import Result.Extra
 import Routing
+import Task
 import Time
 import TokenValue
 import Trade.ChatHistory.SecureComm exposing (..)
 import Trade.ChatHistory.State as ChatHistory
 import Trade.ChatHistory.Types as ChatHistory
 import Trade.Types exposing (..)
+import UserNotice as UN
 
 
 init : EthHelpers.Web3Context -> Maybe UserInfo -> Int -> UpdateResult
@@ -178,12 +181,14 @@ update msg prevModel =
                         _ ->
                             justModelUpdate newModel
 
-                Err e ->
-                    let
-                        _ =
-                            Debug.log "Error fecthing allowance" e
-                    in
-                    justModelUpdate prevModel
+                Err httpError ->
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        ChainCmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.web3FetchError "allowance" httpError
+                        ]
 
         CreationInfoFetched fetchResult ->
             case fetchResult of
@@ -223,14 +228,20 @@ update msg prevModel =
                         []
 
                 Err (Http.BadBody errstr) ->
-                    Debug.todo "No contract at this id. Maybe should reload after some delay."
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        ChainCmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.cantFindTradeWillRetry
+                        ]
 
-                Err otherErr ->
-                    let
-                        _ =
-                            Debug.log "can't fetch full state: " otherErr
-                    in
-                    justModelUpdate prevModel
+                Err httpError ->
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        ChainCmd.none
+                        [ AppCmd.UserNotice <| UN.web3FetchError "trade state" httpError ]
 
         StateFetched fetchResult ->
             case fetchResult of
@@ -262,11 +273,13 @@ update msg prevModel =
                         []
 
                 _ ->
-                    let
-                        _ =
-                            EthHelpers.logBadFetchResultMaybe fetchResult
-                    in
-                    justModelUpdate prevModel
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        ChainCmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.fromBadFetchResultMaybe "trade state" fetchResult
+                        ]
 
         ParametersFetched fetchResult ->
             case fetchResult of
@@ -283,12 +296,23 @@ update msg prevModel =
                         ChainCmd.none
                         []
 
-                badResult ->
-                    let
-                        _ =
-                            Debug.log "bad parametersFetched result" badResult
-                    in
-                    justModelUpdate prevModel
+                Ok (Err s) ->
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        ChainCmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.unexpectedError "Error decoding fetched trade parameters" s
+                        ]
+
+                Err httpErr ->
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        ChainCmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.web3FetchError "trade parameters" httpErr
+                        ]
 
         PhaseInfoFetched fetchResult ->
             case fetchResult of
@@ -306,22 +330,110 @@ update msg prevModel =
                         []
 
                 _ ->
-                    let
-                        _ =
-                            EthHelpers.logBadFetchResultMaybe fetchResult
-                    in
-                    justModelUpdate prevModel
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        ChainCmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.fromBadFetchResultMaybe "trade state" fetchResult
+                        ]
 
         EventLogFetched log ->
             let
-                ( newModel, cmd ) =
-                    handleNewLog log prevModel
+                decodedEventLog =
+                    Eth.Decode.event CTypes.eventDecoder log
             in
-            UpdateResult
-                newModel
-                cmd
-                ChainCmd.none
-                []
+            case decodedEventLog.returnData of
+                Err err ->
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        ChainCmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.unexpectedError "Error decoding contract event" err
+                        ]
+
+                Ok event ->
+                    let
+                        ( newTrade, maybeDecodeErrorNotice ) =
+                            case event of
+                                CTypes.InitiatedEvent data ->
+                                    case CTypes.decodeTerms data.terms of
+                                        Ok terms ->
+                                            ( prevModel.trade
+                                                |> CTypes.updateTerms terms
+                                            , Nothing
+                                            )
+
+                                        Err s ->
+                                            ( prevModel.trade
+                                            , Just <| UN.unexpectedError "Couldn't decode payment methods!" s
+                                            )
+
+                                _ ->
+                                    ( prevModel.trade
+                                    , Nothing
+                                    )
+
+                        newSecureCommInfo =
+                            case event of
+                                CTypes.InitiatedEvent data ->
+                                    prevModel.secureCommInfo
+                                        |> updateInitiatorPubkey data.commPubkey
+
+                                CTypes.CommittedEvent data ->
+                                    prevModel.secureCommInfo
+                                        |> updateResponderPubkey data.commPubkey
+
+                                _ ->
+                                    prevModel.secureCommInfo
+
+                        ( newChatHistoryModel, shouldDecrypt ) =
+                            case prevModel.chatHistoryModel of
+                                Just prevChatHistoryModel ->
+                                    ChatHistory.handleNewEvent
+                                        decodedEventLog.blockNumber
+                                        event
+                                        prevChatHistoryModel
+                                        |> Tuple.mapFirst Just
+
+                                Nothing ->
+                                    -- chat is uninitialized; initialize if we can
+                                    tryInitChatHistory newTrade prevModel.userInfo prevModel.eventsWaitingForChatHistory
+
+                        eventsToSave =
+                            case newChatHistoryModel of
+                                Nothing ->
+                                    List.append
+                                        prevModel.eventsWaitingForChatHistory
+                                        [ ( decodedEventLog.blockNumber, event ) ]
+
+                                Just _ ->
+                                    []
+
+                        newModel =
+                            { prevModel
+                                | trade = newTrade
+                                , chatHistoryModel = newChatHistoryModel
+                                , secureCommInfo = newSecureCommInfo
+                                , eventsWaitingForChatHistory = eventsToSave
+                            }
+
+                        cmd =
+                            if shouldDecrypt then
+                                tryBuildDecryptCmd newModel
+
+                            else
+                                Cmd.none
+                    in
+                    UpdateResult
+                        newModel
+                        cmd
+                        ChainCmd.none
+                        ([ maybeDecodeErrorNotice ]
+                            |> Maybe.Extra.values
+                            |> List.map AppCmd.UserNotice
+                        )
 
         ExpandPhase phase ->
             justModelUpdate { prevModel | expandedPhase = phase }
@@ -358,11 +470,13 @@ update msg prevModel =
                         [ AppCmd.GotoRoute (Routing.AgentHistory trade.parameters.initiatorAddress Seller) ]
 
                 _ ->
-                    let
-                        _ =
-                            Debug.log "Trying to view a seller history, but the trade isn't loaded! Which seller??" ""
-                    in
-                    justModelUpdate prevModel
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        ChainCmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.unexpectedError "Trying to view a seller's history for a not-yet-loaded Trade" prevModel.trade
+                        ]
 
         CommitClicked trade userInfo depositAmount ->
             justModelUpdate { prevModel | txChainStatus = Just <| ConfirmingCommit trade userInfo depositAmount }
@@ -415,7 +529,7 @@ update msg prevModel =
 
         StartContractAction actionMsg ->
             let
-                ( txChainStatus, chainCmd ) =
+                ( txChainStatus, chainCmd, appCmds ) =
                     case prevModel.trade of
                         CTypes.LoadedTrade tradeInfo ->
                             case actionMsg of
@@ -427,6 +541,7 @@ update msg prevModel =
                                     in
                                     ( Just <| ActionNeedsSig Recall
                                     , ChainCmd.custom (contractActionSend Recall) txParams
+                                    , []
                                     )
 
                                 Claim ->
@@ -437,6 +552,7 @@ update msg prevModel =
                                     in
                                     ( Just <| ActionNeedsSig Claim
                                     , ChainCmd.custom (contractActionSend Claim) txParams
+                                    , []
                                     )
 
                                 Abort ->
@@ -447,6 +563,7 @@ update msg prevModel =
                                     in
                                     ( Just <| ActionNeedsSig Abort
                                     , ChainCmd.custom (contractActionSend Abort) txParams
+                                    , []
                                     )
 
                                 Release ->
@@ -457,6 +574,7 @@ update msg prevModel =
                                     in
                                     ( Just <| ActionNeedsSig Release
                                     , ChainCmd.custom (contractActionSend Release) txParams
+                                    , []
                                     )
 
                                 Burn ->
@@ -467,6 +585,7 @@ update msg prevModel =
                                     in
                                     ( Just <| ActionNeedsSig Burn
                                     , ChainCmd.custom (contractActionSend Burn) txParams
+                                    , []
                                     )
 
                                 Poke ->
@@ -477,15 +596,15 @@ update msg prevModel =
                                     in
                                     ( Just <| ActionNeedsSig Poke
                                     , ChainCmd.custom (contractActionSend Poke) txParams
+                                    , []
                                     )
 
                         tradeInfoNotYetLoaded ->
-                            let
-                                _ =
-                                    Debug.log "Trying to handle StartContractAction msg, but contract info is not yet loaded :/" tradeInfoNotYetLoaded
-                            in
                             ( prevModel.txChainStatus
                             , ChainCmd.none
+                            , [ AppCmd.UserNotice <|
+                                    UN.unexpectedError "Trying to handle StartContractAction msg for a not-yet-loaded Trade" tradeInfoNotYetLoaded
+                              ]
                             )
             in
             UpdateResult
@@ -494,31 +613,35 @@ update msg prevModel =
                 }
                 Cmd.none
                 chainCmd
-                []
+                appCmds
 
         ApproveSigned txHashResult ->
             case txHashResult of
                 Ok txHash ->
                     justModelUpdate { prevModel | txChainStatus = Just <| ApproveMining txHash }
 
-                Err errstr ->
-                    let
-                        _ =
-                            Debug.log "Error signing Approve tx" errstr
-                    in
-                    justModelUpdate { prevModel | txChainStatus = Nothing }
+                Err s ->
+                    UpdateResult
+                        { prevModel | txChainStatus = Nothing }
+                        Cmd.none
+                        ChainCmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.web3SigError "approve" s
+                        ]
 
         CommitSigned txHashResult ->
             case txHashResult of
                 Ok txHash ->
                     justModelUpdate { prevModel | txChainStatus = Just <| CommitMining txHash }
 
-                Err errstr ->
-                    let
-                        _ =
-                            Debug.log "Error signing Commit tx" errstr
-                    in
-                    justModelUpdate { prevModel | txChainStatus = Nothing }
+                Err s ->
+                    UpdateResult
+                        { prevModel | txChainStatus = Nothing }
+                        Cmd.none
+                        ChainCmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.web3SigError "commit" s
+                        ]
 
         CommitMined _ ->
             justModelUpdate { prevModel | txChainStatus = Nothing }
@@ -528,12 +651,14 @@ update msg prevModel =
                 Ok txHash ->
                     justModelUpdate { prevModel | txChainStatus = Just <| ActionMining action txHash }
 
-                Err errstr ->
-                    let
-                        _ =
-                            Debug.log "Error signing tx" errstr
-                    in
-                    justModelUpdate { prevModel | txChainStatus = Nothing }
+                Err s ->
+                    UpdateResult
+                        { prevModel | txChainStatus = Nothing }
+                        Cmd.none
+                        ChainCmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.web3SigError (actionName action) s
+                        ]
 
         ActionMined action _ ->
             justModelUpdate { prevModel | txChainStatus = Nothing }
@@ -558,31 +683,34 @@ update msg prevModel =
             case prevModel.chatHistoryModel of
                 Just prevChatHistoryModel ->
                     let
-                        ( chatHistoryModel, shouldDecrypt, maybeMessageToSend ) =
+                        updateResult =
                             ChatHistory.update chatHistoryMsg prevChatHistoryModel
 
-                        encryptCmd =
-                            case maybeMessageToSend of
+                        ( encryptCmd, maybeUserNotice ) =
+                            case updateResult.maybeMessageSubmit of
                                 Just chatMessage ->
                                     case prevModel.secureCommInfo of
                                         LoadedCommInfo commInfo ->
-                                            encryptToPubkeys (encodeEncryptionArgs chatMessage commInfo)
+                                            ( encryptToPubkeys (encodeEncryptionArgs chatMessage commInfo)
+                                            , Nothing
+                                            )
 
                                         incomplete ->
-                                            let
-                                                _ =
-                                                    Debug.log "Incomplete data found when trying to build encryption cmd" incomplete
-                                            in
-                                            Cmd.none
+                                            ( Cmd.none
+                                            , Just <|
+                                                UN.unexpectedError "Trying to encrypt, but commInfo is not loaded" incomplete
+                                            )
 
                                 Nothing ->
-                                    Cmd.none
+                                    ( Cmd.none
+                                    , Nothing
+                                    )
 
                         model =
-                            { prevModel | chatHistoryModel = Just chatHistoryModel }
+                            { prevModel | chatHistoryModel = Just updateResult.model }
 
                         decryptCmd =
-                            if shouldDecrypt then
+                            if updateResult.shouldCallDecrypt then
                                 tryBuildDecryptCmd prevModel
 
                             else
@@ -596,14 +724,22 @@ update msg prevModel =
                             ]
                         )
                         ChainCmd.none
-                        []
+                        (AppCmd.mapList ChatHistoryMsg updateResult.appCmds
+                            ++ (maybeUserNotice
+                                    |> Maybe.map AppCmd.UserNotice
+                                    |> Maybe.map List.singleton
+                                    |> Maybe.withDefault []
+                               )
+                        )
 
                 Nothing ->
-                    let
-                        _ =
-                            Debug.log "Got a chat history message, but there is no chat history model!" ""
-                    in
-                    justModelUpdate prevModel
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        ChainCmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.unexpectedError "Got a chat history message, but there is no chat history model!" chatHistoryMsg
+                        ]
 
         EncryptionFinished encryptedMessagesValue ->
             let
@@ -615,11 +751,13 @@ update msg prevModel =
                 ( Just userInfo, CTypes.LoadedTrade tradeInfo, Ok encodedEncryptedMessages ) ->
                     case CTypes.getInitiatorOrResponder tradeInfo userInfo.address of
                         Nothing ->
-                            let
-                                _ =
-                                    Debug.log "How did you click that button? You don't seem to be the Initiator or Responder..." ""
-                            in
-                            justModelUpdate prevModel
+                            UpdateResult
+                                prevModel
+                                Cmd.none
+                                ChainCmd.none
+                                [ AppCmd.UserNotice <|
+                                    UN.unexpectedError "Trying to encrypt, but the user is not involved in this trade." Nothing
+                                ]
 
                         Just userRole ->
                             let
@@ -645,26 +783,35 @@ update msg prevModel =
                                 )
                                 []
 
-                problematicBullshit ->
-                    let
-                        _ =
-                            Debug.log "MessageSubmit called, but something has gone terribly wrong" problematicBullshit
-                    in
-                    justModelUpdate prevModel
+                ( _, _, Err encodingErrStr ) ->
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        ChainCmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.unexpectedError "Error translating JS encryption result into Elm." encodingErrStr
+                        ]
+
+                ( maybeUserInfo, maybeTradeInfo, _ ) ->
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        ChainCmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.unexpectedError "Encryption successful, but the user or trade is no longer valid." ( maybeUserInfo, maybeTradeInfo )
+                        ]
 
         MessageSubmitMined (Ok txReceipt) ->
-            let
-                _ =
-                    Debug.log "Message submit mined!" ""
-            in
             justModelUpdate prevModel
 
-        MessageSubmitMined (Err errstr) ->
-            let
-                _ =
-                    Debug.log "Error mining message submit" errstr
-            in
-            justModelUpdate prevModel
+        MessageSubmitMined (Err s) ->
+            UpdateResult
+                prevModel
+                Cmd.none
+                ChainCmd.none
+                [ AppCmd.UserNotice <|
+                    UN.web3MiningError "message" s
+                ]
 
 
 initiateCommitCall : EthHelpers.Web3Context -> CTypes.FullTradeInfo -> Address -> String -> ( Maybe TxChainStatus, ChainCmd Msg )
@@ -698,96 +845,6 @@ initiateCommitCall web3Context trade userAddress commPubkey =
         }
         txParams
     )
-
-
-handleNewLog : Eth.Types.Log -> Model -> ( Model, Cmd Msg )
-handleNewLog log prevModel =
-    let
-        decodedEventLog =
-            Eth.Decode.event CTypes.eventDecoder log
-    in
-    case decodedEventLog.returnData of
-        Err err ->
-            let
-                _ =
-                    Debug.log "Error decoding contract event" err
-            in
-            ( prevModel, Cmd.none )
-
-        Ok event ->
-            let
-                newTrade =
-                    case event of
-                        CTypes.InitiatedEvent data ->
-                            case CTypes.decodeTerms data.terms of
-                                Ok terms ->
-                                    prevModel.trade
-                                        |> CTypes.updateTerms terms
-
-                                Err errStr ->
-                                    let
-                                        _ =
-                                            Debug.log "Couldn't decode payment methods!" errStr
-                                    in
-                                    prevModel.trade
-
-                        _ ->
-                            prevModel.trade
-
-                newSecureCommInfo =
-                    case event of
-                        CTypes.InitiatedEvent data ->
-                            prevModel.secureCommInfo
-                                |> updateInitiatorPubkey data.commPubkey
-
-                        CTypes.CommittedEvent data ->
-                            prevModel.secureCommInfo
-                                |> updateResponderPubkey data.commPubkey
-
-                        _ ->
-                            prevModel.secureCommInfo
-
-                ( newChatHistoryModel, shouldDecrypt ) =
-                    case prevModel.chatHistoryModel of
-                        Just prevChatHistoryModel ->
-                            ChatHistory.handleNewEvent
-                                decodedEventLog.blockNumber
-                                event
-                                prevChatHistoryModel
-                                |> Tuple.mapFirst Just
-
-                        Nothing ->
-                            -- chat is uninitialized; initialize if we can
-                            tryInitChatHistory newTrade prevModel.userInfo prevModel.eventsWaitingForChatHistory
-
-                eventsToSave =
-                    case newChatHistoryModel of
-                        Nothing ->
-                            List.append
-                                prevModel.eventsWaitingForChatHistory
-                                [ ( decodedEventLog.blockNumber, event ) ]
-
-                        Just _ ->
-                            []
-
-                newModel =
-                    { prevModel
-                        | trade = newTrade
-                        , chatHistoryModel = newChatHistoryModel
-                        , secureCommInfo = newSecureCommInfo
-                        , eventsWaitingForChatHistory = eventsToSave
-                    }
-
-                cmd =
-                    if shouldDecrypt then
-                        tryBuildDecryptCmd newModel
-
-                    else
-                        Cmd.none
-            in
-            ( newModel
-            , cmd
-            )
 
 
 tryInitChatHistory : CTypes.Trade -> Maybe UserInfo -> List ( Int, CTypes.DAIHardEvent ) -> ( Maybe ChatHistory.Model, Bool )

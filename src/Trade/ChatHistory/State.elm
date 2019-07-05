@@ -1,5 +1,6 @@
 module Trade.ChatHistory.State exposing (handleNewEvent, init, update)
 
+import AppCmd exposing (AppCmd)
 import Array exposing (Array)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
@@ -9,6 +10,7 @@ import Json.Encode
 import Maybe.Extra
 import Trade.ChatHistory.SecureComm exposing (..)
 import Trade.ChatHistory.Types exposing (..)
+import UserNotice as UN
 
 
 init : UserInfo -> BuyerOrSeller -> BuyerOrSeller -> List ( Int, CTypes.DAIHardEvent ) -> ( Model, Bool )
@@ -22,7 +24,7 @@ init userInfo buyerOrSeller initiatingParty initialEvents =
         |> handleInitialEvents initialEvents
 
 
-update : Msg -> Model -> ( Model, Bool, Maybe String )
+update : Msg -> Model -> UpdateResult
 update msg prevModel =
     case msg of
         NewEvent ( blocknum, event ) ->
@@ -30,22 +32,25 @@ update msg prevModel =
                 ( newModel, shouldCallDecrypt ) =
                     handleNewEvent blocknum event prevModel
             in
-            ( newModel
-            , shouldCallDecrypt
-            , Nothing
-            )
+            UpdateResult
+                newModel
+                shouldCallDecrypt
+                Nothing
+                []
 
         MessageInputChanged newMessageStr ->
-            ( { prevModel | messageInput = newMessageStr }
-            , False
-            , Nothing
-            )
+            UpdateResult
+                { prevModel | messageInput = newMessageStr }
+                False
+                Nothing
+                []
 
         MessageSubmit ->
-            ( { prevModel | messageInput = "" }
-            , False
-            , Just prevModel.messageInput
-            )
+            UpdateResult
+                { prevModel | messageInput = "" }
+                False
+                (Just prevModel.messageInput)
+                []
 
         DecryptionFinished decryptedMessageValue ->
             case decodeDecryptionResult decryptedMessageValue of
@@ -68,31 +73,38 @@ update msg prevModel =
                                         newHistory =
                                             Array.set id newHistoryEvent prevModel.history
                                     in
-                                    ( { prevModel | history = newHistory }
-                                    , False
-                                    , Nothing
-                                    )
+                                    UpdateResult
+                                        { prevModel | history = newHistory }
+                                        False
+                                        Nothing
+                                        []
 
                                 _ ->
-                                    let
-                                        _ =
-                                            Debug.log "got a decryption result, but for an event that is not a message!" ""
-                                    in
-                                    ( prevModel, False, Nothing )
+                                    UpdateResult
+                                        prevModel
+                                        False
+                                        Nothing
+                                        [ AppCmd.UserNotice <|
+                                            UN.unexpectedError "got a decryption result, but for an event that is not a message!" historyEvent
+                                        ]
 
                         Nothing ->
-                            let
-                                _ =
-                                    Debug.log "got a decryption result, but for an id out of bounds!" ""
-                            in
-                            ( prevModel, False, Nothing )
+                            UpdateResult
+                                prevModel
+                                False
+                                Nothing
+                                [ AppCmd.UserNotice <|
+                                    UN.unexpectedError "got a decryption result, but for an id out of bounds!" ( id, prevModel.history )
+                                ]
 
-                Err errstr ->
-                    let
-                        _ =
-                            Debug.log "Error decoding decryption result" errstr
-                    in
-                    ( prevModel, False, Nothing )
+                Err s ->
+                    UpdateResult
+                        prevModel
+                        False
+                        Nothing
+                        [ AppCmd.UserNotice <|
+                            UN.unexpectedError "Error decoding decryption result" s
+                        ]
 
 
 handleInitialEvents : List ( Int, CTypes.DAIHardEvent ) -> Model -> ( Model, Bool )

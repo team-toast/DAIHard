@@ -1,5 +1,6 @@
-module TradeCache.Types exposing (Msg(..), TradeCache)
+module TradeCache.Types exposing (Msg(..), TradeCache, UpdateResult, justModelUpdate)
 
+import AppCmd exposing (AppCmd)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import Contracts.Generated.DAIHardFactory as DHF
@@ -32,3 +33,18 @@ type Msg
     | PhaseStartInfoFetched Int (Result Http.Error (Maybe CTypes.PhaseStartInfo))
     | InitiatedEventDataFetched Int (Result Json.Decode.Error DHT.Initiated)
     | EventSentryMsg EventSentry.Msg
+
+
+type alias UpdateResult =
+    { tradeCache : TradeCache
+    , cmd : Cmd Msg
+    , appCmds : List (AppCmd Msg)
+    }
+
+
+justModelUpdate : TradeCache -> UpdateResult
+justModelUpdate tc =
+    UpdateResult
+        tc
+        Cmd.none
+        []

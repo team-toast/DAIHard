@@ -191,11 +191,8 @@ update msg model =
                                     b.derived.margin
                                     |> Maybe.withDefault EQ
 
+                            -- The user shouldn't even be able to generate this message
                             PaymentMethods ->
-                                let
-                                    _ =
-                                        Debug.log "Can't sort by payment methods. What does that even mean??" ""
-                                in
                                 initialSortFunc a b
 
                             AutoabortWindow ->

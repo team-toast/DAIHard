@@ -4,6 +4,7 @@ module Helpers.Element exposing
     , blue
     , blueButton
     , bulletPointString
+    , closeButton
     , closeableModal
     , coloredMargin
     , comingSoonMsg
@@ -17,7 +18,6 @@ module Helpers.Element exposing
     , disabledTextColor
     , elOnCircle
     , elementColorToAvh4Color
-    , errorMessage
     , ethAddress
     , etherscanAddressLink
     , fakeLink
@@ -678,6 +678,29 @@ button ( bgColor, bgHoverColor, bgPressedColor ) textColor text msg =
         (Element.text text)
 
 
+closeButton : msg -> Element msg
+closeButton msg =
+    Element.el
+        [ Element.paddingEach
+            { top = 0
+            , left = 5
+            , right = 5
+            , bottom = 5
+            }
+        , Element.Events.onClick msg
+        , Element.Border.rounded 30
+        , Element.Background.color <| Element.rgba 1 1 1 0.4
+        , Element.Border.width 1
+        , Element.Border.color <| Element.rgba 0 0 0 0.3
+        , Element.pointer
+        , Element.Font.size 14
+        ]
+        (Element.el
+            [ Element.Font.color <| Element.rgba 0 0 0 0.7 ]
+            (Element.text "x")
+        )
+
+
 pokeButton : msg -> Element msg
 pokeButton pokeMsg =
     Element.Input.button
@@ -892,20 +915,6 @@ testBorderStyles =
     [ Element.Border.width 1
     , Element.Border.color (Element.rgb 1 0 1)
     ]
-
-
-errorMessage : String -> a -> Element msg
-errorMessage str debugObj =
-    let
-        _ =
-            Debug.log str debugObj
-    in
-    Element.el
-        [ Element.padding 1
-        , Element.Background.color <| Element.rgb 1 0 0
-        , Element.Font.color white
-        ]
-        (Element.text <| "Error:" ++ str)
 
 
 
