@@ -1343,28 +1343,6 @@ getModalOrNone model =
             Element.none
 
 
-actionName : ContractAction -> String
-actionName action =
-    case action of
-        Poke ->
-            "poke"
-
-        Recall ->
-            "recall"
-
-        Claim ->
-            "claim"
-
-        Abort ->
-            "abort"
-
-        Release ->
-            "release"
-
-        Burn ->
-            "burn"
-
-
 closedReasonToText : CTypes.ClosedReason -> String
 closedReasonToText reason =
     case reason of

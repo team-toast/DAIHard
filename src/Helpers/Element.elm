@@ -17,7 +17,6 @@ module Helpers.Element exposing
     , disabledTextColor
     , elOnCircle
     , elementColorToAvh4Color
-    , errorMessage
     , ethAddress
     , etherscanAddressLink
     , fakeLink
@@ -892,20 +891,6 @@ testBorderStyles =
     [ Element.Border.width 1
     , Element.Border.color (Element.rgb 1 0 1)
     ]
-
-
-errorMessage : String -> a -> Element msg
-errorMessage str debugObj =
-    let
-        _ =
-            Debug.log str debugObj
-    in
-    Element.el
-        [ Element.padding 1
-        , Element.Background.color <| Element.rgb 1 0 0
-        , Element.Font.color white
-        ]
-        (Element.text <| "Error:" ++ str)
 
 
 

@@ -57,7 +57,7 @@ type Msg
 type alias UpdateResult =
     { model : Model
     , cmd : Cmd Msg
-    , appCmds : List AppCmd
+    , appCmds : List (AppCmd Msg)
     }
 
 

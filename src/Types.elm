@@ -1,11 +1,12 @@
-module Types exposing (Flags, Model(..), Msg(..), Submodel(..), ValidModel)
+module Types exposing (Flags, Model, Msg(..), Submodel(..))
 
 import AgentHistory.Types
 import AppCmd
+import Array exposing (Array)
 import BigInt exposing (BigInt)
 import Browser
 import Browser.Navigation
-import CommonTypes exposing (UserInfo)
+import CommonTypes exposing (..)
 import Create.Types
 import Eth.Sentry.Tx as TxSentry exposing (TxSentry)
 import Eth.Sentry.Wallet as WalletSentry exposing (WalletSentry)
@@ -18,6 +19,7 @@ import Time
 import Trade.Types
 import TradeCache.Types as TradeCache exposing (TradeCache)
 import Url exposing (Url)
+import UserNotice as UN exposing (UserNotice)
 
 
 type alias Flags =
@@ -27,12 +29,7 @@ type alias Flags =
     }
 
 
-type Model
-    = Running ValidModel
-    | Failed String
-
-
-type alias ValidModel =
+type alias Model =
     { key : Browser.Navigation.Key
     , time : Time.Posix
     , web3Context : Web3Context
@@ -41,6 +38,7 @@ type alias ValidModel =
     , userInfo : Maybe UserInfo
     , tradeCache : TradeCache
     , submodel : Submodel
+    , userNotices : List (UserNotice Msg)
     }
 
 
@@ -57,7 +55,7 @@ type Msg
     | UrlChanged Url
     | GotoRoute Routing.Route
     | Tick Time.Posix
-    | AppCmd AppCmd.AppCmd
+    | AppCmd (AppCmd.AppCmd Msg)
     | ConnectToWeb3
     | WalletStatus WalletSentry
     | NetworkUpdate Json.Decode.Value
@@ -68,6 +66,5 @@ type Msg
     | TradeMsg Trade.Types.Msg
     | MarketplaceMsg Marketplace.Types.Msg
     | AgentHistoryMsg AgentHistory.Types.Msg
-    | Fail String
     | NoOp
     | Test String

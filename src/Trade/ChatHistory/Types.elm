@@ -1,5 +1,6 @@
-module Trade.ChatHistory.Types exposing (CommMessage, EncryptedMessage, Event, EventInfo(..), MessageContent(..), Model, Msg(..), StateChangeInfo(..))
+module Trade.ChatHistory.Types exposing (CommMessage, EncryptedMessage, Event, EventInfo(..), MessageContent(..), Model, Msg(..), StateChangeInfo(..), UpdateResult)
 
+import AppCmd exposing (AppCmd)
 import Array exposing (Array)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
@@ -14,6 +15,14 @@ type alias Model =
     , initiatingParty : BuyerOrSeller
     , history : Array Event
     , messageInput : String
+    }
+
+
+type alias UpdateResult =
+    { model : Model
+    , shouldCallDecrypt : Bool
+    , maybeMessageSubmit : Maybe String
+    , appCmds : List (AppCmd Msg)
     }
 
 

@@ -5,6 +5,7 @@ module Trade.Types exposing
     , PhaseState(..)
     , TxChainStatus(..)
     , UpdateResult
+    , actionName
     , justModelUpdate
     )
 
@@ -74,7 +75,7 @@ type alias UpdateResult =
     { model : Model
     , cmd : Cmd Msg
     , chainCmd : ChainCmd Msg
-    , appCmds : List AppCmd
+    , appCmds : List (AppCmd Msg)
     }
 
 
@@ -104,6 +105,28 @@ type ContractAction
     | Abort
     | Release
     | Burn
+
+
+actionName : ContractAction -> String
+actionName action =
+    case action of
+        Poke ->
+            "poke"
+
+        Recall ->
+            "recall"
+
+        Claim ->
+            "claim"
+
+        Abort ->
+            "abort"
+
+        Release ->
+            "release"
+
+        Burn ->
+            "burn"
 
 
 type PhaseState

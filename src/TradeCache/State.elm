@@ -1,5 +1,6 @@
 module TradeCache.State exposing (init, initAndStartCaching, loadedTrades, startCaching, subscriptions, update)
 
+import AppCmd
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import Contracts.Types as CTypes
@@ -11,6 +12,7 @@ import Helpers.Eth as EthHelpers
 import PaymentMethods exposing (PaymentMethod)
 import Time
 import TradeCache.Types exposing (..)
+import UserNotice as UN exposing (UserNotice)
 
 
 init : EthHelpers.Web3Context -> ( TradeCache, Cmd Msg )
@@ -49,106 +51,101 @@ initAndStartCaching web3Context =
     )
 
 
-update : Msg -> TradeCache -> ( TradeCache, Cmd Msg )
+update : Msg -> TradeCache -> UpdateResult
 update msg prevModel =
     case msg of
         InitialNumTradesFetched fetchResult ->
             case fetchResult of
                 Ok bigInt ->
-                    case BigIntHelpers.toInt bigInt of
-                        Just numTrades ->
-                            let
-                                fetchCreationInfoCmd =
-                                    Cmd.batch
-                                        (List.range 0 (numTrades - 1)
-                                            |> List.map
-                                                (\id ->
-                                                    Contracts.Wrappers.getCreationInfoFromIdCmd prevModel.web3Context (BigInt.fromInt id) (CreationInfoFetched id)
-                                                )
+                    let
+                        numTrades =
+                            BigIntHelpers.toIntWithWarning bigInt
+
+                        fetchCreationInfoCmd =
+                            Cmd.batch
+                                (List.range 0 (numTrades - 1)
+                                    |> List.map
+                                        (\id ->
+                                            Contracts.Wrappers.getCreationInfoFromIdCmd prevModel.web3Context (BigInt.fromInt id) (CreationInfoFetched id)
                                         )
+                                )
 
-                                trades =
-                                    List.range 0 (numTrades - 1)
-                                        |> List.map CTypes.partialTradeInfo
-                                        |> Array.fromList
-                            in
-                            ( { prevModel
-                                | numTrades = Just numTrades
-                                , trades = trades
-                              }
-                            , fetchCreationInfoCmd
-                            )
-
-                        Nothing ->
-                            let
-                                _ =
-                                    Debug.log "can't convert the numTrades bigInt value to an int" ""
-                            in
-                            ( prevModel, Cmd.none )
+                        trades =
+                            List.range 0 (numTrades - 1)
+                                |> List.map CTypes.partialTradeInfo
+                                |> Array.fromList
+                    in
+                    UpdateResult
+                        { prevModel
+                            | numTrades = Just numTrades
+                            , trades = trades
+                        }
+                        fetchCreationInfoCmd
+                        []
 
                 Err errstr ->
-                    let
-                        _ =
-                            Debug.log "can't fetch numTrades:" errstr
-                    in
-                    ( prevModel, Cmd.none )
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.web3FetchError "Factory numTrades" errstr
+                        ]
 
         CheckForNewTrades ->
-            ( prevModel
-            , Contracts.Wrappers.getNumTradesCmd prevModel.web3Context NumTradesFetchedAgain
-            )
+            UpdateResult
+                prevModel
+                (Contracts.Wrappers.getNumTradesCmd prevModel.web3Context NumTradesFetchedAgain)
+                []
 
         NumTradesFetchedAgain fetchResult ->
             case ( fetchResult, prevModel.numTrades ) of
                 ( Ok bigInt, Just oldNumTrades ) ->
-                    case BigIntHelpers.toInt bigInt of
-                        Just newNumTrades ->
-                            if oldNumTrades < newNumTrades then
-                                let
-                                    fetchCreationInfoCmd =
-                                        Cmd.batch
-                                            (List.range oldNumTrades (newNumTrades - 1)
-                                                |> List.map
-                                                    (\id ->
-                                                        Contracts.Wrappers.getCreationInfoFromIdCmd prevModel.web3Context (BigInt.fromInt id) (CreationInfoFetched id)
-                                                    )
+                    let
+                        newNumTrades =
+                            BigIntHelpers.toIntWithWarning bigInt
+                    in
+                    if oldNumTrades < newNumTrades then
+                        let
+                            fetchCreationInfoCmd =
+                                Cmd.batch
+                                    (List.range oldNumTrades (newNumTrades - 1)
+                                        |> List.map
+                                            (\id ->
+                                                Contracts.Wrappers.getCreationInfoFromIdCmd prevModel.web3Context (BigInt.fromInt id) (CreationInfoFetched id)
                                             )
+                                    )
 
-                                    additionalTrades =
-                                        List.range oldNumTrades (newNumTrades - 1)
-                                            |> List.map CTypes.partialTradeInfo
-                                            |> Array.fromList
-                                in
-                                ( { prevModel
-                                    | numTrades = Just newNumTrades
-                                    , trades = Array.append prevModel.trades additionalTrades
-                                  }
-                                , fetchCreationInfoCmd
-                                )
+                            additionalTrades =
+                                List.range oldNumTrades (newNumTrades - 1)
+                                    |> List.map CTypes.partialTradeInfo
+                                    |> Array.fromList
+                        in
+                        UpdateResult
+                            { prevModel
+                                | numTrades = Just newNumTrades
+                                , trades = Array.append prevModel.trades additionalTrades
+                            }
+                            fetchCreationInfoCmd
+                            []
 
-                            else
-                                ( prevModel, Cmd.none )
-
-                        Nothing ->
-                            let
-                                _ =
-                                    Debug.log "Can't convert the numTrades bigInt value to an int" ""
-                            in
-                            ( prevModel, Cmd.none )
+                    else
+                        justModelUpdate prevModel
 
                 ( Err errstr, _ ) ->
-                    let
-                        _ =
-                            Debug.log "can't fetch numTrades:" errstr
-                    in
-                    ( prevModel, Cmd.none )
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.web3FetchError "Factory numTrades" errstr
+                        ]
 
                 ( _, Nothing ) ->
-                    let
-                        _ =
-                            Debug.log "Trying to fetch additional trades, but there is an unexpected Nothing in the existing numTrades." ""
-                    in
-                    ( prevModel, Cmd.none )
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.unexpectedError "Trying to fetch additional trades, but there is an unexpected Nothing in the existing numTrades." ""
+                        ]
 
         CreationInfoFetched id fetchResult ->
             case fetchResult of
@@ -159,7 +156,7 @@ update msg prevModel =
                                 encodedCreationInfo.address_
                                 (BigIntHelpers.toIntWithWarning encodedCreationInfo.blocknum)
 
-                        newModel =
+                        ( newModel, notices ) =
                             prevModel
                                 |> updateTradeCreationInfo id creationInfo
 
@@ -172,87 +169,88 @@ update msg prevModel =
                                 , sentryCmd
                                 ]
                     in
-                    ( { newModel | eventSentry = newSentry }
-                    , cmd
-                    )
+                    UpdateResult
+                        { newModel | eventSentry = newSentry }
+                        cmd
+                        (notices |> List.map AppCmd.UserNotice)
 
                 Err errstr ->
-                    let
-                        _ =
-                            Debug.log ("Error fetching address on id" ++ String.fromInt id) errstr
-                    in
-                    ( prevModel, Cmd.none )
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.web3FetchError "creationInfo" errstr
+                        ]
 
         ParametersFetched id fetchResult ->
             case fetchResult of
                 Ok (Ok parameters) ->
-                    ( prevModel |> updateTradeParameters id parameters
-                    , Cmd.none
-                    )
+                    prevModel |> updateTradeParameters id parameters
 
-                badResult ->
-                    let
-                        _ =
-                            Debug.log "bad parameters Fetched result" badResult
-                    in
-                    ( prevModel, Cmd.none )
+                Err httpErr ->
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.web3FetchError "parameters" httpErr
+                        ]
+
+                Ok (Err s) ->
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.unexpectedError "Can't decode fetched trade parameters" s
+                        ]
 
         StateFetched id fetchResult ->
             case fetchResult of
                 Ok (Just state) ->
-                    ( prevModel |> updateTradeState id state
-                    , Cmd.none
-                    )
+                    prevModel |> updateTradeState id state
 
                 _ ->
-                    let
-                        _ =
-                            EthHelpers.logBadFetchResultMaybe fetchResult
-                    in
-                    ( prevModel, Cmd.none )
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.fromBadFetchResultMaybe "state" fetchResult
+                        ]
 
         PhaseStartInfoFetched id fetchResult ->
             case fetchResult of
                 Ok (Just phaseStartInfo) ->
-                    ( prevModel |> updateTradePhaseStartInfo id phaseStartInfo
-                    , Cmd.none
-                    )
+                    prevModel |> updateTradePhaseStartInfo id phaseStartInfo
 
                 _ ->
-                    let
-                        _ =
-                            EthHelpers.logBadFetchResultMaybe fetchResult
-                    in
-                    ( prevModel, Cmd.none )
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.fromBadFetchResultMaybe "phaseStartInfo" fetchResult
+                        ]
 
         InitiatedEventDataFetched id fetchResult ->
             case fetchResult of
                 Ok initiatedEventData ->
-                    let
-                        newModel =
-                            case CTypes.decodeTerms initiatedEventData.terms of
-                                Ok terms ->
-                                    prevModel |> updateTradeTerms id terms
+                    case CTypes.decodeTerms initiatedEventData.terms of
+                        Ok terms ->
+                            prevModel |> updateTradeTerms id terms
 
-                                Err e ->
-                                    let
-                                        _ =
-                                            Debug.log "Error decoding payment methods" e
-                                    in
-                                    prevModel
-                    in
-                    ( newModel
-                    , Cmd.none
-                    )
+                        Err e ->
+                            UpdateResult
+                                prevModel
+                                Cmd.none
+                                [ AppCmd.UserNotice <|
+                                    UN.unexpectedError "Error decoding payment methods" e
+                                ]
 
-                Err decodeError ->
-                    let
-                        _ =
-                            Debug.log "Error decoding the fetched result of OpenEvent data" decodeError
-                    in
-                    ( prevModel
-                    , Cmd.none
-                    )
+                Err e ->
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.unexpectedError "Error decoding initiated event" e
+                        ]
 
         EventSentryMsg eventMsg ->
             let
@@ -261,12 +259,13 @@ update msg prevModel =
                         eventMsg
                         prevModel.eventSentry
             in
-            ( { prevModel
-                | eventSentry =
-                    newEventSentry
-              }
-            , cmd
-            )
+            UpdateResult
+                { prevModel
+                    | eventSentry =
+                        newEventSentry
+                }
+                cmd
+                []
 
 
 loadedTrades : TradeCache -> List CTypes.FullTradeInfo
@@ -305,7 +304,7 @@ loadedTradesDict tradeCache =
         |> Dict.fromList
 
 
-updateTradeCreationInfo : Int -> CTypes.TradeCreationInfo -> TradeCache -> TradeCache
+updateTradeCreationInfo : Int -> CTypes.TradeCreationInfo -> TradeCache -> ( TradeCache, List (UserNotice Msg) )
 updateTradeCreationInfo id creationInfo tradeCache =
     case Array.get id tradeCache.trades of
         Just trade ->
@@ -318,17 +317,17 @@ updateTradeCreationInfo id creationInfo tradeCache =
                         newTrade
                         tradeCache.trades
             in
-            { tradeCache | trades = newTradeArray }
+            ( { tradeCache | trades = newTradeArray }
+            , []
+            )
 
         Nothing ->
-            let
-                _ =
-                    Debug.log "updateTradeAddress ran into an out-of-range error" ""
-            in
-            tradeCache
+            ( tradeCache
+            , [ UN.unexpectedError "updateTradeAddress ran into an out-of-range error" ( id, tradeCache.trades ) ]
+            )
 
 
-updateTradeParameters : Int -> CTypes.TradeParameters -> TradeCache -> TradeCache
+updateTradeParameters : Int -> CTypes.TradeParameters -> TradeCache -> UpdateResult
 updateTradeParameters id parameters tradeCache =
     case Array.get id tradeCache.trades of
         Just trade ->
@@ -341,17 +340,21 @@ updateTradeParameters id parameters tradeCache =
                         newTrade
                         tradeCache.trades
             in
-            { tradeCache | trades = newTradeArray }
+            UpdateResult
+                { tradeCache | trades = newTradeArray }
+                Cmd.none
+                []
 
         Nothing ->
-            let
-                _ =
-                    Debug.log "updateTradeParameters ran into an out-of-range error" ""
-            in
-            tradeCache
+            UpdateResult
+                tradeCache
+                Cmd.none
+                [ AppCmd.UserNotice <|
+                    UN.unexpectedError "updateTradeParameters ran into an out-of-range error" ( id, tradeCache.trades )
+                ]
 
 
-updateTradeState : Int -> CTypes.State -> TradeCache -> TradeCache
+updateTradeState : Int -> CTypes.State -> TradeCache -> UpdateResult
 updateTradeState id state tradeCache =
     case Array.get id tradeCache.trades of
         Just trade ->
@@ -364,17 +367,21 @@ updateTradeState id state tradeCache =
                         newTrade
                         tradeCache.trades
             in
-            { tradeCache | trades = newTradeArray }
+            UpdateResult
+                { tradeCache | trades = newTradeArray }
+                Cmd.none
+                []
 
         Nothing ->
-            let
-                _ =
-                    Debug.log "updateTradeState ran into an out-of-range error" ""
-            in
-            tradeCache
+            UpdateResult
+                tradeCache
+                Cmd.none
+                [ AppCmd.UserNotice <|
+                    UN.unexpectedError "updateTradeState ran into an out-of-range error" ( id, tradeCache.trades )
+                ]
 
 
-updateTradePhaseStartInfo : Int -> CTypes.PhaseStartInfo -> TradeCache -> TradeCache
+updateTradePhaseStartInfo : Int -> CTypes.PhaseStartInfo -> TradeCache -> UpdateResult
 updateTradePhaseStartInfo id phaseStartInfo tradeCache =
     case Array.get id tradeCache.trades of
         Just trade ->
@@ -387,17 +394,21 @@ updateTradePhaseStartInfo id phaseStartInfo tradeCache =
                         newTrade
                         tradeCache.trades
             in
-            { tradeCache | trades = newTradeArray }
+            UpdateResult
+                { tradeCache | trades = newTradeArray }
+                Cmd.none
+                []
 
         Nothing ->
-            let
-                _ =
-                    Debug.log "updateTradePhaseTimeInfo ran into an out-of-range error" ""
-            in
-            tradeCache
+            UpdateResult
+                tradeCache
+                Cmd.none
+                [ AppCmd.UserNotice <|
+                    UN.unexpectedError "updateTradePhaseTimeInfo ran into an out-of-range error" ( id, tradeCache.trades )
+                ]
 
 
-updateTradeTerms : Int -> CTypes.Terms -> TradeCache -> TradeCache
+updateTradeTerms : Int -> CTypes.Terms -> TradeCache -> UpdateResult
 updateTradeTerms id terms tradeCache =
     case Array.get id tradeCache.trades of
         Just trade ->
@@ -410,14 +421,18 @@ updateTradeTerms id terms tradeCache =
                         newTrade
                         tradeCache.trades
             in
-            { tradeCache | trades = newTradeArray }
+            UpdateResult
+                { tradeCache | trades = newTradeArray }
+                Cmd.none
+                []
 
         Nothing ->
-            let
-                _ =
-                    Debug.log "updateTTPaymentMethods ran into an out-of-range error" ""
-            in
-            tradeCache
+            UpdateResult
+                tradeCache
+                Cmd.none
+                [ AppCmd.UserNotice <|
+                    UN.unexpectedError "updateTTPaymentMethods ran into an out-of-range error" ( id, tradeCache.trades )
+                ]
 
 
 subscriptions : TradeCache -> Sub Msg

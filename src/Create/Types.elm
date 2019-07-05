@@ -91,7 +91,7 @@ type alias UpdateResult =
     { model : Model
     , cmd : Cmd Msg
     , chainCmd : ChainCmd Msg
-    , appCmds : List AppCmd
+    , appCmds : List (AppCmd Msg)
     }
 
 

@@ -36,7 +36,7 @@ function startDapp() {
         window.app = Elm.App.init({
             node: document.getElementById('elm'),
             flags: {
-                networkId: parseInt(1),
+                networkId: parseInt(0), // 0 indicates no network set by provider
                 width: window.innerWidth,
                 height: window.innerHeight
             }

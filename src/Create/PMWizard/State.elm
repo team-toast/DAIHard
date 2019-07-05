@@ -22,7 +22,7 @@ update msg prevModel =
                     justModelUpdate <|
                         Details { paymentMethod | info = s }
 
-                ChooseType ->
+                _ ->
                     let
                         _ =
                             Debug.log "Trying to change details, but no type selected!" ""
@@ -37,7 +37,7 @@ update msg prevModel =
                         Cmd.none
                         (Just paymentMethod)
 
-                ChooseType ->
+                _ ->
                     let
                         _ =
                             Debug.log "add a payment method, but no type selected!" ""
@@ -52,7 +52,7 @@ update msg prevModel =
                         Cmd.none
                         (Just paymentMethod)
 
-                ChooseType ->
+                _ ->
                     let
                         _ =
                             Debug.log "add a payment method, but no type selected!" ""
