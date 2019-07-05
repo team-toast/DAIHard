@@ -19,10 +19,18 @@ function startDapp() {
         }
 
         web3.version.getNetwork(function (e, networkId) {
+            var id;
+            if (e) {
+                console.log("Error initializing web3: " + e);
+                id = 0; // 0 indicates no network set by provider
+            }
+            else {
+                id = parseInt(networkId);
+            }
             window.app = Elm.App.init({
                 node: document.getElementById('elm'),
                 flags: {
-                    networkId: parseInt(networkId),
+                    networkId: id,
                     width: window.innerWidth,
                     height: window.innerHeight
                 }
@@ -36,15 +44,13 @@ function startDapp() {
         window.app = Elm.App.init({
             node: document.getElementById('elm'),
             flags: {
-                networkId: parseInt(0), // 0 indicates no network set by provider
+                networkId: 0, // 0 indicates no network set by provider
                 width: window.innerWidth,
                 height: window.innerHeight
             }
         });
 
         gtagPortStuff(app);
-
-        web3PortStuff(app, web3);
 
         console.log("Metamask not detected.");
     }
