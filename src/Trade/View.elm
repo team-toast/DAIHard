@@ -95,7 +95,7 @@ tradeStatusElement trade factoryType =
             [ Element.text
                 (case trade.state.phase of
                     CTypes.Open ->
-                        case trade.parameters.initiatingParty of
+                        case trade.parameters.initiatorRole of
                             Buyer ->
                                 "Open Buy Offer"
 
@@ -131,7 +131,7 @@ daiAmountElement trade maybeUserInfo =
                 (Maybe.map .address maybeUserInfo)
     in
     EH.withHeader
-        (case ( trade.parameters.initiatingParty, maybeInitiatorOrResponder ) of
+        (case ( trade.parameters.initiatorRole, maybeInitiatorOrResponder ) of
             ( Buyer, Just Initiator ) ->
                 "You're Buying"
 
@@ -194,7 +194,8 @@ marginElement trade maybeUserInfo =
 
 
 type alias Stats =
-    { firstTrade : Maybe Time.Posix
+    { asRole : BuyerOrSeller
+    , firstTrade : Maybe Time.Posix
     , numTrades : Int
     , numBurns : Int
     , numReleases : Int
@@ -204,10 +205,10 @@ type alias Stats =
     }
 
 
-generateStatsForSeller : TradeCache -> Address -> Stats
-generateStatsForSeller tradeCache sellerAddress =
+generateUserStats : TradeCache -> BuyerOrSeller -> Address -> Stats
+generateUserStats tradeCache forRole userAddress =
     let
-        fullTradesFromSeller =
+        fullTradesByUserAsRole =
             tradeCache.trades
                 |> Array.toList
                 |> List.filterMap
@@ -222,36 +223,37 @@ generateStatsForSeller tradeCache sellerAddress =
                 |> List.filter
                     -- filter for trades that share the same Seller
                     (\t ->
-                        CTypes.getBuyerOrSeller t sellerAddress == Just Seller
+                        CTypes.getBuyerOrSeller t userAddress == Just forRole
                     )
 
         talliedVals =
-            fullTradesFromSeller
+            fullTradesByUserAsRole
                 |> List.foldl
                     (\trade tallied ->
-                        if trade.state.closedReason == CTypes.Released then
-                            { tallied
-                                | numReleases = tallied.numReleases + 1
-                                , amountReleased =
-                                    TokenValue.add
-                                        tallied.amountReleased
-                                        trade.parameters.tradeAmount
-                            }
+                        case trade.state.closedReason of
+                            CTypes.Released ->
+                                { tallied
+                                    | numReleases = tallied.numReleases + 1
+                                    , amountReleased =
+                                        TokenValue.add
+                                            tallied.amountReleased
+                                            trade.parameters.tradeAmount
+                                }
 
-                        else if trade.state.closedReason == CTypes.Burned then
-                            { tallied
-                                | numBurns = tallied.numBurns + 1
-                                , amountBurned =
-                                    TokenValue.add
-                                        tallied.amountBurned
-                                        trade.parameters.tradeAmount
-                            }
+                            CTypes.Burned ->
+                                { tallied
+                                    | numBurns = tallied.numBurns + 1
+                                    , amountBurned =
+                                        TokenValue.add
+                                            tallied.amountBurned
+                                            trade.parameters.tradeAmount
+                                }
 
-                        else if trade.state.closedReason == CTypes.Aborted then
-                            { tallied | numAborts = tallied.numAborts + 1 }
+                            CTypes.Aborted ->
+                                { tallied | numAborts = tallied.numAborts + 1 }
 
-                        else
-                            tallied
+                            _ ->
+                                tallied
                     )
                     { numBurns = 0
                     , numReleases = 0
@@ -261,10 +263,10 @@ generateStatsForSeller tradeCache sellerAddress =
                     }
 
         numTrades =
-            List.length fullTradesFromSeller
+            List.length fullTradesByUserAsRole
 
         firstTradeDate =
-            fullTradesFromSeller
+            fullTradesByUserAsRole
                 |> List.filterMap
                     (\t ->
                         Time.posixToMillis t.phaseStartInfo.committedTime
@@ -280,7 +282,8 @@ generateStatsForSeller tradeCache sellerAddress =
                 |> List.head
                 |> Maybe.map Time.millisToPosix
     in
-    { numTrades = numTrades
+    { asRole = forRole
+    , numTrades = numTrades
     , firstTrade = firstTradeDate
     , numBurns = talliedVals.numBurns
     , numReleases = talliedVals.numReleases
@@ -292,62 +295,74 @@ generateStatsForSeller tradeCache sellerAddress =
 
 statsElement : FullTradeInfo -> TradeCache -> Bool -> Element Msg
 statsElement trade tradeCache showModal =
-    case trade.parameters.initiatingParty of
-        Seller ->
-            let
-                sellerStats =
-                    generateStatsForSeller tradeCache trade.parameters.initiatorAddress
-            in
-            Element.el
-                (if showModal then
-                    [ Element.below
-                        (Element.el
-                            [ Element.moveDown 30 ]
-                            (statsModal trade.parameters.initiatorAddress sellerStats)
-                        )
-                    ]
+    let
+        userStats =
+            trade.parameters.initiatorAddress
+                |> generateUserStats tradeCache trade.parameters.initiatorRole
 
-                 else
-                    []
+        headerText =
+            buyerOrSellerToString trade.parameters.initiatorRole
+                ++ " Stats"
+    in
+    Element.el
+        (if showModal then
+            [ Element.below
+                (Element.el
+                    [ Element.moveDown 30 ]
+                    (statsModal trade.parameters.initiatorAddress userStats)
                 )
-            <|
-                EH.withHeader
-                    "Seller Stats"
-                    (Element.row
-                        [ Element.width Element.fill
-                        , Element.spacing 30
-                        , Element.pointer
-                        , Element.Events.onClick ToggleStatsModal
-                        ]
-                        [ Element.row
-                            []
-                            [ Images.toElement
-                                [ Element.height <| Element.px 28
-                                ]
-                                Images.release
-                            , Element.el
-                                [ Element.Font.size 24
-                                , Element.Font.medium
-                                ]
-                                (Element.text (String.padLeft 2 '0' <| String.fromInt sellerStats.numReleases))
-                            ]
-                        , Element.row
-                            []
-                            [ Images.toElement
-                                [ Element.height <| Element.px 28
-                                ]
-                                Images.flame
-                            , Element.el
-                                [ Element.Font.size 24
-                                , Element.Font.medium
-                                ]
-                                (Element.text (String.padLeft 2 '0' <| String.fromInt sellerStats.numBurns))
-                            ]
-                        ]
-                    )
+            ]
 
-        Buyer ->
-            Element.text "??"
+         else
+            []
+        )
+    <|
+        EH.withHeader
+            headerText
+            (Element.row
+                [ Element.width Element.fill
+                , Element.spacing 30
+                , Element.pointer
+                , Element.Events.onClick ToggleStatsModal
+                ]
+                [ Element.row
+                    []
+                    [ Images.toElement
+                        [ Element.height <| Element.px 28
+                        ]
+                        Images.release
+                    , Element.el
+                        [ Element.Font.size 24
+                        , Element.Font.medium
+                        ]
+                        (Element.text (String.padLeft 2 '0' <| String.fromInt userStats.numReleases))
+                    ]
+                , Element.row
+                    []
+                    [ Images.toElement
+                        [ Element.height <| Element.px 28
+                        ]
+                        Images.flame
+                    , Element.el
+                        [ Element.Font.size 24
+                        , Element.Font.medium
+                        ]
+                        (Element.text (String.padLeft 2 '0' <| String.fromInt userStats.numAborts))
+                    ]
+                , Element.row
+                    []
+                    [ Images.toElement
+                        [ Element.height <| Element.px 28
+                        ]
+                        Images.flame
+                    , Element.el
+                        [ Element.Font.size 24
+                        , Element.Font.medium
+                        ]
+                        (Element.text (String.padLeft 2 '0' <| String.fromInt userStats.numBurns))
+                    ]
+                ]
+            )
 
 
 statsModal : Address -> Stats -> Element Msg
@@ -389,6 +404,10 @@ statsModal address stats =
                             ++ TokenValue.toConciseString stats.amountReleased
                             ++ " DAI Released"
                       )
+                    , ( "Abort Outcomes"
+                      , String.fromInt stats.numAborts
+                            ++ " trades"
+                      )
                     , ( "Burn Outcomes"
                       , String.fromInt stats.numBurns
                             ++ " trades / "
@@ -397,7 +416,7 @@ statsModal address stats =
                       )
                     ]
                     ++ [ Element.el [ Element.centerX ]
-                            (EH.blueButton "View Seller History" ViewSellerHistory)
+                            (EH.blueButton "View User History" (ViewUserHistory stats.asRole))
                        ]
                 )
 
@@ -872,7 +891,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
             case ( viewPhase, maybeBuyerOrSeller ) of
                 ( CTypes.Open, Nothing ) ->
                     ( "Get it while it's hot"
-                    , case trade.parameters.initiatingParty of
+                    , case trade.parameters.initiatorRole of
                         Seller ->
                             List.map makeParagraph
                                 [ [ Element.text "The Seller has deposited "

@@ -576,7 +576,7 @@ getWarningParagraphs : CTypes.CreateParameters -> List (List (Element Msg))
 getWarningParagraphs createParameters =
     [ if TimeHelpers.compare createParameters.autoreleaseInterval (Time.millisToPosix (1000 * 60 * 20)) == LT then
         Just <|
-            case createParameters.initiatingParty of
+            case createParameters.initiatorRole of
                 Buyer ->
                     "That Release Window time is quite small! It might take a while to find a committed Seller."
 
@@ -587,7 +587,7 @@ getWarningParagraphs createParameters =
         Nothing
     , if TimeHelpers.compare createParameters.autoabortInterval (Time.millisToPosix (1000 * 60 * 60)) == LT then
         Just <|
-            case createParameters.initiatingParty of
+            case createParameters.initiatorRole of
                 Buyer ->
                     "That Payment Window time is quite small! If you fail to to 1. make the payment and 2. click \"confirm\" before this time is up, the trade will automatically abort, incurring the abort punishments on both parties."
 

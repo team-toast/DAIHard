@@ -109,13 +109,13 @@ update msg prevModel =
                 _ ->
                     justModelUpdate prevModel
 
-        ChangeRole initiatingParty ->
+        ChangeRole initiatorRole ->
             let
                 oldInputs =
                     prevModel.inputs
             in
             justModelUpdate
-                { prevModel | inputs = { oldInputs | userRole = initiatingParty } }
+                { prevModel | inputs = { oldInputs | userRole = initiatorRole } }
 
         TradeAmountChanged newAmountStr ->
             let
@@ -498,7 +498,7 @@ validateInputs : Inputs -> Result Errors CTypes.UserParameters
 validateInputs inputs =
     Result.map3
         (\daiAmount fiatAmount paymentMethods ->
-            { initiatingParty = inputs.userRole
+            { initiatorRole = inputs.userRole
             , tradeAmount = daiAmount
             , price = { fiatType = inputs.fiatType, amount = fiatAmount }
             , autorecallInterval = inputs.autorecallInterval

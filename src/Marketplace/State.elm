@@ -312,7 +312,7 @@ applyInputs prevModel =
 
                 newFilterFunc now trade =
                     baseFilterFunc now trade
-                        && (trade.parameters.initiatingParty /= model.browsingRole)
+                        && (trade.parameters.initiatorRole /= model.browsingRole)
                         && searchTest now trade
                         && daiTest trade
                         && fiatTest trade

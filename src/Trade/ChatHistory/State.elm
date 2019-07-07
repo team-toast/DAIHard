@@ -14,11 +14,11 @@ import UserNotice as UN
 
 
 init : UserInfo -> BuyerOrSeller -> BuyerOrSeller -> List ( Int, CTypes.DAIHardEvent ) -> ( Model, Bool )
-init userInfo buyerOrSeller initiatingParty initialEvents =
+init userInfo buyerOrSeller initiatorRole initialEvents =
     Model
         userInfo
         buyerOrSeller
-        initiatingParty
+        initiatorRole
         Array.empty
         ""
         |> handleInitialEvents initialEvents
@@ -130,7 +130,7 @@ handleNewEvent : Int -> CTypes.DAIHardEvent -> Model -> ( Model, Bool )
 handleNewEvent blocknum event prevModel =
     let
         toBuyerOrSeller =
-            CTypes.initiatorOrResponderToBuyerOrSeller prevModel.initiatingParty
+            CTypes.initiatorOrResponderToBuyerOrSeller prevModel.initiatorRole
 
         maybeHistoryEventInfo =
             case event of

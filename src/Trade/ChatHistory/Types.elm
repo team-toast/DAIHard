@@ -12,7 +12,7 @@ import Time
 type alias Model =
     { userInfo : UserInfo
     , userRole : BuyerOrSeller
-    , initiatingParty : BuyerOrSeller
+    , initiatorRole : BuyerOrSeller
     , history : Array Event
     , messageInput : String
     }

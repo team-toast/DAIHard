@@ -251,6 +251,13 @@ evmValueToUserFloatString evmValue =
                 ++ String.right Config.tokenDecimals zeroPaddedString
     in
     removeUnnecessaryZerosAndDots withDecimalString
+        |> (\s ->
+                if s == "" then
+                    "0"
+
+                else
+                    s
+           )
 
 
 removeUnnecessaryZerosAndDots : String -> String

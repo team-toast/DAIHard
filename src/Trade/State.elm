@@ -460,14 +460,14 @@ update msg prevModel =
             in
             justModelUpdate { prevModel | showStatsModal = showStatsModal }
 
-        ViewSellerHistory ->
+        ViewUserHistory asRole ->
             case prevModel.trade of
                 CTypes.LoadedTrade trade ->
                     UpdateResult
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.GotoRoute (Routing.AgentHistory trade.parameters.initiatorAddress Seller) ]
+                        [ AppCmd.GotoRoute (Routing.AgentHistory trade.parameters.initiatorAddress asRole) ]
 
                 _ ->
                     UpdateResult
@@ -475,7 +475,7 @@ update msg prevModel =
                         Cmd.none
                         ChainCmd.none
                         [ AppCmd.UserNotice <|
-                            UN.unexpectedError "Trying to view a seller's history for a not-yet-loaded Trade" prevModel.trade
+                            UN.unexpectedError "Trying to view a user's history for a not-yet-loaded Trade" prevModel.trade
                         ]
 
         CommitClicked trade userInfo depositAmount ->
@@ -860,7 +860,7 @@ tryInitChatHistory maybeTrade maybeUserInfo pendingEvents =
                     ChatHistory.init
                         userInfo
                         buyerOrSeller
-                        tradeInfo.parameters.initiatingParty
+                        tradeInfo.parameters.initiatorRole
                         pendingEvents
                         |> Tuple.mapFirst Just
 
