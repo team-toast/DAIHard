@@ -40,6 +40,7 @@ type alias Model =
     , tradeCache : TradeCache
     , submodel : Submodel
     , userNotices : List (UserNotice Msg)
+    , screenWidth : Int
     }
 
 

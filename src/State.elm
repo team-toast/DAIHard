@@ -95,6 +95,7 @@ init flags url key =
             , tradeCache = tradeCache
             , submodel = BetaLandingPage
             , userNotices = []
+            , screenWidth = flags.width
             }
                 |> updateFromUrl url
     in

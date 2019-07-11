@@ -28,6 +28,9 @@ root model =
     { title = "DAIHard"
     , body =
         [ let
+            ( pageEl, modalEl ) =
+                pageElementAndModal model.screenWidth model
+
             mainElementAttributes =
                 [ Element.width Element.fill
                 , Element.height Element.fill
@@ -36,18 +39,23 @@ root model =
                     [ Element.Font.typeface "Soleil"
                     , Element.Font.sansSerif
                     ]
+                , Element.inFront modalEl
                 ]
           in
           Element.layout
             mainElementAttributes
-            (pageElement model)
+            pageEl
         ]
     }
 
 
-pageElement : Model -> Element Msg
-pageElement model =
-    Element.column
+pageElementAndModal : Int -> Model -> ( Element Msg, Element Msg )
+pageElementAndModal screenWidth model =
+    let
+        ( submodelEl, modalEl ) =
+            submodelElementAndModal screenWidth model
+    in
+    ( Element.column
         [ Element.behindContent <| headerBackground
         , Element.inFront <| headerContent model
         , Element.inFront <| userNotices model.userNotices
@@ -60,8 +68,10 @@ pageElement model =
         [ Element.el
             [ Element.height (Element.px 50) ]
             Element.none
-        , subModelElement model
+        , submodelEl
         ]
+    , modalEl
+    )
 
 
 headerBackground : Element Msg
@@ -273,6 +283,14 @@ userNotice id notice =
                 UN.ShouldBeImpossible ->
                     Element.rgb255 200 200 200
 
+        textColor =
+            case notice.noticeType of
+                UN.Error ->
+                    Element.rgb 1 1 1
+
+                _ ->
+                    Element.rgb 0 0 0
+
         closeElement =
             Element.el
                 [ Element.alignRight
@@ -295,7 +313,9 @@ userNotice id notice =
             |> List.indexedMap
                 (\pNum paragraphLines ->
                     Element.paragraph
-                        [ Element.width Element.fill ]
+                        [ Element.width Element.fill
+                        , Element.Font.color textColor
+                        ]
                         (if pNum == 0 then
                             closeElement :: paragraphLines
 
@@ -335,26 +355,43 @@ headerMenuAttributes =
     ]
 
 
-subModelElement : Model -> Element Msg
-subModelElement model =
-    Element.el
+submodelElementAndModal : Int -> Model -> ( Element Msg, Element Msg )
+submodelElementAndModal screenWidth model =
+    let
+        ( submodelEl, modalEl ) =
+            case model.submodel of
+                BetaLandingPage ->
+                    ( Landing.View.root (GotoRoute <| Routing.Marketplace Buyer)
+                    , Element.none
+                    )
+
+                CreateModel createModel ->
+                    Tuple.mapBoth
+                        (Element.map CreateMsg)
+                        (Element.map CreateMsg)
+                        (Create.View.root screenWidth createModel)
+
+                TradeModel tradeModel ->
+                    ( Element.map TradeMsg (Trade.View.root model.time model.tradeCache tradeModel)
+                    , Element.none
+                    )
+
+                MarketplaceModel marketplaceModel ->
+                    ( Element.map MarketplaceMsg (Marketplace.View.root model.time model.tradeCache marketplaceModel)
+                    , Element.none
+                    )
+
+                AgentHistoryModel agentHistoryModel ->
+                    ( Element.map AgentHistoryMsg (AgentHistory.View.root model.time model.tradeCache agentHistoryModel)
+                    , Element.none
+                    )
+    in
+    ( Element.el
         [ Element.width Element.fill
         , Element.height Element.fill
         , Element.Border.rounded 10
+        , Element.Background.color EH.white
         ]
-        (case model.submodel of
-            BetaLandingPage ->
-                Landing.View.root (GotoRoute <| Routing.Marketplace Buyer)
-
-            CreateModel createModel ->
-                Element.map CreateMsg (Create.View.root createModel)
-
-            TradeModel tradeModel ->
-                Element.map TradeMsg (Trade.View.root model.time model.tradeCache tradeModel)
-
-            MarketplaceModel marketplaceModel ->
-                Element.map MarketplaceMsg (Marketplace.View.root model.time model.tradeCache marketplaceModel)
-
-            AgentHistoryModel agentHistoryModel ->
-                Element.map AgentHistoryMsg (AgentHistory.View.root model.time model.tradeCache agentHistoryModel)
-        )
+        submodelEl
+    , modalEl
+    )
