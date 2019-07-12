@@ -14,9 +14,11 @@ import Element.Font
 import Element.Input
 import FiatValue
 import Helpers.Element as EH
+import Helpers.Tuple exposing (mapTuple2)
 import Landing.View
 import Marketplace.Types
 import Marketplace.View
+import QuickCreate.View
 import Routing
 import Trade.View
 import Types exposing (..)
@@ -366,10 +368,13 @@ submodelElementAndModal screenWidth model =
                     )
 
                 CreateModel createModel ->
-                    Tuple.mapBoth
-                        (Element.map CreateMsg)
-                        (Element.map CreateMsg)
-                        (Create.View.root screenWidth createModel)
+                    ( Element.map CreateMsg (Create.View.root createModel)
+                    , Element.none
+                    )
+
+                QuickCreateModel quickCreateModel ->
+                    QuickCreate.View.root quickCreateModel
+                        |> mapTuple2 (Element.map QuickCreateMsg)
 
                 TradeModel tradeModel ->
                     ( Element.map TradeMsg (Trade.View.root model.time model.tradeCache tradeModel)

@@ -1,4 +1,4 @@
-module TokenValue exposing (TokenValue, add, compare, decoder, div, encode, fromString, getEvmValue, getFloatValueWithWarning, isZero, mul, sub, toConciseString, tokenValue, zero)
+module TokenValue exposing (TokenValue, add, compare, decoder, div, encode, fromIntTokenValue, fromString, getEvmValue, getFloatValueWithWarning, isZero, mul, sub, toConciseString, tokenValue, zero)
 
 import BigInt exposing (BigInt)
 import Config
@@ -14,6 +14,14 @@ type TokenValue
 tokenValue : BigInt -> TokenValue
 tokenValue evmValue =
     TokenValue evmValue
+
+
+fromIntTokenValue : Int -> TokenValue
+fromIntTokenValue val =
+    BigInt.fromInt val
+        |> BigInt.mul
+            (BigInt.pow (BigInt.fromInt 10) (BigInt.fromInt Config.tokenDecimals))
+        |> tokenValue
 
 
 fromString : String -> Maybe TokenValue

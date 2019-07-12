@@ -22,6 +22,7 @@ import Json.Encode
 import List.Extra
 import Marketplace.State
 import Maybe.Extra
+import QuickCreate.State
 import Routing
 import Time
 import Trade.State
@@ -321,6 +322,31 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
+        QuickCreateMsg quickCreateMsg ->
+            case model.submodel of
+                QuickCreateModel quickCreateModel ->
+                    let
+                        updateResult =
+                            QuickCreate.State.update quickCreateMsg quickCreateModel
+
+                        ( newTxSentry, chainCmd ) =
+                            ChainCmd.execute model.txSentry (ChainCmd.map QuickCreateMsg updateResult.chainCmd)
+                    in
+                    ( { model
+                        | submodel = QuickCreateModel updateResult.model
+                        , txSentry = newTxSentry
+                      }
+                    , Cmd.batch
+                        [ Cmd.map QuickCreateMsg updateResult.cmd
+                        , chainCmd
+                        ]
+                    )
+                        |> runAppCmds
+                            (AppCmd.mapList QuickCreateMsg updateResult.appCmds)
+
+                _ ->
+                    ( model, Cmd.none )
+
         TradeMsg tradeMsg ->
             case model.submodel of
                 TradeModel tradeModel ->
@@ -520,6 +546,26 @@ gotoRoute oldModel route =
                 |> runAppCmds
                     (AppCmd.mapList CreateMsg updateResult.appCmds)
 
+        Routing.QuickCreate ->
+            let
+                updateResult =
+                    QuickCreate.State.init oldModel.web3Context oldModel.userInfo
+
+                ( newTxSentry, chainCmd ) =
+                    ChainCmd.execute oldModel.txSentry (ChainCmd.map QuickCreateMsg updateResult.chainCmd)
+            in
+            ( { oldModel
+                | submodel = QuickCreateModel updateResult.model
+                , txSentry = newTxSentry
+              }
+            , Cmd.batch
+                [ Cmd.map QuickCreateMsg updateResult.cmd
+                , chainCmd
+                ]
+            )
+                |> runAppCmds
+                    (AppCmd.mapList QuickCreateMsg updateResult.appCmds)
+
         Routing.Trade id ->
             let
                 updateResult =
@@ -589,6 +635,15 @@ updateSubmodelUserInfo userInfo submodel =
             , Cmd.map CreateMsg createCmd
             )
 
+        QuickCreateModel quickCreateModel ->
+            let
+                ( newQuickCreateModel, quickCreateCmd ) =
+                    quickCreateModel |> QuickCreate.State.updateUserInfo userInfo
+            in
+            ( QuickCreateModel newQuickCreateModel
+            , Cmd.map QuickCreateMsg quickCreateCmd
+            )
+
         TradeModel tradeModel ->
             let
                 ( newTradeModel, tradeCmd ) =
@@ -617,6 +672,12 @@ updateSubmodelWeb3Context newWeb3Context submodel =
 
         CreateModel createModel ->
             ( CreateModel (createModel |> Create.State.updateWeb3Context newWeb3Context)
+            , Cmd.none
+            , Nothing
+            )
+
+        QuickCreateModel quickCreateModel ->
+            ( QuickCreateModel (quickCreateModel |> QuickCreate.State.updateWeb3Context newWeb3Context)
             , Cmd.none
             , Nothing
             )
@@ -669,6 +730,9 @@ submodelSubscriptions model =
 
         CreateModel createModel ->
             Sub.map CreateMsg <| Create.State.subscriptions createModel
+
+        QuickCreateModel quickCreateModel ->
+            Sub.map QuickCreateMsg <| QuickCreate.State.subscriptions quickCreateModel
 
         TradeModel tradeModel ->
             Sub.map TradeMsg <| Trade.State.subscriptions tradeModel

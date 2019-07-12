@@ -1,4 +1,4 @@
-module FiatValue exposing (FiatValue, compare, currencyTypes, decoder, encode, getFloatValueWithWarning, renderToString, renderToStringFull, searchTypes, typeStringToCharStringDefaultEmpty, typeStringToSymbol)
+module FiatValue exposing (FiatValue, compare, currencyTypes, decoder, encode, getFloatValueWithWarning, renderToString, renderToStringFull, searchTypes, typeStringToCharStringDefaultEmpty, typeStringToSymbol, usd)
 
 import BigInt exposing (BigInt)
 import Dict exposing (Dict)
@@ -13,6 +13,13 @@ type alias FiatValue =
     { fiatType : String
     , amount : BigInt
     }
+
+
+usd : Int -> FiatValue
+usd =
+    BigInt.fromInt
+        >> FiatValue
+            "USD"
 
 
 currencyTypes : Dict String ( String, Image )

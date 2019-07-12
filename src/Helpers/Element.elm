@@ -1,58 +1,4 @@
-module Helpers.Element exposing
-    ( activePhaseBackgroundColor
-    , black
-    , blue
-    , blueButton
-    , bulletPointString
-    , closeButton
-    , closeableModal
-    , coloredMargin
-    , comingSoonMsg
-    , coolCurrencyHbreak
-    , currencySelector
-    , daiSymbol
-    , daiSymbolAndLabel
-    , daiValue
-    , darkGray
-    , disabledButton
-    , disabledTextColor
-    , elOnCircle
-    , elementColorToAvh4Color
-    , ethAddress
-    , etherscanAddressLink
-    , fakeLink
-    , fancyInput
-    , fiatTypeToSymbolElement
-    , fiatValue
-    , green
-    , headerBackgroundColor
-    , interval
-    , intervalInput
-    , intervalWithElapsedBar
-    , inverseBlueButton
-    , lightBlue
-    , lightGray
-    , maybeErrorElement
-    , mediumGray
-    , modal
-    , niceBottomBorderEl
-    , niceFloatingRow
-    , orangeButton
-    , pageBackgroundColor
-    , permanentTextColor
-    , red
-    , redButton
-    , roundBottomCorners
-    , roundTopCorners
-    , subtleShadow
-    , testBorderStyles
-    , textInputWithElement
-    , txProcessModal
-    , uncoloredMargin
-    , white
-    , withHeader
-    , yellow
-    )
+module Helpers.Element exposing (activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, button, closeButton, closeableModal, coloredMargin, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, fiatTypeToSymbolElement, fiatValue, green, headerBackgroundColor, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, marginFloatToConciseUnsignedString, marginSymbol, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, pokeButton, red, redButton, roundBottomCorners, roundTopCorners, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredMargin, white, withHeader, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -116,6 +62,14 @@ lightBlue =
 
 yellow =
     Element.rgb 1 1 0
+
+
+daiYellow =
+    yellow
+
+
+dollarGreen =
+    green
 
 
 darkYellow =
@@ -966,24 +920,24 @@ modal overlayColor =
 closeableModal : Element msg -> msg -> Element msg
 closeableModal innerEl closeMsg =
     (modal <| Element.rgba 0 0 0.3 0.6) <|
-        Element.column
-            [ Element.width <| Element.px 600
-            , Element.height (Element.shrink |> Element.minimum 500)
-            , Element.centerX
-            , Element.alignTop
-            , Element.moveDown 200
+        Element.el
+            [ Element.centerX
+            , Element.centerY
+            , Element.height Element.shrink
+            , Element.width (Element.shrink |> Element.maximum 400)
             , Element.Background.color white
             , Element.Border.rounded 8
-            , Element.padding 50
+            , Element.padding 30
+            , Element.inFront <|
+                Element.el
+                    [ Element.alignRight
+                    , Element.alignTop
+                    , Element.moveUp 5
+                    , Element.moveRight 5
+                    ]
+                    (closeButton closeMsg)
             ]
-            [ Images.toElement
-                [ Element.alignRight
-                , Element.pointer
-                , Element.Events.onClick closeMsg
-                ]
-                Images.closeIcon
-            , innerEl
-            ]
+            (Element.paragraph [ Element.width Element.fill ] [ innerEl ])
 
 
 txProcessModal : List (Element msg) -> Element msg
