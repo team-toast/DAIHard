@@ -17,7 +17,6 @@ import Helpers.BigInt as BigIntHelpers
 import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
-import Margin
 import Maybe.Extra
 import PaymentMethods exposing (PaymentMethod)
 import Routing
@@ -55,7 +54,6 @@ initialInputs =
     , daiAmount = ""
     , fiatType = "USD"
     , fiatAmount = ""
-    , margin = "0"
     , paymentMethod = ""
     , autorecallInterval = Time.millisToPosix <| 1000 * 60 * 60 * 24
     , autoabortInterval = Time.millisToPosix <| 1000 * 60 * 60 * 24
@@ -122,17 +120,12 @@ update msg prevModel =
             let
                 oldInputs =
                     prevModel.inputs
-
-                newFiatAmountString =
-                    recalculateFiatAmountString newAmountStr oldInputs.margin oldInputs.fiatType
-                        |> Maybe.withDefault oldInputs.fiatAmount
             in
             justModelUpdate
                 (prevModel
                     |> updateInputs
                         { oldInputs
                             | daiAmount = newAmountStr
-                            , fiatAmount = newFiatAmountString
                         }
                 )
 
@@ -140,17 +133,12 @@ update msg prevModel =
             let
                 oldInputs =
                     prevModel.inputs
-
-                newMarginString =
-                    recalculateMarginString oldInputs.daiAmount newAmountStr oldInputs.fiatType
-                        |> Maybe.withDefault oldInputs.margin
             in
             justModelUpdate
                 (prevModel
                     |> updateInputs
                         { oldInputs
                             | fiatAmount = newAmountStr
-                            , margin = newMarginString
                         }
                 )
 
@@ -164,9 +152,6 @@ update msg prevModel =
                     |> updateInputs
                         { oldInputs
                             | fiatType = newTypeStr
-                            , margin =
-                                recalculateMarginString oldInputs.daiAmount oldInputs.fiatAmount newTypeStr
-                                    |> Maybe.withDefault oldInputs.margin
                         }
                 )
 
@@ -540,44 +525,6 @@ interpretPaymentMethods paymentMethod =
 
     else
         Ok paymentMethod
-
-
-recalculateFiatAmountString : String -> String -> String -> Maybe String
-recalculateFiatAmountString daiAmountStr marginString fiatType =
-    case fiatType of
-        "USD" ->
-            if String.isEmpty daiAmountStr then
-                Just ""
-
-            else
-                case ( String.toFloat daiAmountStr, Margin.stringToMarginFloat marginString ) of
-                    ( Just daiAmount, Just marginFloat ) ->
-                        Just
-                            (daiAmount
-                                + (daiAmount * marginFloat)
-                                |> round
-                                |> String.fromInt
-                            )
-
-                    _ ->
-                        Nothing
-
-        _ ->
-            Nothing
-
-
-recalculateMarginString : String -> String -> String -> Maybe String
-recalculateMarginString daiAmountString fiatAmountString fiatType =
-    case fiatType of
-        "USD" ->
-            Maybe.map2
-                Margin.marginFromFloats
-                (String.toFloat daiAmountString)
-                (String.toFloat fiatAmountString)
-                |> Maybe.map Margin.marginToString
-
-        _ ->
-            Nothing
 
 
 subscriptions : Model -> Sub Msg

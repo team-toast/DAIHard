@@ -28,7 +28,8 @@ import TokenValue exposing (TokenValue)
 root : Model -> Element Msg
 root model =
     Element.column
-        [ Element.width Element.fill
+        [ Element.width (Element.fill |> Element.maximum 1000)
+        , Element.centerX
         , Element.spacing 20
         , Element.paddingEach
             { top = 0

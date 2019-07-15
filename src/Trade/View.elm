@@ -21,7 +21,6 @@ import Helpers.Element as EH
 import Helpers.Eth as EthHelpers exposing (Web3Context)
 import Helpers.Time as TimeHelpers
 import Images exposing (Image)
-import Margin
 import PaymentMethods exposing (PaymentMethod)
 import Time
 import TokenValue exposing (TokenValue)
@@ -67,7 +66,6 @@ header currentTime trade maybeUserInfo factoryType tradeCache showStatsModal =
         [ tradeStatusElement trade factoryType
         , daiAmountElement trade maybeUserInfo
         , fiatElement trade
-        , marginElement trade maybeUserInfo
         , statsElement factoryType trade tradeCache showStatsModal
         , case maybeUserInfo of
             Just userInfo ->
@@ -178,19 +176,6 @@ renderFiatAmount fiatValue =
             ]
             (Element.text <| FiatValue.renderToStringFull fiatValue)
         ]
-
-
-marginElement : FullTradeInfo -> Maybe UserInfo -> Element Msg
-marginElement trade maybeUserInfo =
-    EH.withHeader
-        "At Margin"
-        (case trade.derived.margin of
-            Just marginFloat ->
-                EH.uncoloredMargin marginFloat
-
-            Nothing ->
-                EH.comingSoonMsg [] "Margin for non-USD currencies coming soon!"
-        )
 
 
 type alias Stats =

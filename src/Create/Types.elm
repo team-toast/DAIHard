@@ -1,4 +1,4 @@
-module Create.Types exposing (Errors, Inputs, Model, Msg(..), TxChainStatus(..), UpdateResult, interpretMarginString, justModelUpdate, noErrors)
+module Create.Types exposing (Errors, Inputs, Model, Msg(..), TxChainStatus(..), UpdateResult, justModelUpdate, noErrors)
 
 import AppCmd exposing (AppCmd)
 import BigInt exposing (BigInt)
@@ -65,7 +65,6 @@ type alias Inputs =
     , daiAmount : String
     , fiatType : String
     , fiatAmount : String
-    , margin : String
     , paymentMethod : String
     , autorecallInterval : Time.Posix
     , autoabortInterval : Time.Posix
@@ -76,13 +75,12 @@ type alias Inputs =
 type alias Errors =
     { daiAmount : Maybe String
     , fiat : Maybe String
-    , margin : Maybe String
     , paymentMethod : Maybe String
     }
 
 
 noErrors =
-    Errors Nothing Nothing Nothing Nothing
+    Errors Nothing Nothing Nothing
 
 
 type alias UpdateResult =
@@ -100,8 +98,3 @@ justModelUpdate model =
     , chainCmd = ChainCmd.none
     , appCmds = []
     }
-
-
-interpretMarginString : String -> Maybe Float
-interpretMarginString =
-    String.toFloat >> Maybe.map ((*) 0.01)
