@@ -5,12 +5,14 @@ import Array exposing (Array)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
 import Eth.Types exposing (Address)
+import Helpers.Eth as EthHelpers exposing (Web3Context)
 import Json.Decode
 import Time
 
 
 type alias Model =
-    { userInfo : UserInfo
+    { web3Context : Web3Context
+    , userInfo : UserInfo
     , userRole : BuyerOrSeller
     , initiatorRole : BuyerOrSeller
     , history : Array Event

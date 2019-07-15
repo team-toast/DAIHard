@@ -33,7 +33,7 @@ root model =
                 , Element.centerX
                 ]
                 (menuItems
-                    |> List.map (menuItemElement True)
+                    |> List.map (menuItemElement model.web3Context.factoryType True)
                 )
 
         Spec recipe specState ->
@@ -41,7 +41,7 @@ root model =
                 [ Element.spacing 20
                 , Element.centerX
                 ]
-                [ menuItemElement False recipe
+                [ menuItemElement model.web3Context.factoryType False recipe
                 , Element.column
                     [ Element.spacing 10
                     , Element.centerX
@@ -51,15 +51,15 @@ root model =
                     , openTradeButton model.userInfo model.state
                     ]
                 ]
-    , txModalOrNone model.userInfo model.state
+    , txModalOrNone model.web3Context.factoryType model.userInfo model.state
     )
 
 
-menuItemElement : Bool -> TradeRecipe -> Element Msg
-menuItemElement showButtons recipe =
+menuItemElement : FactoryType -> Bool -> TradeRecipe -> Element Msg
+menuItemElement factoryType showButtons recipe =
     Element.row
         [ Element.spacing 40 ]
-        [ recipeSummaryElement recipe
+        [ recipeSummaryElement factoryType recipe
         , if showButtons then
             startButton recipe
 
@@ -73,25 +73,25 @@ startButton recipe =
     EH.blueButton "Start" (StartClicked recipe)
 
 
-recipeSummaryElement : TradeRecipe -> Element Msg
-recipeSummaryElement recipe =
+recipeSummaryElement : FactoryType -> TradeRecipe -> Element Msg
+recipeSummaryElement factoryType recipe =
     let
         tradeInputGraphic =
             case recipe.initiatorRole of
                 Buyer ->
                     Element.column
                         [ Element.spacing 5 ]
-                        [ daiValue recipe.daiAmountIn
+                        [ daiValue factoryType recipe.daiAmountIn
                         , dollarValue recipe.fiatValue
                         ]
 
                 Seller ->
-                    daiValue recipe.daiAmountIn
+                    daiValue factoryType recipe.daiAmountIn
 
         tradeOutputGraphic =
             case recipe.initiatorRole of
                 Buyer ->
-                    daiValue <|
+                    daiValue factoryType <|
                         TokenValue.add
                             (recipeTradeAmount recipe)
                             (recipeBuyerDeposit recipe)
@@ -230,20 +230,20 @@ openTradeButton maybeUserInfo state =
             EH.disabledButton "Can't find userInfo..." (Just "You shouldn't be seeing this. Maybe your web3 provider changed something just now?")
 
 
-daiValue : TokenValue -> Element Msg
-daiValue dai =
+daiValue : FactoryType -> TokenValue -> Element Msg
+daiValue factoryType dai =
     Element.el
         [ Element.Font.color EH.daiYellow
         , Element.Font.size 20
         ]
         (Element.text <|
-            daiValueString dai
+            daiValueString factoryType dai
         )
 
 
-daiValueString : TokenValue -> String
-daiValueString dai =
-    TokenValue.toConciseString dai ++ " Dai"
+daiValueString : FactoryType -> TokenValue -> String
+daiValueString factoryType dai =
+    TokenValue.toConciseString dai ++ " " ++ Config.tokenUnitName factoryType
 
 
 dollarValue : FiatValue -> Element Msg
@@ -260,8 +260,8 @@ dollarValueString dollars =
     "$" ++ BigInt.toString dollars.amount ++ " USD"
 
 
-txModalOrNone : Maybe UserInfo -> State -> Element Msg
-txModalOrNone maybeUserInfo state =
+txModalOrNone : FactoryType -> Maybe UserInfo -> State -> Element Msg
+txModalOrNone factoryType maybeUserInfo state =
     (case state of
         Menu (StartPrompt recipe) ->
             Just <|
@@ -273,7 +273,14 @@ txModalOrNone maybeUserInfo state =
                         [ Element.text "Text about approving"
                         , case maybeUserInfo of
                             Just userInfo ->
-                                EH.blueButton ("Prepare " ++ TokenValue.toConciseString recipe.daiAmountIn ++ " Dai for deposit") (ApproveClicked recipe)
+                                EH.blueButton
+                                    ("Prepare "
+                                        ++ TokenValue.toConciseString recipe.daiAmountIn
+                                        ++ " "
+                                        ++ Config.tokenUnitName factoryType
+                                        ++ " for deposit"
+                                    )
+                                    (ApproveClicked recipe)
 
                             Nothing ->
                                 EH.redButton "Connect to Wallet" Web3Connect

@@ -18,7 +18,7 @@ import Eth.Types exposing (Address)
 import Eth.Utils
 import Helpers.BigInt as BigIntHelpers
 import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
-import Helpers.Eth as EthHelpers
+import Helpers.Eth as EthHelpers exposing (Web3Context)
 import Http
 import Json.Decode
 import Json.Encode
@@ -108,7 +108,7 @@ update msg prevModel =
                 ( newChatHistoryModel, shouldDecrypt ) =
                     case prevModel.chatHistoryModel of
                         Nothing ->
-                            tryInitChatHistory prevModel.trade prevModel.userInfo prevModel.eventsWaitingForChatHistory
+                            tryInitChatHistory prevModel.web3Context prevModel.trade prevModel.userInfo prevModel.eventsWaitingForChatHistory
 
                         _ ->
                             ( prevModel.chatHistoryModel, False )
@@ -407,7 +407,7 @@ update msg prevModel =
 
                                 Nothing ->
                                     -- chat is uninitialized; initialize if we can
-                                    tryInitChatHistory newTrade prevModel.userInfo prevModel.eventsWaitingForChatHistory
+                                    tryInitChatHistory prevModel.web3Context newTrade prevModel.userInfo prevModel.eventsWaitingForChatHistory
 
                         eventsToSave =
                             case newChatHistoryModel of
@@ -855,8 +855,8 @@ initiateCommitCall web3Context trade userAddress commPubkey =
     )
 
 
-tryInitChatHistory : CTypes.Trade -> Maybe UserInfo -> List ( Int, CTypes.DAIHardEvent ) -> ( Maybe ChatHistory.Model, Bool )
-tryInitChatHistory maybeTrade maybeUserInfo pendingEvents =
+tryInitChatHistory : Web3Context -> CTypes.Trade -> Maybe UserInfo -> List ( Int, CTypes.DAIHardEvent ) -> ( Maybe ChatHistory.Model, Bool )
+tryInitChatHistory web3Context maybeTrade maybeUserInfo pendingEvents =
     case ( maybeTrade, maybeUserInfo ) of
         ( CTypes.LoadedTrade tradeInfo, Just userInfo ) ->
             let
@@ -866,6 +866,7 @@ tryInitChatHistory maybeTrade maybeUserInfo pendingEvents =
             case maybeBuyerOrSeller of
                 Just buyerOrSeller ->
                     ChatHistory.init
+                        web3Context
                         userInfo
                         buyerOrSeller
                         tradeInfo.parameters.initiatorRole

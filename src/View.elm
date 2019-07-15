@@ -3,6 +3,7 @@ module View exposing (root)
 import AgentHistory.View
 import Browser
 import CommonTypes exposing (..)
+import Config
 import Contracts.Types as CTypes
 import Create.View
 import Dict
@@ -94,7 +95,7 @@ headerContent model =
         , Element.paddingXY 30 17
         ]
         [ headerLink
-            "Buy Dai"
+            ("Buy " ++ Config.tokenUnitName model.web3Context.factoryType)
             (GotoRoute <| Routing.Marketplace Buyer)
             (case model.submodel of
                 MarketplaceModel marketplaceModel ->
@@ -108,7 +109,7 @@ headerContent model =
                     Normal
             )
         , headerLink
-            "Sell Dai"
+            ("Sell " ++ Config.tokenUnitName model.web3Context.factoryType)
             (GotoRoute <| Routing.Marketplace Seller)
             (case model.submodel of
                 MarketplaceModel marketplaceModel ->

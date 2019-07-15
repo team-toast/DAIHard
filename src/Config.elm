@@ -1,4 +1,4 @@
-module Config exposing (devFeeAddress, factoryAddress, tokenContractAddress, tokenDecimals)
+module Config exposing (devFeeAddress, factoryAddress, tokenContractAddress, tokenDecimals, tokenUnitName)
 
 import CommonTypes exposing (..)
 import Eth.Net
@@ -8,6 +8,31 @@ import Eth.Utils
 
 tokenDecimals =
     18
+
+
+tokenUnitName : FactoryType -> String
+tokenUnitName factoryType =
+    case factoryType of
+        Token EthDai ->
+            "Dai"
+
+        Token KovanDai ->
+            "Dai"
+
+        Native Eth ->
+            "ETH"
+
+        Native Kovan ->
+            "ETH"
+
+        Native Rootstock ->
+            "SBTC"
+
+        Native RootstockTest ->
+            "SBTC"
+
+        Native XDai ->
+            "xDai"
 
 
 tokenContractAddress : TokenFactoryType -> Address

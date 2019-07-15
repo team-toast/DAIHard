@@ -238,7 +238,7 @@ update msg prevModel =
             justModelUpdate { prevModel | inputs = initialInputs }
 
         CreateClicked userInfo ->
-            case validateInputs prevModel.inputs of
+            case validateInputs prevModel.web3Context.factoryType prevModel.inputs of
                 Ok userParameters ->
                     let
                         createParameters =
@@ -468,7 +468,7 @@ updateParameters : Model -> Model
 updateParameters model =
     let
         validateResult =
-            validateInputs model.inputs
+            validateInputs model.web3Context.factoryType model.inputs
 
         -- Don't log errors right away (wait until the user tries to submit)
         -- But if there are already errors displaying, update them accordingly
@@ -494,8 +494,8 @@ updateParameters model =
     }
 
 
-validateInputs : Inputs -> Result Errors CTypes.UserParameters
-validateInputs inputs =
+validateInputs : FactoryType -> Inputs -> Result Errors CTypes.UserParameters
+validateInputs factoryType inputs =
     Result.map3
         (\daiAmount fiatAmount paymentMethods ->
             { initiatorRole = inputs.userRole
@@ -507,7 +507,7 @@ validateInputs inputs =
             , paymentMethods = paymentMethods
             }
         )
-        (interpretDaiAmount inputs.daiAmount
+        (interpretDaiAmount factoryType inputs.daiAmount
             |> Result.mapError (\e -> { noErrors | daiAmount = Just e })
         )
         (interpretFiatAmount inputs.fiatAmount
@@ -518,8 +518,8 @@ validateInputs inputs =
         )
 
 
-interpretDaiAmount : String -> Result String TokenValue
-interpretDaiAmount input =
+interpretDaiAmount : FactoryType -> String -> Result String TokenValue
+interpretDaiAmount factoryType input =
     if input == "" then
         Err "You must specify a trade amount."
 
@@ -530,7 +530,7 @@ interpretDaiAmount input =
 
             Just value ->
                 if TokenValue.getFloatValueWithWarning value < 1 then
-                    Err "Trade amount must be a least 1 DAI."
+                    Err <| "Trade amount must be a least 1 " ++ Config.tokenUnitName factoryType ++ "."
 
                 else
                     Ok value

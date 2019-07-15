@@ -2,6 +2,7 @@ module Marketplace.View exposing (root)
 
 import Array exposing (Array)
 import CommonTypes exposing (..)
+import Config
 import Contracts.Types as CTypes
 import Element exposing (Attribute, Element)
 import Element.Background
@@ -36,14 +37,14 @@ root time tradeCache model =
             , Element.spacing 10
             , Element.padding 30
             ]
-            [ searchInputElement model.inputs model.errors model.showCurrencyDropdown
+            [ searchInputElement model.web3Context.factoryType model.inputs model.errors model.showCurrencyDropdown
             ]
         , resultsElement time tradeCache model
         ]
 
 
-searchInputElement : SearchInputs -> Errors -> Bool -> Element Msg
-searchInputElement inputs errors showCurrencyDropdown =
+searchInputElement : FactoryType -> SearchInputs -> Errors -> Bool -> Element Msg
+searchInputElement factoryType inputs errors showCurrencyDropdown =
     Element.column
         [ Element.spacing 10
         , Element.width Element.shrink
@@ -58,7 +59,7 @@ searchInputElement inputs errors showCurrencyDropdown =
                 , Element.alignTop
                 ]
               <|
-                daiRangeInput inputs.minDai inputs.maxDai errors
+                daiRangeInput factoryType inputs.minDai inputs.maxDai errors
             , Element.el
                 [ Element.width Element.shrink
                 , Element.alignTop
@@ -168,8 +169,8 @@ resultsElement time tradeCache model =
         ]
 
 
-daiRangeInput : String -> String -> Errors -> Element Msg
-daiRangeInput minDai maxDai errors =
+daiRangeInput : FactoryType -> String -> String -> Errors -> Element Msg
+daiRangeInput factoryType minDai maxDai errors =
     let
         daiLabelElement =
             EH.daiSymbol [ Element.centerY ]
@@ -195,7 +196,7 @@ daiRangeInput minDai maxDai errors =
             ]
             [ Element.Events.onFocus (ShowCurrencyDropdown False) ]
             minElement
-            "min dai"
+            ("min " ++ Config.tokenUnitName factoryType)
             minDai
             Nothing
             Nothing
@@ -208,13 +209,13 @@ daiRangeInput minDai maxDai errors =
             ]
             [ Element.Events.onFocus (ShowCurrencyDropdown False) ]
             maxElement
-            "max dai"
+            ("max " ++ Config.tokenUnitName factoryType)
             maxDai
             Nothing
             Nothing
             MaxDaiChanged
         ]
-        |> withInputHeader "Dai Range"
+        |> withInputHeader (Config.tokenUnitName factoryType ++ " Range")
 
 
 fiatInput : Bool -> String -> String -> String -> Errors -> Element Msg

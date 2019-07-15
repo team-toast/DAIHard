@@ -839,8 +839,8 @@ daiSymbol attributes =
         Images.daiSymbol
 
 
-daiSymbolAndLabel : Element msg
-daiSymbolAndLabel =
+daiSymbolAndLabel : FactoryType -> Element msg
+daiSymbolAndLabel factoryType =
     Element.row
         [ Element.spacing 4 ]
         [ daiSymbol []
@@ -849,7 +849,7 @@ daiSymbolAndLabel =
             , Element.Font.medium
             , Element.Font.color currencyLabelColor
             ]
-            (Element.text "DAI")
+            (Element.text <| Config.tokenUnitName factoryType)
         ]
 
 

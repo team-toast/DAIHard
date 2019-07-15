@@ -2,14 +2,15 @@ module Trade.ChatHistory.View exposing (window)
 
 import Array exposing (Array)
 import CommonTypes exposing (..)
+import Config
 import Contracts.Types as CTypes
 import Element exposing (Attribute, Element)
 import Element.Background
 import Element.Border
 import Element.Font
 import Element.Input
-import Helpers.Element as EH
 import Eth.Utils
+import Helpers.Element as EH
 import Trade.ChatHistory.Types exposing (..)
 
 
@@ -49,6 +50,7 @@ historyAndCommsElement model =
             , Element.padding 10
             ]
             [ historyElement
+                model.web3Context.factoryType
                 model.userRole
                 (model.history |> Array.toList |> List.sortBy .blocknum)
             , commInputElement model
@@ -56,8 +58,8 @@ historyAndCommsElement model =
         ]
 
 
-historyElement : BuyerOrSeller -> List Event -> Element.Element Msg
-historyElement userRole messages =
+historyElement : FactoryType -> BuyerOrSeller -> List Event -> Element.Element Msg
+historyElement factoryType userRole messages =
     case messages of
         [] ->
             Element.el
@@ -77,12 +79,12 @@ historyElement userRole messages =
                 , Element.scrollbarY
                 ]
                 (messageList
-                    |> List.map (renderEvent userRole)
+                    |> List.map (renderEvent factoryType userRole)
                 )
 
 
-renderEvent : BuyerOrSeller -> Event -> Element.Element Msg
-renderEvent userRole event =
+renderEvent : FactoryType -> BuyerOrSeller -> Event -> Element.Element Msg
+renderEvent factoryType userRole event =
     let
         userMessageAttributes =
             [ Element.alignRight
@@ -176,10 +178,10 @@ renderEvent userRole event =
                             Just ( Element.rgb 0 1 0, EH.white, "Buyer marked the fiat transfer complete" )
 
                         Released ->
-                            Just ( Element.rgb 0 0 1, EH.white, "Seller released the Dai and closed the contract" )
+                            Just ( Element.rgb 0 0 1, EH.white, "Seller released the " ++ Config.tokenUnitName factoryType ++ " and closed the contract" )
 
                         Burned ->
-                            Just ( Element.rgb 0 0 1, EH.white, "Seller burned the Dai and closed the contract" )
+                            Just ( Element.rgb 0 0 1, EH.white, "Seller burned the " ++ Config.tokenUnitName factoryType ++ " and closed the contract" )
             in
             case maybeElementInfo of
                 Nothing ->

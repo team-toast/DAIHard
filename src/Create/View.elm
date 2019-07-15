@@ -74,11 +74,11 @@ tradeTypeElement : Model -> Element Msg
 tradeTypeElement model =
     EH.withHeader
         "Trade Type"
-        (roleToggleElement model.inputs.userRole)
+        (roleToggleElement model.web3Context.factoryType model.inputs.userRole)
 
 
-roleToggleElement : BuyerOrSeller -> Element Msg
-roleToggleElement userRole =
+roleToggleElement : FactoryType -> BuyerOrSeller -> Element Msg
+roleToggleElement factoryType userRole =
     let
         baseStyles =
             [ Element.Font.size 24
@@ -101,10 +101,10 @@ roleToggleElement userRole =
     Element.row [ Element.spacing 20 ]
         [ Element.el
             ([ Element.Events.onClick <| ChangeRole Seller ] ++ sellDaiStyles)
-            (Element.text "Sell DAI")
+            (Element.text <| "Sell " ++ Config.tokenUnitName factoryType)
         , Element.el
             ([ Element.Events.onClick <| ChangeRole Buyer ] ++ buyDaiStyles)
-            (Element.text "Buy DAI")
+            (Element.text <| "Buy " ++ Config.tokenUnitName factoryType)
         ]
 
 
@@ -119,11 +119,11 @@ daiElement model =
                 Seller ->
                     "You're selling"
             )
-            (daiInputElement model.inputs.daiAmount model.errors.daiAmount)
+            (daiInputElement model.web3Context.factoryType model.inputs.daiAmount model.errors.daiAmount)
 
 
-daiInputElement : String -> Maybe String -> Element Msg
-daiInputElement amountString maybeError =
+daiInputElement : FactoryType -> String -> Maybe String -> Element Msg
+daiInputElement factoryType amountString maybeError =
     EH.fancyInput
         [ Element.width <| Element.px 250
         , Element.Font.medium
@@ -133,7 +133,7 @@ daiInputElement amountString maybeError =
                 [ Element.moveDown 5 ]
                 maybeError
         ]
-        ( Nothing, Just <| EH.daiSymbolAndLabel )
+        ( Nothing, Just <| EH.daiSymbolAndLabel factoryType )
         "dai input"
         Nothing
         amountString
@@ -256,7 +256,9 @@ devFeeNotifyElement model =
                     "There is a 1% fee of "
                         ++ TokenValue.toConciseString
                             (TokenValue.div daiAmount 100)
-                        ++ " DAI."
+                        ++ " "
+                        ++ Config.tokenUnitName model.web3Context.factoryType
+                        ++ "."
 
                 Nothing ->
                     "There is a 1% fee."
@@ -472,6 +474,9 @@ txChainStatusModal txChainStatus model =
     case txChainStatus of
         Confirm createParameters ->
             let
+                tokenUnitName =
+                    Config.tokenUnitName model.web3Context.factoryType
+
                 ( depositAmountEl, confirmButton ) =
                     case model.depositAmount of
                         Just depositAmount ->
@@ -517,12 +522,12 @@ txChainStatusModal txChainStatus model =
                             (getWarningParagraphs createParameters
                                 ++ [ [ Element.text <| "You will deposit "
                                      , depositAmountEl
-                                     , Element.text " DAI (including the 1% dev fee) to open this trade."
+                                     , Element.text <| " " ++ tokenUnitName ++ " (including the 1% dev fee) to open this trade."
                                      ]
                                    ]
                                 ++ (case model.web3Context.factoryType of
                                         Token _ ->
-                                            [ [ Element.text <| "This ususally requires two Metamask signatures. Your DAI will not be deposited until the final transaction has been mined." ] ]
+                                            [ [ Element.text <| "This ususally requires two Metamask signatures. Your " ++ tokenUnitName ++ " will not be deposited until the final transaction has been mined." ] ]
 
                                         Native _ ->
                                             []

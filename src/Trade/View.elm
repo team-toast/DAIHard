@@ -47,7 +47,7 @@ root time tradeCache model =
                     , Element.paddingXY 40 0
                     , Element.spacing 40
                     ]
-                    [ phasesElement tradeInfo model.expandedPhase model.userInfo time
+                    [ phasesElement model.web3Context.factoryType tradeInfo model.expandedPhase model.userInfo time
                     , PaymentMethods.viewList tradeInfo.terms.paymentMethods Nothing
                     ]
                 ]
@@ -68,7 +68,7 @@ header currentTime trade maybeUserInfo factoryType tradeCache showStatsModal =
         , daiAmountElement trade maybeUserInfo
         , fiatElement trade
         , marginElement trade maybeUserInfo
-        , statsElement trade tradeCache showStatsModal
+        , statsElement factoryType trade tradeCache showStatsModal
         , case maybeUserInfo of
             Just userInfo ->
                 actionButtonsElement currentTime trade userInfo
@@ -293,8 +293,8 @@ generateUserStats tradeCache forRole userAddress =
     }
 
 
-statsElement : FullTradeInfo -> TradeCache -> Bool -> Element Msg
-statsElement trade tradeCache showModal =
+statsElement : FactoryType -> FullTradeInfo -> TradeCache -> Bool -> Element Msg
+statsElement factoryType trade tradeCache showModal =
     let
         userStats =
             trade.parameters.initiatorAddress
@@ -309,7 +309,7 @@ statsElement trade tradeCache showModal =
             [ Element.below
                 (Element.el
                     [ Element.moveDown 30 ]
-                    (statsModal trade.parameters.initiatorAddress userStats)
+                    (statsModal factoryType trade.parameters.initiatorAddress userStats)
                 )
             ]
 
@@ -365,8 +365,8 @@ statsElement trade tradeCache showModal =
             )
 
 
-statsModal : Address -> Stats -> Element Msg
-statsModal address stats =
+statsModal : FactoryType -> Address -> Stats -> Element Msg
+statsModal factoryType address stats =
     let
         statEl titleString statString =
             Element.column
@@ -402,7 +402,9 @@ statsModal address stats =
                       , String.fromInt stats.numReleases
                             ++ " trades / "
                             ++ TokenValue.toConciseString stats.amountReleased
-                            ++ " DAI Released"
+                            ++ " "
+                            ++ Config.tokenUnitName factoryType
+                            ++ " Released"
                       )
                     , ( "Abort Outcomes"
                       , String.fromInt stats.numAborts
@@ -412,7 +414,9 @@ statsModal address stats =
                       , String.fromInt stats.numBurns
                             ++ " trades / "
                             ++ TokenValue.toConciseString stats.amountBurned
-                            ++ " DAI Burned"
+                            ++ " "
+                            ++ Config.tokenUnitName factoryType
+                            ++ " Burned"
                       )
                     ]
                     ++ [ Element.el [ Element.centerX ]
@@ -496,8 +500,8 @@ actionButtonsElement currentTime trade userInfo =
                 )
 
 
-phasesElement : FullTradeInfo -> CTypes.Phase -> Maybe UserInfo -> Time.Posix -> Element Msg
-phasesElement trade expandedPhase maybeUserInfo currentTime =
+phasesElement : FactoryType -> FullTradeInfo -> CTypes.Phase -> Maybe UserInfo -> Time.Posix -> Element Msg
+phasesElement factoryType trade expandedPhase maybeUserInfo currentTime =
     Element.row
         [ Element.width Element.fill
         , Element.height Element.shrink
@@ -524,9 +528,9 @@ phasesElement trade expandedPhase maybeUserInfo currentTime =
                 ]
 
             _ ->
-                [ phaseElement CTypes.Open trade maybeUserInfo (expandedPhase == CTypes.Open) currentTime
-                , phaseElement CTypes.Committed trade maybeUserInfo (expandedPhase == CTypes.Committed) currentTime
-                , phaseElement CTypes.Judgment trade maybeUserInfo (expandedPhase == CTypes.Judgment) currentTime
+                [ phaseElement factoryType CTypes.Open trade maybeUserInfo (expandedPhase == CTypes.Open) currentTime
+                , phaseElement factoryType CTypes.Committed trade maybeUserInfo (expandedPhase == CTypes.Committed) currentTime
+                , phaseElement factoryType CTypes.Judgment trade maybeUserInfo (expandedPhase == CTypes.Judgment) currentTime
                 ]
 
 
@@ -565,8 +569,8 @@ phaseState trade phase =
         Finished
 
 
-phaseElement : CTypes.Phase -> FullTradeInfo -> Maybe UserInfo -> Bool -> Time.Posix -> Element Msg
-phaseElement viewPhase trade maybeUserInfo expanded currentTime =
+phaseElement : FactoryType -> CTypes.Phase -> FullTradeInfo -> Maybe UserInfo -> Bool -> Time.Posix -> Element Msg
+phaseElement factoryType viewPhase trade maybeUserInfo expanded currentTime =
     let
         viewPhaseState =
             phaseState trade viewPhase
@@ -610,7 +614,7 @@ phaseElement viewPhase trade maybeUserInfo expanded currentTime =
                 , Element.width Element.fill
                 , Element.height Element.fill
                 ]
-                (phaseAdviceElement viewPhase trade maybeUserInfo)
+                (phaseAdviceElement factoryType viewPhase trade maybeUserInfo)
 
         borderEl =
             Element.el
@@ -804,8 +808,8 @@ phaseStateString status =
             "Finished"
 
 
-phaseAdviceElement : CTypes.Phase -> CTypes.FullTradeInfo -> Maybe UserInfo -> Element Msg
-phaseAdviceElement viewPhase trade maybeUserInfo =
+phaseAdviceElement : FactoryType -> CTypes.Phase -> CTypes.FullTradeInfo -> Maybe UserInfo -> Element Msg
+phaseAdviceElement factoryType viewPhase trade maybeUserInfo =
     let
         phaseIsActive =
             viewPhase == trade.state.phase
@@ -843,13 +847,13 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
             Element.el [ Element.Font.color <| Element.rgb 1 0 0 ] << Element.text
 
         tradeAmountString =
-            TokenValue.toConciseString trade.parameters.tradeAmount ++ " DAI"
+            TokenValue.toConciseString trade.parameters.tradeAmount ++ " " ++ Config.tokenUnitName factoryType
 
         fiatAmountString =
             FiatValue.renderToStringFull trade.terms.price
 
         buyerDepositString =
-            TokenValue.toConciseString trade.parameters.buyerDeposit ++ " DAI"
+            TokenValue.toConciseString trade.parameters.buyerDeposit ++ " " ++ Config.tokenUnitName factoryType
 
         tradePlusDepositString =
             (TokenValue.add
@@ -857,7 +861,8 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                 trade.parameters.buyerDeposit
                 |> TokenValue.toConciseString
             )
-                ++ " DAI"
+                ++ " "
+                ++ Config.tokenUnitName factoryType
 
         abortPunishment =
             trade.parameters.abortPunishment
@@ -865,7 +870,8 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
         abortPunishmentString =
             TokenValue.toConciseString
                 abortPunishment
-                ++ " DAI"
+                ++ " "
+                ++ Config.tokenUnitName factoryType
 
         sellerAbortRefundString =
             TokenValue.toConciseString
@@ -873,7 +879,8 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                     trade.parameters.tradeAmount
                     abortPunishment
                 )
-                ++ " DAI"
+                ++ " "
+                ++ Config.tokenUnitName factoryType
 
         buyerAbortRefundString =
             TokenValue.toConciseString
@@ -881,7 +888,8 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                     trade.parameters.buyerDeposit
                     abortPunishment
                 )
-                ++ " DAI"
+                ++ " "
+                ++ Config.tokenUnitName factoryType
 
         threeFlames =
             Element.row []
@@ -904,7 +912,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                                   , scaryText "Deposit and Commit to Trade"
                                   , Element.text "."
                                   ]
-                                , [ Element.text "If the trade is successful, the combined DAI balance "
+                                , [ Element.text <| "If the trade is successful, the combined " ++ Config.tokenUnitName factoryType ++ " balance "
                                   , emphasizedText <| "(" ++ tradePlusDepositString ++ ")"
                                   , Element.text " will be released to you. If anything goes wrong, there are "
                                   , scaryText "burnable punishments "
@@ -935,7 +943,7 @@ phaseAdviceElement viewPhase trade maybeUserInfo =
                                   ]
                                 , [ Element.text "When you receive the "
                                   , emphasizedText fiatAmountString
-                                  , Element.text " from the Buyer, the combined DAI balance "
+                                  , Element.text <| " from the Buyer, the combined " ++ Config.tokenUnitName factoryType ++ " balance "
                                   , emphasizedText <| "(" ++ tradePlusDepositString ++ ")"
                                   , Element.text " will be released to the Buyer. If anything goes wrong, there are "
                                   , scaryText "burnable punishments "
@@ -1241,7 +1249,7 @@ getModalOrNone model =
                     FiatValue.renderToStringFull trade.terms.price
 
                 daiAmountString =
-                    TokenValue.toConciseString trade.parameters.tradeAmount ++ " DAI"
+                    TokenValue.toConciseString trade.parameters.tradeAmount ++ " " ++ Config.tokenUnitName model.web3Context.factoryType
 
                 ( buyerOrSellerEl, agreeToWhatTextList ) =
                     case CTypes.getResponderRole trade.parameters of
@@ -1294,7 +1302,7 @@ getModalOrNone model =
                                 ]
                             )
                             ([ [ Element.text <| "You will deposit "
-                               , Element.el [ Element.Font.color EH.blue ] <| Element.text <| depositAmountString ++ " DAI"
+                               , Element.el [ Element.Font.color EH.blue ] <| Element.text <| depositAmountString ++ " " ++ Config.tokenUnitName model.web3Context.factoryType
                                , Element.text ", thereby becoming the "
                                , buyerOrSellerEl
                                , Element.text " of this trade. By doing so, you are agreeing to "
@@ -1303,7 +1311,7 @@ getModalOrNone model =
                              ]
                                 ++ (case model.web3Context.factoryType of
                                         Token _ ->
-                                            [ [ Element.text <| "(This ususally requires two Metamask signatures. Your DAI will not be deposited until the second transaction has been mined.)" ] ]
+                                            [ [ Element.text <| "(This ususally requires two Metamask signatures. Your " ++ Config.tokenUnitName model.web3Context.factoryType ++ " will not be deposited until the second transaction has been mined.)" ] ]
 
                                         _ ->
                                             []
