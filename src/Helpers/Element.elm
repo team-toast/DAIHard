@@ -924,7 +924,7 @@ closeableModal innerEl closeMsg =
             [ Element.centerX
             , Element.centerY
             , Element.height Element.shrink
-            , Element.width (Element.shrink |> Element.maximum 400)
+            , Element.width (Element.shrink |> Element.maximum 500)
             , Element.Background.color white
             , Element.Border.rounded 8
             , Element.padding 30

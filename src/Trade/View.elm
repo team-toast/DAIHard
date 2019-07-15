@@ -1294,8 +1294,7 @@ getModalOrNone model =
                         ]
                         (List.map
                             (Element.paragraph
-                                [ Element.width <| Element.px 500
-                                , Element.centerX
+                                [ Element.centerX
                                 , Element.Font.size 18
                                 , Element.Font.medium
                                 , Element.Font.color EH.permanentTextColor
