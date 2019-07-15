@@ -1,4 +1,4 @@
-module UserNotice exposing (NoticeType(..), UserNotice, cantConnectNoWeb3, cantFindTradeWillRetry, fromBadFetchResultMaybe, inputError, invalidUrl, map, noWeb3Provider, placeholderNotice, screenToSmall, unexpectedError, walletError, web3FetchError, web3MiningError, web3SigError, wrongWeb3Network)
+module UserNotice exposing (NoticeType(..), UserNotice, cantConnectNoWeb3, cantFindTradeWillRetry, fromBadFetchResultMaybe, inputError, invalidUrl, map, noWeb3Provider, placeholderNotice, screenToSmall, tradeParametersNotDefault, unexpectedError, walletError, web3FetchError, web3MiningError, web3SigError, wrongWeb3Network)
 
 import Element exposing (Element)
 import Element.Font
@@ -173,4 +173,12 @@ inputError errStr =
     { noticeType = Error
     , mainParagraphs =
         [ [ Element.text errStr ] ]
+    }
+
+
+tradeParametersNotDefault : UserNotice msg
+tradeParametersNotDefault =
+    { noticeType = Error
+    , mainParagraphs =
+        [ [ Element.text "Sorry, I'm not yet able to deal with this kind of trade. This must have been created by some other DAIHard interface." ] ]
     }

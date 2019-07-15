@@ -284,17 +284,25 @@ update msg prevModel =
         ParametersFetched fetchResult ->
             case fetchResult of
                 Ok (Ok parameters) ->
-                    let
-                        newModel =
-                            { prevModel
-                                | trade = prevModel.trade |> CTypes.updateParameters parameters
-                            }
-                    in
-                    UpdateResult
-                        newModel
-                        (tryBuildDecryptCmd newModel)
-                        ChainCmd.none
-                        []
+                    if CTypes.tradeHasDefaultParameters parameters then
+                        let
+                            newModel =
+                                { prevModel
+                                    | trade = prevModel.trade |> CTypes.updateParameters parameters
+                                }
+                        in
+                        UpdateResult
+                            newModel
+                            (tryBuildDecryptCmd newModel)
+                            ChainCmd.none
+                            []
+
+                    else
+                        UpdateResult
+                            prevModel
+                            Cmd.none
+                            ChainCmd.none
+                            [ AppCmd.UserNotice UN.tradeParametersNotDefault ]
 
                 Ok (Err s) ->
                     UpdateResult
