@@ -34,6 +34,7 @@ init web3Context userInfo =
             , userInfo = userInfo
             , state = Menu NoneStarted
             , tokenAllowance = Nothing
+            , textInput = ""
             }
 
         cmd =
@@ -110,11 +111,20 @@ update msg prevModel =
         StartClicked tradeRecipe ->
             case prevModel.web3Context.factoryType of
                 Token _ ->
-                    justModelUpdate
-                        { prevModel
-                            | state =
-                                Menu (StartPrompt tradeRecipe)
-                        }
+                    let
+                        newState =
+                            case prevModel.tokenAllowance of
+                                Just allowance ->
+                                    if TokenValue.compare allowance tradeRecipe.daiAmountIn /= LT then
+                                        Spec tradeRecipe ReadyToOpen
+
+                                    else
+                                        Menu (StartPrompt tradeRecipe)
+
+                                Nothing ->
+                                    Menu (StartPrompt tradeRecipe)
+                    in
+                    justModelUpdate { prevModel | state = newState }
 
                 Native _ ->
                     justModelUpdate
@@ -192,7 +202,7 @@ update msg prevModel =
         OpenClicked userInfo recipe ->
             let
                 createParameters =
-                    constructCreateParameters userInfo recipe ""
+                    constructCreateParameters userInfo recipe prevModel.textInput
 
                 chainCmd =
                     initiateCreateCall prevModel.web3Context.factoryType createParameters
@@ -263,6 +273,10 @@ update msg prevModel =
                         Cmd.none
                         ChainCmd.none
                         [ AppCmd.UserNotice <| UN.web3MiningError "Open trade" e ]
+
+        TextInputChanged newText ->
+            justModelUpdate
+                { prevModel | textInput = newText }
 
         ChangeState newState ->
             justModelUpdate { prevModel | state = newState }

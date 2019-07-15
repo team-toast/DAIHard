@@ -20,6 +20,7 @@ type alias Model =
     , userInfo : Maybe UserInfo
     , state : State
     , tokenAllowance : Maybe TokenValue
+    , textInput : String
     }
 
 
@@ -50,6 +51,7 @@ type Msg
     | ApproveSigned (Result String TxHash)
     | OpenSigned (Result String TxHash)
     | OpenMined (Result String TxReceipt)
+    | TextInputChanged String
     | ChangeState State
     | AbortCreate
     | NoOp
@@ -81,7 +83,11 @@ constructCreateParameters userInfo recipe paymentText =
     { initiatorRole = recipe.initiatorRole
     , tradeAmount = recipeTradeAmount recipe
     , price = recipe.fiatValue
-    , paymentMethods = []
+    , paymentMethods =
+        [ PaymentMethod
+            PaymentMethods.Custom
+            paymentText
+        ]
     , autorecallInterval = autorecallInterval
     , autoabortInterval = autoabortInterval
     , autoreleaseInterval = autoreleaseInterval

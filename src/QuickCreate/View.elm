@@ -33,21 +33,38 @@ root model =
                 , Element.centerX
                 ]
                 (menuItems
-                    |> List.map menuItemElement
+                    |> List.map (menuItemElement True)
                 )
 
         Spec recipe specState ->
-            Debug.todo ""
+            Element.column
+                [ Element.spacing 20
+                , Element.centerX
+                ]
+                [ menuItemElement False recipe
+                , Element.column
+                    [ Element.spacing 10
+                    , Element.centerX
+                    ]
+                    [ textInputPrompt recipe.initiatorRole recipe.fiatValue
+                    , textInputElement recipe.initiatorRole model.textInput
+                    , openTradeButton model.userInfo model.state
+                    ]
+                ]
     , txModalOrNone model.userInfo model.state
     )
 
 
-menuItemElement : TradeRecipe -> Element Msg
-menuItemElement recipe =
+menuItemElement : Bool -> TradeRecipe -> Element Msg
+menuItemElement showButtons recipe =
     Element.row
         [ Element.spacing 40 ]
         [ recipeSummaryElement recipe
-        , startButton recipe
+        , if showButtons then
+            startButton recipe
+
+          else
+            Element.none
         ]
 
 
@@ -115,6 +132,104 @@ summarizeIntervalElement interval =
         Debug.todo "lol bet u forgot about dis. summarizeIntervalElement is a hack! A dirty hack!!"
 
 
+textInputPrompt : BuyerOrSeller -> FiatValue -> Element Msg
+textInputPrompt initiatorRole fiatValue =
+    [ case initiatorRole of
+        Seller ->
+            [ Element.text "How must the "
+            , dollarValue fiatValue
+            , Element.text " be paid?"
+            ]
+
+        Buyer ->
+            [ Element.text "How can you deliver the "
+            , dollarValue fiatValue
+            , Element.text "?"
+            ]
+    , [ Element.text "You will be able to chat with the "
+      , Element.text <|
+            case initiatorRole of
+                Seller ->
+                    "buyer"
+
+                Buyer ->
+                    "seller"
+      , Element.text " to coordinate further once the trade is in progress."
+      ]
+    ]
+        |> List.map (Element.paragraph [])
+        |> Element.column [ Element.spacing 10 ]
+
+
+textInputElement : BuyerOrSeller -> String -> Element Msg
+textInputElement initiatorRole text =
+    Element.Input.multiline
+        [ Element.width Element.fill
+        , Element.height <| Element.px 200
+        ]
+        { onChange = TextInputChanged
+        , text = text
+        , placeholder =
+            if text == "" then
+                Just <| textInputPlaceholder initiatorRole
+
+            else
+                Nothing
+        , label = Element.Input.labelHidden "payment details"
+        , spellcheck = True
+        }
+
+
+textInputPlaceholder : BuyerOrSeller -> Element.Input.Placeholder Msg
+textInputPlaceholder initiatorRole =
+    (case initiatorRole of
+        Buyer ->
+            [ Element.text "Some ideas:"
+            , Element.el [ Element.Font.italic ] <| Element.text "I can meet in NYC central park for a cash handoff after 6 pm."
+            , Element.el [ Element.Font.italic ] <| Element.text "I'll send you $7 in Steam credit."
+            , Element.el [ Element.Font.italic ] <| Element.text "TransferWise"
+            , Element.el [ Element.Font.italic ] <| Element.text "Cash drop in Hume Park, Bulawayo"
+            ]
+
+        Seller ->
+            [ Element.text "Some ideas:"
+            , Element.el [ Element.Font.italic ] <| Element.text "I accept money orders or cashier checks into my Schwab bank account."
+            , Element.el [ Element.Font.italic ] <| Element.text "Meet me at the Bangkok airport (BKK) on Saturday. I'm coming in on flight I453."
+            , Element.el [ Element.Font.italic ] <| Element.text "Buy Dig Dog on Steam and gift it to me (syriven)."
+            , Element.el [ Element.Font.italic ] <| Element.text "Ship me a potato."
+            ]
+    )
+        |> List.map (Element.paragraph [] << List.singleton)
+        |> Element.column [ Element.spacing 5 ]
+        |> Element.Input.placeholder []
+
+
+openTradeButton : Maybe UserInfo -> State -> Element Msg
+openTradeButton maybeUserInfo state =
+    case maybeUserInfo of
+        Just userInfo ->
+            case state of
+                Spec recipe specState ->
+                    case specState of
+                        ApproveMining txHash ->
+                            EH.disabledButton "Mining Prepare tx..." Nothing
+
+                        ReadyToOpen ->
+                            EH.redButton "Open Trade" (OpenClicked userInfo recipe)
+
+                        OpenNeedsSig ->
+                            Element.none
+
+                        OpenMining ->
+                            Element.none
+
+                Menu _ ->
+                    Element.none
+
+        Nothing ->
+            EH.disabledButton "Can't find userInfo..." (Just "You shouldn't be seeing this. Maybe your web3 provider changed something just now?")
+
+
 daiValue : TokenValue -> Element Msg
 daiValue dai =
     Element.el
@@ -128,7 +243,7 @@ daiValue dai =
 
 daiValueString : TokenValue -> String
 daiValueString dai =
-    TokenValue.toConciseString dai ++ "D"
+    TokenValue.toConciseString dai ++ " Dai"
 
 
 dollarValue : FiatValue -> Element Msg
@@ -142,7 +257,7 @@ dollarValue dollars =
 
 dollarValueString : FiatValue -> String
 dollarValueString dollars =
-    "$" ++ BigInt.toString dollars.amount
+    "$" ++ BigInt.toString dollars.amount ++ " USD"
 
 
 txModalOrNone : Maybe UserInfo -> State -> Element Msg
@@ -186,17 +301,6 @@ txModalOrNone maybeUserInfo state =
                         , Element.centerX
                         ]
                         [ Element.text "Text about opening"
-                        , case maybeUserInfo of
-                            Just userInfo ->
-                                EH.blueButton
-                                    "Open Trade"
-                                    (OpenClicked
-                                        userInfo
-                                        recipe
-                                    )
-
-                            Nothing ->
-                                EH.disabledButton "Can't find userInfo..." (Just "You shouldn't be seeing this. Maybe your web3 provider changed something just now?")
                         ]
                     )
                     (ChangeState <| Spec recipe ReadyToOpen)
