@@ -37,7 +37,6 @@ root model =
             mainElementAttributes =
                 [ Element.width Element.fill
                 , Element.height Element.fill
-                , Element.scrollbarY
                 , Element.Font.family
                     [ Element.Font.typeface "Soleil"
                     , Element.Font.sansSerif
@@ -64,9 +63,7 @@ pageElementAndModal screenWidth model =
         , Element.inFront <| userNotices model.userNotices
         , Element.width Element.fill
         , Element.height Element.fill
-        , Element.Background.color EH.pageBackgroundColor
         , Element.padding 30
-        , Element.scrollbarY
         ]
         [ Element.el
             [ Element.height (Element.px 50) ]
@@ -396,7 +393,6 @@ submodelElementAndModal screenWidth model =
         [ Element.width Element.fill
         , Element.height Element.fill
         , Element.Border.rounded 10
-        , Element.Background.color EH.white
         ]
         submodelEl
     , modalEl

@@ -21,6 +21,8 @@ import Margin
 import Maybe.Extra
 import PaymentMethods exposing (PaymentMethod)
 import Routing
+import SmoothScroll exposing (scrollToWithOptions)
+import Task
 import Time
 import TokenValue exposing (TokenValue)
 import UserNotice as UN
@@ -35,7 +37,6 @@ init web3Context userInfo =
             , inputs = initialInputs
             , errors = noErrors
             , showFiatTypeDropdown = False
-            , addPMModal = Nothing
             , createParameters = Nothing
             , txChainStatus = Nothing
             , depositAmount = Nothing
@@ -55,7 +56,7 @@ initialInputs =
     , fiatType = "USD"
     , fiatAmount = ""
     , margin = "0"
-    , paymentMethods = []
+    , paymentMethod = ""
     , autorecallInterval = Time.millisToPosix <| 1000 * 60 * 60 * 24
     , autoabortInterval = Time.millisToPosix <| 1000 * 60 * 60 * 24
     , autoreleaseInterval = Time.millisToPosix <| 1000 * 60 * 60 * 24
@@ -175,21 +176,16 @@ update msg prevModel =
                     | showFiatTypeDropdown = False
                 }
 
-        MarginStringChanged newString ->
+        ChangePaymentMethodText newText ->
             let
                 oldInputs =
                     prevModel.inputs
-
-                newFiatAmount =
-                    recalculateFiatAmountString oldInputs.daiAmount newString oldInputs.fiatType
-                        |> Maybe.withDefault oldInputs.fiatAmount
             in
             justModelUpdate
                 (prevModel
                     |> updateInputs
                         { oldInputs
-                            | margin = newString
-                            , fiatAmount = newFiatAmount
+                            | paymentMethod = newText
                         }
                 )
 
@@ -231,9 +227,6 @@ update msg prevModel =
                        )
                 )
 
-        OpenPMWizard ->
-            justModelUpdate { prevModel | addPMModal = Just PMWizard.init }
-
         ClearDraft ->
             justModelUpdate { prevModel | inputs = initialInputs }
 
@@ -255,7 +248,22 @@ update msg prevModel =
                         }
 
                 Err inputErrors ->
-                    justModelUpdate { prevModel | errors = inputErrors }
+                    UpdateResult
+                        { prevModel | errors = inputErrors }
+                        (Task.attempt (always NoOp)
+                            (let
+                                defaultConfig =
+                                    SmoothScroll.defaultConfig
+                             in
+                             scrollToWithOptions
+                                { defaultConfig
+                                    | offset = 60
+                                }
+                                "inputError"
+                            )
+                        )
+                        ChainCmd.none
+                        []
 
         AbortCreate ->
             justModelUpdate { prevModel | txChainStatus = Nothing }
@@ -393,46 +401,12 @@ update msg prevModel =
                             UN.unexpectedError "Error getting the ID of the created contract" txReceipt
                         ]
 
-        PMWizardMsg pmMsg ->
-            case prevModel.addPMModal of
-                Just pmModel ->
-                    let
-                        updateResult =
-                            PMWizard.update pmMsg pmModel
-
-                        cmd =
-                            Cmd.map PMWizardMsg updateResult.cmd
-
-                        newPaymentMethods =
-                            List.append
-                                prevModel.inputs.paymentMethods
-                                (Maybe.Extra.values [ updateResult.newPaymentMethod ])
-
-                        model =
-                            let
-                                prevInputs =
-                                    prevModel.inputs
-                            in
-                            { prevModel
-                                | addPMModal = updateResult.model -- If nothing, will close modal
-                            }
-                                |> updateInputs
-                                    { prevInputs | paymentMethods = newPaymentMethods }
-                    in
-                    UpdateResult
-                        model
-                        cmd
-                        ChainCmd.none
-                        []
-
-                Nothing ->
-                    UpdateResult
-                        prevModel
-                        Cmd.none
-                        ChainCmd.none
-                        [ AppCmd.UserNotice <|
-                            UN.unexpectedError "Got a PMWizard message, but the modal is closed! That doesn't make sense! AHHHHH" pmMsg
-                        ]
+        Web3Connect ->
+            UpdateResult
+                prevModel
+                Cmd.none
+                ChainCmd.none
+                [ AppCmd.Web3Connect ]
 
         NoOp ->
             justModelUpdate prevModel
@@ -497,14 +471,18 @@ updateParameters model =
 validateInputs : FactoryType -> Inputs -> Result Errors CTypes.UserParameters
 validateInputs factoryType inputs =
     Result.map3
-        (\daiAmount fiatAmount paymentMethods ->
+        (\daiAmount fiatAmount paymentMethod ->
             { initiatorRole = inputs.userRole
             , tradeAmount = daiAmount
             , price = { fiatType = inputs.fiatType, amount = fiatAmount }
             , autorecallInterval = inputs.autorecallInterval
             , autoabortInterval = inputs.autoabortInterval
             , autoreleaseInterval = inputs.autoreleaseInterval
-            , paymentMethods = paymentMethods
+            , paymentMethods =
+                [ PaymentMethod
+                    PaymentMethods.Custom
+                    paymentMethod
+                ]
             }
         )
         (interpretDaiAmount factoryType inputs.daiAmount
@@ -513,8 +491,8 @@ validateInputs factoryType inputs =
         (interpretFiatAmount inputs.fiatAmount
             |> Result.mapError (\e -> { noErrors | fiat = Just e })
         )
-        (interpretPaymentMethods inputs.paymentMethods
-            |> Result.mapError (\e -> { noErrors | paymentMethods = Just e })
+        (interpretPaymentMethods inputs.paymentMethod
+            |> Result.mapError (\e -> { noErrors | paymentMethod = Just e })
         )
 
 
@@ -555,13 +533,13 @@ interpretFiatAmount input =
                 Ok value
 
 
-interpretPaymentMethods : List PaymentMethod -> Result String (List PaymentMethod)
-interpretPaymentMethods paymentMethods =
-    if paymentMethods == [] then
-        Err "Must include at least one payment method."
+interpretPaymentMethods : String -> Result String String
+interpretPaymentMethods paymentMethod =
+    if paymentMethod == "" then
+        Err "Must specify a payment method."
 
     else
-        Ok paymentMethods
+        Ok paymentMethod
 
 
 recalculateFiatAmountString : String -> String -> String -> Maybe String

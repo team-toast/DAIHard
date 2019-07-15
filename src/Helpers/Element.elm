@@ -1,4 +1,4 @@
-module Helpers.Element exposing (activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, button, closeButton, closeableModal, coloredMargin, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, fiatTypeToSymbolElement, fiatValue, green, headerBackgroundColor, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, marginFloatToConciseUnsignedString, marginSymbol, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, pokeButton, red, redButton, roundBottomCorners, roundTopCorners, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredMargin, white, withHeader, yellow)
+module Helpers.Element exposing (activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, button, closeButton, closeableModal, coloredMargin, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, fiatTypeToSymbolElement, fiatValue, green, headerBackgroundColor, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, marginFloatToConciseUnsignedString, marginSymbol, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, pokeButton, red, redButton, roundBottomCorners, roundTopCorners, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredMargin, white, withHeader, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -46,6 +46,10 @@ white =
 
 red =
     Element.rgb255 244 0 103
+
+
+lightRed =
+    Element.rgba 1 0 0 0.2
 
 
 green =
@@ -438,7 +442,7 @@ intervalInput maybeLowValColor i newIntervalMsg =
     in
     Element.row
         [ Element.spaceEvenly
-        , Element.width Element.fill
+        , Element.spacing 10
         ]
         [ bigTimeUnitElement 3 dc " days" hrInterval.days
             |> withModifyArrows (Time.millisToPosix <| 1000 * 60 * 60 * 24)
