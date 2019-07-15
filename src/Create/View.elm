@@ -334,7 +334,7 @@ openWindowSummary userRole =
     in
     "The offer will expire by this time window if a "
         ++ committingParty
-        ++ " does not commit to the trade, returning the balance and the devFee to your wallet. This can also be manually triggered anytime before a "
+        ++ " does not commit to the trade, returning the balance and the 1% fee to your wallet. This can also be manually triggered anytime before a "
         ++ committingParty
         ++ " commits."
 
