@@ -31,6 +31,10 @@ import TradeCache.Types exposing (TradeCache)
 
 root : Int -> Time.Posix -> TradeCache -> Model -> ( Element Msg, List (Element Msg) )
 root screenWidth time tradeCache model =
+    let
+        inRow =
+            screenWidth > 1300
+    in
     ( case model.trade of
         CTypes.LoadedTrade tradeInfo ->
             Element.column
@@ -39,14 +43,12 @@ root screenWidth time tradeCache model =
                 , Element.spacing 40
                 ]
                 [ header time tradeInfo model.userInfo model.web3Context.factoryType tradeCache model.showStatsModal
-                , Element.column
+                , Element.el
                     [ Element.width Element.fill
                     , Element.paddingXY 40 0
                     , Element.spacing 40
                     ]
-                    [ phasesElement screenWidth model.web3Context.factoryType tradeInfo model.expandedPhase model.userInfo time
-                    , PaymentMethods.viewList tradeInfo.terms.paymentMethods Nothing
-                    ]
+                    (phasesElement inRow model.web3Context.factoryType tradeInfo model.expandedPhase model.userInfo time)
                 ]
 
         CTypes.PartiallyLoadedTrade partialTradeInfo ->
@@ -437,12 +439,8 @@ statsModal factoryType address stats =
         ]
 
 
-phasesElement : Int -> FactoryType -> FullTradeInfo -> CTypes.Phase -> Maybe UserInfo -> Time.Posix -> Element Msg
-phasesElement screenWidth factoryType trade expandedPhase maybeUserInfo currentTime =
-    let
-        inRow =
-            screenWidth > 1300
-    in
+phasesElement : Bool -> FactoryType -> FullTradeInfo -> CTypes.Phase -> Maybe UserInfo -> Time.Posix -> Element Msg
+phasesElement inRow factoryType trade expandedPhase maybeUserInfo currentTime =
     case trade.state.phase of
         CTypes.Closed ->
             Element.row
@@ -460,24 +458,33 @@ phasesElement screenWidth factoryType trade expandedPhase maybeUserInfo currentT
                 ]
 
         _ ->
-            (if inRow then
-                Element.row
+            if inRow then
+                Element.column
                     [ Element.width Element.fill
-                    , Element.height Element.shrink
-                    , Element.spacing 20
+                    , Element.spacing 10
+                    ]
+                    [ Element.row
+                        [ Element.width Element.fill
+                        , Element.height Element.shrink
+                        , Element.spacing 20
+                        ]
+                        [ phaseAndPaymentMethodElement inRow factoryType CTypes.Open trade maybeUserInfo (expandedPhase == CTypes.Open) currentTime
+                        , phaseAndPaymentMethodElement inRow factoryType CTypes.Committed trade maybeUserInfo (expandedPhase == CTypes.Committed) currentTime
+                        , phaseAndPaymentMethodElement inRow factoryType CTypes.Judgment trade maybeUserInfo (expandedPhase == CTypes.Judgment) currentTime
+                        ]
+                    , paymentMethodElement trade.terms.paymentMethods
                     ]
 
-             else
+            else
                 Element.column
                     [ Element.width Element.fill
                     , Element.height Element.shrink
                     , Element.spacing 20
                     ]
-            )
-                [ phaseElement inRow factoryType CTypes.Open trade maybeUserInfo (expandedPhase == CTypes.Open) currentTime
-                , phaseElement inRow factoryType CTypes.Committed trade maybeUserInfo (expandedPhase == CTypes.Committed) currentTime
-                , phaseElement inRow factoryType CTypes.Judgment trade maybeUserInfo (expandedPhase == CTypes.Judgment) currentTime
-                ]
+                    [ phaseAndPaymentMethodElement inRow factoryType CTypes.Open trade maybeUserInfo (expandedPhase == CTypes.Open) currentTime
+                    , phaseAndPaymentMethodElement inRow factoryType CTypes.Committed trade maybeUserInfo (expandedPhase == CTypes.Committed) currentTime
+                    , phaseAndPaymentMethodElement inRow factoryType CTypes.Judgment trade maybeUserInfo (expandedPhase == CTypes.Judgment) currentTime
+                    ]
 
 
 activePhaseAttributes =
@@ -523,8 +530,8 @@ phaseState trade phase =
         Finished
 
 
-phaseElement : Bool -> FactoryType -> CTypes.Phase -> FullTradeInfo -> Maybe UserInfo -> Bool -> Time.Posix -> Element Msg
-phaseElement inRow factoryType viewPhase trade maybeUserInfo expanded currentTime =
+phaseAndPaymentMethodElement : Bool -> FactoryType -> CTypes.Phase -> FullTradeInfo -> Maybe UserInfo -> Bool -> Time.Posix -> Element Msg
+phaseAndPaymentMethodElement inRow factoryType viewPhase trade maybeUserInfo expanded currentTime =
     let
         viewPhaseState =
             phaseState trade viewPhase
@@ -583,34 +590,85 @@ phaseElement inRow factoryType viewPhase trade maybeUserInfo expanded currentTim
                             EH.lightGray
                 ]
                 Element.none
-    in
-    if expanded then
-        Element.row
-            (commonPhaseAttributes inRow
-                ++ (if viewPhaseState == Active then
-                        activePhaseAttributes
 
-                    else
-                        inactivePhaseAttributes
-                   )
-                ++ [ Element.width Element.fill ]
-            )
-            [ firstEl, borderEl, secondEl ]
+        phaseElement =
+            if expanded then
+                Element.row
+                    (commonPhaseAttributes inRow
+                        ++ (if viewPhaseState == Active then
+                                activePhaseAttributes
+
+                            else
+                                inactivePhaseAttributes
+                           )
+                        ++ [ Element.width Element.fill ]
+                    )
+                    [ firstEl, borderEl, secondEl ]
+
+            else
+                Element.row
+                    (commonPhaseAttributes inRow
+                        ++ (if viewPhaseState == Active then
+                                activePhaseAttributes
+
+                            else
+                                inactivePhaseAttributes
+                           )
+                        ++ [ Element.pointer
+                           , Element.Events.onClick <| ExpandPhase viewPhase
+                           ]
+                    )
+                    [ firstEl ]
+    in
+    if not inRow && viewPhaseState == Active then
+        Element.column
+            [ Element.width Element.fill
+            , Element.spacing 20
+            , Element.paddingEach
+                { bottom = 20
+                , top = 0
+                , left = 0
+                , right = 0
+                }
+            ]
+            [ phaseElement
+            , paymentMethodElement trade.terms.paymentMethods
+            ]
 
     else
-        Element.row
-            (commonPhaseAttributes inRow
-                ++ (if viewPhaseState == Active then
-                        activePhaseAttributes
+        phaseElement
 
-                    else
-                        inactivePhaseAttributes
-                   )
-                ++ [ Element.pointer
-                   , Element.Events.onClick <| ExpandPhase viewPhase
-                   ]
-            )
-            [ firstEl ]
+
+paymentMethodElement : List PaymentMethod -> Element Msg
+paymentMethodElement paymentMethods =
+    Element.column
+        [ Element.Border.rounded 12
+        , Element.Background.color <| EH.lightGray
+        , Element.padding 15
+        , Element.spacing 15
+        ]
+        [ Element.el
+            [ Element.Font.size 24
+            , Element.Font.semiBold
+            , Element.Font.italic
+            ]
+            (Element.text "Fiat Payment Method")
+        , Element.paragraph
+            [ Element.Font.size 18
+            , Element.height Element.shrink
+            , Element.Border.width 1
+            , Element.Border.color EH.darkGray
+            , Element.Border.rounded 3
+            , Element.padding 5
+            ]
+            [ paymentMethods
+                |> List.head
+                |> Maybe.map .info
+                |> Maybe.map Element.text
+                |> Maybe.withDefault
+                    (Element.el [ Element.Font.color EH.disabledTextColor, Element.Font.italic ] <| Element.text "No payment methods found.")
+            ]
+        ]
 
 
 phaseStatusElement : CTypes.Phase -> CTypes.FullTradeInfo -> Time.Posix -> Element Msg
@@ -981,7 +1039,7 @@ phaseBodyElement factoryType viewPhase currentTime trade maybeUserInfo =
                     , List.map makeParagraph
                         [ [ Element.text "You must now pay the Seller "
                           , emphasizedText fiatAmountString
-                          , Element.text " via one of the accepted payment methods below, "
+                          , Element.text " via the Fiat Payment Method, "
                           , Element.el [ Element.Font.semiBold ] <| Element.text "and then click "
                           , scaryText "Confirm Payment"
                           , Element.text " before the payment window runs out. Use the chat to coordinate."
@@ -1010,7 +1068,7 @@ phaseBodyElement factoryType viewPhase currentTime trade maybeUserInfo =
                     , List.map makeParagraph
                         [ [ Element.text "Work and communicate with the Buyer to receive "
                           , emphasizedText fiatAmountString
-                          , Element.text ". Then, the Buyer should confirm the payment, moving the trade to the final phase."
+                          , Element.text " as described in Fiat Payment Method. Then, the Buyer should confirm the payment, moving the trade to the final phase."
                           ]
                         , [ Element.text "If the Buyer aborts the trade, or doesn't confirm payment before this time is up, "
                           , emphasizedText abortPunishmentString
@@ -1032,7 +1090,7 @@ phaseBodyElement factoryType viewPhase currentTime trade maybeUserInfo =
                     , List.map makeParagraph
                         [ [ Element.text "During this phase, the Buyer is expected to transfer "
                           , emphasizedText fiatAmountString
-                          , Element.text " to the Seller, via one of the payment methods listed below, "
+                          , Element.text " to the Seller, as described in Fiat Payment Method, "
                           , Element.el [ Element.Font.semiBold ] <| Element.text "and "
                           , scaryText "Confirm the Payment "
                           , Element.text " before the payment window runs out. This would move the trade to the final phase."
