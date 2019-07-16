@@ -216,13 +216,12 @@ resultsElement time tradeCache model =
         [ Element.row
             [ Element.width Element.fill ]
             [ if model.viewPhase /= CTypes.Closed then
-                cellMaker ( 1, columnHeader phaseCountdownTitleString )
+                cellMaker ( 2, columnHeader phaseCountdownTitleString )
 
               else
                 Element.none
             , cellMaker ( 1, columnHeader amountTitleString )
             , cellMaker ( 2, columnHeader "For Fiat" )
-            , cellMaker ( 1, columnHeader "Margin" )
             , cellMaker ( 6, columnHeader "Payment Methods" )
             , cellMaker ( 2, Element.none )
             ]
@@ -250,19 +249,18 @@ viewTradeRow time web3Connected userRole viewPhase trade =
         ]
         [ case viewPhase of
             CTypes.Open ->
-                cellMaker ( 1, phaseCountdown time trade False web3Connected )
+                cellMaker ( 2, phaseCountdown time trade False web3Connected )
 
             CTypes.Committed ->
-                cellMaker ( 1, phaseCountdown time trade (userRole == Buyer) web3Connected )
+                cellMaker ( 2, phaseCountdown time trade (userRole == Buyer) web3Connected )
 
             CTypes.Judgment ->
-                cellMaker ( 1, phaseCountdown time trade (userRole == Seller) web3Connected )
+                cellMaker ( 2, phaseCountdown time trade (userRole == Seller) web3Connected )
 
             CTypes.Closed ->
                 Element.none
         , cellMaker ( 1, viewTradeAmount trade.parameters.tradeAmount )
         , cellMaker ( 2, viewFiat trade.terms.price )
-        , cellMaker ( 1, viewMargin trade (userRole == Seller) )
         , cellMaker ( 6, viewPaymentMethods trade.terms.paymentMethods )
         , cellMaker ( 2, viewTradeButton trade.id )
         ]

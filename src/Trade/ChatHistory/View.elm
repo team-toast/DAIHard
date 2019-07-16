@@ -2,14 +2,15 @@ module Trade.ChatHistory.View exposing (window)
 
 import Array exposing (Array)
 import CommonTypes exposing (..)
+import Config
 import Contracts.Types as CTypes
 import Element exposing (Attribute, Element)
 import Element.Background
 import Element.Border
 import Element.Font
 import Element.Input
-import Helpers.Element as EH
 import Eth.Utils
+import Helpers.Element as EH
 import Trade.ChatHistory.Types exposing (..)
 
 
@@ -19,9 +20,8 @@ window model =
         [ Element.Background.color EH.white
         , Element.Border.rounded 8
         , EH.subtleShadow
-        , Element.padding 20
-        , Element.width <| Element.px 600
-        , Element.height <| Element.shrink
+        , Element.width Element.fill
+        , Element.height Element.fill
         ]
         (historyAndCommsElement model)
 
@@ -30,39 +30,30 @@ historyAndCommsElement : Model -> Element.Element Msg
 historyAndCommsElement model =
     Element.column
         [ Element.width Element.fill
-        , Element.height Element.shrink
-        , Element.spacing 20
+        , Element.height Element.fill
+        , Element.spacing 10
+        , Element.Border.width 1
+        , Element.Border.rounded 5
+        , Element.padding 20
         ]
-        [ Element.column
-            [ Element.centerX
-            , Element.height Element.fill
-            ]
-            [ Element.el [ Element.Font.size 36 ] <| Element.text "Chat"
-            , EH.comingSoonMsg [] "Visual overhaul of chat coming soon!"
-            ]
-        , Element.column
-            [ Element.width Element.fill
-            , Element.height Element.shrink
-            , Element.spacing 10
-            , Element.Border.width 1
-            , Element.Border.rounded 5
-            , Element.padding 10
-            ]
-            [ historyElement
-                model.userRole
-                (model.history |> Array.toList |> List.sortBy .blocknum)
-            , commInputElement model
-            ]
+        [ historyElement
+            model.web3Context.factoryType
+            model.userRole
+            (model.history |> Array.toList |> List.sortBy .blocknum)
+        , commInputElement model
         ]
 
 
-historyElement : BuyerOrSeller -> List Event -> Element.Element Msg
-historyElement userRole messages =
+historyElement : FactoryType -> BuyerOrSeller -> List Event -> Element.Element Msg
+historyElement factoryType userRole messages =
     case messages of
         [] ->
             Element.el
                 [ Element.width Element.fill
-                , Element.height <| Element.px 600
+                , Element.height Element.fill
+                , Element.Border.rounded 5
+                , Element.Border.width 1
+                , Element.Border.color EH.black
                 , Element.centerX
                 , Element.Font.color (Element.rgb 0.5 0.5 0.5)
                 , Element.Font.italic
@@ -70,19 +61,27 @@ historyElement userRole messages =
                 (Element.text "no messages found.")
 
         messageList ->
-            Element.column
+            EH.scrollbarYEl
                 [ Element.width Element.fill
-                , Element.height <| Element.px 600
-                , Element.spacing 10
-                , Element.scrollbarY
+                , Element.height Element.fill
+                , Element.Border.rounded 5
+                , Element.Border.width 1
+                , Element.Border.color EH.black
+                , Element.padding 10
                 ]
-                (messageList
-                    |> List.map (renderEvent userRole)
-                )
+            <|
+                Element.column
+                    [ Element.width Element.fill
+                    , Element.height Element.fill
+                    , Element.spacing 10
+                    ]
+                    (messageList
+                        |> List.map (renderEvent factoryType userRole)
+                    )
 
 
-renderEvent : BuyerOrSeller -> Event -> Element.Element Msg
-renderEvent userRole event =
+renderEvent : FactoryType -> BuyerOrSeller -> Event -> Element.Element Msg
+renderEvent factoryType userRole event =
     let
         userMessageAttributes =
             [ Element.alignRight
@@ -176,10 +175,10 @@ renderEvent userRole event =
                             Just ( Element.rgb 0 1 0, EH.white, "Buyer marked the fiat transfer complete" )
 
                         Released ->
-                            Just ( Element.rgb 0 0 1, EH.white, "Seller released the Dai and closed the contract" )
+                            Just ( Element.rgb 0 0 1, EH.white, "Seller released the " ++ Config.tokenUnitName factoryType ++ " and closed the contract" )
 
                         Burned ->
-                            Just ( Element.rgb 0 0 1, EH.white, "Seller burned the Dai and closed the contract" )
+                            Just ( Element.rgb 0 0 1, EH.white, "Seller burned the " ++ Config.tokenUnitName factoryType ++ " and closed the contract" )
             in
             case maybeElementInfo of
                 Nothing ->
@@ -201,7 +200,10 @@ renderEvent userRole event =
 
 commInputElement : Model -> Element.Element Msg
 commInputElement model =
-    Element.column [ Element.width Element.fill, Element.spacing 10 ]
+    Element.column
+        [ Element.width Element.fill
+        , Element.spacing 10
+        ]
         [ Element.Input.multiline [ Element.width Element.fill, Element.height (Element.px 100) ]
             { onChange = MessageInputChanged
             , text = model.messageInput

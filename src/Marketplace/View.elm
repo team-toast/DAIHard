@@ -2,6 +2,7 @@ module Marketplace.View exposing (root)
 
 import Array exposing (Array)
 import CommonTypes exposing (..)
+import Config
 import Contracts.Types as CTypes
 import Element exposing (Attribute, Element)
 import Element.Background
@@ -36,14 +37,14 @@ root time tradeCache model =
             , Element.spacing 10
             , Element.padding 30
             ]
-            [ searchInputElement model.inputs model.errors model.showCurrencyDropdown
+            [ searchInputElement model.web3Context.factoryType model.inputs model.errors model.showCurrencyDropdown
             ]
         , resultsElement time tradeCache model
         ]
 
 
-searchInputElement : SearchInputs -> Errors -> Bool -> Element Msg
-searchInputElement inputs errors showCurrencyDropdown =
+searchInputElement : FactoryType -> SearchInputs -> Errors -> Bool -> Element Msg
+searchInputElement factoryType inputs errors showCurrencyDropdown =
     Element.column
         [ Element.spacing 10
         , Element.width Element.shrink
@@ -58,7 +59,7 @@ searchInputElement inputs errors showCurrencyDropdown =
                 , Element.alignTop
                 ]
               <|
-                daiRangeInput inputs.minDai inputs.maxDai errors
+                daiRangeInput factoryType inputs.minDai inputs.maxDai errors
             , Element.el
                 [ Element.width Element.shrink
                 , Element.alignTop
@@ -143,33 +144,36 @@ resultsElement time tradeCache model =
         ]
         [ Element.row
             [ Element.width Element.fill ]
-            [ cellMaker ( 1, sortableColumnHeader "Expires" Expiring Nothing )
-            , cellMaker ( 1, sortableColumnHeader buyingOrSellingString TradeAmount Nothing )
-            , cellMaker ( 2, sortableColumnHeader "For Fiat" Fiat Nothing )
-            , cellMaker ( 1, sortableColumnHeader "Margin" Margin Nothing )
-            , cellMaker ( 6, columnHeader "Accepted Payment Methods" )
-            , cellMaker ( 2, sortableColumnHeader "Payment Window" AutoabortWindow Nothing )
-            , cellMaker ( 2, sortableColumnHeader "Auto-Release" AutoreleaseWindow Nothing )
-            , cellMaker ( 2, Element.none )
+            [ Element.row
+                [ Element.width <| Element.fillPortion 7 ]
+                [ cellMaker ( 2, sortableColumnHeader "Expires" Expiring Nothing )
+                , cellMaker ( 1, sortableColumnHeader buyingOrSellingString TradeAmount Nothing )
+                , cellMaker ( 2, sortableColumnHeader "For Fiat" Fiat Nothing )
+                , cellMaker ( 1, sortableColumnHeader "Margin" Margin Nothing )
+                , cellMaker ( 2, sortableColumnHeader "Payment Window" AutoabortWindow Nothing )
+                , cellMaker ( 2, sortableColumnHeader "Auto-Release" AutoreleaseWindow Nothing )
+                ]
+            , Element.el
+                [ Element.width <| Element.fillPortion 1 ]
+                Element.none
             ]
         , Element.column
             [ Element.width Element.fill
-            , Element.Border.width 1
+            , Element.Border.width 2
             , Element.Border.rounded 8
-            , Element.Border.color EH.lightGray
+            , Element.Border.color EH.darkGray
             , Element.spacing 1
-            , Element.Background.color EH.lightGray
+            , Element.Background.color EH.darkGray
             , Element.clip
             ]
             (visibleTrades
-                |> List.map
-                    (viewTradeRow time model.browsingRole)
+                |> List.map (viewTradeRow time model.browsingRole)
             )
         ]
 
 
-daiRangeInput : String -> String -> Errors -> Element Msg
-daiRangeInput minDai maxDai errors =
+daiRangeInput : FactoryType -> String -> String -> Errors -> Element Msg
+daiRangeInput factoryType minDai maxDai errors =
     let
         daiLabelElement =
             EH.daiSymbol [ Element.centerY ]
@@ -195,7 +199,7 @@ daiRangeInput minDai maxDai errors =
             ]
             [ Element.Events.onFocus (ShowCurrencyDropdown False) ]
             minElement
-            "min dai"
+            ("min " ++ Config.tokenUnitName factoryType)
             minDai
             Nothing
             Nothing
@@ -208,13 +212,13 @@ daiRangeInput minDai maxDai errors =
             ]
             [ Element.Events.onFocus (ShowCurrencyDropdown False) ]
             maxElement
-            "max dai"
+            ("max " ++ Config.tokenUnitName factoryType)
             maxDai
             Nothing
             Nothing
             MaxDaiChanged
         ]
-        |> withInputHeader "Dai Range"
+        |> withInputHeader (Config.tokenUnitName factoryType ++ " Range")
 
 
 fiatInput : Bool -> String -> String -> String -> Errors -> Element Msg
@@ -345,18 +349,41 @@ viewTradeRow time viewAsRole trade =
     Element.row
         [ Element.width Element.fill
         , Element.spacing 1
+        , Element.Background.color EH.lightGray
         ]
-        (List.map cellMaker
-            [ ( 1, viewExpiring time trade )
-            , ( 1, viewTradeAmount trade )
-            , ( 2, viewFiat trade )
-            , ( 1, viewMargin trade (viewAsRole /= Buyer) )
-            , ( 6, viewPaymentMethods trade.terms.paymentMethods )
-            , ( 2, viewAutoabortWindow viewAsRole trade )
-            , ( 2, viewAutoreleaseWindow viewAsRole trade )
-            , ( 2, viewTradeButton trade.id )
+        [ Element.column
+            [ Element.width Element.fill
+            , Element.spacing 1
+            , Element.width <| Element.fillPortion 7
             ]
-        )
+            [ Element.row
+                [ Element.width <| Element.fillPortion 6
+                , Element.spacing 1
+                ]
+                (List.map cellMaker
+                    [ ( 2, viewExpiring time trade )
+                    , ( 1, viewTradeAmount trade )
+                    , ( 2, viewFiat trade )
+                    , ( 1, viewMargin trade (viewAsRole /= Buyer) )
+                    , ( 2, viewAutoabortWindow viewAsRole trade )
+                    , ( 2, viewAutoreleaseWindow viewAsRole trade )
+                    ]
+                )
+            , cellMaker ( 1, viewPaymentMethods trade.terms.paymentMethods )
+            ]
+        , Element.el
+            [ Element.width <| Element.fillPortion 1
+            , Element.height Element.fill
+            , Element.clip
+            , Element.Background.color EH.white
+            ]
+          <|
+            Element.el
+                [ Element.centerX
+                , Element.centerY
+                ]
+                (viewTradeButton trade.id)
+        ]
 
 
 cellMaker : ( Int, Element Msg ) -> Element Msg

@@ -5,6 +5,7 @@ import Array exposing (Array)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
 import Eth
+import Helpers.Eth as EthHelpers exposing (Web3Context)
 import Json.Decode
 import Json.Encode
 import Maybe.Extra
@@ -13,12 +14,13 @@ import Trade.ChatHistory.Types exposing (..)
 import UserNotice as UN
 
 
-init : UserInfo -> BuyerOrSeller -> BuyerOrSeller -> List ( Int, CTypes.DAIHardEvent ) -> ( Model, Bool )
-init userInfo buyerOrSeller initiatingParty initialEvents =
+init : Web3Context -> UserInfo -> BuyerOrSeller -> BuyerOrSeller -> List ( Int, CTypes.DAIHardEvent ) -> ( Model, Bool )
+init web3Context userInfo buyerOrSeller initiatorRole initialEvents =
     Model
+        web3Context
         userInfo
         buyerOrSeller
-        initiatingParty
+        initiatorRole
         Array.empty
         ""
         |> handleInitialEvents initialEvents
@@ -130,7 +132,7 @@ handleNewEvent : Int -> CTypes.DAIHardEvent -> Model -> ( Model, Bool )
 handleNewEvent blocknum event prevModel =
     let
         toBuyerOrSeller =
-            CTypes.initiatorOrResponderToBuyerOrSeller prevModel.initiatingParty
+            CTypes.initiatorOrResponderToBuyerOrSeller prevModel.initiatorRole
 
         maybeHistoryEventInfo =
             case event of

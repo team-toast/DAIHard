@@ -1,4 +1,4 @@
-module Create.Types exposing (Errors, Inputs, Model, Msg(..), TxChainStatus(..), UpdateResult, interpretMarginString, justModelUpdate, noErrors)
+module Create.Types exposing (Errors, Inputs, Model, Msg(..), TxChainStatus(..), UpdateResult, justModelUpdate, noErrors)
 
 import AppCmd exposing (AppCmd)
 import BigInt exposing (BigInt)
@@ -21,7 +21,6 @@ type alias Model =
     , inputs : Inputs
     , errors : Errors
     , showFiatTypeDropdown : Bool
-    , addPMModal : Maybe PMWizard.Model
     , createParameters : Maybe CTypes.CreateParameters
     , depositAmount : Maybe BigInt
     , allowance : Maybe BigInt
@@ -37,11 +36,10 @@ type Msg
     | FiatAmountChanged String
     | FiatTypeLostFocus
     | ShowCurrencyDropdown Bool
-    | MarginStringChanged String
     | AutorecallIntervalChanged Time.Posix
     | AutoabortIntervalChanged Time.Posix
     | AutoreleaseIntervalChanged Time.Posix
-    | OpenPMWizard
+    | ChangePaymentMethodText String
     | ClearDraft
     | CreateClicked UserInfo
     | AbortCreate
@@ -50,8 +48,8 @@ type Msg
     | ApproveSigned CTypes.CreateParameters (Result String TxHash)
     | CreateSigned (Result String TxHash)
     | CreateMined (Result String TxReceipt)
+    | Web3Connect
     | NoOp
-    | PMWizardMsg PMWizard.Msg
 
 
 type TxChainStatus
@@ -67,8 +65,7 @@ type alias Inputs =
     , daiAmount : String
     , fiatType : String
     , fiatAmount : String
-    , margin : String
-    , paymentMethods : List PaymentMethod
+    , paymentMethod : String
     , autorecallInterval : Time.Posix
     , autoabortInterval : Time.Posix
     , autoreleaseInterval : Time.Posix
@@ -78,13 +75,12 @@ type alias Inputs =
 type alias Errors =
     { daiAmount : Maybe String
     , fiat : Maybe String
-    , margin : Maybe String
-    , paymentMethods : Maybe String
+    , paymentMethod : Maybe String
     }
 
 
 noErrors =
-    Errors Nothing Nothing Nothing Nothing
+    Errors Nothing Nothing Nothing
 
 
 type alias UpdateResult =
@@ -102,8 +98,3 @@ justModelUpdate model =
     , chainCmd = ChainCmd.none
     , appCmds = []
     }
-
-
-interpretMarginString : String -> Maybe Float
-interpretMarginString =
-    String.toFloat >> Maybe.map ((*) 0.01)

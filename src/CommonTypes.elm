@@ -1,4 +1,4 @@
-module CommonTypes exposing (BuyerOrSeller(..), FactoryType(..), InitiatorOrResponder(..), NativeFactoryType(..), TokenFactoryType(..), UserInfo)
+module CommonTypes exposing (BuyerOrSeller(..), FactoryType(..), InitiatorOrResponder(..), NativeFactoryType(..), TokenFactoryType(..), UserInfo, buyerOrSellerToString)
 
 import Eth.Types exposing (Address)
 import Json.Decode
@@ -37,3 +37,13 @@ type InitiatorOrResponder
 type BuyerOrSeller
     = Buyer
     | Seller
+
+
+buyerOrSellerToString : BuyerOrSeller -> String
+buyerOrSellerToString role =
+    case role of
+        Buyer ->
+            "Buyer"
+
+        Seller ->
+            "Seller"

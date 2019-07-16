@@ -12,6 +12,7 @@ import Url.Parser exposing ((</>), (<?>), Parser)
 
 type Route
     = Home
+    | QuickCreate
     | Create
     | Trade Int
     | Marketplace BuyerOrSeller
@@ -24,6 +25,7 @@ routeParser =
     Url.Parser.s "DAIHard"
         </> Url.Parser.oneOf
                 [ Url.Parser.map Home Url.Parser.top
+                , Url.Parser.map QuickCreate (Url.Parser.s "quickcreate")
                 , Url.Parser.map Create (Url.Parser.s "create")
                 , Url.Parser.map Trade (Url.Parser.s "trade" </> Url.Parser.int)
                 , Url.Parser.map Marketplace (Url.Parser.s "marketplace" </> buyerOrSellerParser)
@@ -76,6 +78,9 @@ routeToString route =
     case route of
         Home ->
             Url.Builder.absolute [ "DAIHard" ] []
+
+        QuickCreate ->
+            Url.Builder.absolute [ "DAIHard", "quickcreate" ] []
 
         Create ->
             Url.Builder.absolute [ "DAIHard", "create" ] []

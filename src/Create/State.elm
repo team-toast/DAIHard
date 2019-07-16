@@ -17,10 +17,11 @@ import Helpers.BigInt as BigIntHelpers
 import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
-import Margin
 import Maybe.Extra
 import PaymentMethods exposing (PaymentMethod)
 import Routing
+import SmoothScroll exposing (scrollToWithOptions)
+import Task
 import Time
 import TokenValue exposing (TokenValue)
 import UserNotice as UN
@@ -35,7 +36,6 @@ init web3Context userInfo =
             , inputs = initialInputs
             , errors = noErrors
             , showFiatTypeDropdown = False
-            , addPMModal = Nothing
             , createParameters = Nothing
             , txChainStatus = Nothing
             , depositAmount = Nothing
@@ -54,8 +54,7 @@ initialInputs =
     , daiAmount = ""
     , fiatType = "USD"
     , fiatAmount = ""
-    , margin = "0"
-    , paymentMethods = []
+    , paymentMethod = ""
     , autorecallInterval = Time.millisToPosix <| 1000 * 60 * 60 * 24
     , autoabortInterval = Time.millisToPosix <| 1000 * 60 * 60 * 24
     , autoreleaseInterval = Time.millisToPosix <| 1000 * 60 * 60 * 24
@@ -109,29 +108,24 @@ update msg prevModel =
                 _ ->
                     justModelUpdate prevModel
 
-        ChangeRole initiatingParty ->
+        ChangeRole initiatorRole ->
             let
                 oldInputs =
                     prevModel.inputs
             in
             justModelUpdate
-                { prevModel | inputs = { oldInputs | userRole = initiatingParty } }
+                { prevModel | inputs = { oldInputs | userRole = initiatorRole } }
 
         TradeAmountChanged newAmountStr ->
             let
                 oldInputs =
                     prevModel.inputs
-
-                newFiatAmountString =
-                    recalculateFiatAmountString newAmountStr oldInputs.margin oldInputs.fiatType
-                        |> Maybe.withDefault oldInputs.fiatAmount
             in
             justModelUpdate
                 (prevModel
                     |> updateInputs
                         { oldInputs
                             | daiAmount = newAmountStr
-                            , fiatAmount = newFiatAmountString
                         }
                 )
 
@@ -139,17 +133,12 @@ update msg prevModel =
             let
                 oldInputs =
                     prevModel.inputs
-
-                newMarginString =
-                    recalculateMarginString oldInputs.daiAmount newAmountStr oldInputs.fiatType
-                        |> Maybe.withDefault oldInputs.margin
             in
             justModelUpdate
                 (prevModel
                     |> updateInputs
                         { oldInputs
                             | fiatAmount = newAmountStr
-                            , margin = newMarginString
                         }
                 )
 
@@ -163,9 +152,6 @@ update msg prevModel =
                     |> updateInputs
                         { oldInputs
                             | fiatType = newTypeStr
-                            , margin =
-                                recalculateMarginString oldInputs.daiAmount oldInputs.fiatAmount newTypeStr
-                                    |> Maybe.withDefault oldInputs.margin
                         }
                 )
 
@@ -175,21 +161,16 @@ update msg prevModel =
                     | showFiatTypeDropdown = False
                 }
 
-        MarginStringChanged newString ->
+        ChangePaymentMethodText newText ->
             let
                 oldInputs =
                     prevModel.inputs
-
-                newFiatAmount =
-                    recalculateFiatAmountString oldInputs.daiAmount newString oldInputs.fiatType
-                        |> Maybe.withDefault oldInputs.fiatAmount
             in
             justModelUpdate
                 (prevModel
                     |> updateInputs
                         { oldInputs
-                            | margin = newString
-                            , fiatAmount = newFiatAmount
+                            | paymentMethod = newText
                         }
                 )
 
@@ -231,14 +212,11 @@ update msg prevModel =
                        )
                 )
 
-        OpenPMWizard ->
-            justModelUpdate { prevModel | addPMModal = Just PMWizard.init }
-
         ClearDraft ->
             justModelUpdate { prevModel | inputs = initialInputs }
 
         CreateClicked userInfo ->
-            case validateInputs prevModel.inputs of
+            case validateInputs prevModel.web3Context.factoryType prevModel.inputs of
                 Ok userParameters ->
                     let
                         createParameters =
@@ -255,7 +233,22 @@ update msg prevModel =
                         }
 
                 Err inputErrors ->
-                    justModelUpdate { prevModel | errors = inputErrors }
+                    UpdateResult
+                        { prevModel | errors = inputErrors }
+                        (Task.attempt (always NoOp)
+                            (let
+                                defaultConfig =
+                                    SmoothScroll.defaultConfig
+                             in
+                             scrollToWithOptions
+                                { defaultConfig
+                                    | offset = 60
+                                }
+                                "inputError"
+                            )
+                        )
+                        ChainCmd.none
+                        []
 
         AbortCreate ->
             justModelUpdate { prevModel | txChainStatus = Nothing }
@@ -393,46 +386,12 @@ update msg prevModel =
                             UN.unexpectedError "Error getting the ID of the created contract" txReceipt
                         ]
 
-        PMWizardMsg pmMsg ->
-            case prevModel.addPMModal of
-                Just pmModel ->
-                    let
-                        updateResult =
-                            PMWizard.update pmMsg pmModel
-
-                        cmd =
-                            Cmd.map PMWizardMsg updateResult.cmd
-
-                        newPaymentMethods =
-                            List.append
-                                prevModel.inputs.paymentMethods
-                                (Maybe.Extra.values [ updateResult.newPaymentMethod ])
-
-                        model =
-                            let
-                                prevInputs =
-                                    prevModel.inputs
-                            in
-                            { prevModel
-                                | addPMModal = updateResult.model -- If nothing, will close modal
-                            }
-                                |> updateInputs
-                                    { prevInputs | paymentMethods = newPaymentMethods }
-                    in
-                    UpdateResult
-                        model
-                        cmd
-                        ChainCmd.none
-                        []
-
-                Nothing ->
-                    UpdateResult
-                        prevModel
-                        Cmd.none
-                        ChainCmd.none
-                        [ AppCmd.UserNotice <|
-                            UN.unexpectedError "Got a PMWizard message, but the modal is closed! That doesn't make sense! AHHHHH" pmMsg
-                        ]
+        Web3Connect ->
+            UpdateResult
+                prevModel
+                Cmd.none
+                ChainCmd.none
+                [ AppCmd.Web3Connect ]
 
         NoOp ->
             justModelUpdate prevModel
@@ -468,7 +427,7 @@ updateParameters : Model -> Model
 updateParameters model =
     let
         validateResult =
-            validateInputs model.inputs
+            validateInputs model.web3Context.factoryType model.inputs
 
         -- Don't log errors right away (wait until the user tries to submit)
         -- But if there are already errors displaying, update them accordingly
@@ -494,32 +453,36 @@ updateParameters model =
     }
 
 
-validateInputs : Inputs -> Result Errors CTypes.UserParameters
-validateInputs inputs =
+validateInputs : FactoryType -> Inputs -> Result Errors CTypes.UserParameters
+validateInputs factoryType inputs =
     Result.map3
-        (\daiAmount fiatAmount paymentMethods ->
-            { initiatingParty = inputs.userRole
+        (\daiAmount fiatAmount paymentMethod ->
+            { initiatorRole = inputs.userRole
             , tradeAmount = daiAmount
             , price = { fiatType = inputs.fiatType, amount = fiatAmount }
             , autorecallInterval = inputs.autorecallInterval
             , autoabortInterval = inputs.autoabortInterval
             , autoreleaseInterval = inputs.autoreleaseInterval
-            , paymentMethods = paymentMethods
+            , paymentMethods =
+                [ PaymentMethod
+                    PaymentMethods.Custom
+                    paymentMethod
+                ]
             }
         )
-        (interpretDaiAmount inputs.daiAmount
+        (interpretDaiAmount factoryType inputs.daiAmount
             |> Result.mapError (\e -> { noErrors | daiAmount = Just e })
         )
         (interpretFiatAmount inputs.fiatAmount
             |> Result.mapError (\e -> { noErrors | fiat = Just e })
         )
-        (interpretPaymentMethods inputs.paymentMethods
-            |> Result.mapError (\e -> { noErrors | paymentMethods = Just e })
+        (interpretPaymentMethods inputs.paymentMethod
+            |> Result.mapError (\e -> { noErrors | paymentMethod = Just e })
         )
 
 
-interpretDaiAmount : String -> Result String TokenValue
-interpretDaiAmount input =
+interpretDaiAmount : FactoryType -> String -> Result String TokenValue
+interpretDaiAmount factoryType input =
     if input == "" then
         Err "You must specify a trade amount."
 
@@ -530,7 +493,7 @@ interpretDaiAmount input =
 
             Just value ->
                 if TokenValue.getFloatValueWithWarning value < 1 then
-                    Err "Trade amount must be a least 1 DAI."
+                    Err <| "Trade amount must be a least 1 " ++ Config.tokenUnitName factoryType ++ "."
 
                 else
                     Ok value
@@ -555,51 +518,13 @@ interpretFiatAmount input =
                 Ok value
 
 
-interpretPaymentMethods : List PaymentMethod -> Result String (List PaymentMethod)
-interpretPaymentMethods paymentMethods =
-    if paymentMethods == [] then
-        Err "Must include at least one payment method."
+interpretPaymentMethods : String -> Result String String
+interpretPaymentMethods paymentMethod =
+    if paymentMethod == "" then
+        Err "Must specify a payment method."
 
     else
-        Ok paymentMethods
-
-
-recalculateFiatAmountString : String -> String -> String -> Maybe String
-recalculateFiatAmountString daiAmountStr marginString fiatType =
-    case fiatType of
-        "USD" ->
-            if String.isEmpty daiAmountStr then
-                Just ""
-
-            else
-                case ( String.toFloat daiAmountStr, Margin.stringToMarginFloat marginString ) of
-                    ( Just daiAmount, Just marginFloat ) ->
-                        Just
-                            (daiAmount
-                                + (daiAmount * marginFloat)
-                                |> round
-                                |> String.fromInt
-                            )
-
-                    _ ->
-                        Nothing
-
-        _ ->
-            Nothing
-
-
-recalculateMarginString : String -> String -> String -> Maybe String
-recalculateMarginString daiAmountString fiatAmountString fiatType =
-    case fiatType of
-        "USD" ->
-            Maybe.map2
-                Margin.marginFromFloats
-                (String.toFloat daiAmountString)
-                (String.toFloat fiatAmountString)
-                |> Maybe.map Margin.marginToString
-
-        _ ->
-            Nothing
+        Ok paymentMethod
 
 
 subscriptions : Model -> Sub Msg

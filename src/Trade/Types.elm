@@ -63,12 +63,13 @@ type Msg
     | ExpandPhase CTypes.Phase
     | ToggleChat
     | ToggleStatsModal
-    | ViewSellerHistory
+    | ViewUserHistory BuyerOrSeller
     | EventLogFetched Eth.Types.Log
     | EventSentryMsg EventSentry.Msg
     | ChatHistoryMsg ChatHistory.Msg
     | MessageSubmitMined (Result String TxReceipt)
     | EncryptionFinished Json.Decode.Value
+    | Web3Connect
 
 
 type alias UpdateResult =

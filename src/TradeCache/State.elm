@@ -281,6 +281,8 @@ loadedTrades tradeCache =
                     _ ->
                         Nothing
             )
+        |> List.filter
+            (\trade -> CTypes.tradeHasDefaultParameters trade.parameters)
 
 
 

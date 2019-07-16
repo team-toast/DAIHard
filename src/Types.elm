@@ -14,6 +14,7 @@ import Eth.Types exposing (Address)
 import Helpers.Eth as EthHelpers exposing (Web3Context)
 import Json.Decode
 import Marketplace.Types
+import QuickCreate.Types
 import Routing
 import Time
 import Trade.Types
@@ -40,6 +41,7 @@ type alias Model =
     , tradeCache : TradeCache
     , submodel : Submodel
     , userNotices : List (UserNotice Msg)
+    , screenWidth : Int
     }
 
 
@@ -52,6 +54,7 @@ type InitialWeb3State
 type Submodel
     = BetaLandingPage
     | CreateModel Create.Types.Model
+    | QuickCreateModel QuickCreate.Types.Model
     | TradeModel Trade.Types.Model
     | MarketplaceModel Marketplace.Types.Model
     | AgentHistoryModel AgentHistory.Types.Model
@@ -68,8 +71,9 @@ type Msg
     | NetworkUpdate Json.Decode.Value
     | TxSentryMsg TxSentry.Msg
     | UserPubkeySet Json.Decode.Value
-    | TradeCacheMsg TradeCache.Msg
     | CreateMsg Create.Types.Msg
+    | QuickCreateMsg QuickCreate.Types.Msg
+    | TradeCacheMsg TradeCache.Msg
     | TradeMsg Trade.Types.Msg
     | MarketplaceMsg Marketplace.Types.Msg
     | AgentHistoryMsg AgentHistory.Types.Msg

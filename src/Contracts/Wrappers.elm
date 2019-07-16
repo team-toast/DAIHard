@@ -42,7 +42,7 @@ openTrade factoryType parameters =
         (Config.factoryAddress factoryType)
         parameters.initiatorAddress
         Config.devFeeAddress
-        (parameters.initiatingParty == Seller)
+        (parameters.initiatorRole == Seller)
         (TokenValue.getEvmValue parameters.tradeAmount)
         (TokenValue.getEvmValue <| defaultBuyerDeposit parameters.tradeAmount)
         (TokenValue.getEvmValue <| defaultAbortPunishment parameters.tradeAmount)

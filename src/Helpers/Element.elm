@@ -1,58 +1,4 @@
-module Helpers.Element exposing
-    ( activePhaseBackgroundColor
-    , black
-    , blue
-    , blueButton
-    , bulletPointString
-    , closeButton
-    , closeableModal
-    , coloredMargin
-    , comingSoonMsg
-    , coolCurrencyHbreak
-    , currencySelector
-    , daiSymbol
-    , daiSymbolAndLabel
-    , daiValue
-    , darkGray
-    , disabledButton
-    , disabledTextColor
-    , elOnCircle
-    , elementColorToAvh4Color
-    , ethAddress
-    , etherscanAddressLink
-    , fakeLink
-    , fancyInput
-    , fiatTypeToSymbolElement
-    , fiatValue
-    , green
-    , headerBackgroundColor
-    , interval
-    , intervalInput
-    , intervalWithElapsedBar
-    , inverseBlueButton
-    , lightBlue
-    , lightGray
-    , maybeErrorElement
-    , mediumGray
-    , modal
-    , niceBottomBorderEl
-    , niceFloatingRow
-    , orangeButton
-    , pageBackgroundColor
-    , permanentTextColor
-    , red
-    , redButton
-    , roundBottomCorners
-    , roundTopCorners
-    , subtleShadow
-    , testBorderStyles
-    , textInputWithElement
-    , txProcessModal
-    , uncoloredMargin
-    , white
-    , withHeader
-    , yellow
-    )
+module Helpers.Element exposing (activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, button, closeButton, closeableModal, coloredMargin, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, fiatTypeToSymbolElement, fiatValue, green, headerBackgroundColor, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, marginFloatToConciseUnsignedString, marginSymbol, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, pokeButton, red, redButton, roundBottomCorners, roundTopCorners, scrollbarYEl, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredMargin, white, withHeader, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -102,6 +48,10 @@ red =
     Element.rgb255 244 0 103
 
 
+lightRed =
+    Element.rgba 1 0 0 0.2
+
+
 green =
     Element.rgb255 51 183 2
 
@@ -116,6 +66,14 @@ lightBlue =
 
 yellow =
     Element.rgb 1 1 0
+
+
+daiYellow =
+    yellow
+
+
+dollarGreen =
+    green
 
 
 darkYellow =
@@ -484,7 +442,7 @@ intervalInput maybeLowValColor i newIntervalMsg =
     in
     Element.row
         [ Element.spaceEvenly
-        , Element.width Element.fill
+        , Element.spacing 10
         ]
         [ bigTimeUnitElement 3 dc " days" hrInterval.days
             |> withModifyArrows (Time.millisToPosix <| 1000 * 60 * 60 * 24)
@@ -885,8 +843,8 @@ daiSymbol attributes =
         Images.daiSymbol
 
 
-daiSymbolAndLabel : Element msg
-daiSymbolAndLabel =
+daiSymbolAndLabel : FactoryType -> Element msg
+daiSymbolAndLabel factoryType =
     Element.row
         [ Element.spacing 4 ]
         [ daiSymbol []
@@ -895,7 +853,7 @@ daiSymbolAndLabel =
             , Element.Font.medium
             , Element.Font.color currencyLabelColor
             ]
-            (Element.text "DAI")
+            (Element.text <| Config.tokenUnitName factoryType)
         ]
 
 
@@ -951,39 +909,44 @@ marginFloatToConciseUnsignedString f =
 
 
 modal : Element.Color -> Element msg -> Element msg
-modal overlayColor =
+modal overlayColor el =
     Element.el
-        [ Element.Background.color overlayColor
-        , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
-        , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
-        , Element.htmlAttribute <| Html.Attributes.style "top" "0"
-        , Element.htmlAttribute <| Html.Attributes.style "left" "0"
-        , Element.htmlAttribute <| Html.Attributes.style "width" "100%"
-        , Element.htmlAttribute <| Html.Attributes.style "height" "100%"
-        ]
-
-
-closeableModal : Element msg -> msg -> Element msg
-closeableModal innerEl closeMsg =
-    (modal <| Element.rgba 0 0 0.3 0.6) <|
-        Element.column
-            [ Element.width <| Element.px 600
-            , Element.height (Element.shrink |> Element.minimum 500)
-            , Element.centerX
-            , Element.alignTop
-            , Element.moveDown 200
-            , Element.Background.color white
-            , Element.Border.rounded 8
-            , Element.padding 50
-            ]
-            [ Images.toElement
-                [ Element.alignRight
-                , Element.pointer
-                , Element.Events.onClick closeMsg
+        [ Element.behindContent <|
+            Element.el
+                [ Element.Background.color overlayColor
+                , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
+                , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
+                , Element.htmlAttribute <| Html.Attributes.style "top" "0"
+                , Element.htmlAttribute <| Html.Attributes.style "left" "0"
+                , Element.htmlAttribute <| Html.Attributes.style "width" "100%"
+                , Element.htmlAttribute <| Html.Attributes.style "height" "100%"
                 ]
-                Images.closeIcon
-            , innerEl
-            ]
+                Element.none
+        , Element.width Element.fill
+        , Element.height Element.fill
+        ]
+        el
+
+
+closeableModal : List (Attribute msg) -> Element msg -> msg -> Element msg
+closeableModal extraAttributes innerEl closeMsg =
+    (modal <| Element.rgba 0 0 0.3 0.6) <|
+        Element.el
+            ([ Element.centerX
+             , Element.centerY
+             , Element.width (Element.shrink |> Element.maximum 500)
+             , Element.Background.color white
+             , Element.Border.rounded 8
+             , Element.inFront <|
+                Element.el
+                    [ Element.alignRight
+                    , Element.alignTop
+                    ]
+                    (closeButton closeMsg)
+             ]
+                ++ extraAttributes
+            )
+            innerEl
 
 
 txProcessModal : List (Element msg) -> Element msg
@@ -1144,3 +1107,19 @@ ethAddress fontSize address =
         , Element.paddingXY 15 13
         ]
         (Element.text <| Eth.Utils.addressToString address)
+
+
+scrollbarYEl : List (Attribute msg) -> Element msg -> Element msg
+scrollbarYEl attrs body =
+    Element.el [ Element.height Element.fill, Element.width Element.fill ] <|
+        Element.el
+            ([ Element.htmlAttribute <| Html.Attributes.style "position" "absolute"
+             , Element.htmlAttribute <| Html.Attributes.style "top" "0"
+             , Element.htmlAttribute <| Html.Attributes.style "right" "0"
+             , Element.htmlAttribute <| Html.Attributes.style "bottom" "0"
+             , Element.htmlAttribute <| Html.Attributes.style "left" "0"
+             , Element.scrollbarY
+             ]
+                ++ attrs
+            )
+            body

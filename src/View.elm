@@ -3,6 +3,7 @@ module View exposing (root)
 import AgentHistory.View
 import Browser
 import CommonTypes exposing (..)
+import Config
 import Contracts.Types as CTypes
 import Create.View
 import Dict
@@ -14,9 +15,11 @@ import Element.Font
 import Element.Input
 import FiatValue
 import Helpers.Element as EH
+import Helpers.Tuple exposing (mapTuple2)
 import Landing.View
 import Marketplace.Types
 import Marketplace.View
+import QuickCreate.View
 import Routing
 import Trade.View
 import Types exposing (..)
@@ -28,40 +31,46 @@ root model =
     { title = "DAIHard"
     , body =
         [ let
+            ( pageEl, modalEls ) =
+                pageElementAndModal model.screenWidth model
+
             mainElementAttributes =
                 [ Element.width Element.fill
                 , Element.height Element.fill
-                , Element.scrollbarY
                 , Element.Font.family
                     [ Element.Font.typeface "Soleil"
                     , Element.Font.sansSerif
                     ]
                 ]
+                    ++ List.map Element.inFront modalEls
           in
           Element.layout
             mainElementAttributes
-            (pageElement model)
+            pageEl
         ]
     }
 
 
-pageElement : Model -> Element Msg
-pageElement model =
-    Element.column
+pageElementAndModal : Int -> Model -> ( Element Msg, List (Element Msg) )
+pageElementAndModal screenWidth model =
+    let
+        ( submodelEl, modalEls ) =
+            submodelElementAndModal screenWidth model
+    in
+    ( Element.column
         [ Element.behindContent <| headerBackground
         , Element.inFront <| headerContent model
-        , Element.inFront <| userNotices model.userNotices
         , Element.width Element.fill
         , Element.height Element.fill
-        , Element.Background.color EH.pageBackgroundColor
         , Element.padding 30
-        , Element.scrollbarY
         ]
         [ Element.el
             [ Element.height (Element.px 50) ]
             Element.none
-        , subModelElement model
+        , submodelEl
         ]
+    , modalEls ++ [ userNotices model.userNotices ]
+    )
 
 
 headerBackground : Element Msg
@@ -82,7 +91,7 @@ headerContent model =
         , Element.paddingXY 30 17
         ]
         [ headerLink
-            "Buy Dai"
+            ("Buy " ++ Config.tokenUnitName model.web3Context.factoryType)
             (GotoRoute <| Routing.Marketplace Buyer)
             (case model.submodel of
                 MarketplaceModel marketplaceModel ->
@@ -96,7 +105,7 @@ headerContent model =
                     Normal
             )
         , headerLink
-            "Sell Dai"
+            ("Sell " ++ Config.tokenUnitName model.web3Context.factoryType)
             (GotoRoute <| Routing.Marketplace Seller)
             (case model.submodel of
                 MarketplaceModel marketplaceModel ->
@@ -245,15 +254,20 @@ logoElement =
 
 userNotices : List (UserNotice Msg) -> Element Msg
 userNotices notices =
-    Element.column
-        [ Element.padding 20
-        , Element.spacing 10
-        , Element.alignRight
-        , Element.alignBottom
-        , Element.width <| Element.px 300
-        , Element.Font.size 15
-        ]
-        (notices |> List.indexedMap userNotice)
+    if notices == [] then
+        Element.none
+
+    else
+        Element.column
+            [ Element.moveLeft 20
+            , Element.moveUp 20
+            , Element.spacing 10
+            , Element.alignRight
+            , Element.alignBottom
+            , Element.width <| Element.px 300
+            , Element.Font.size 15
+            ]
+            (notices |> List.indexedMap userNotice)
 
 
 userNotice : Int -> UserNotice Msg -> Element Msg
@@ -272,6 +286,14 @@ userNotice id notice =
 
                 UN.ShouldBeImpossible ->
                     Element.rgb255 200 200 200
+
+        textColor =
+            case notice.noticeType of
+                UN.Error ->
+                    Element.rgb 1 1 1
+
+                _ ->
+                    Element.rgb 0 0 0
 
         closeElement =
             Element.el
@@ -295,7 +317,9 @@ userNotice id notice =
             |> List.indexedMap
                 (\pNum paragraphLines ->
                     Element.paragraph
-                        [ Element.width Element.fill ]
+                        [ Element.width Element.fill
+                        , Element.Font.color textColor
+                        ]
                         (if pNum == 0 then
                             closeElement :: paragraphLines
 
@@ -335,26 +359,48 @@ headerMenuAttributes =
     ]
 
 
-subModelElement : Model -> Element Msg
-subModelElement model =
-    Element.el
+submodelElementAndModal : Int -> Model -> ( Element Msg, List (Element Msg) )
+submodelElementAndModal screenWidth model =
+    let
+        ( submodelEl, modalEls ) =
+            case model.submodel of
+                BetaLandingPage ->
+                    ( Landing.View.root (GotoRoute <| Routing.Marketplace Buyer)
+                    , []
+                    )
+
+                CreateModel createModel ->
+                    ( Element.map CreateMsg (Create.View.root createModel)
+                    , []
+                    )
+
+                QuickCreateModel quickCreateModel ->
+                    QuickCreate.View.root quickCreateModel
+                        |> Tuple.mapBoth
+                            (Element.map QuickCreateMsg)
+                            (List.map (Element.map QuickCreateMsg))
+
+                TradeModel tradeModel ->
+                    Trade.View.root screenWidth model.time model.tradeCache tradeModel
+                        |> Tuple.mapBoth
+                            (Element.map TradeMsg)
+                            (List.map (Element.map TradeMsg))
+
+                MarketplaceModel marketplaceModel ->
+                    ( Element.map MarketplaceMsg (Marketplace.View.root model.time model.tradeCache marketplaceModel)
+                    , []
+                    )
+
+                AgentHistoryModel agentHistoryModel ->
+                    ( Element.map AgentHistoryMsg (AgentHistory.View.root model.time model.tradeCache agentHistoryModel)
+                    , []
+                    )
+    in
+    ( Element.el
         [ Element.width Element.fill
         , Element.height Element.fill
         , Element.Border.rounded 10
         ]
-        (case model.submodel of
-            BetaLandingPage ->
-                Landing.View.root (GotoRoute <| Routing.Marketplace Buyer)
-
-            CreateModel createModel ->
-                Element.map CreateMsg (Create.View.root createModel)
-
-            TradeModel tradeModel ->
-                Element.map TradeMsg (Trade.View.root model.time model.tradeCache tradeModel)
-
-            MarketplaceModel marketplaceModel ->
-                Element.map MarketplaceMsg (Marketplace.View.root model.time model.tradeCache marketplaceModel)
-
-            AgentHistoryModel agentHistoryModel ->
-                Element.map AgentHistoryMsg (AgentHistory.View.root model.time model.tradeCache agentHistoryModel)
-        )
+        submodelEl
+    , modalEls
+    )

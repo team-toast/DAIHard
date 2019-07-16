@@ -18,7 +18,7 @@ import Eth.Types exposing (Address)
 import Eth.Utils
 import Helpers.BigInt as BigIntHelpers
 import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
-import Helpers.Eth as EthHelpers
+import Helpers.Eth as EthHelpers exposing (Web3Context)
 import Http
 import Json.Decode
 import Json.Encode
@@ -108,7 +108,7 @@ update msg prevModel =
                 ( newChatHistoryModel, shouldDecrypt ) =
                     case prevModel.chatHistoryModel of
                         Nothing ->
-                            tryInitChatHistory prevModel.trade prevModel.userInfo prevModel.eventsWaitingForChatHistory
+                            tryInitChatHistory prevModel.web3Context prevModel.trade prevModel.userInfo prevModel.eventsWaitingForChatHistory
 
                         _ ->
                             ( prevModel.chatHistoryModel, False )
@@ -284,17 +284,25 @@ update msg prevModel =
         ParametersFetched fetchResult ->
             case fetchResult of
                 Ok (Ok parameters) ->
-                    let
-                        newModel =
-                            { prevModel
-                                | trade = prevModel.trade |> CTypes.updateParameters parameters
-                            }
-                    in
-                    UpdateResult
-                        newModel
-                        (tryBuildDecryptCmd newModel)
-                        ChainCmd.none
-                        []
+                    if CTypes.tradeHasDefaultParameters parameters then
+                        let
+                            newModel =
+                                { prevModel
+                                    | trade = prevModel.trade |> CTypes.updateParameters parameters
+                                }
+                        in
+                        UpdateResult
+                            newModel
+                            (tryBuildDecryptCmd newModel)
+                            ChainCmd.none
+                            []
+
+                    else
+                        UpdateResult
+                            prevModel
+                            Cmd.none
+                            ChainCmd.none
+                            [ AppCmd.UserNotice UN.tradeParametersNotDefault ]
 
                 Ok (Err s) ->
                     UpdateResult
@@ -399,7 +407,7 @@ update msg prevModel =
 
                                 Nothing ->
                                     -- chat is uninitialized; initialize if we can
-                                    tryInitChatHistory newTrade prevModel.userInfo prevModel.eventsWaitingForChatHistory
+                                    tryInitChatHistory prevModel.web3Context newTrade prevModel.userInfo prevModel.eventsWaitingForChatHistory
 
                         eventsToSave =
                             case newChatHistoryModel of
@@ -460,14 +468,14 @@ update msg prevModel =
             in
             justModelUpdate { prevModel | showStatsModal = showStatsModal }
 
-        ViewSellerHistory ->
+        ViewUserHistory asRole ->
             case prevModel.trade of
                 CTypes.LoadedTrade trade ->
                     UpdateResult
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.GotoRoute (Routing.AgentHistory trade.parameters.initiatorAddress Seller) ]
+                        [ AppCmd.GotoRoute (Routing.AgentHistory trade.parameters.initiatorAddress asRole) ]
 
                 _ ->
                     UpdateResult
@@ -475,7 +483,7 @@ update msg prevModel =
                         Cmd.none
                         ChainCmd.none
                         [ AppCmd.UserNotice <|
-                            UN.unexpectedError "Trying to view a seller's history for a not-yet-loaded Trade" prevModel.trade
+                            UN.unexpectedError "Trying to view a user's history for a not-yet-loaded Trade" prevModel.trade
                         ]
 
         CommitClicked trade userInfo depositAmount ->
@@ -813,6 +821,13 @@ update msg prevModel =
                     UN.web3MiningError "message" s
                 ]
 
+        Web3Connect ->
+            UpdateResult
+                prevModel
+                Cmd.none
+                ChainCmd.none
+                [ AppCmd.Web3Connect ]
+
 
 initiateCommitCall : EthHelpers.Web3Context -> CTypes.FullTradeInfo -> Address -> String -> ( Maybe TxChainStatus, ChainCmd Msg )
 initiateCommitCall web3Context trade userAddress commPubkey =
@@ -847,8 +862,8 @@ initiateCommitCall web3Context trade userAddress commPubkey =
     )
 
 
-tryInitChatHistory : CTypes.Trade -> Maybe UserInfo -> List ( Int, CTypes.DAIHardEvent ) -> ( Maybe ChatHistory.Model, Bool )
-tryInitChatHistory maybeTrade maybeUserInfo pendingEvents =
+tryInitChatHistory : Web3Context -> CTypes.Trade -> Maybe UserInfo -> List ( Int, CTypes.DAIHardEvent ) -> ( Maybe ChatHistory.Model, Bool )
+tryInitChatHistory web3Context maybeTrade maybeUserInfo pendingEvents =
     case ( maybeTrade, maybeUserInfo ) of
         ( CTypes.LoadedTrade tradeInfo, Just userInfo ) ->
             let
@@ -858,9 +873,10 @@ tryInitChatHistory maybeTrade maybeUserInfo pendingEvents =
             case maybeBuyerOrSeller of
                 Just buyerOrSeller ->
                     ChatHistory.init
+                        web3Context
                         userInfo
                         buyerOrSeller
-                        tradeInfo.parameters.initiatingParty
+                        tradeInfo.parameters.initiatorRole
                         pendingEvents
                         |> Tuple.mapFirst Just
 

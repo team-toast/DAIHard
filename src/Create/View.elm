@@ -16,6 +16,7 @@ import FiatValue
 import Helpers.Element as EH
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
+import Html.Attributes
 import Images exposing (Image)
 import List.Extra
 import Maybe.Extra
@@ -27,46 +28,44 @@ import TokenValue exposing (TokenValue)
 root : Model -> Element Msg
 root model =
     Element.column
-        [ Element.width Element.fill
-        , Element.spacing 40
+        [ Element.width (Element.fill |> Element.maximum 1000)
+        , Element.centerX
+        , Element.spacing 20
+        , Element.paddingEach
+            { top = 0
+            , right = 40
+            , left = 40
+            , bottom = 30
+            }
         , Element.Events.onClick <| ShowCurrencyDropdown False
         , Element.inFront <|
             getModalOrNone model
         ]
         [ mainInputElement model
-        , devFeeNotifyElement model
         , phasesElement model
-        , Element.el
-            [ Element.width Element.fill
-            , Element.above <|
-                EH.maybeErrorElement
-                    [ Element.moveDown 5
-                    , Element.padding 10
-                    , Element.Font.size 20
-                    , Element.width <| Element.px 400
-                    ]
-                    model.errors.paymentMethods
-            ]
-            (PaymentMethods.viewList
-                model.inputs.paymentMethods
-                (if List.length model.inputs.paymentMethods == 0 then
-                    Just OpenPMWizard
-
-                 else
-                    Nothing
-                )
-            )
+        , openButtonElement model.userInfo
         ]
 
 
 mainInputElement : Model -> Element Msg
 mainInputElement model =
-    EH.niceFloatingRow
-        [ tradeTypeElement model
-        , daiElement model
-        , fiatElement model
-        , marginElement model
-        , buttonsElement model
+    Element.column
+        [ Element.width Element.fill
+        , Element.spacing 20
+        , Element.Background.color EH.white
+        , Element.Border.rounded 5
+        , Element.padding 20
+        , EH.subtleShadow
+        ]
+        [ Element.row
+            [ Element.width Element.fill
+            , Element.spaceEvenly
+            ]
+            [ tradeTypeElement model
+            , daiElement model
+            , fiatElement model
+            ]
+        , feeNotifyElement model
         ]
 
 
@@ -74,11 +73,11 @@ tradeTypeElement : Model -> Element Msg
 tradeTypeElement model =
     EH.withHeader
         "Trade Type"
-        (roleToggleElement model.inputs.userRole)
+        (roleToggleElement model.web3Context.factoryType model.inputs.userRole)
 
 
-roleToggleElement : BuyerOrSeller -> Element Msg
-roleToggleElement userRole =
+roleToggleElement : FactoryType -> BuyerOrSeller -> Element Msg
+roleToggleElement factoryType userRole =
     let
         baseStyles =
             [ Element.Font.size 24
@@ -101,10 +100,10 @@ roleToggleElement userRole =
     Element.row [ Element.spacing 20 ]
         [ Element.el
             ([ Element.Events.onClick <| ChangeRole Seller ] ++ sellDaiStyles)
-            (Element.text "Sell DAI")
+            (Element.text <| "Sell " ++ Config.tokenUnitName factoryType)
         , Element.el
             ([ Element.Events.onClick <| ChangeRole Buyer ] ++ buyDaiStyles)
-            (Element.text "Buy DAI")
+            (Element.text <| "Buy " ++ Config.tokenUnitName factoryType)
         ]
 
 
@@ -119,21 +118,23 @@ daiElement model =
                 Seller ->
                     "You're selling"
             )
-            (daiInputElement model.inputs.daiAmount model.errors.daiAmount)
+            (daiInputElement model.web3Context.factoryType model.inputs.daiAmount model.errors.daiAmount)
 
 
-daiInputElement : String -> Maybe String -> Element Msg
-daiInputElement amountString maybeError =
+daiInputElement : FactoryType -> String -> Maybe String -> Element Msg
+daiInputElement factoryType amountString maybeError =
     EH.fancyInput
-        [ Element.width <| Element.px 250
+        [ Element.width <| Element.px 150
         , Element.Font.medium
         , Element.Font.size 24
         , Element.below <|
             EH.maybeErrorElement
-                [ Element.moveDown 5 ]
+                [ inputErrorTag
+                , Element.moveDown 5
+                ]
                 maybeError
         ]
-        ( Nothing, Just <| EH.daiSymbolAndLabel )
+        ( Nothing, Just <| EH.daiSymbolAndLabel factoryType )
         "dai input"
         Nothing
         amountString
@@ -165,7 +166,9 @@ fiatInputElement typeString amountString showFiatTypeDropdown maybeError =
         , Element.Font.size 24
         , Element.below <|
             EH.maybeErrorElement
-                [ Element.moveDown 5 ]
+                [ inputErrorTag
+                , Element.moveDown 5
+                ]
                 maybeError
         ]
         ( Just fiatCharElement, Just <| EH.currencySelector showFiatTypeDropdown typeString (ShowCurrencyDropdown True) FiatTypeChanged )
@@ -175,175 +178,148 @@ fiatInputElement typeString amountString showFiatTypeDropdown maybeError =
         FiatAmountChanged
 
 
-marginElement : Model -> Element Msg
-marginElement model =
-    case model.inputs.fiatType of
-        "USD" ->
-            EH.niceBottomBorderEl <|
-                EH.withHeader
-                    "At margin"
-                    (marginInputElement
-                        model.inputs.margin
-                        (model.inputs.userRole == Seller)
-                        model.errors.margin
-                    )
-
-        _ ->
-            EH.comingSoonMsg [ Element.width <| Element.px 150 ] "Margin for non-USD currencies coming soon!"
-
-
-marginInputElement : String -> Bool -> Maybe String -> Element Msg
-marginInputElement marginString upIsGreen maybeError =
-    let
-        ( color, arrowImage ) =
-            case interpretMarginString marginString of
-                Just margin ->
-                    if margin == 0 then
-                        ( EH.black, Images.none )
-
-                    else if xor (margin > 0) upIsGreen then
-                        ( EH.red, Images.marginSymbol (margin > 0) (Just False) )
-
-                    else
-                        ( EH.green, Images.marginSymbol (margin > 0) (Just True) )
-
-                Nothing ->
-                    ( EH.black, Images.qmarkCircle )
-
-        percentAndArrowElement =
-            Element.row [ Element.spacing 8 ]
-                [ Element.text "%"
-                , Images.toElement [] arrowImage
-                ]
-    in
-    EH.fancyInput
-        [ Element.width <| Element.px 150
-        , Element.Font.medium
-        , Element.Font.size 24
-        , Element.Font.color color
-        , Element.below <|
-            EH.maybeErrorElement
-                [ Element.moveDown 5 ]
-                maybeError
-        ]
-        ( Nothing, Just percentAndArrowElement )
-        "margin input"
-        Nothing
-        marginString
-        MarginStringChanged
-
-
-buttonsElement : Model -> Element Msg
-buttonsElement model =
-    Element.row
-        [ Element.spacing 10 ]
-        [ EH.blueButton "Clear Draft" ClearDraft
-        , case model.userInfo of
+openButtonElement : Maybe UserInfo -> Element Msg
+openButtonElement maybeUserInfo =
+    Element.el [ Element.centerX ] <|
+        case maybeUserInfo of
             Just userInfo ->
                 EH.redButton "Open Trade" (CreateClicked userInfo)
 
             Nothing ->
-                EH.disabledButton "Open Trade" Nothing
-        ]
+                EH.redButton "Connect to Wallet" Web3Connect
 
 
-devFeeNotifyElement : Model -> Element Msg
-devFeeNotifyElement model =
+feeNotifyElement : Model -> Element Msg
+feeNotifyElement model =
     let
-        topText =
+        blueText =
             case TokenValue.fromString model.inputs.daiAmount of
                 Just daiAmount ->
                     "There is a 1% fee of "
                         ++ TokenValue.toConciseString
                             (TokenValue.div daiAmount 100)
-                        ++ " DAI."
+                        ++ " "
+                        ++ Config.tokenUnitName model.web3Context.factoryType
+                        ++ "."
 
                 Nothing ->
                     "There is a 1% fee."
 
-        bottomText =
-            "This dev fee is only collected when trades resolve successfully. If the trade is burned or aborted, we all lose out."
+        regularText =
+            "We only collect this fee when trades resolve successfully."
     in
-    Element.el
-        [ Element.width Element.fill
-        , Element.paddingXY 40 0
+    Element.row
+        [ Element.centerX
+        , Element.paddingXY 20 10
+        , Element.Background.color <| Element.rgb255 10 33 108
+        , Element.Border.rounded 8
+        , Element.spacing 5
         ]
-    <|
-        Element.column
-            [ Element.width Element.fill
-            , Element.paddingXY 30 20
-            , Element.Background.color <| Element.rgb255 10 33 108
-            , Element.Border.rounded 8
-            , Element.spacing 3
+        [ Element.el
+            [ Element.Font.size 18
+            , Element.Font.color <| Element.rgb255 0 226 255
+            , Element.Font.semiBold
             ]
-            [ Element.el
-                [ Element.Font.size 18
-                , Element.Font.color <| Element.rgb255 0 226 255
-                , Element.Font.semiBold
-                ]
-                (Element.text topText)
-            , Element.el
-                [ Element.Font.size 17
-                , Element.Font.color EH.white
-                , Element.Font.medium
-                ]
-                (Element.text bottomText)
+            (Element.text blueText)
+        , Element.el
+            [ Element.Font.size 17
+            , Element.Font.color EH.white
+            , Element.Font.medium
             ]
+            (Element.text regularText)
+        ]
 
 
 phasesElement : Model -> Element Msg
 phasesElement model =
-    Element.row
+    Element.column
         [ Element.width Element.fill
-        , Element.paddingXY 40 0
+        , Element.paddingXY 10 0
         , Element.spacing 20
         ]
-        [ Element.el [ Element.width <| Element.fillPortion 1 ] <|
-            openPhaseElement
-                model.inputs.autorecallInterval
-                model.inputs.userRole
-        , Element.el [ Element.width <| Element.fillPortion 1 ] <|
-            committedPhaseElement
-                model.inputs.autoabortInterval
-                model.inputs.userRole
-        , Element.el [ Element.width <| Element.fillPortion 1 ] <|
-            judgmentPhaseElement
-                model.inputs.autoreleaseInterval
-                model.inputs.userRole
+        [ openPhaseElement
+            model.inputs.autorecallInterval
+            model.inputs.userRole
+        , committedPhaseElement
+            model.inputs.paymentMethod
+            model.errors.paymentMethod
+            model.inputs.autoabortInterval
+            model.inputs.userRole
+        , judgmentPhaseElement
+            model.inputs.autoreleaseInterval
+            model.inputs.userRole
         ]
 
 
 openPhaseElement : Time.Posix -> BuyerOrSeller -> Element Msg
 openPhaseElement interval userRole =
-    phaseElement
-        Images.openWindowIcon
-        "Open Window"
-        (openWindowSummary userRole)
-        interval
-        Nothing
-        AutorecallIntervalChanged
+    Element.el
+        [ Element.padding 8
+        , Element.Border.rounded 8
+        , Element.Background.color EH.lightBlue
+        , Element.Border.shadow
+            { offset = ( -3, 3 )
+            , size = 0
+            , blur = 5
+            , color = Element.rgba 0 0 0 0.3
+            }
+        ]
+    <|
+        phaseElement
+            Images.openWindowIcon
+            "Open Window"
+            (openWindowSummary userRole)
+            interval
+            Nothing
+            AutorecallIntervalChanged
 
 
-committedPhaseElement : Time.Posix -> BuyerOrSeller -> Element Msg
-committedPhaseElement interval userRole =
-    phaseElement
-        Images.paymentWindowIcon
-        "Payment Window"
-        (paymentWindowSummary userRole)
-        interval
-        (Just EH.red)
-        AutoabortIntervalChanged
+committedPhaseElement : String -> Maybe String -> Time.Posix -> BuyerOrSeller -> Element Msg
+committedPhaseElement paymentMethodText maybeError interval userRole =
+    Element.column
+        [ Element.padding 8
+        , Element.spacing 15
+        , Element.Border.rounded 8
+        , Element.Background.color EH.lightBlue
+        , Element.Border.shadow
+            { offset = ( -3, 3 )
+            , size = 0
+            , blur = 5
+            , color = Element.rgba 0 0 0 0.3
+            }
+        ]
+        [ phaseElement
+            Images.paymentWindowIcon
+            "Payment Window"
+            (paymentWindowSummary userRole)
+            interval
+            (Just EH.red)
+            AutoabortIntervalChanged
+        , paymentMethodsElement maybeError userRole paymentMethodText
+        ]
 
 
 judgmentPhaseElement : Time.Posix -> BuyerOrSeller -> Element Msg
 judgmentPhaseElement interval userRole =
-    phaseElement
-        Images.releaseWindowIcon
-        "Release Window"
-        (releaseWindowSummary userRole)
-        interval
-        (Just EH.red)
-        AutoreleaseIntervalChanged
+    Element.el
+        [ Element.padding 8
+        , Element.Border.rounded 8
+        , Element.Background.color EH.lightBlue
+        , Element.Border.shadow
+            { offset = ( -3, 3 )
+            , size = 0
+            , blur = 5
+            , color = Element.rgba 0 0 0 0.3
+            }
+        ]
+    <|
+        phaseElement
+            Images.releaseWindowIcon
+            "Judgment Window"
+            (releaseWindowSummary userRole)
+            interval
+            (Just EH.red)
+            AutoreleaseIntervalChanged
 
 
 openWindowSummary : BuyerOrSeller -> String
@@ -359,7 +335,7 @@ openWindowSummary userRole =
     in
     "The offer will expire by this time window if a "
         ++ committingParty
-        ++ " does not commit to the trade, returning the balance and the devFee to your wallet. This can also be manually triggered anytime before a "
+        ++ " does not commit to the trade, returning the balance and the 1% fee to your wallet. This can also be manually triggered anytime before a "
         ++ committingParty
         ++ " commits."
 
@@ -368,10 +344,10 @@ paymentWindowSummary : BuyerOrSeller -> String
 paymentWindowSummary userRole =
     case userRole of
         Buyer ->
-            "After committing, you have this time window to send the fiat funds to the Seller using one of your payment methods indicated below. If you fail to confirm payment within this window, 1/4 of your deposit is burned from both parties and the rest is refunded."
+            "After committing, you and the Seller have this long to complete the fiat payment, using one of your payment methods indicated below. If you fail to confirm payment within this window, 1/4 of your deposit is burned from both parties and the rest is refunded."
 
         Seller ->
-            "After committing, the Buyer has this time window to send the fiat funds to you using one of your payment methods indicated below. If the Buyer aborts or fails to confirm within this window, 1/12 of the trade amount is burned from both parties and the rest is refunded."
+            "After committing, you and the Buyer have this long complete the fiat payment, using one of your payment methods indicated below. If the Buyer aborts or fails to confirm within this window, 1/12 of the trade amount is burned from both parties and the rest is refunded."
 
 
 releaseWindowSummary : BuyerOrSeller -> String
@@ -381,71 +357,90 @@ releaseWindowSummary userRole =
             "Once you confirm payment, the Seller has this time window to decide whether to release the funds to you or burn everything. If he doesn't decide before the time is up, funds are released to you by default."
 
         Seller ->
-            "Once the Buyer confirms payment, you have this time window to decide whether to release the funds to the Buyer or burn everything. If you don't decide before the time is up, funds are released to the Buyer by default."
+            "Once the Buyer confirms payment, you have this long to decide whether to release the funds to the Buyer or, in the case of an attempted scam, burn everything. If you don't decide before the time is up, funds are released to the Buyer by default."
+
+
+paymentMethodsElement : Maybe String -> BuyerOrSeller -> String -> Element Msg
+paymentMethodsElement maybeError initiatorRole inputText =
+    let
+        titleElement =
+            Element.el
+                [ Element.Font.size 22
+                , Element.Font.semiBold
+                ]
+                (Element.text "Payment Method")
+
+        inputElement =
+            Element.Input.multiline
+                [ Element.width Element.fill
+                , Element.height <| Element.px 150
+                , Element.Background.color <| Element.rgba 1 1 1 0.5
+                ]
+                { onChange = ChangePaymentMethodText
+                , text = inputText
+                , placeholder =
+                    if inputText == "" then
+                        Just <| inputPlaceholder initiatorRole
+
+                    else
+                        Nothing
+                , label = Element.Input.labelHidden "payment method"
+                , spellcheck = True
+                }
+    in
+    Element.column
+        [ Element.spacing 10
+        , Element.width Element.fill
+        , Element.above <|
+            EH.maybeErrorElement
+                [ inputErrorTag
+                , Element.moveDown 30
+                , Element.padding 10
+                , Element.Font.size 20
+                , Element.width <| Element.px 400
+                ]
+                maybeError
+        ]
+        [ titleElement
+        , inputElement
+        ]
 
 
 phaseElement : Image -> String -> String -> Time.Posix -> Maybe Element.Color -> (Time.Posix -> Msg) -> Element Msg
 phaseElement icon title summary interval lowIntervalColor newIntervalMsg =
     let
-        descriptionElement =
-            Element.column
-                [ Element.spacing 15
-                , Element.width Element.fill
-                , Element.height <| Element.px 220
-                ]
-                [ Images.toElement [] icon
-                , Element.column
-                    [ Element.spacing 6 ]
-                    [ Element.el
-                        [ Element.Font.size 22
-                        , Element.Font.semiBold
-                        ]
-                        (Element.text title)
-                    , Element.paragraph
-                        [ Element.Font.size 17
-                        , Element.Font.medium
-                        , Element.Font.color EH.permanentTextColor
-                        ]
-                        [ Element.text summary ]
-                    ]
-                ]
-
-        intervalElement =
+        iconElement =
             Element.el
-                [ Element.paddingXY 100 0
-                , Element.width Element.fill
+                [ Element.width <| Element.px 80 ]
+                (Images.toElement [ Element.centerX ] icon)
+
+        descriptionElement =
+            Element.paragraph
+                [ Element.Font.size 17
+                , Element.Font.medium
+                , Element.Font.color EH.permanentTextColor
                 ]
-                (EH.intervalInput lowIntervalColor interval newIntervalMsg)
+                [ Element.text summary ]
+
+        intervalAndTitleElement =
+            Element.column
+                [ Element.spacing 6 ]
+                [ Element.el
+                    [ Element.Font.size 22
+                    , Element.Font.semiBold
+                    ]
+                    (Element.text title)
+                , EH.intervalInput lowIntervalColor interval newIntervalMsg
+                ]
     in
-    Element.column
+    Element.row
         [ Element.width Element.fill
+        , Element.spacing 15
+        , Element.Border.rounded 10
         ]
-        [ Element.el
-            [ Element.width Element.fill
-            , Element.Background.color EH.white
-            , EH.roundTopCorners 8
-            , Element.Border.color EH.lightGray
-            , Element.Border.widthEach
-                { bottom = 2
-                , top = 0
-                , right = 0
-                , left = 0
-                }
-            , Element.paddingXY 62 42
-            ]
-            descriptionElement
-        , Element.el
-            [ Element.width Element.fill
-            , Element.Background.color EH.white
-            , EH.roundBottomCorners 8
-            , Element.paddingXY 0 42
-            ]
-            (Element.el
-                [ Element.centerX
-                , Element.width Element.fill
-                ]
-                intervalElement
-            )
+        [ iconElement
+        , intervalAndTitleElement
+        , descriptionElement
         ]
 
 
@@ -453,15 +448,7 @@ getModalOrNone : Model -> Element Msg
 getModalOrNone model =
     case model.txChainStatus of
         Nothing ->
-            case model.addPMModal of
-                Nothing ->
-                    Element.none
-
-                Just pmModal ->
-                    EH.modal (Element.rgba 0 0 0 0.6) <|
-                        Element.map
-                            PMWizardMsg
-                            (PMWizard.root pmModal model.inputs.userRole)
+            Element.none
 
         Just txChainStatus ->
             txChainStatusModal txChainStatus model
@@ -472,6 +459,9 @@ txChainStatusModal txChainStatus model =
     case txChainStatus of
         Confirm createParameters ->
             let
+                tokenUnitName =
+                    Config.tokenUnitName model.web3Context.factoryType
+
                 ( depositAmountEl, confirmButton ) =
                     case model.depositAmount of
                         Just depositAmount ->
@@ -487,6 +477,7 @@ txChainStatusModal txChainStatus model =
                             )
             in
             EH.closeableModal
+                []
                 (Element.column
                     [ Element.spacing 20
                     , Element.centerX
@@ -507,8 +498,7 @@ txChainStatusModal txChainStatus model =
                         ]
                         (List.map
                             (Element.paragraph
-                                [ Element.width <| Element.px 500
-                                , Element.centerX
+                                [ Element.centerX
                                 , Element.Font.size 18
                                 , Element.Font.medium
                                 , Element.Font.color EH.permanentTextColor
@@ -517,12 +507,12 @@ txChainStatusModal txChainStatus model =
                             (getWarningParagraphs createParameters
                                 ++ [ [ Element.text <| "You will deposit "
                                      , depositAmountEl
-                                     , Element.text " DAI (including the 1% dev fee) to open this trade."
+                                     , Element.text <| " " ++ tokenUnitName ++ " (including the 1% dev fee) to open this trade."
                                      ]
                                    ]
                                 ++ (case model.web3Context.factoryType of
                                         Token _ ->
-                                            [ [ Element.text <| "This ususally requires two Metamask signatures. Your DAI will not be deposited until the final transaction has been mined." ] ]
+                                            [ [ Element.text <| "This ususally requires two Metamask signatures. Your " ++ tokenUnitName ++ " will not be deposited until the final transaction has been mined." ] ]
 
                                         Native _ ->
                                             []
@@ -576,7 +566,7 @@ getWarningParagraphs : CTypes.CreateParameters -> List (List (Element Msg))
 getWarningParagraphs createParameters =
     [ if TimeHelpers.compare createParameters.autoreleaseInterval (Time.millisToPosix (1000 * 60 * 20)) == LT then
         Just <|
-            case createParameters.initiatingParty of
+            case createParameters.initiatorRole of
                 Buyer ->
                     "That Release Window time is quite small! It might take a while to find a committed Seller."
 
@@ -587,7 +577,7 @@ getWarningParagraphs createParameters =
         Nothing
     , if TimeHelpers.compare createParameters.autoabortInterval (Time.millisToPosix (1000 * 60 * 60)) == LT then
         Just <|
-            case createParameters.initiatingParty of
+            case createParameters.initiatorRole of
                 Buyer ->
                     "That Payment Window time is quite small! If you fail to to 1. make the payment and 2. click \"confirm\" before this time is up, the trade will automatically abort, incurring the abort punishments on both parties."
 
@@ -604,3 +594,30 @@ getWarningParagraphs createParameters =
                 , Element.text message
                 ]
             )
+
+
+inputPlaceholder : BuyerOrSeller -> Element.Input.Placeholder Msg
+inputPlaceholder initiatorRole =
+    Element.Input.placeholder
+        []
+        (case initiatorRole of
+            Seller ->
+                Element.text """Some examples:
+
+I can accept transfers to a Schwab bank account (routing 121202211)
+I can meet in person to accept cash in London, weekdays after 6, with a day of notice.
+Hide the cash in Hume Park, Bulawayo, and tell me the location over chat."""
+
+            Buyer ->
+                Element.text """Some examples:
+
+I can deliver cash anywhere within an hour drive of Phoneix, AZ, with 2 days of notice.
+TransferWise
+Interac e-Transfer
+"""
+        )
+
+
+inputErrorTag : Attribute Msg
+inputErrorTag =
+    Element.htmlAttribute <| Html.Attributes.id "inputError"

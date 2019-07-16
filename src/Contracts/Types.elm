@@ -1,4 +1,4 @@
-module Contracts.Types exposing (ClosedReason(..), CreateParameters, DAIHardEvent(..), FullTradeInfo, PartialTradeInfo, Phase(..), PhaseStartInfo, State, Terms, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, calculateFullInitialDeposit, decodeParameters, decodePhaseStartInfo, decodeState, decodeTerms, defaultAbortPunishment, defaultBuyerDeposit, encodeTerms, eventDecoder, getBuyerOrSeller, getCurrentPhaseTimeoutInfo, getDevFee, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderRole, initiatorOrResponderToBuyerOrSeller, partialTradeInfo, phaseIcon, phaseToInt, phaseToString, responderDeposit, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePhaseStartInfo, updateState, updateTerms)
+module Contracts.Types exposing (ClosedReason(..), CreateParameters, DAIHardEvent(..), FullTradeInfo, PartialTradeInfo, Phase(..), PhaseStartInfo, State, Terms, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, calculateFullInitialDeposit, decodeParameters, decodePhaseStartInfo, decodeState, decodeTerms, defaultAbortPunishment, defaultBuyerDeposit, encodeTerms, eventDecoder, getBuyerOrSeller, getCurrentPhaseTimeoutInfo, getDevFee, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderRole, initiatorOrResponderToBuyerOrSeller, partialTradeInfo, phaseIcon, phaseToInt, phaseToString, responderDeposit, tradeHasDefaultParameters, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePhaseStartInfo, updateState, updateTerms)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
@@ -66,7 +66,7 @@ type alias Terms =
 
 
 type alias UserParameters =
-    { initiatingParty : BuyerOrSeller
+    { initiatorRole : BuyerOrSeller
     , tradeAmount : TokenValue
     , price : FiatValue
     , paymentMethods : List PaymentMethod
@@ -77,7 +77,7 @@ type alias UserParameters =
 
 
 type alias TradeParameters =
-    { initiatingParty : BuyerOrSeller
+    { initiatorRole : BuyerOrSeller
     , tradeAmount : TokenValue
     , buyerDeposit : TokenValue
     , abortPunishment : TokenValue
@@ -90,7 +90,7 @@ type alias TradeParameters =
 
 
 type alias CreateParameters =
-    { initiatingParty : BuyerOrSeller
+    { initiatorRole : BuyerOrSeller
     , tradeAmount : TokenValue
     , price : FiatValue
     , buyerDeposit : TokenValue
@@ -171,7 +171,7 @@ getDevFee tradeAmount =
 
 getResponderRole : TradeParameters -> BuyerOrSeller
 getResponderRole parameters =
-    case parameters.initiatingParty of
+    case parameters.initiatorRole of
         Buyer ->
             Seller
 
@@ -181,7 +181,7 @@ getResponderRole parameters =
 
 responderDeposit : TradeParameters -> TokenValue
 responderDeposit parameters =
-    case parameters.initiatingParty of
+    case parameters.initiatorRole of
         Buyer ->
             parameters.tradeAmount
 
@@ -332,7 +332,7 @@ getBuyerOrSeller tradeInfo userAddress =
     getInitiatorOrResponder tradeInfo userAddress
         |> Maybe.map
             (\initiatorOrResponder ->
-                case ( initiatorOrResponder, tradeInfo.parameters.initiatingParty ) of
+                case ( initiatorOrResponder, tradeInfo.parameters.initiatorRole ) of
                     ( Initiator, Seller ) ->
                         Seller
 
@@ -353,7 +353,7 @@ calculateFullInitialDeposit createParameters =
         founderFee =
             TokenValue.div createParameters.tradeAmount 200
     in
-    (case createParameters.initiatingParty of
+    (case createParameters.initiatorRole of
         Buyer ->
             defaultBuyerDeposit createParameters.tradeAmount
 
@@ -363,6 +363,12 @@ calculateFullInitialDeposit createParameters =
         |> TokenValue.add founderFee
         |> TokenValue.add (getDevFee createParameters.tradeAmount)
         |> TokenValue.add createParameters.pokeReward
+
+
+tradeHasDefaultParameters : TradeParameters -> Bool
+tradeHasDefaultParameters parameters =
+    (parameters.buyerDeposit == defaultBuyerDeposit parameters.tradeAmount)
+        && (parameters.abortPunishment == defaultAbortPunishment parameters.tradeAmount)
 
 
 type TimeoutInfo
@@ -482,7 +488,7 @@ decodeParameters encodedParameters =
     in
     Result.map3
         (\autorecallInterval depositDeadlineInterval autoreleaseInterval ->
-            { initiatingParty =
+            { initiatorRole =
                 if encodedParameters.initiatorIsCustodian then
                     Seller
 
@@ -613,7 +619,7 @@ buildCreateParameters initiatorInfo userParameters =
         pokeReward =
             TokenValue.zero
     in
-    { initiatingParty = userParameters.initiatingParty
+    { initiatorRole = userParameters.initiatorRole
     , tradeAmount = userParameters.tradeAmount
     , buyerDeposit = defaultBuyerDeposit userParameters.tradeAmount
     , abortPunishment = defaultAbortPunishment userParameters.tradeAmount
@@ -675,8 +681,8 @@ decodePhaseStartInfo encoded =
 
 
 initiatorOrResponderToBuyerOrSeller : BuyerOrSeller -> InitiatorOrResponder -> BuyerOrSeller
-initiatorOrResponderToBuyerOrSeller initiatingParty initiatorOrResponder =
-    case ( initiatorOrResponder, initiatingParty ) of
+initiatorOrResponderToBuyerOrSeller initiatorRole initiatorOrResponder =
+    case ( initiatorOrResponder, initiatorRole ) of
         ( Initiator, Buyer ) ->
             Buyer
 
