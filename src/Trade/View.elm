@@ -29,16 +29,14 @@ import Trade.Types exposing (..)
 import TradeCache.Types exposing (TradeCache)
 
 
-root : Time.Posix -> TradeCache -> Model -> Element.Element Msg
+root : Time.Posix -> TradeCache -> Model -> ( Element Msg, Element Msg )
 root time tradeCache model =
-    case model.trade of
+    ( case model.trade of
         CTypes.LoadedTrade tradeInfo ->
             Element.column
                 [ Element.width Element.fill
                 , Element.height Element.fill
                 , Element.spacing 40
-                , Element.inFront <| chatOverlayElement model
-                , Element.inFront <| getModalOrNone model
                 ]
                 [ header time tradeInfo model.userInfo model.web3Context.factoryType tradeCache model.showStatsModal
                 , Element.column
@@ -58,6 +56,13 @@ root time tradeCache model =
                 , Element.Font.size 30
                 ]
                 (Element.text "Loading contract info...")
+    , Element.el
+        [ Element.inFront <| getModalOrNone model
+        , Element.height Element.fill
+        , Element.alignRight
+        ]
+        (chatOverlayElement model)
+    )
 
 
 header : Time.Posix -> FullTradeInfo -> Maybe UserInfo -> FactoryType -> TradeCache -> Bool -> Element Msg
@@ -67,17 +72,6 @@ header currentTime trade maybeUserInfo factoryType tradeCache showStatsModal =
         , daiAmountElement trade maybeUserInfo
         , fiatElement trade
         , statsElement factoryType trade tradeCache showStatsModal
-        , case maybeUserInfo of
-            Just userInfo ->
-                actionButtonsElement currentTime trade userInfo
-
-            Nothing ->
-                Element.el
-                    [ Element.width <| Element.px 200 ]
-                <|
-                    EH.maybeErrorElement
-                        []
-                        (Just "Can't find user address. Is Metamask unlocked?")
         ]
 
 
@@ -444,75 +438,31 @@ statsModal factoryType address stats =
         ]
 
 
-actionButtonsElement : Time.Posix -> FullTradeInfo -> UserInfo -> Element Msg
-actionButtonsElement currentTime trade userInfo =
-    case CTypes.getCurrentPhaseTimeoutInfo currentTime trade of
-        CTypes.TimeUp _ ->
-            Element.none
-
-        CTypes.TimeLeft _ ->
-            Element.row
-                [ Element.spacing 8 ]
-                (case
-                    ( trade.state.phase
-                    , CTypes.getInitiatorOrResponder trade userInfo.address
-                    , CTypes.getBuyerOrSeller trade userInfo.address
-                    )
-                 of
-                    ( CTypes.Open, Just Initiator, _ ) ->
-                        [ Element.map StartContractAction <| EH.blueButton "Remove and Refund this Trade" Recall ]
-
-                    ( CTypes.Open, Nothing, _ ) ->
-                        let
-                            depositAmount =
-                                CTypes.responderDeposit trade.parameters
-                                    |> TokenValue.getEvmValue
-                        in
-                        [ EH.redButton "Deposit and Commit to Trade" <| CommitClicked trade userInfo depositAmount ]
-
-                    ( CTypes.Committed, _, Just Buyer ) ->
-                        [ Element.map StartContractAction <| EH.orangeButton "Abort Trade" Abort
-                        , Element.map StartContractAction <| EH.redButton "Confirm Payment" Claim
-                        ]
-
-                    ( CTypes.Judgment, _, Just Seller ) ->
-                        [ Element.map StartContractAction <| EH.redButton "Burn it All!" Burn
-                        , Element.map StartContractAction <| EH.blueButton "Release Everything" Release
-                        ]
-
-                    _ ->
-                        []
-                )
-
-
 phasesElement : FactoryType -> FullTradeInfo -> CTypes.Phase -> Maybe UserInfo -> Time.Posix -> Element Msg
 phasesElement factoryType trade expandedPhase maybeUserInfo currentTime =
-    Element.row
-        [ Element.width Element.fill
-        , Element.height Element.shrink
-        , Element.spacing 20
-        ]
-    <|
-        case trade.state.phase of
-            CTypes.Closed ->
-                [ Element.el
-                    (commonPhaseAttributes
-                        ++ [ Element.width Element.fill
-                           , Element.Background.color EH.activePhaseBackgroundColor
-                           ]
-                    )
-                    (Element.el
-                        [ Element.centerX
-                        , Element.centerY
-                        , Element.Font.size 20
-                        , Element.Font.semiBold
-                        , Element.Font.color EH.white
-                        ]
-                        (Element.text <| "Trade " ++ closedReasonToText trade.state.closedReason)
-                    )
+    case trade.state.phase of
+        CTypes.Closed ->
+            Element.row
+                (commonPhaseAttributes
+                    ++ [ Element.centerX
+                       , Element.padding 30
+                       , Element.spacing 10
+                       , Element.Background.color EH.activePhaseBackgroundColor
+                       , Element.Font.size 24
+                       , Element.Font.semiBold
+                       , Element.Font.color EH.white
+                       ]
+                )
+                [ Element.text <| "Trade " ++ closedReasonToText trade.state.closedReason
+                , chatHistoryButton
                 ]
 
-            _ ->
+        _ ->
+            Element.column
+                [ Element.width Element.fill
+                , Element.height Element.shrink
+                , Element.spacing 20
+                ]
                 [ phaseElement factoryType CTypes.Open trade maybeUserInfo (expandedPhase == CTypes.Open) currentTime
                 , phaseElement factoryType CTypes.Committed trade maybeUserInfo (expandedPhase == CTypes.Committed) currentTime
                 , phaseElement factoryType CTypes.Judgment trade maybeUserInfo (expandedPhase == CTypes.Judgment) currentTime
@@ -532,7 +482,7 @@ inactivePhaseAttributes =
 
 commonPhaseAttributes =
     [ Element.Border.rounded 12
-    , Element.height (Element.shrink |> Element.minimum 360)
+    , Element.centerX
     ]
 
 
@@ -595,11 +545,11 @@ phaseElement factoryType viewPhase trade maybeUserInfo expanded currentTime =
 
         secondEl =
             Element.el
-                [ Element.padding 30
+                [ Element.padding 10
                 , Element.width Element.fill
                 , Element.height Element.fill
                 ]
-                (phaseAdviceElement factoryType viewPhase trade maybeUserInfo)
+                (phaseBodyElement factoryType viewPhase currentTime trade maybeUserInfo)
 
         borderEl =
             Element.el
@@ -649,9 +599,6 @@ phaseStatusElement viewPhase trade currentTime =
     let
         viewPhaseState =
             phaseState trade viewPhase
-
-        iconEl =
-            phaseIconElement viewPhase viewPhaseState
 
         titleColor =
             case viewPhaseState of
@@ -717,32 +664,36 @@ phaseStatusElement viewPhase trade currentTime =
 
                         Finished ->
                             Element.el [ Element.height <| Element.px 1 ] Element.none
-
-        phaseStateElement =
-            Element.el
-                [ Element.centerX
-                , Element.Font.italic
-                , Element.Font.semiBold
-                , Element.Font.size 16
-                ]
-                (Element.text <| phaseStateString viewPhaseState)
     in
-    Element.el
-        [ Element.height <| Element.px 360
-        , Element.width <| Element.px 270
-        , Element.padding 30
+    Element.column
+        [ Element.padding 20
+        , Element.spacing 10
+        , Element.height Element.fill
         ]
-    <|
-        Element.column
-            [ Element.centerX
-            , Element.height Element.fill
-            , Element.spaceEvenly
+        [ Element.el
+            [ Element.alignTop
+            , Element.centerX
             ]
-            [ iconEl
-            , titleElement
+            titleElement
+        , Element.el
+            [ Element.height Element.fill
+            , Element.centerX
+            ]
+          <|
+            Element.el
+                [ Element.centerY
+                ]
+            <|
+                phaseIconElement viewPhase viewPhaseState
+        , Element.column
+            [ Element.spacing 10
+            , Element.alignBottom
+            , Element.centerX
+            ]
+            [ Element.el [ Element.centerX ] <| phaseStateElement viewPhaseState
             , intervalElement
-            , phaseStateElement
             ]
+        ]
 
 
 phaseIconElement : CTypes.Phase -> PhaseState -> Element Msg
@@ -760,7 +711,7 @@ phaseIconElement viewPhase viewPhaseState =
                     Element.rgb255 1 129 104
 
         circleElement =
-            Collage.circle 75
+            Collage.circle 50
                 |> Collage.filled (Collage.uniform (EH.elementColorToAvh4Color circleColor))
                 |> Collage.Render.svg
                 |> Element.html
@@ -769,7 +720,8 @@ phaseIconElement viewPhase viewPhaseState =
             CTypes.phaseIcon viewPhase
     in
     Element.el
-        [ Element.inFront
+        [ Element.centerX
+        , Element.inFront
             (Images.toElement
                 [ Element.centerX
                 , Element.centerY
@@ -780,21 +732,38 @@ phaseIconElement viewPhase viewPhaseState =
         circleElement
 
 
-phaseStateString : PhaseState -> String
-phaseStateString status =
-    case status of
-        NotStarted ->
-            "Not Started"
-
+phaseStateElement : PhaseState -> Element Msg
+phaseStateElement pState =
+    let
+        commonAttributes =
+            [ Element.Font.italic
+            , Element.Font.semiBold
+            , Element.Font.size 20
+            ]
+    in
+    case pState of
         Active ->
-            "Active"
+            Element.el
+                (commonAttributes
+                    ++ [ Element.Font.color <| EH.red ]
+                )
+                (Element.text "Active")
+
+        NotStarted ->
+            Element.el
+                (commonAttributes
+                    ++ [ Element.Font.color <| EH.darkGray ]
+                )
+                (Element.text "Not Started")
 
         Finished ->
-            "Finished"
+            Element.el
+                commonAttributes
+                (Element.text "Finished")
 
 
-phaseAdviceElement : FactoryType -> CTypes.Phase -> CTypes.FullTradeInfo -> Maybe UserInfo -> Element Msg
-phaseAdviceElement factoryType viewPhase trade maybeUserInfo =
+phaseBodyElement : FactoryType -> CTypes.Phase -> Time.Posix -> CTypes.FullTradeInfo -> Maybe UserInfo -> Element Msg
+phaseBodyElement factoryType viewPhase currentTime trade maybeUserInfo =
     let
         phaseIsActive =
             viewPhase == trade.state.phase
@@ -902,7 +871,7 @@ phaseAdviceElement factoryType viewPhase trade maybeUserInfo =
                                   , Element.text " will be released to you. If anything goes wrong, there are "
                                   , scaryText "burnable punishments "
                                   , threeFlames
-                                  , Element.text " for both parties."
+                                  , Element.text " for both parties (see Payment Window for more on this)."
                                   ]
                                 , [ Element.text "Don't commit unless you can fulfil one of the seller’s accepted payment methods below for "
                                   , emphasizedText fiatAmountString
@@ -933,7 +902,7 @@ phaseAdviceElement factoryType viewPhase trade maybeUserInfo =
                                   , Element.text " will be released to the Buyer. If anything goes wrong, there are "
                                   , scaryText "burnable punishments "
                                   , threeFlames
-                                  , Element.text " for both parties."
+                                  , Element.text " for both parties (see Payment Window for more on this)."
                                   ]
                                 , [ Element.text "Don't commit unless you can receive "
                                   , emphasizedText fiatAmountString
@@ -1137,85 +1106,148 @@ phaseAdviceElement factoryType viewPhase trade maybeUserInfo =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
-        , Element.paddingXY 90 10
-        , Element.spacing 16
+        , Element.padding 20
+        , Element.spacing 30
         ]
-        [ Element.el
-            [ Element.Font.size 24
-            , Element.Font.semiBold
-            , Element.Font.color emphasizedColor
+        [ Element.row
+            [ Element.width Element.fill ]
+            [ Element.el
+                [ Element.Font.size 24
+                , Element.Font.semiBold
+                , Element.Font.color emphasizedColor
+                , Element.alignLeft
+                ]
+                (Element.text titleString)
             ]
-            (Element.text titleString)
         , Element.column
             [ Element.width Element.fill
             , Element.centerY
             , Element.spacing 13
-            , Element.paddingEach
-                { right = 40
-                , top = 0
-                , bottom = 0
-                , left = 0
-                }
             ]
             paragraphEls
+        , Element.el
+            [ Element.alignRight
+            ]
+            (case phaseState trade viewPhase of
+                Active ->
+                    actionButtonsElement currentTime trade maybeUserInfo
+
+                NotStarted ->
+                    Element.el
+                        [ Element.Font.size 20
+                        , Element.Font.semiBold
+                        , Element.Font.italic
+                        , Element.Font.color EH.darkGray
+                        ]
+                        (Element.text "Phase not yet started.")
+
+                Finished ->
+                    Element.el
+                        [ Element.Font.size 20
+                        , Element.Font.semiBold
+                        , Element.Font.italic
+                        ]
+                        (Element.text "Phase no longer active.")
+            )
         ]
+
+
+actionButtonsElement : Time.Posix -> FullTradeInfo -> Maybe UserInfo -> Element Msg
+actionButtonsElement currentTime trade maybeUserInfo =
+    case maybeUserInfo of
+        Just userInfo ->
+            case CTypes.getCurrentPhaseTimeoutInfo currentTime trade of
+                CTypes.TimeUp _ ->
+                    Element.none
+
+                CTypes.TimeLeft _ ->
+                    Element.row
+                        [ Element.spacing 8 ]
+                        (case
+                            ( trade.state.phase
+                            , CTypes.getInitiatorOrResponder trade userInfo.address
+                            , CTypes.getBuyerOrSeller trade userInfo.address
+                            )
+                         of
+                            ( CTypes.Open, Just Initiator, _ ) ->
+                                [ Element.map StartContractAction <| EH.blueButton "Remove and Refund this Trade" Recall ]
+
+                            ( CTypes.Open, Nothing, _ ) ->
+                                let
+                                    depositAmount =
+                                        CTypes.responderDeposit trade.parameters
+                                            |> TokenValue.getEvmValue
+                                in
+                                [ EH.redButton "Deposit and Commit to Trade" <| CommitClicked trade userInfo depositAmount ]
+
+                            ( CTypes.Committed, _, Just Buyer ) ->
+                                [ Element.map StartContractAction <| EH.orangeButton "Abort Trade" Abort
+                                , Element.map StartContractAction <| EH.redButton "Confirm Payment" Claim
+                                , chatHistoryButton
+                                ]
+
+                            ( CTypes.Committed, _, Just Seller ) ->
+                                [ chatHistoryButton ]
+
+                            ( CTypes.Judgment, _, Just Seller ) ->
+                                [ Element.map StartContractAction <| EH.redButton "Burn it All!" Burn
+                                , Element.map StartContractAction <| EH.blueButton "Release Everything" Release
+                                , chatHistoryButton
+                                ]
+
+                            ( CTypes.Judgment, _, Just Buyer ) ->
+                                [ chatHistoryButton ]
+
+                            _ ->
+                                []
+                        )
+
+        Nothing ->
+            EH.redButton "Connect to Wallet" Web3Connect
+
+
+chatHistoryButton : Element Msg
+chatHistoryButton =
+    EH.elOnCircle
+        [ Element.pointer
+        , Element.Events.onClick ToggleChat
+        ]
+        80
+        (Element.rgb 1 1 1)
+        (Images.toElement
+            [ Element.centerX
+            , Element.centerY
+            , Element.moveRight 5
+            ]
+            Images.chatIcon
+        )
 
 
 chatOverlayElement : Model -> Element Msg
 chatOverlayElement model =
-    case ( model.userInfo, model.trade ) of
-        ( Just userInfo, CTypes.LoadedTrade trade ) ->
-            if trade.state.phase == CTypes.Open then
-                Element.none
+    if model.showChatHistory then
+        let
+            chatWindow =
+                model.chatHistoryModel
+                    |> Maybe.map ChatHistory.window
+                    |> Maybe.withDefault Element.none
+        in
+        Element.el
+            [ Element.height Element.fill
+            , Element.width <| Element.px 500
+            , Element.padding 20
+            , Element.alignRight
+            ]
+        <|
+            EH.closeableModal
+                [ Element.height Element.fill
+                , Element.width Element.fill
+                ]
+                (Element.map ChatHistoryMsg chatWindow)
+                ToggleChat
 
-            else if CTypes.getInitiatorOrResponder trade userInfo.address == Nothing then
-                Element.none
-
-            else
-                let
-                    openChatButton =
-                        EH.elOnCircle
-                            [ Element.pointer
-                            , Element.Events.onClick ToggleChat
-                            ]
-                            80
-                            (Element.rgb 1 1 1)
-                            (Images.toElement
-                                [ Element.centerX
-                                , Element.centerY
-                                , Element.moveRight 5
-                                ]
-                                Images.chatIcon
-                            )
-
-                    chatWindow =
-                        Maybe.map
-                            ChatHistory.window
-                            model.chatHistoryModel
-                            |> Maybe.withDefault Element.none
-                in
-                if model.showChatHistory then
-                    EH.modal
-                        (Element.rgba 0 0 0 0.6)
-                        (Element.row
-                            [ Element.height Element.fill
-                            , Element.spacing 50
-                            , Element.alignRight
-                            ]
-                            [ Element.map ChatHistoryMsg chatWindow
-                            , Element.el [ Element.alignBottom ] openChatButton
-                            ]
-                        )
-
-                else
-                    Element.el
-                        [ Element.alignRight
-                        , Element.alignBottom
-                        ]
-                        openChatButton
-
-        _ ->
-            Element.none
+    else
+        Element.none
 
 
 getModalOrNone : Model -> Element Msg
@@ -1259,6 +1291,7 @@ getModalOrNone model =
                             )
             in
             EH.closeableModal
+                []
                 (Element.column
                     [ Element.spacing 20
                     , Element.centerX

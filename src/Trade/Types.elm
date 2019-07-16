@@ -69,6 +69,7 @@ type Msg
     | ChatHistoryMsg ChatHistory.Msg
     | MessageSubmitMined (Result String TxReceipt)
     | EncryptionFinished Json.Decode.Value
+    | Web3Connect
 
 
 type alias UpdateResult =

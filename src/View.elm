@@ -375,9 +375,8 @@ submodelElementAndModal screenWidth model =
                         |> mapTuple2 (Element.map QuickCreateMsg)
 
                 TradeModel tradeModel ->
-                    ( Element.map TradeMsg (Trade.View.root model.time model.tradeCache tradeModel)
-                    , Element.none
-                    )
+                    Trade.View.root model.time model.tradeCache tradeModel
+                        |> mapTuple2 (Element.map TradeMsg)
 
                 MarketplaceModel marketplaceModel ->
                     ( Element.map MarketplaceMsg (Marketplace.View.root model.time model.tradeCache marketplaceModel)

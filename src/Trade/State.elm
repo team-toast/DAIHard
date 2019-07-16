@@ -821,6 +821,13 @@ update msg prevModel =
                     UN.web3MiningError "message" s
                 ]
 
+        Web3Connect ->
+            UpdateResult
+                prevModel
+                Cmd.none
+                ChainCmd.none
+                [ AppCmd.Web3Connect ]
+
 
 initiateCommitCall : EthHelpers.Web3Context -> CTypes.FullTradeInfo -> Address -> String -> ( Maybe TxChainStatus, ChainCmd Msg )
 initiateCommitCall web3Context trade userAddress commPubkey =

@@ -266,6 +266,7 @@ txModalOrNone factoryType maybeUserInfo state =
         Menu (StartPrompt recipe) ->
             Just <|
                 EH.closeableModal
+                    []
                     (Element.column
                         [ Element.spacing 15
                         , Element.centerX
@@ -290,7 +291,7 @@ txModalOrNone factoryType maybeUserInfo state =
 
         Menu (ApproveNeedsSig recipe) ->
             Just <|
-                EH.closeableModal
+                EH.closeableModal []
                     (Element.column
                         [ Element.spacing 15
                         , Element.centerX
@@ -302,7 +303,7 @@ txModalOrNone factoryType maybeUserInfo state =
 
         Spec recipe OpenNeedsSig ->
             Just <|
-                EH.closeableModal
+                EH.closeableModal []
                     (Element.column
                         [ Element.spacing 15
                         , Element.centerX
@@ -314,7 +315,7 @@ txModalOrNone factoryType maybeUserInfo state =
 
         Spec recipe OpenMining ->
             Just <|
-                EH.closeableModal
+                EH.closeableModal []
                     (Element.column
                         [ Element.spacing 15
                         , Element.centerX

@@ -20,9 +20,8 @@ window model =
         [ Element.Background.color EH.white
         , Element.Border.rounded 8
         , EH.subtleShadow
-        , Element.padding 20
-        , Element.width <| Element.px 600
-        , Element.height <| Element.shrink
+        , Element.width Element.fill
+        , Element.height Element.fill
         ]
         (historyAndCommsElement model)
 
@@ -31,30 +30,17 @@ historyAndCommsElement : Model -> Element.Element Msg
 historyAndCommsElement model =
     Element.column
         [ Element.width Element.fill
-        , Element.height Element.shrink
-        , Element.spacing 20
+        , Element.height Element.fill
+        , Element.spacing 10
+        , Element.Border.width 1
+        , Element.Border.rounded 5
+        , Element.padding 20
         ]
-        [ Element.column
-            [ Element.centerX
-            , Element.height Element.fill
-            ]
-            [ Element.el [ Element.Font.size 36 ] <| Element.text "Chat"
-            , EH.comingSoonMsg [] "Visual overhaul of chat coming soon!"
-            ]
-        , Element.column
-            [ Element.width Element.fill
-            , Element.height Element.shrink
-            , Element.spacing 10
-            , Element.Border.width 1
-            , Element.Border.rounded 5
-            , Element.padding 10
-            ]
-            [ historyElement
-                model.web3Context.factoryType
-                model.userRole
-                (model.history |> Array.toList |> List.sortBy .blocknum)
-            , commInputElement model
-            ]
+        [ historyElement
+            model.web3Context.factoryType
+            model.userRole
+            (model.history |> Array.toList |> List.sortBy .blocknum)
+        , commInputElement model
         ]
 
 
@@ -64,7 +50,10 @@ historyElement factoryType userRole messages =
         [] ->
             Element.el
                 [ Element.width Element.fill
-                , Element.height <| Element.px 600
+                , Element.height Element.fill
+                , Element.Border.rounded 5
+                , Element.Border.width 1
+                , Element.Border.color EH.black
                 , Element.centerX
                 , Element.Font.color (Element.rgb 0.5 0.5 0.5)
                 , Element.Font.italic
@@ -72,15 +61,23 @@ historyElement factoryType userRole messages =
                 (Element.text "no messages found.")
 
         messageList ->
-            Element.column
+            EH.scrollbarYEl
                 [ Element.width Element.fill
-                , Element.height <| Element.px 600
-                , Element.spacing 10
-                , Element.scrollbarY
+                , Element.height Element.fill
+                , Element.Border.rounded 5
+                , Element.Border.width 1
+                , Element.Border.color EH.black
+                , Element.padding 10
                 ]
-                (messageList
-                    |> List.map (renderEvent factoryType userRole)
-                )
+            <|
+                Element.column
+                    [ Element.width Element.fill
+                    , Element.height Element.fill
+                    , Element.spacing 10
+                    ]
+                    (messageList
+                        |> List.map (renderEvent factoryType userRole)
+                    )
 
 
 renderEvent : FactoryType -> BuyerOrSeller -> Event -> Element.Element Msg
@@ -203,7 +200,10 @@ renderEvent factoryType userRole event =
 
 commInputElement : Model -> Element.Element Msg
 commInputElement model =
-    Element.column [ Element.width Element.fill, Element.spacing 10 ]
+    Element.column
+        [ Element.width Element.fill
+        , Element.spacing 10
+        ]
         [ Element.Input.multiline [ Element.width Element.fill, Element.height (Element.px 100) ]
             { onChange = MessageInputChanged
             , text = model.messageInput

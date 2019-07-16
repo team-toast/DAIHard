@@ -1,4 +1,4 @@
-module Helpers.Element exposing (activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, button, closeButton, closeableModal, coloredMargin, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, fiatTypeToSymbolElement, fiatValue, green, headerBackgroundColor, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, marginFloatToConciseUnsignedString, marginSymbol, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, pokeButton, red, redButton, roundBottomCorners, roundTopCorners, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredMargin, white, withHeader, yellow)
+module Helpers.Element exposing (activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, button, closeButton, closeableModal, coloredMargin, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, fiatTypeToSymbolElement, fiatValue, green, headerBackgroundColor, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, marginFloatToConciseUnsignedString, marginSymbol, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, pokeButton, red, redButton, roundBottomCorners, roundTopCorners, scrollbarYEl, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredMargin, white, withHeader, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -909,39 +909,44 @@ marginFloatToConciseUnsignedString f =
 
 
 modal : Element.Color -> Element msg -> Element msg
-modal overlayColor =
+modal overlayColor el =
     Element.el
-        [ Element.Background.color overlayColor
-        , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
-        , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
-        , Element.htmlAttribute <| Html.Attributes.style "top" "0"
-        , Element.htmlAttribute <| Html.Attributes.style "left" "0"
-        , Element.htmlAttribute <| Html.Attributes.style "width" "100%"
-        , Element.htmlAttribute <| Html.Attributes.style "height" "100%"
+        [ Element.behindContent <|
+            Element.el
+                [ Element.Background.color overlayColor
+                , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
+                , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
+                , Element.htmlAttribute <| Html.Attributes.style "top" "0"
+                , Element.htmlAttribute <| Html.Attributes.style "left" "0"
+                , Element.htmlAttribute <| Html.Attributes.style "width" "100%"
+                , Element.htmlAttribute <| Html.Attributes.style "height" "100%"
+                ]
+                Element.none
+        , Element.width Element.fill
+        , Element.height Element.fill
         ]
+        el
 
 
-closeableModal : Element msg -> msg -> Element msg
-closeableModal innerEl closeMsg =
+closeableModal : List (Attribute msg) -> Element msg -> msg -> Element msg
+closeableModal extraAttributes innerEl closeMsg =
     (modal <| Element.rgba 0 0 0.3 0.6) <|
         Element.el
-            [ Element.centerX
-            , Element.centerY
-            , Element.height Element.shrink
-            , Element.width (Element.shrink |> Element.maximum 500)
-            , Element.Background.color white
-            , Element.Border.rounded 8
-            , Element.padding 30
-            , Element.inFront <|
+            ([ Element.centerX
+             , Element.centerY
+             , Element.width (Element.shrink |> Element.maximum 500)
+             , Element.Background.color white
+             , Element.Border.rounded 8
+             , Element.inFront <|
                 Element.el
                     [ Element.alignRight
                     , Element.alignTop
-                    , Element.moveUp 5
-                    , Element.moveRight 5
                     ]
                     (closeButton closeMsg)
-            ]
-            (Element.paragraph [ Element.width Element.fill ] [ innerEl ])
+             ]
+                ++ extraAttributes
+            )
+            innerEl
 
 
 txProcessModal : List (Element msg) -> Element msg
@@ -1102,3 +1107,19 @@ ethAddress fontSize address =
         , Element.paddingXY 15 13
         ]
         (Element.text <| Eth.Utils.addressToString address)
+
+
+scrollbarYEl : List (Attribute msg) -> Element msg -> Element msg
+scrollbarYEl attrs body =
+    Element.el [ Element.height Element.fill, Element.width Element.fill ] <|
+        Element.el
+            ([ Element.htmlAttribute <| Html.Attributes.style "position" "absolute"
+             , Element.htmlAttribute <| Html.Attributes.style "top" "0"
+             , Element.htmlAttribute <| Html.Attributes.style "right" "0"
+             , Element.htmlAttribute <| Html.Attributes.style "bottom" "0"
+             , Element.htmlAttribute <| Html.Attributes.style "left" "0"
+             , Element.scrollbarY
+             ]
+                ++ attrs
+            )
+            body

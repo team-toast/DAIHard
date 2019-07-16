@@ -477,6 +477,7 @@ txChainStatusModal txChainStatus model =
                             )
             in
             EH.closeableModal
+                []
                 (Element.column
                     [ Element.spacing 20
                     , Element.centerX
