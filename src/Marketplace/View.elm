@@ -144,27 +144,30 @@ resultsElement time tradeCache model =
         ]
         [ Element.row
             [ Element.width Element.fill ]
-            [ cellMaker ( 1, sortableColumnHeader "Expires" Expiring Nothing )
-            , cellMaker ( 1, sortableColumnHeader buyingOrSellingString TradeAmount Nothing )
-            , cellMaker ( 2, sortableColumnHeader "For Fiat" Fiat Nothing )
-            , cellMaker ( 1, sortableColumnHeader "Margin" Margin Nothing )
-            , cellMaker ( 6, columnHeader "Accepted Payment Methods" )
-            , cellMaker ( 2, sortableColumnHeader "Payment Window" AutoabortWindow Nothing )
-            , cellMaker ( 2, sortableColumnHeader "Auto-Release" AutoreleaseWindow Nothing )
-            , cellMaker ( 2, Element.none )
+            [ Element.row
+                [ Element.width <| Element.fillPortion 7 ]
+                [ cellMaker ( 2, sortableColumnHeader "Expires" Expiring Nothing )
+                , cellMaker ( 1, sortableColumnHeader buyingOrSellingString TradeAmount Nothing )
+                , cellMaker ( 2, sortableColumnHeader "For Fiat" Fiat Nothing )
+                , cellMaker ( 1, sortableColumnHeader "Margin" Margin Nothing )
+                , cellMaker ( 2, sortableColumnHeader "Payment Window" AutoabortWindow Nothing )
+                , cellMaker ( 2, sortableColumnHeader "Auto-Release" AutoreleaseWindow Nothing )
+                ]
+            , Element.el
+                [ Element.width <| Element.fillPortion 1 ]
+                Element.none
             ]
         , Element.column
             [ Element.width Element.fill
-            , Element.Border.width 1
+            , Element.Border.width 2
             , Element.Border.rounded 8
-            , Element.Border.color EH.lightGray
+            , Element.Border.color EH.darkGray
             , Element.spacing 1
-            , Element.Background.color EH.lightGray
+            , Element.Background.color EH.darkGray
             , Element.clip
             ]
             (visibleTrades
-                |> List.map
-                    (viewTradeRow time model.browsingRole)
+                |> List.map (viewTradeRow time model.browsingRole)
             )
         ]
 
@@ -346,18 +349,41 @@ viewTradeRow time viewAsRole trade =
     Element.row
         [ Element.width Element.fill
         , Element.spacing 1
+        , Element.Background.color EH.lightGray
         ]
-        (List.map cellMaker
-            [ ( 1, viewExpiring time trade )
-            , ( 1, viewTradeAmount trade )
-            , ( 2, viewFiat trade )
-            , ( 1, viewMargin trade (viewAsRole /= Buyer) )
-            , ( 6, viewPaymentMethods trade.terms.paymentMethods )
-            , ( 2, viewAutoabortWindow viewAsRole trade )
-            , ( 2, viewAutoreleaseWindow viewAsRole trade )
-            , ( 2, viewTradeButton trade.id )
+        [ Element.column
+            [ Element.width Element.fill
+            , Element.spacing 1
+            , Element.width <| Element.fillPortion 7
             ]
-        )
+            [ Element.row
+                [ Element.width <| Element.fillPortion 6
+                , Element.spacing 1
+                ]
+                (List.map cellMaker
+                    [ ( 2, viewExpiring time trade )
+                    , ( 1, viewTradeAmount trade )
+                    , ( 2, viewFiat trade )
+                    , ( 1, viewMargin trade (viewAsRole /= Buyer) )
+                    , ( 2, viewAutoabortWindow viewAsRole trade )
+                    , ( 2, viewAutoreleaseWindow viewAsRole trade )
+                    ]
+                )
+            , cellMaker ( 1, viewPaymentMethods trade.terms.paymentMethods )
+            ]
+        , Element.el
+            [ Element.width <| Element.fillPortion 1
+            , Element.height Element.fill
+            , Element.clip
+            , Element.Background.color EH.white
+            ]
+          <|
+            Element.el
+                [ Element.centerX
+                , Element.centerY
+                ]
+                (viewTradeButton trade.id)
+        ]
 
 
 cellMaker : ( Int, Element Msg ) -> Element Msg
