@@ -29,8 +29,8 @@ import Trade.Types exposing (..)
 import TradeCache.Types exposing (TradeCache)
 
 
-root : Time.Posix -> TradeCache -> Model -> ( Element Msg, Element Msg )
-root time tradeCache model =
+root : Int -> Time.Posix -> TradeCache -> Model -> ( Element Msg, Element Msg )
+root screenWidth time tradeCache model =
     ( case model.trade of
         CTypes.LoadedTrade tradeInfo ->
             Element.column
@@ -44,7 +44,7 @@ root time tradeCache model =
                     , Element.paddingXY 40 0
                     , Element.spacing 40
                     ]
-                    [ phasesElement model.web3Context.factoryType tradeInfo model.expandedPhase model.userInfo time
+                    [ phasesElement screenWidth model.web3Context.factoryType tradeInfo model.expandedPhase model.userInfo time
                     , PaymentMethods.viewList tradeInfo.terms.paymentMethods Nothing
                     ]
                 ]
@@ -438,34 +438,46 @@ statsModal factoryType address stats =
         ]
 
 
-phasesElement : FactoryType -> FullTradeInfo -> CTypes.Phase -> Maybe UserInfo -> Time.Posix -> Element Msg
-phasesElement factoryType trade expandedPhase maybeUserInfo currentTime =
+phasesElement : Int -> FactoryType -> FullTradeInfo -> CTypes.Phase -> Maybe UserInfo -> Time.Posix -> Element Msg
+phasesElement screenWidth factoryType trade expandedPhase maybeUserInfo currentTime =
+    let
+        inRow =
+            screenWidth > 1300
+    in
     case trade.state.phase of
         CTypes.Closed ->
             Element.row
-                (commonPhaseAttributes
-                    ++ [ Element.centerX
-                       , Element.padding 30
-                       , Element.spacing 10
-                       , Element.Background.color EH.activePhaseBackgroundColor
-                       , Element.Font.size 24
-                       , Element.Font.semiBold
-                       , Element.Font.color EH.white
-                       ]
-                )
+                [ Element.centerX
+                , Element.Border.rounded 12
+                , Element.padding 30
+                , Element.spacing 10
+                , Element.Background.color EH.activePhaseBackgroundColor
+                , Element.Font.size 24
+                , Element.Font.semiBold
+                , Element.Font.color EH.white
+                ]
                 [ Element.text <| "Trade " ++ closedReasonToText trade.state.closedReason
                 , chatHistoryButton
                 ]
 
         _ ->
-            Element.column
-                [ Element.width Element.fill
-                , Element.height Element.shrink
-                , Element.spacing 20
-                ]
-                [ phaseElement factoryType CTypes.Open trade maybeUserInfo (expandedPhase == CTypes.Open) currentTime
-                , phaseElement factoryType CTypes.Committed trade maybeUserInfo (expandedPhase == CTypes.Committed) currentTime
-                , phaseElement factoryType CTypes.Judgment trade maybeUserInfo (expandedPhase == CTypes.Judgment) currentTime
+            (if inRow then
+                Element.row
+                    [ Element.width Element.fill
+                    , Element.height Element.shrink
+                    , Element.spacing 20
+                    ]
+
+             else
+                Element.column
+                    [ Element.width Element.fill
+                    , Element.height Element.shrink
+                    , Element.spacing 20
+                    ]
+            )
+                [ phaseElement inRow factoryType CTypes.Open trade maybeUserInfo (expandedPhase == CTypes.Open) currentTime
+                , phaseElement inRow factoryType CTypes.Committed trade maybeUserInfo (expandedPhase == CTypes.Committed) currentTime
+                , phaseElement inRow factoryType CTypes.Judgment trade maybeUserInfo (expandedPhase == CTypes.Judgment) currentTime
                 ]
 
 
@@ -480,10 +492,18 @@ inactivePhaseAttributes =
     ]
 
 
-commonPhaseAttributes =
-    [ Element.Border.rounded 12
-    , Element.centerX
-    ]
+commonPhaseAttributes : Bool -> List (Attribute Msg)
+commonPhaseAttributes inRow =
+    if inRow then
+        [ Element.Border.rounded 12
+        , Element.alignTop
+        , Element.height (Element.shrink |> Element.minimum 350)
+        ]
+
+    else
+        [ Element.Border.rounded 12
+        , Element.centerX
+        ]
 
 
 phaseState : CTypes.FullTradeInfo -> CTypes.Phase -> PhaseState
@@ -504,8 +524,8 @@ phaseState trade phase =
         Finished
 
 
-phaseElement : FactoryType -> CTypes.Phase -> FullTradeInfo -> Maybe UserInfo -> Bool -> Time.Posix -> Element Msg
-phaseElement factoryType viewPhase trade maybeUserInfo expanded currentTime =
+phaseElement : Bool -> FactoryType -> CTypes.Phase -> FullTradeInfo -> Maybe UserInfo -> Bool -> Time.Posix -> Element Msg
+phaseElement inRow factoryType viewPhase trade maybeUserInfo expanded currentTime =
     let
         viewPhaseState =
             phaseState trade viewPhase
@@ -567,7 +587,7 @@ phaseElement factoryType viewPhase trade maybeUserInfo expanded currentTime =
     in
     if expanded then
         Element.row
-            (commonPhaseAttributes
+            (commonPhaseAttributes inRow
                 ++ (if viewPhaseState == Active then
                         activePhaseAttributes
 
@@ -580,7 +600,7 @@ phaseElement factoryType viewPhase trade maybeUserInfo expanded currentTime =
 
     else
         Element.row
-            (commonPhaseAttributes
+            (commonPhaseAttributes inRow
                 ++ (if viewPhaseState == Active then
                         activePhaseAttributes
 
