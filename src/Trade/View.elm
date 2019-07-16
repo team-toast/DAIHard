@@ -497,7 +497,7 @@ commonPhaseAttributes inRow =
     if inRow then
         [ Element.Border.rounded 12
         , Element.alignTop
-        , Element.height (Element.shrink |> Element.minimum 350)
+        , Element.height (Element.shrink |> Element.minimum 380)
         ]
 
     else
