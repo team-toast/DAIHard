@@ -284,7 +284,9 @@ statsElement factoryType trade tradeCache showModal =
         (if showModal then
             [ Element.below
                 (Element.el
-                    [ Element.moveDown 30 ]
+                    [ Element.moveDown 30
+                    , Element.alignRight
+                    ]
                     (statsModal factoryType trade.parameters.initiatorAddress userStats)
                 )
             ]
@@ -481,13 +483,11 @@ phasesElement screenWidth factoryType trade expandedPhase maybeUserInfo currentT
 activePhaseAttributes =
     [ Element.Background.color EH.activePhaseBackgroundColor
     , Element.Font.color EH.white
-    , Element.pointer
     ]
 
 
 inactivePhaseAttributes =
     [ Element.Background.color EH.white
-    , Element.pointer
     ]
 
 
