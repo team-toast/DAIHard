@@ -29,7 +29,7 @@ import Trade.Types exposing (..)
 import TradeCache.Types exposing (TradeCache)
 
 
-root : Int -> Time.Posix -> TradeCache -> Model -> ( Element Msg, Element Msg )
+root : Int -> Time.Posix -> TradeCache -> Model -> ( Element Msg, List (Element Msg) )
 root screenWidth time tradeCache model =
     ( case model.trade of
         CTypes.LoadedTrade tradeInfo ->
@@ -56,12 +56,9 @@ root screenWidth time tradeCache model =
                 , Element.Font.size 30
                 ]
                 (Element.text "Loading contract info...")
-    , Element.el
-        [ Element.inFront <| getModalOrNone model
-        , Element.height Element.fill
-        , Element.alignRight
-        ]
-        (chatOverlayElement model)
+    , [ chatOverlayElement model
+      , getModalOrNone model
+      ]
     )
 
 
@@ -484,11 +481,13 @@ phasesElement screenWidth factoryType trade expandedPhase maybeUserInfo currentT
 activePhaseAttributes =
     [ Element.Background.color EH.activePhaseBackgroundColor
     , Element.Font.color EH.white
+    , Element.pointer
     ]
 
 
 inactivePhaseAttributes =
     [ Element.Background.color EH.white
+    , Element.pointer
     ]
 
 

@@ -24,7 +24,7 @@ import Time
 import TokenValue exposing (TokenValue)
 
 
-root : Model -> ( Element Msg, Element Msg )
+root : Model -> ( Element Msg, List (Element Msg) )
 root model =
     ( case model.state of
         Menu menuState ->
@@ -51,7 +51,7 @@ root model =
                     , openTradeButton model.userInfo model.state
                     ]
                 ]
-    , txModalOrNone model.web3Context.factoryType model.userInfo model.state
+    , [ txModalOrNone model.web3Context.factoryType model.userInfo model.state ]
     )
 
 

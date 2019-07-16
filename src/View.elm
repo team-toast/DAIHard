@@ -31,7 +31,7 @@ root model =
     { title = "DAIHard"
     , body =
         [ let
-            ( pageEl, modalEl ) =
+            ( pageEl, modalEls ) =
                 pageElementAndModal model.screenWidth model
 
             mainElementAttributes =
@@ -41,8 +41,8 @@ root model =
                     [ Element.Font.typeface "Soleil"
                     , Element.Font.sansSerif
                     ]
-                , Element.inFront modalEl
                 ]
+                    ++ List.map Element.inFront modalEls
           in
           Element.layout
             mainElementAttributes
@@ -51,16 +51,15 @@ root model =
     }
 
 
-pageElementAndModal : Int -> Model -> ( Element Msg, Element Msg )
+pageElementAndModal : Int -> Model -> ( Element Msg, List (Element Msg) )
 pageElementAndModal screenWidth model =
     let
-        ( submodelEl, modalEl ) =
+        ( submodelEl, modalEls ) =
             submodelElementAndModal screenWidth model
     in
     ( Element.column
         [ Element.behindContent <| headerBackground
         , Element.inFront <| headerContent model
-        , Element.inFront <| userNotices model.userNotices
         , Element.width Element.fill
         , Element.height Element.fill
         , Element.padding 30
@@ -70,7 +69,7 @@ pageElementAndModal screenWidth model =
             Element.none
         , submodelEl
         ]
-    , modalEl
+    , modalEls ++ [ userNotices model.userNotices ]
     )
 
 
@@ -255,15 +254,20 @@ logoElement =
 
 userNotices : List (UserNotice Msg) -> Element Msg
 userNotices notices =
-    Element.column
-        [ Element.padding 20
-        , Element.spacing 10
-        , Element.alignRight
-        , Element.alignBottom
-        , Element.width <| Element.px 300
-        , Element.Font.size 15
-        ]
-        (notices |> List.indexedMap userNotice)
+    if notices == [] then
+        Element.none
+
+    else
+        Element.column
+            [ Element.moveLeft 20
+            , Element.moveUp 20
+            , Element.spacing 10
+            , Element.alignRight
+            , Element.alignBottom
+            , Element.width <| Element.px 300
+            , Element.Font.size 15
+            ]
+            (notices |> List.indexedMap userNotice)
 
 
 userNotice : Int -> UserNotice Msg -> Element Msg
@@ -355,37 +359,41 @@ headerMenuAttributes =
     ]
 
 
-submodelElementAndModal : Int -> Model -> ( Element Msg, Element Msg )
+submodelElementAndModal : Int -> Model -> ( Element Msg, List (Element Msg) )
 submodelElementAndModal screenWidth model =
     let
-        ( submodelEl, modalEl ) =
+        ( submodelEl, modalEls ) =
             case model.submodel of
                 BetaLandingPage ->
                     ( Landing.View.root (GotoRoute <| Routing.Marketplace Buyer)
-                    , Element.none
+                    , []
                     )
 
                 CreateModel createModel ->
                     ( Element.map CreateMsg (Create.View.root createModel)
-                    , Element.none
+                    , []
                     )
 
                 QuickCreateModel quickCreateModel ->
                     QuickCreate.View.root quickCreateModel
-                        |> mapTuple2 (Element.map QuickCreateMsg)
+                        |> Tuple.mapBoth
+                            (Element.map QuickCreateMsg)
+                            (List.map (Element.map QuickCreateMsg))
 
                 TradeModel tradeModel ->
                     Trade.View.root screenWidth model.time model.tradeCache tradeModel
-                        |> mapTuple2 (Element.map TradeMsg)
+                        |> Tuple.mapBoth
+                            (Element.map TradeMsg)
+                            (List.map (Element.map TradeMsg))
 
                 MarketplaceModel marketplaceModel ->
                     ( Element.map MarketplaceMsg (Marketplace.View.root model.time model.tradeCache marketplaceModel)
-                    , Element.none
+                    , []
                     )
 
                 AgentHistoryModel agentHistoryModel ->
                     ( Element.map AgentHistoryMsg (AgentHistory.View.root model.time model.tradeCache agentHistoryModel)
-                    , Element.none
+                    , []
                     )
     in
     ( Element.el
@@ -394,5 +402,5 @@ submodelElementAndModal screenWidth model =
         , Element.Border.rounded 10
         ]
         submodelEl
-    , modalEl
+    , modalEls
     )
