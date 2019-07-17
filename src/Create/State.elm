@@ -17,6 +17,7 @@ import Helpers.BigInt as BigIntHelpers
 import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
+import Helpers.Tuple exposing (extractTuple3Result, mapEachTuple3)
 import Maybe.Extra
 import PaymentMethods exposing (PaymentMethod)
 import Routing
@@ -56,9 +57,9 @@ initialInputs =
     , fiatType = "USD"
     , fiatAmount = ""
     , paymentMethod = ""
-    , autorecallInterval = Time.millisToPosix <| 1000 * 60 * 60 * 24
-    , autoabortInterval = Time.millisToPosix <| 1000 * 60 * 60 * 24
-    , autoreleaseInterval = Time.millisToPosix <| 1000 * 60 * 60 * 24
+    , autorecallInterval = Time.millisToPosix 0
+    , autoabortInterval = Time.millisToPosix 0
+    , autoreleaseInterval = Time.millisToPosix 0
     }
 
 
@@ -212,9 +213,6 @@ update msg prevModel =
                             identity
                        )
                 )
-
-        ClearDraft ->
-            justModelUpdate { prevModel | inputs = initialInputs }
 
         CreateClicked userInfo ->
             case validateInputs prevModel.web3Context.factoryType prevModel.inputs of
@@ -456,14 +454,14 @@ updateParameters model =
 
 validateInputs : FactoryType -> Inputs -> Result Errors CTypes.UserParameters
 validateInputs factoryType inputs =
-    Result.map4
-        (\daiAmount fiatAmount fiatType paymentMethod ->
+    Result.map5
+        (\daiAmount fiatAmount fiatType paymentMethod ( autorecallInterval, autoabortInterval, autoreleaseInterval ) ->
             { initiatorRole = inputs.userRole
             , tradeAmount = daiAmount
             , price = { fiatType = fiatType, amount = fiatAmount }
-            , autorecallInterval = inputs.autorecallInterval
-            , autoabortInterval = inputs.autoabortInterval
-            , autoreleaseInterval = inputs.autoreleaseInterval
+            , autorecallInterval = autorecallInterval
+            , autoabortInterval = autoabortInterval
+            , autoreleaseInterval = autoreleaseInterval
             , paymentMethods =
                 [ PaymentMethod
                     PaymentMethods.Custom
@@ -482,6 +480,31 @@ validateInputs factoryType inputs =
         )
         (interpretPaymentMethods inputs.paymentMethod
             |> Result.mapError (\e -> { noErrors | paymentMethod = Just e })
+        )
+        (mapEachTuple3
+            (\time ->
+                if Time.posixToMillis time > 0 then
+                    Ok time
+
+                else
+                    Err { noErrors | autorecallInterval = Just "Must specify a non-zero time for this window" }
+            )
+            (\time ->
+                if Time.posixToMillis time > 0 then
+                    Ok time
+
+                else
+                    Err { noErrors | autoabortInterval = Just "Must specify a non-zero time for this window" }
+            )
+            (\time ->
+                if Time.posixToMillis time > 0 then
+                    Ok time
+
+                else
+                    Err { noErrors | autoreleaseInterval = Just "Must specify a non-zero time for this window" }
+            )
+            ( inputs.autorecallInterval, inputs.autoabortInterval, inputs.autoreleaseInterval )
+            |> extractTuple3Result
         )
 
 

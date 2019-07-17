@@ -251,20 +251,23 @@ phasesElement model =
         ]
         [ openPhaseElement
             model.inputs.autorecallInterval
+            model.errors.autorecallInterval
             model.inputs.userRole
         , committedPhaseElement
             model.inputs.paymentMethod
             model.errors.paymentMethod
             model.inputs.autoabortInterval
+            model.errors.autoabortInterval
             model.inputs.userRole
         , judgmentPhaseElement
             model.inputs.autoreleaseInterval
+            model.errors.autoreleaseInterval
             model.inputs.userRole
         ]
 
 
-openPhaseElement : Time.Posix -> BuyerOrSeller -> Element Msg
-openPhaseElement interval userRole =
+openPhaseElement : Time.Posix -> Maybe String -> BuyerOrSeller -> Element Msg
+openPhaseElement interval maybeError userRole =
     Element.el
         [ Element.padding 8
         , Element.Border.rounded 8
@@ -282,12 +285,12 @@ openPhaseElement interval userRole =
             "Open Window"
             (openWindowSummary userRole)
             interval
-            Nothing
+            maybeError
             AutorecallIntervalChanged
 
 
-committedPhaseElement : String -> Maybe String -> Time.Posix -> BuyerOrSeller -> Element Msg
-committedPhaseElement paymentMethodText maybeError interval userRole =
+committedPhaseElement : String -> Maybe String -> Time.Posix -> Maybe String -> BuyerOrSeller -> Element Msg
+committedPhaseElement paymentMethodText maybeTextError interval maybeIntervalError userRole =
     Element.column
         [ Element.padding 8
         , Element.spacing 15
@@ -305,14 +308,14 @@ committedPhaseElement paymentMethodText maybeError interval userRole =
             "Payment Window"
             (paymentWindowSummary userRole)
             interval
-            (Just EH.red)
+            maybeIntervalError
             AutoabortIntervalChanged
-        , paymentMethodsElement maybeError userRole paymentMethodText
+        , paymentMethodsElement maybeTextError userRole paymentMethodText
         ]
 
 
-judgmentPhaseElement : Time.Posix -> BuyerOrSeller -> Element Msg
-judgmentPhaseElement interval userRole =
+judgmentPhaseElement : Time.Posix -> Maybe String -> BuyerOrSeller -> Element Msg
+judgmentPhaseElement interval maybeError userRole =
     Element.el
         [ Element.padding 8
         , Element.Border.rounded 8
@@ -330,7 +333,7 @@ judgmentPhaseElement interval userRole =
             "Judgment Window"
             (releaseWindowSummary userRole)
             interval
-            (Just EH.red)
+            maybeError
             AutoreleaseIntervalChanged
 
 
@@ -418,8 +421,8 @@ paymentMethodsElement maybeError initiatorRole inputText =
         ]
 
 
-phaseElement : Image -> String -> String -> Time.Posix -> Maybe Element.Color -> (Time.Posix -> Msg) -> Element Msg
-phaseElement icon title summary interval lowIntervalColor newIntervalMsg =
+phaseElement : Image -> String -> String -> Time.Posix -> Maybe String -> (Time.Posix -> Msg) -> Element Msg
+phaseElement icon title summary interval maybeError newIntervalMsg =
     let
         iconElement =
             Element.el
@@ -442,7 +445,22 @@ phaseElement icon title summary interval lowIntervalColor newIntervalMsg =
                     , Element.Font.semiBold
                     ]
                     (Element.text title)
-                , EH.intervalInput lowIntervalColor interval newIntervalMsg
+                , Element.el
+                    [ Element.Background.color <| Element.rgba 1 1 1 0.5
+                    , Element.Border.rounded 5
+                    , Element.padding 5
+                    , Element.Border.shadow
+                        { offset = ( -3, 3 )
+                        , size = 0
+                        , blur = 4
+                        , color = Element.rgba 0 0 0 0.15
+                        }
+                    , Element.above <|
+                        EH.maybeErrorElement
+                            [ inputErrorTag ]
+                            maybeError
+                    ]
+                    (EH.intervalInput EH.black interval newIntervalMsg)
                 ]
     in
     Element.row
