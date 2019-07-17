@@ -39,7 +39,7 @@ root time tradeCache model =
             ]
             [ searchInputElement model.web3Context.factoryType model.inputs model.errors model.showCurrencyDropdown
             ]
-        , resultsElement time tradeCache model
+        , maybeResultsElement time tradeCache model
         ]
 
 
@@ -121,13 +121,44 @@ removeSearchTermButton term =
         (Element.text "x")
 
 
-resultsElement : Time.Posix -> TradeCache -> Model -> Element Msg
-resultsElement time tradeCache model =
+maybeResultsElement : Time.Posix -> TradeCache -> Model -> Element Msg
+maybeResultsElement time tradeCache model =
     let
-        visibleTrades =
-            TradeCache.loadedTrades tradeCache
-                |> filterAndSortTrades time model.filterFunc model.sortFunc
+        statusMsgElement s =
+            Element.el
+                [ Element.Font.size 24
+                , Element.Font.semiBold
+                , Element.Font.color EH.darkGray
+                , Element.centerX
+                , Element.padding 20
+                ]
+                (Element.text s)
 
+        visibleTrades =
+            TradeCache.loadedValidTrades tradeCache
+                |> filterAndSortTrades time model.filterFunc model.sortFunc
+    in
+    case ( tradeCache.dataFetchStatus.total, visibleTrades ) of
+        ( Nothing, _ ) ->
+            statusMsgElement "Querying Factory contract..."
+
+        ( Just 0, _ ) ->
+            statusMsgElement "No trades found."
+
+        ( Just totalTrades, [] ) ->
+            if tradeCache.dataFetchStatus.loaded < (totalTrades - tradeCache.dataFetchStatus.invalid) then
+                statusMsgElement "Searching trades for Open offers..."
+
+            else
+                statusMsgElement "No open offers found."
+
+        ( Just totalTrades, _ ) ->
+            resultsElement time visibleTrades model
+
+
+resultsElement : Time.Posix -> List CTypes.FullTradeInfo -> Model -> Element Msg
+resultsElement time visibleTrades model =
+    let
         buyingOrSellingString =
             case model.browsingRole of
                 Buyer ->

@@ -36,7 +36,7 @@ root time tradeCache model =
         [ pageTitleElement model
         , viewTypeElement model
         , phaseElement model
-        , resultsElement time tradeCache model
+        , maybeResultsElement time tradeCache model
         ]
 
 
@@ -168,11 +168,21 @@ tradeMatchesUserRole trade role userAddress =
     CTypes.getBuyerOrSeller trade userAddress == Just role
 
 
-resultsElement : Time.Posix -> TradeCache -> Model -> Element Msg
-resultsElement time tradeCache model =
+maybeResultsElement : Time.Posix -> TradeCache -> Model -> Element Msg
+maybeResultsElement time tradeCache model =
     let
+        statusMsgElement s =
+            Element.el
+                [ Element.Font.size 24
+                , Element.Font.semiBold
+                , Element.Font.color EH.darkGray
+                , Element.centerX
+                , Element.padding 20
+                ]
+                (Element.text s)
+
         userTrades =
-            TradeCache.loadedTrades tradeCache
+            TradeCache.loadedValidTrades tradeCache
                 |> filterAndSortTrades
                     (basicFilterFunc model)
                     (basicSortFunc model)
@@ -184,7 +194,28 @@ resultsElement time tradeCache model =
                         tradeMatchesUserRole trade model.agentRole model.agentAddress
                             && (trade.state.phase == model.viewPhase)
                     )
+    in
+    case ( tradeCache.dataFetchStatus.total, visibleTrades ) of
+        ( Nothing, _ ) ->
+            statusMsgElement "Querying Factory contract..."
 
+        ( Just 0, _ ) ->
+            statusMsgElement "No trades found."
+
+        ( Just totalTrades, [] ) ->
+            if tradeCache.dataFetchStatus.loaded < (totalTrades - tradeCache.dataFetchStatus.invalid) then
+                statusMsgElement "Searching for user trades..."
+
+            else
+                statusMsgElement "No matching trades found."
+
+        ( Just totalTrades, _ ) ->
+            resultsElement time visibleTrades model
+
+
+resultsElement : Time.Posix -> List CTypes.FullTradeInfo -> Model -> Element Msg
+resultsElement time visibleTrades model =
+    let
         amountTitleString =
             case model.agentRole of
                 Buyer ->
