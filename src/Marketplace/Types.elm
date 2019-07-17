@@ -1,4 +1,4 @@
-module Marketplace.Types exposing (Errors, FiatTypeAndRange, Model, Msg(..), Query, ResultColumnType(..), SearchInputs, TokenRange, UpdateResult, noErrors, noUpdate, updateFiatTypeInput, updateMaxDaiInput, updateMaxFiatInput, updateMinDaiInput, updateMinFiatInput, updatePaymentMethodInput, updatePaymentMethodTerms)
+module Marketplace.Types exposing (Errors, FiatTypeAndRange, Model, Msg(..), Ordering(..), Query, ResultColumnType(..), SearchInputs, TokenRange, UpdateResult, noErrors, noUpdate, updateFiatTypeInput, updateMaxDaiInput, updateMaxFiatInput, updateMinDaiInput, updateMinFiatInput, updatePaymentMethodInput, updatePaymentMethodTerms)
 
 import AppCmd exposing (AppCmd)
 import Array exposing (Array)
@@ -45,8 +45,13 @@ type Msg
     | ApplyInputs
     | ResetSearch
     | TradeClicked Int
-    | SortBy ResultColumnType Bool
+    | SortBy ResultColumnType Ordering
     | NoOp
+
+
+type Ordering
+    = Ascending
+    | Descending
 
 
 
