@@ -255,6 +255,9 @@ update msg prevModel =
                                 CTypes.LoadedTrade oldTradeInfo ->
                                     oldTradeInfo.state.phase /= newState.phase
 
+                                CTypes.Invalid ->
+                                    False
+
                         newModel =
                             { prevModel
                                 | trade = prevModel.trade |> CTypes.updateState newState
@@ -489,7 +492,7 @@ update msg prevModel =
         CommitClicked trade userInfo depositAmount ->
             justModelUpdate { prevModel | txChainStatus = Just <| ConfirmingCommit trade userInfo depositAmount }
 
-        AbortCommit ->
+        AbortAction ->
             justModelUpdate { prevModel | txChainStatus = Nothing }
 
         ConfirmCommit trade userInfo depositAmount ->
@@ -534,6 +537,14 @@ update msg prevModel =
                 Cmd.none
                 chainCmd
                 []
+
+        ContractActionClicked action ->
+            if action == Poke || action == Recall then
+                update (StartContractAction action) prevModel
+
+            else
+                justModelUpdate
+                    { prevModel | txChainStatus = Just <| ConfirmingAction action }
 
         StartContractAction actionMsg ->
             let
