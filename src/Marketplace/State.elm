@@ -170,7 +170,7 @@ update msg model =
                 Cmd.none
                 [ AppCmd.GotoRoute (Routing.Trade id) ]
 
-        SortBy colType ascending ->
+        SortBy colType ordering ->
             let
                 newSortFunc =
                     (\a b ->
@@ -201,7 +201,7 @@ update msg model =
                             AutoreleaseWindow ->
                                 TimeHelpers.compare a.parameters.autoreleaseInterval b.parameters.autoreleaseInterval
                     )
-                        |> (if ascending then
+                        |> (if ordering == Ascending then
                                 flip
 
                             else

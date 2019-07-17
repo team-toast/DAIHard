@@ -91,7 +91,17 @@ headerContent model =
         , Element.paddingXY 30 17
         ]
         [ headerLink
-            ("Buy " ++ Config.tokenUnitName model.web3Context.factoryType)
+            "Create a New Offer"
+            (GotoRoute Routing.Create)
+            (case model.submodel of
+                CreateModel _ ->
+                    Active
+
+                _ ->
+                    Normal
+            )
+        , headerLink
+            "Sell Offers"
             (GotoRoute <| Routing.Marketplace Buyer)
             (case model.submodel of
                 MarketplaceModel marketplaceModel ->
@@ -105,7 +115,7 @@ headerContent model =
                     Normal
             )
         , headerLink
-            ("Sell " ++ Config.tokenUnitName model.web3Context.factoryType)
+            "Buy Offers"
             (GotoRoute <| Routing.Marketplace Seller)
             (case model.submodel of
                 MarketplaceModel marketplaceModel ->
@@ -114,16 +124,6 @@ headerContent model =
 
                     else
                         Normal
-
-                _ ->
-                    Normal
-            )
-        , headerLink
-            "Create a New Offer"
-            (GotoRoute Routing.Create)
-            (case model.submodel of
-                CreateModel _ ->
-                    Active
 
                 _ ->
                     Normal

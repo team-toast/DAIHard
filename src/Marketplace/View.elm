@@ -574,7 +574,7 @@ filterAndSortTrades time filterFunc sortFunc =
         >> List.sortWith sortFunc
 
 
-sortableColumnHeader : String -> ResultColumnType -> Maybe Bool -> Element Msg
+sortableColumnHeader : String -> ResultColumnType -> Maybe Ordering -> Element Msg
 sortableColumnHeader title colType sorting =
     Element.row [ Element.spacing 8 ]
         [ columnHeader title
@@ -584,7 +584,7 @@ sortableColumnHeader title colType sorting =
                 [ Element.padding 4
                 , Element.pointer
                 , Element.Events.onClick <|
-                    SortBy colType True
+                    SortBy colType Ascending
                 ]
                 (Images.toElement
                     [ Element.width <| Element.px 8
@@ -597,7 +597,7 @@ sortableColumnHeader title colType sorting =
                 [ Element.padding 4
                 , Element.pointer
                 , Element.Events.onClick <|
-                    SortBy colType False
+                    SortBy colType Descending
                 ]
                 (Images.toElement
                     [ Element.width <| Element.px 8

@@ -664,8 +664,13 @@ paymentMethodElement paymentMethods =
         , Element.paragraph
             [ Element.Font.size 18
             , Element.height Element.shrink
-            , Element.Border.width 1
-            , Element.Border.color EH.darkGray
+            , Element.Background.color <| EH.white
+            , Element.Border.shadow
+                { offset = ( -3, 3 )
+                , size = 0
+                , blur = 5
+                , color = Element.rgba 0 0 0 0.2
+                }
             , Element.Border.rounded 3
             , Element.padding 5
             ]
