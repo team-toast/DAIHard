@@ -377,29 +377,11 @@ fiatTypeToSymbolElement fiatType =
 -- INPUTS
 
 
-intervalInput : Maybe Element.Color -> Time.Posix -> (Time.Posix -> msg) -> Element msg
-intervalInput maybeLowValColor i newIntervalMsg =
+intervalInput : Element.Color -> Time.Posix -> (Time.Posix -> msg) -> Element msg
+intervalInput numberColor i newIntervalMsg =
     let
         hrInterval =
             TimeHelpers.toHumanReadableInterval i
-
-        lowValColor =
-            maybeLowValColor
-                |> Maybe.withDefault black
-
-        dc =
-            if hrInterval.days == 0 then
-                lightGray
-
-            else
-                black
-
-        ( hc, mc ) =
-            if hrInterval.days == 0 && hrInterval.hours == 0 then
-                ( lightGray, lowValColor )
-
-            else
-                ( black, black )
 
         withModifyArrows : Time.Posix -> Element msg -> Element msg
         withModifyArrows incAmount el =
@@ -444,11 +426,11 @@ intervalInput maybeLowValColor i newIntervalMsg =
         [ Element.spaceEvenly
         , Element.spacing 10
         ]
-        [ bigTimeUnitElement 3 dc " days" hrInterval.days
+        [ bigTimeUnitElement 3 numberColor " days" hrInterval.days
             |> withModifyArrows (Time.millisToPosix <| 1000 * 60 * 60 * 24)
-        , bigTimeUnitElement 2 hc " hours" hrInterval.hours
+        , bigTimeUnitElement 2 numberColor " hours" hrInterval.hours
             |> withModifyArrows (Time.millisToPosix <| 1000 * 60 * 60)
-        , bigTimeUnitElement 2 mc " min" hrInterval.min
+        , bigTimeUnitElement 2 numberColor " min" hrInterval.min
             |> withModifyArrows (Time.millisToPosix <| 1000 * 60 * 5)
         ]
 

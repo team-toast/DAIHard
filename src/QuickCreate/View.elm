@@ -270,6 +270,7 @@ txModalOrNone factoryType maybeUserInfo state =
                     (Element.column
                         [ Element.spacing 15
                         , Element.centerX
+                        , Element.padding 20
                         ]
                         [ Element.text "Text about approving"
                         , case maybeUserInfo of
@@ -294,6 +295,7 @@ txModalOrNone factoryType maybeUserInfo state =
                 EH.closeableModal []
                     (Element.column
                         [ Element.spacing 15
+                        , Element.padding 20
                         , Element.centerX
                         ]
                         [ Element.text "Waiting for sig text"
@@ -306,6 +308,7 @@ txModalOrNone factoryType maybeUserInfo state =
                 EH.closeableModal []
                     (Element.column
                         [ Element.spacing 15
+                        , Element.padding 20
                         , Element.centerX
                         ]
                         [ Element.text "Text about opening"
@@ -318,6 +321,7 @@ txModalOrNone factoryType maybeUserInfo state =
                 EH.closeableModal []
                     (Element.column
                         [ Element.spacing 15
+                        , Element.padding 20
                         , Element.centerX
                         ]
                         [ Element.text "Opening trade. Note that if you close this modal or navigate away, the transaction could still complete."

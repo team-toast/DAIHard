@@ -1,4 +1,4 @@
-module TradeCache.Types exposing (Msg(..), TradeCache, UpdateResult, justModelUpdate)
+module TradeCache.Types exposing (Msg(..), Status, TradeCache, UpdateResult, justModelUpdate)
 
 import AppCmd exposing (AppCmd)
 import Array exposing (Array)
@@ -18,8 +18,15 @@ import TokenValue exposing (TokenValue)
 type alias TradeCache =
     { web3Context : Web3Context
     , eventSentry : EventSentry Msg
-    , numTrades : Maybe Int
     , trades : Array CTypes.Trade
+    , dataFetchStatus : Status
+    }
+
+
+type alias Status =
+    { total : Maybe Int
+    , loaded : Int
+    , invalid : Int
     }
 
 

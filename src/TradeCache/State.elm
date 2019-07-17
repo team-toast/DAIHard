@@ -1,4 +1,4 @@
-module TradeCache.State exposing (init, initAndStartCaching, loadedTrades, startCaching, subscriptions, update)
+module TradeCache.State exposing (init, initAndStartCaching, loadedValidTrades, startCaching, subscriptions, update)
 
 import AppCmd
 import Array exposing (Array)
@@ -9,6 +9,7 @@ import Dict exposing (Dict)
 import Eth.Sentry.Event as EventSentry
 import Helpers.BigInt as BigIntHelpers
 import Helpers.Eth as EthHelpers
+import List.Extra
 import PaymentMethods exposing (PaymentMethod)
 import Time
 import TradeCache.Types exposing (..)
@@ -25,8 +26,9 @@ init web3Context =
     in
     ( { web3Context = web3Context
       , eventSentry = sentry
-      , numTrades = Nothing
       , trades = Array.empty
+      , dataFetchStatus =
+            Status Nothing 0 0
       }
     , sentryCmd
     )
@@ -77,8 +79,8 @@ update msg prevModel =
                     in
                     UpdateResult
                         { prevModel
-                            | numTrades = Just numTrades
-                            , trades = trades
+                            | trades = trades
+                            , dataFetchStatus = Status (Just numTrades) 0 0
                         }
                         fetchCreationInfoCmd
                         []
@@ -98,7 +100,7 @@ update msg prevModel =
                 []
 
         NumTradesFetchedAgain fetchResult ->
-            case ( fetchResult, prevModel.numTrades ) of
+            case ( fetchResult, prevModel.dataFetchStatus.total ) of
                 ( Ok bigInt, Just oldNumTrades ) ->
                     let
                         newNumTrades =
@@ -119,11 +121,14 @@ update msg prevModel =
                                 List.range oldNumTrades (newNumTrades - 1)
                                     |> List.map CTypes.partialTradeInfo
                                     |> Array.fromList
+
+                            oldStatus =
+                                prevModel.dataFetchStatus
                         in
                         UpdateResult
                             { prevModel
-                                | numTrades = Just newNumTrades
-                                , trades = Array.append prevModel.trades additionalTrades
+                                | trades = Array.append prevModel.trades additionalTrades
+                                , dataFetchStatus = { oldStatus | total = Just newNumTrades }
                             }
                             fetchCreationInfoCmd
                             []
@@ -170,7 +175,9 @@ update msg prevModel =
                                 ]
                     in
                     UpdateResult
-                        { newModel | eventSentry = newSentry }
+                        ({ newModel | eventSentry = newSentry }
+                            |> updateStatus
+                        )
                         cmd
                         (notices |> List.map AppCmd.UserNotice)
 
@@ -185,7 +192,8 @@ update msg prevModel =
         ParametersFetched id fetchResult ->
             case fetchResult of
                 Ok (Ok parameters) ->
-                    prevModel |> updateTradeParameters id parameters
+                    prevModel
+                        |> updateTradeParameters id parameters
 
                 Err httpErr ->
                     UpdateResult
@@ -206,7 +214,8 @@ update msg prevModel =
         StateFetched id fetchResult ->
             case fetchResult of
                 Ok (Just state) ->
-                    prevModel |> updateTradeState id state
+                    prevModel
+                        |> updateTradeState id state
 
                 _ ->
                     UpdateResult
@@ -219,7 +228,8 @@ update msg prevModel =
         PhaseStartInfoFetched id fetchResult ->
             case fetchResult of
                 Ok (Just phaseStartInfo) ->
-                    prevModel |> updateTradePhaseStartInfo id phaseStartInfo
+                    prevModel
+                        |> updateTradePhaseStartInfo id phaseStartInfo
 
                 _ ->
                     UpdateResult
@@ -234,15 +244,12 @@ update msg prevModel =
                 Ok initiatedEventData ->
                     case CTypes.decodeTerms initiatedEventData.terms of
                         Ok terms ->
-                            prevModel |> updateTradeTerms id terms
+                            prevModel
+                                |> updateTradeTerms id terms
 
                         Err e ->
-                            UpdateResult
-                                prevModel
-                                Cmd.none
-                                [ AppCmd.UserNotice <|
-                                    UN.unexpectedError "Error decoding payment methods" e
-                                ]
+                            prevModel
+                                |> markTradeInvalid id
 
                 Err e ->
                     UpdateResult
@@ -268,6 +275,31 @@ update msg prevModel =
                 []
 
 
+updateStatus : TradeCache -> TradeCache
+updateStatus tradeCache =
+    let
+        oldStatus =
+            tradeCache.dataFetchStatus
+    in
+    { tradeCache
+        | dataFetchStatus =
+            { oldStatus
+                | loaded =
+                    List.length <|
+                        loadedTrades tradeCache
+                , invalid =
+                    numInvalidTrades tradeCache
+            }
+    }
+
+
+numInvalidTrades : TradeCache -> Int
+numInvalidTrades tradeCache =
+    tradeCache.trades
+        |> Array.toList
+        |> List.Extra.count ((==) CTypes.Invalid)
+
+
 loadedTrades : TradeCache -> List CTypes.FullTradeInfo
 loadedTrades tradeCache =
     tradeCache.trades
@@ -281,6 +313,12 @@ loadedTrades tradeCache =
                     _ ->
                         Nothing
             )
+
+
+loadedValidTrades : TradeCache -> List CTypes.FullTradeInfo
+loadedValidTrades tradeCache =
+    tradeCache
+        |> loadedTrades
         |> List.filter
             (\trade -> CTypes.tradeHasDefaultParameters trade.parameters)
 
@@ -306,6 +344,32 @@ loadedTradesDict tradeCache =
         |> Dict.fromList
 
 
+markTradeInvalid : Int -> TradeCache -> UpdateResult
+markTradeInvalid id tradeCache =
+    case Array.get id tradeCache.trades of
+        Just trade ->
+            let
+                newTradeArray =
+                    Array.set id
+                        CTypes.Invalid
+                        tradeCache.trades
+            in
+            UpdateResult
+                ({ tradeCache | trades = newTradeArray }
+                    |> updateStatus
+                )
+                Cmd.none
+                []
+
+        Nothing ->
+            UpdateResult
+                tradeCache
+                Cmd.none
+                [ AppCmd.UserNotice <|
+                    UN.unexpectedError "markTradeInvalid ran into an out-of-range error" ( id, tradeCache.trades )
+                ]
+
+
 updateTradeCreationInfo : Int -> CTypes.TradeCreationInfo -> TradeCache -> ( TradeCache, List (UserNotice Msg) )
 updateTradeCreationInfo id creationInfo tradeCache =
     case Array.get id tradeCache.trades of
@@ -320,6 +384,7 @@ updateTradeCreationInfo id creationInfo tradeCache =
                         tradeCache.trades
             in
             ( { tradeCache | trades = newTradeArray }
+                |> updateStatus
             , []
             )
 
@@ -343,7 +408,9 @@ updateTradeParameters id parameters tradeCache =
                         tradeCache.trades
             in
             UpdateResult
-                { tradeCache | trades = newTradeArray }
+                ({ tradeCache | trades = newTradeArray }
+                    |> updateStatus
+                )
                 Cmd.none
                 []
 
@@ -370,7 +437,9 @@ updateTradeState id state tradeCache =
                         tradeCache.trades
             in
             UpdateResult
-                { tradeCache | trades = newTradeArray }
+                ({ tradeCache | trades = newTradeArray }
+                    |> updateStatus
+                )
                 Cmd.none
                 []
 
@@ -397,7 +466,9 @@ updateTradePhaseStartInfo id phaseStartInfo tradeCache =
                         tradeCache.trades
             in
             UpdateResult
-                { tradeCache | trades = newTradeArray }
+                ({ tradeCache | trades = newTradeArray }
+                    |> updateStatus
+                )
                 Cmd.none
                 []
 
@@ -424,7 +495,9 @@ updateTradeTerms id terms tradeCache =
                         tradeCache.trades
             in
             UpdateResult
-                { tradeCache | trades = newTradeArray }
+                ({ tradeCache | trades = newTradeArray }
+                    |> updateStatus
+                )
                 Cmd.none
                 []
 

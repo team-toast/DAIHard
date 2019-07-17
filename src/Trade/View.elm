@@ -57,7 +57,15 @@ root screenWidth time tradeCache model =
                 , Element.centerY
                 , Element.Font.size 30
                 ]
-                (Element.text "Loading contract info...")
+                (Element.text "Loading trade info...")
+
+        CTypes.Invalid ->
+            Element.el
+                [ Element.centerX
+                , Element.centerY
+                , Element.Font.size 30
+                ]
+                (Element.text "Invalid trade")
     , [ chatOverlayElement model
       , getModalOrNone model
       ]
@@ -1258,8 +1266,8 @@ actionButtonsElement currentTime trade maybeUserInfo =
                                 [ EH.redButton "Deposit and Commit to Trade" <| CommitClicked trade userInfo depositAmount ]
 
                             ( CTypes.Committed, _, Just Buyer ) ->
-                                [ Element.map StartContractAction <| EH.orangeButton "Abort Trade" Abort
-                                , Element.map StartContractAction <| EH.redButton "Confirm Payment" Claim
+                                [ Element.map ContractActionClicked <| EH.orangeButton "Abort Trade" Abort
+                                , Element.map ContractActionClicked <| EH.redButton "Confirm Payment" Claim
                                 , chatHistoryButton
                                 ]
 
@@ -1267,8 +1275,8 @@ actionButtonsElement currentTime trade maybeUserInfo =
                                 [ chatHistoryButton ]
 
                             ( CTypes.Judgment, _, Just Seller ) ->
-                                [ Element.map StartContractAction <| EH.redButton "Burn it All!" Burn
-                                , Element.map StartContractAction <| EH.blueButton "Release Everything" Release
+                                [ Element.map ContractActionClicked <| EH.redButton "Burn it All!" Burn
+                                , Element.map ContractActionClicked <| EH.blueButton "Release Everything" Release
                                 , chatHistoryButton
                                 ]
 
@@ -1371,6 +1379,7 @@ getModalOrNone model =
                 []
                 (Element.column
                     [ Element.spacing 20
+                    , Element.padding 20
                     , Element.centerX
                     , Element.height Element.fill
                     , Element.Font.center
@@ -1419,7 +1428,7 @@ getModalOrNone model =
                         (EH.redButton "Yes, I definitely want to commit to this trade." (ConfirmCommit trade userInfo deposit))
                     ]
                 )
-                AbortCommit
+                AbortAction
 
         Just ApproveNeedsSig ->
             EH.txProcessModal
@@ -1453,6 +1462,84 @@ getModalOrNone model =
                     , label = Element.text "See the transaction"
                     }
                 ]
+
+        Just (ConfirmingAction action) ->
+            EH.closeableModal []
+                (Element.column
+                    [ Element.spacing 20
+                    , Element.padding 20
+                    , Element.centerX
+                    , Element.height Element.fill
+                    , Element.Font.center
+                    ]
+                    [ Element.el
+                        [ Element.Font.size 26
+                        , Element.Font.semiBold
+                        , Element.centerX
+                        , Element.centerY
+                        ]
+                        (Element.text "Just to Confirm...")
+                    , Element.column
+                        [ Element.spacing 20
+                        , Element.centerX
+                        , Element.centerY
+                        ]
+                        (List.map
+                            (Element.paragraph
+                                [ Element.centerX
+                                , Element.Font.size 18
+                                , Element.Font.medium
+                                , Element.Font.color EH.permanentTextColor
+                                ]
+                            )
+                            (case action of
+                                Poke ->
+                                    []
+
+                                Recall ->
+                                    []
+
+                                Claim ->
+                                    [ [ Element.text <| "By clicking \"Confirm Payment\", you are claiming that you've paid the Seller in a way they can verify. Only do this if you are sure the Seller will agree that they have the money--otherwise they may burn the " ++ Config.tokenUnitName model.web3Context.factoryType ++ " rather than release it to you." ] ]
+
+                                Abort ->
+                                    [ [ Element.text <| "Aborting will incur a small penalty on both parties, and refund the rest of the " ++ Config.tokenUnitName model.web3Context.factoryType ++ "." ] ]
+
+                                Release ->
+                                    [ [ Element.text "Releasing the payment will irreversibly send the trade's balance to the Buyer. Only do this if you are certain you've received the full agreed-upon payment." ] ]
+
+                                Burn ->
+                                    [ [ Element.text <| "This will destroy the " ++ Config.tokenUnitName model.web3Context.factoryType ++ " in the payment. Only do this if the Buyer has attempted to scam you, is nonresponsive, or for some reason has failed the payment." ] ]
+                            )
+                        )
+                    , Element.el
+                        [ Element.alignBottom
+                        , Element.centerX
+                        ]
+                        ((case action of
+                            Poke ->
+                                "Poke"
+
+                            Recall ->
+                                "Recall"
+
+                            Claim ->
+                                "I understand. Confirm Payment"
+
+                            Abort ->
+                                "I understand. Abort the trade."
+
+                            Release ->
+                                "I understand. Release the " ++ Config.tokenUnitName model.web3Context.factoryType ++ "."
+
+                            Burn ->
+                                "I understand. Burn the " ++ Config.tokenUnitName model.web3Context.factoryType ++ "."
+                         )
+                            |> (\s -> EH.redButton s (StartContractAction action))
+                        )
+                    ]
+                )
+                AbortAction
 
         Just (ActionNeedsSig action) ->
             EH.txProcessModal

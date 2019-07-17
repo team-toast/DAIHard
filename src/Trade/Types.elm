@@ -51,10 +51,11 @@ type Msg
     | PhaseInfoFetched (Result Http.Error (Maybe CTypes.PhaseStartInfo))
     | AllowanceFetched (Result Http.Error BigInt)
     | CommitClicked CTypes.FullTradeInfo UserInfo BigInt
-    | AbortCommit
+    | AbortAction
     | ConfirmCommit CTypes.FullTradeInfo UserInfo BigInt
     | CommitSigned (Result String TxHash)
     | CommitMined (Result String TxReceipt)
+    | ContractActionClicked ContractAction
     | StartContractAction ContractAction
     | ActionMined ContractAction (Result String TxReceipt)
     | ActionSigned ContractAction (Result String TxHash)
@@ -95,6 +96,7 @@ type TxChainStatus
     | ApproveMining TxHash
     | CommitNeedsSig
     | CommitMining TxHash
+    | ConfirmingAction ContractAction
     | ActionNeedsSig ContractAction
     | ActionMining ContractAction TxHash
 

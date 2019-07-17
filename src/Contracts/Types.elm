@@ -24,6 +24,7 @@ import TokenValue exposing (TokenValue)
 type Trade
     = PartiallyLoadedTrade PartialTradeInfo
     | LoadedTrade FullTradeInfo
+    | Invalid
 
 
 type alias PartialTradeInfo =
@@ -208,6 +209,9 @@ updateCreationInfo creationInfo trade =
             in
             trade
 
+        Invalid ->
+            Invalid
+
 
 updateParameters : TradeParameters -> Trade -> Trade
 updateParameters parameters trade =
@@ -222,6 +226,9 @@ updateParameters parameters trade =
                     Debug.log "Trying to update parameters on a trade that's already fully loaded!" ""
             in
             trade
+
+        Invalid ->
+            Invalid
 
 
 updatePhaseStartInfo : PhaseStartInfo -> Trade -> Trade
@@ -238,6 +245,9 @@ updatePhaseStartInfo phaseStartInfo trade =
             in
             trade
 
+        Invalid ->
+            Invalid
+
 
 updateState : State -> Trade -> Trade
 updateState state trade =
@@ -248,6 +258,9 @@ updateState state trade =
 
         LoadedTrade info ->
             LoadedTrade { info | state = state }
+
+        Invalid ->
+            Invalid
 
 
 updateTerms : Terms -> Trade -> Trade
@@ -263,6 +276,9 @@ updateTerms terms trade =
                     Debug.log "Trying to update terms on a trade that's already fully loaded!" ""
             in
             trade
+
+        Invalid ->
+            Invalid
 
 
 checkIfTradeLoaded : PartialTradeInfo -> Trade

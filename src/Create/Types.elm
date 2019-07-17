@@ -40,7 +40,6 @@ type Msg
     | AutoabortIntervalChanged Time.Posix
     | AutoreleaseIntervalChanged Time.Posix
     | ChangePaymentMethodText String
-    | ClearDraft
     | CreateClicked UserInfo
     | AbortCreate
     | ConfirmCreate CTypes.CreateParameters BigInt
@@ -74,13 +73,17 @@ type alias Inputs =
 
 type alias Errors =
     { daiAmount : Maybe String
-    , fiat : Maybe String
+    , fiatAmount : Maybe String
+    , fiatType : Maybe String
     , paymentMethod : Maybe String
+    , autorecallInterval : Maybe String
+    , autoabortInterval : Maybe String
+    , autoreleaseInterval : Maybe String
     }
 
 
 noErrors =
-    Errors Nothing Nothing Nothing
+    Errors Nothing Nothing Nothing Nothing Nothing Nothing Nothing
 
 
 type alias UpdateResult =
