@@ -492,6 +492,7 @@ txChainStatusModal txChainStatus model =
                 []
                 (Element.column
                     [ Element.spacing 20
+                    , Element.padding 20
                     , Element.centerX
                     , Element.height Element.fill
                     , Element.Font.center
