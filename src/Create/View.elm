@@ -150,15 +150,27 @@ fiatElement model =
                 model.inputs.fiatType
                 model.inputs.fiatAmount
                 model.showFiatTypeDropdown
-                model.errors.fiat
+                model.errors.fiatAmount
+                model.errors.fiatType
             )
 
 
-fiatInputElement : String -> String -> Bool -> Maybe String -> Element Msg
-fiatInputElement typeString amountString showFiatTypeDropdown maybeError =
+fiatInputElement : String -> String -> Bool -> Maybe String -> Maybe String -> Element Msg
+fiatInputElement typeString amountString showFiatTypeDropdown maybeAmountError maybeTypeError =
     let
         fiatCharElement =
             Element.text <| FiatValue.typeStringToCharStringDefaultEmpty typeString
+
+        currencySelector =
+            Element.el
+                [ Element.below <|
+                    EH.maybeErrorElement
+                        [ inputErrorTag
+                        , Element.moveDown 5
+                        ]
+                        maybeTypeError
+                ]
+                (EH.currencySelector showFiatTypeDropdown typeString (ShowCurrencyDropdown True) FiatTypeChanged)
     in
     EH.fancyInput
         [ Element.width <| Element.px 250
@@ -169,9 +181,9 @@ fiatInputElement typeString amountString showFiatTypeDropdown maybeError =
                 [ inputErrorTag
                 , Element.moveDown 5
                 ]
-                maybeError
+                maybeAmountError
         ]
-        ( Just fiatCharElement, Just <| EH.currencySelector showFiatTypeDropdown typeString (ShowCurrencyDropdown True) FiatTypeChanged )
+        ( Just fiatCharElement, Just currencySelector )
         "fiat input"
         Nothing
         amountString

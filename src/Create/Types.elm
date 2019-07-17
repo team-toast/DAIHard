@@ -74,13 +74,14 @@ type alias Inputs =
 
 type alias Errors =
     { daiAmount : Maybe String
-    , fiat : Maybe String
+    , fiatAmount : Maybe String
+    , fiatType : Maybe String
     , paymentMethod : Maybe String
     }
 
 
 noErrors =
-    Errors Nothing Nothing Nothing
+    Errors Nothing Nothing Nothing Nothing
 
 
 type alias UpdateResult =

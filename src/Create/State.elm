@@ -21,6 +21,7 @@ import Maybe.Extra
 import PaymentMethods exposing (PaymentMethod)
 import Routing
 import SmoothScroll exposing (scrollToWithOptions)
+import String.Extra
 import Task
 import Time
 import TokenValue exposing (TokenValue)
@@ -455,11 +456,11 @@ updateParameters model =
 
 validateInputs : FactoryType -> Inputs -> Result Errors CTypes.UserParameters
 validateInputs factoryType inputs =
-    Result.map3
-        (\daiAmount fiatAmount paymentMethod ->
+    Result.map4
+        (\daiAmount fiatAmount fiatType paymentMethod ->
             { initiatorRole = inputs.userRole
             , tradeAmount = daiAmount
-            , price = { fiatType = inputs.fiatType, amount = fiatAmount }
+            , price = { fiatType = fiatType, amount = fiatAmount }
             , autorecallInterval = inputs.autorecallInterval
             , autoabortInterval = inputs.autoabortInterval
             , autoreleaseInterval = inputs.autoreleaseInterval
@@ -474,7 +475,10 @@ validateInputs factoryType inputs =
             |> Result.mapError (\e -> { noErrors | daiAmount = Just e })
         )
         (interpretFiatAmount inputs.fiatAmount
-            |> Result.mapError (\e -> { noErrors | fiat = Just e })
+            |> Result.mapError (\e -> { noErrors | fiatAmount = Just e })
+        )
+        (interpretFiatType inputs.fiatType
+            |> Result.mapError (\e -> { noErrors | fiatType = Just e })
         )
         (interpretPaymentMethods inputs.paymentMethod
             |> Result.mapError (\e -> { noErrors | paymentMethod = Just e })
@@ -497,6 +501,12 @@ interpretDaiAmount factoryType input =
 
                 else
                     Ok value
+
+
+interpretFiatType : String -> Result String String
+interpretFiatType input =
+    String.Extra.nonEmpty input
+        |> Result.fromMaybe "You must specify a fiat type."
 
 
 interpretFiatAmount : String -> Result String BigInt
