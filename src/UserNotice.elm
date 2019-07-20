@@ -1,6 +1,6 @@
-module UserNotice exposing (NoticeType(..), UserNotice, cantConnectNoWeb3, cantFindTradeWillRetry, fromBadFetchResultMaybe, inputError, invalidUrl, map, noWeb3Provider, placeholderNotice, screenToSmall, tradeParametersNotDefault, unexpectedError, walletError, web3FetchError, web3MiningError, web3SigError, wrongWeb3Network)
+module UserNotice exposing (Alignment(..), NoticeType(..), UserNotice, cantConnectNoWeb3, cantFindTradeWillRetry, fromBadFetchResultMaybe, inputError, invalidUrl, map, noWeb3Provider, placeholderNotice, screenToSmall, tradeParametersNotDefault, unexpectedError, walletError, web3FetchError, web3MiningError, web3SigError, wrongWeb3Network)
 
-import Element exposing (Element)
+import Element exposing (Attribute, Element)
 import Element.Font
 import Http
 
@@ -8,7 +8,13 @@ import Http
 type alias UserNotice msg =
     { noticeType : NoticeType
     , mainParagraphs : List (List (Element msg))
+    , align : Alignment
     }
+
+
+type Alignment
+    = BottomRight
+    | TopLeft
 
 
 map : (msg1 -> msg2) -> UserNotice msg1 -> UserNotice msg2
@@ -18,6 +24,7 @@ map f userNotice =
         (userNotice.mainParagraphs
             |> List.map (List.map (Element.map f))
         )
+        userNotice.align
 
 
 type NoticeType
@@ -38,6 +45,7 @@ screenToSmall =
     { noticeType = Caution
     , mainParagraphs =
         [ [ Element.text "Your screen is quite small--things may be very broken! We will be addressing this soon." ] ]
+    , align = TopLeft
     }
 
 
@@ -48,6 +56,7 @@ invalidUrl =
         [ [ Element.text "I don't understand that URL..." ]
         , [ Element.text "I'll just set you down here. Maybe check the URL and try again?" ]
         ]
+    , align = BottomRight
     }
 
 
@@ -63,6 +72,7 @@ noWeb3Provider =
           , Element.text " or some other web3 provider installed and unlocked?"
           ]
         ]
+    , align = BottomRight
     }
 
 
@@ -79,6 +89,7 @@ cantConnectNoWeb3 =
           ]
         , [ Element.text "Until you connect, DAIHard will operate in read-only mode." ]
         ]
+    , align = BottomRight
     }
 
 
@@ -89,6 +100,7 @@ wrongWeb3Network =
         [ [ Element.text "Your wallet is set to an incorrect network." ]
         , [ Element.text "Switch to Ethereum mainnet, Ethereum test, Rootstock, or xDai." ]
         ]
+    , align = BottomRight
     }
 
 
@@ -100,6 +112,7 @@ unexpectedError text debugObj =
     in
     { noticeType = ShouldBeImpossible
     , mainParagraphs = [ [ Element.text text ] ]
+    , align = BottomRight
     }
 
 
@@ -117,6 +130,7 @@ web3FetchError label httpError =
                     ++ "\". See console output for more info."
           ]
         ]
+    , align = BottomRight
     }
 
 
@@ -125,6 +139,7 @@ web3SigError label errStr =
     { noticeType = Caution
     , mainParagraphs =
         [ [ Element.text <| "Error signing \"" ++ label ++ "\" transaction: " ++ errStr ] ]
+    , align = BottomRight
     }
 
 
@@ -133,6 +148,7 @@ web3MiningError label errStr =
     { noticeType = Error
     , mainParagraphs =
         [ [ Element.text <| "Error mining \"" ++ label ++ "\" transaction: " ++ errStr ] ]
+    , align = BottomRight
     }
 
 
@@ -141,6 +157,7 @@ cantFindTradeWillRetry =
     { noticeType = Error
     , mainParagraphs =
         [ [ Element.text "Can't find a trade by that ID. I'll try again in half a second." ] ]
+    , align = BottomRight
     }
 
 
@@ -173,6 +190,7 @@ inputError errStr =
     { noticeType = Error
     , mainParagraphs =
         [ [ Element.text errStr ] ]
+    , align = BottomRight
     }
 
 
@@ -181,4 +199,5 @@ tradeParametersNotDefault =
     { noticeType = Error
     , mainParagraphs =
         [ [ Element.text "Sorry, I'm not yet able to deal with this kind of trade. This must have been created by some other DAIHard interface." ] ]
+    , align = BottomRight
     }

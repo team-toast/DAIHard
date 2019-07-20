@@ -69,7 +69,7 @@ pageElementAndModal screenWidth model =
             Element.none
         , submodelEl
         ]
-    , modalEls ++ [ userNotices model.userNotices ]
+    , modalEls ++ userNoticeEls model.userNotices
     )
 
 
@@ -252,13 +252,13 @@ logoElement =
         )
 
 
-userNotices : List (UserNotice Msg) -> Element Msg
-userNotices notices =
+userNoticeEls : List (UserNotice Msg) -> List (Element Msg)
+userNoticeEls notices =
     if notices == [] then
-        Element.none
+        []
 
     else
-        Element.column
+        [ Element.column
             [ Element.moveLeft 20
             , Element.moveUp 20
             , Element.spacing 10
@@ -267,11 +267,30 @@ userNotices notices =
             , Element.width <| Element.px 300
             , Element.Font.size 15
             ]
-            (notices |> List.indexedMap userNotice)
+            (notices
+                |> List.indexedMap (\id notice -> ( id, notice ))
+                |> List.filter (\( _, notice ) -> notice.align == UN.BottomRight)
+                |> List.map userNotice
+            )
+        , Element.column
+            [ Element.moveRight 20
+            , Element.moveDown 100
+            , Element.spacing 10
+            , Element.alignLeft
+            , Element.alignTop
+            , Element.width <| Element.px 300
+            , Element.Font.size 15
+            ]
+            (notices
+                |> List.indexedMap (\id notice -> ( id, notice ))
+                |> List.filter (\( _, notice ) -> notice.align == UN.TopLeft)
+                |> List.map userNotice
+            )
+        ]
 
 
-userNotice : Int -> UserNotice Msg -> Element Msg
-userNotice id notice =
+userNotice : ( Int, UserNotice Msg ) -> Element Msg
+userNotice ( id, notice ) =
     let
         color =
             case notice.noticeType of
