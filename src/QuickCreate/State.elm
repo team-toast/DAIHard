@@ -264,7 +264,7 @@ update msg prevModel =
                                 Cmd.none
                                 ChainCmd.none
                                 [ AppCmd.UserNotice <|
-                                    UN.unexpectedError "Error getting the ID of the created contract" txReceipt
+                                    UN.unexpectedError "Error getting the ID of the created offer. Check the \"My Trades\" page for your open offer." txReceipt
                                 ]
 
                 Err e ->
