@@ -153,7 +153,7 @@ fiatValue fv =
         currencyElement =
             case Dict.get fv.fiatType FiatValue.currencyTypes of
                 Nothing ->
-                    Element.el [ Element.Font.color red ] (Element.text "!")
+                    Element.none
 
                 Just ( typeChar, image ) ->
                     Images.toElement
