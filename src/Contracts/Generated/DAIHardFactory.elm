@@ -33,7 +33,7 @@ import Json.Decode.Pipeline exposing (custom)
 {-| "createCommittedTrade(address[3],bool,uint256[7],string,string,string)" function
 -}
 createCommittedTrade : Address -> Address -> Address -> Address -> Bool -> BigInt -> BigInt -> BigInt -> BigInt -> BigInt -> BigInt -> BigInt -> String -> String -> String -> Call Address
-createCommittedTrade contractAddress custodianAddress beneficiaryAddress devFeeAddress initiatorIsCustodian tradeAmount beneficiaryDeposit abortPunishment pokeReward autoabortInterval autoreleaseInterval devFee terms initiatorCommPubkey responderCommPubkey =
+createCommittedTrade contractAddress custodian beneficiary devFeeAddress initiatedByCustodian tradeAmount beneficiaryDeposit abortPunishment pokeReward autoabortInterval autoreleaseInterval devFee terms initiatorCommPubkey responderCommPubkey =
     { to = Just contractAddress
     , from = Nothing
     , gas = Nothing
@@ -41,12 +41,11 @@ createCommittedTrade contractAddress custodianAddress beneficiaryAddress devFeeA
     , value = Nothing
     , data =
         Just <|
-            AbiEncode.functionCall
-                "createCommittedTrade(address[3],bool,uint256[7],string,string,string)"
-                [ AbiEncode.address custodianAddress
-                , AbiEncode.address beneficiaryAddress
+            AbiEncode.functionCall "createCommittedTrade(address[3],bool,uint256[7],string,string,string)"
+                [ AbiEncode.address custodian
+                , AbiEncode.address beneficiary
                 , AbiEncode.address devFeeAddress
-                , AbiEncode.bool initiatorIsCustodian
+                , AbiEncode.bool initiatedByCustodian
                 , AbiEncode.uint tradeAmount
                 , AbiEncode.uint beneficiaryDeposit
                 , AbiEncode.uint abortPunishment
@@ -66,7 +65,7 @@ createCommittedTrade contractAddress custodianAddress beneficiaryAddress devFeeA
 {-| "createOpenTrade(address[2],bool,uint256[8],string,string)" function
 -}
 createOpenTrade : Address -> Address -> Address -> Bool -> BigInt -> BigInt -> BigInt -> BigInt -> BigInt -> BigInt -> BigInt -> BigInt -> String -> String -> Call Address
-createOpenTrade contractAddress initiatorAddress devFeeAddress initiatorIsCustodian tradeAmount beneficiaryDeposit abortPunishment pokeReward autorecallInterval autoabortInterval autoreleaseInterval devFee terms commPubkey =
+createOpenTrade contractAddress initiator devFeeAddress initiatedByCustodian tradeAmount beneficiaryDeposit abortPunishment pokeReward autorecallInterval autoabortInterval autoreleaseInterval devFee terms commPubkey =
     { to = Just contractAddress
     , from = Nothing
     , gas = Nothing
@@ -74,11 +73,10 @@ createOpenTrade contractAddress initiatorAddress devFeeAddress initiatorIsCustod
     , value = Nothing
     , data =
         Just <|
-            AbiEncode.functionCall
-                "createOpenTrade(address[2],bool,uint256[8],string,string)"
-                [ AbiEncode.address initiatorAddress
+            AbiEncode.functionCall "createOpenTrade(address[2],bool,uint256[8],string,string)"
+                [ AbiEncode.address initiator
                 , AbiEncode.address devFeeAddress
-                , AbiEncode.bool initiatorIsCustodian
+                , AbiEncode.bool initiatedByCustodian
                 , AbiEncode.uint tradeAmount
                 , AbiEncode.uint beneficiaryDeposit
                 , AbiEncode.uint abortPunishment
@@ -184,23 +182,23 @@ numTrades contractAddress =
     }
 
 
-{-| "NewTrade(uint256,address,bool)" event
+{-| "NewTrade(uint256,address,address)" event
 -}
 type alias NewTrade =
     { id : BigInt
     , tradeAddress : Address
-    , initiatorIsCustodian : Bool
+    , initiator : Address
     }
 
 
-newTradeEvent : Address -> Maybe Bool -> LogFilter
-newTradeEvent contractAddress initiatorIsCustodian =
+newTradeEvent : Address -> Maybe Address -> LogFilter
+newTradeEvent contractAddress initiator =
     { fromBlock = LatestBlock
     , toBlock = LatestBlock
     , address = contractAddress
     , topics =
-        [ Just <| U.keccak256 "NewTrade(uint256,address,bool)"
-        , Maybe.map (abiEncode << AbiEncode.bool) initiatorIsCustodian
+        [ Just <| U.keccak256 "NewTrade(uint256,address,address)"
+        , Maybe.map (abiEncode << AbiEncode.address) initiator
         ]
     }
 
@@ -210,4 +208,4 @@ newTradeDecoder =
     succeed NewTrade
         |> custom (data 0 AbiDecode.uint)
         |> custom (data 1 AbiDecode.address)
-        |> custom (topic 1 AbiDecode.bool)
+        |> custom (topic 1 AbiDecode.address)

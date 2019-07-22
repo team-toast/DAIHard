@@ -328,20 +328,6 @@
 	{
 		"constant": true,
 		"inputs": [],
-		"name": "initiatorIsCustodian",
-		"outputs": [
-			{
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
 		"name": "autoreleaseInterval",
 		"outputs": [
 			{
@@ -417,6 +403,20 @@
 	{
 		"constant": true,
 		"inputs": [],
+		"name": "initiatedByCustodian",
+		"outputs": [
+			{
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
 		"name": "pokeNeeded",
 		"outputs": [
 			{
@@ -463,7 +463,7 @@
 				"type": "address"
 			},
 			{
-				"name": "_initiatorIsCustodian",
+				"name": "_initiatedByCustodian",
 				"type": "bool"
 			},
 			{
@@ -527,7 +527,7 @@
 				"type": "address"
 			},
 			{
-				"name": "initiatorIsCustodian",
+				"name": "initiatedByCustodian",
 				"type": "bool"
 			},
 			{
@@ -599,7 +599,7 @@
 				"type": "address"
 			},
 			{
-				"name": "_initiatorIsCustodian",
+				"name": "_initiatedByCustodian",
 				"type": "bool"
 			},
 			{

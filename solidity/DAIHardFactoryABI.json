@@ -35,7 +35,7 @@
                 "type": "address[2]"
             },
             {
-                "name": "initiatorIsCustodian",
+                "name": "initiatedByCustodian",
                 "type": "bool"
             },
             {
@@ -70,7 +70,7 @@
                 "type": "address[3]"
             },
             {
-                "name": "initiatorIsCustodian",
+                "name": "initiatedByCustodian",
                 "type": "bool"
             },
             {
@@ -187,8 +187,8 @@
             },
             {
                 "indexed": true,
-                "name": "initiatorIsCustodian",
-                "type": "bool"
+                "name": "initiator",
+                "type": "address"
             }
         ],
         "name": "NewTrade",

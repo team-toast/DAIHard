@@ -15,8 +15,6 @@ module Contracts.Generated.DAIHardNativeTrade exposing
     , autorecallInterval
     , autoreleaseAvailable
     , autoreleaseInterval
-    , beginInCommittedPhase
-    , beginInOpenPhase
     , beneficiary
     , beneficiaryDeposit
     , burn
@@ -40,10 +38,10 @@ module Contracts.Generated.DAIHardNativeTrade exposing
     , getResponderDeposit
     , getState
     , getStateDecoder
+    , initiatedByCustodian
     , initiatedDecoder
     , initiatedEvent
     , initiator
-    , initiatorIsCustodian
     , initiatorStatement
     , initiatorStatementLogDecoder
     , initiatorStatementLogEvent
@@ -200,36 +198,6 @@ autoreleaseInterval contractAddress =
     , data = Just <| AbiEncode.functionCall "autoreleaseInterval()" []
     , nonce = Nothing
     , decoder = toElmDecoder AbiDecode.uint
-    }
-
-
-{-| "beginInCommittedPhase(address,address,bool,uint256[7],string,string,string)" function
--}
-beginInCommittedPhase : Address -> Address -> Address -> Bool -> BigInt -> String -> String -> String -> Call ()
-beginInCommittedPhase contractAddress custodian_ beneficiary_ initiatorIsCustodian_ uintArgs terms initiatorCommPubkey responderCommPubkey =
-    { to = Just contractAddress
-    , from = Nothing
-    , gas = Nothing
-    , gasPrice = Nothing
-    , value = Nothing
-    , data = Just <| AbiEncode.functionCall "beginInCommittedPhase(address,address,bool,uint256[7],string,string,string)" [ AbiEncode.address custodian_, AbiEncode.address beneficiary_, AbiEncode.bool initiatorIsCustodian_, AbiEncode.uint uintArgs, AbiEncode.string terms, AbiEncode.string initiatorCommPubkey, AbiEncode.string responderCommPubkey ]
-    , nonce = Nothing
-    , decoder = Decode.succeed ()
-    }
-
-
-{-| "beginInOpenPhase(address,bool,uint256[8],string,string)" function
--}
-beginInOpenPhase : Address -> Address -> Bool -> BigInt -> String -> String -> Call ()
-beginInOpenPhase contractAddress initiator_ initiatorIsCustodian_ uintArgs terms commPubkey =
-    { to = Just contractAddress
-    , from = Nothing
-    , gas = Nothing
-    , gasPrice = Nothing
-    , value = Nothing
-    , data = Just <| AbiEncode.functionCall "beginInOpenPhase(address,bool,uint256[8],string,string)" [ AbiEncode.address initiator_, AbiEncode.bool initiatorIsCustodian_, AbiEncode.uint uintArgs, AbiEncode.string terms, AbiEncode.string commPubkey ]
-    , nonce = Nothing
-    , decoder = Decode.succeed ()
     }
 
 
@@ -417,7 +385,7 @@ getBalance contractAddress =
 -}
 type alias GetParameters =
     { initiator : Address
-    , initiatorIsCustodian : Bool
+    , initiatedByCustodian : Bool
     , tradeAmount : BigInt
     , beneficiaryDeposit : BigInt
     , abortPunishment : BigInt
@@ -551,6 +519,21 @@ getStateDecoder =
         |> toElmDecoder
 
 
+{-| "initiatedByCustodian()" function
+-}
+initiatedByCustodian : Address -> Call Bool
+initiatedByCustodian contractAddress =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "initiatedByCustodian()" []
+    , nonce = Nothing
+    , decoder = toElmDecoder AbiDecode.bool
+    }
+
+
 {-| "initiator()" function
 -}
 initiator : Address -> Call Address
@@ -563,21 +546,6 @@ initiator contractAddress =
     , data = Just <| AbiEncode.functionCall "initiator()" []
     , nonce = Nothing
     , decoder = toElmDecoder AbiDecode.address
-    }
-
-
-{-| "initiatorIsCustodian()" function
--}
-initiatorIsCustodian : Address -> Call Bool
-initiatorIsCustodian contractAddress =
-    { to = Just contractAddress
-    , from = Nothing
-    , gas = Nothing
-    , gasPrice = Nothing
-    , value = Nothing
-    , data = Just <| AbiEncode.functionCall "initiatorIsCustodian()" []
-    , nonce = Nothing
-    , decoder = toElmDecoder AbiDecode.bool
     }
 
 
