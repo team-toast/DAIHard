@@ -26,12 +26,10 @@ networkIdToFactoryType networkId =
         Net.Kovan ->
             Just <| Token KovanDai
 
-        Net.RskMain ->
-            Just <| Native Rootstock
-
-        Net.RskTest ->
-            Just <| Native RootstockTest
-
+        -- Net.RskMain ->
+        --     Just <| Native Rootstock
+        -- Net.RskTest ->
+        --     Just <| Native RootstockTest
         Net.Private 100 ->
             Just <| Native XDai
 
@@ -54,12 +52,10 @@ factoryTypeToNetworkId factoryType =
         Native Kovan ->
             Net.Kovan
 
-        Native Rootstock ->
-            Net.RskMain
-
-        Native RootstockTest ->
-            Net.RskTest
-
+        -- Native Rootstock ->
+        --     Net.RskMain
+        -- Native RootstockTest ->
+        --     Net.RskTest
         Native XDai ->
             Net.Private 100
 
@@ -102,17 +98,18 @@ web3Context factoryType =
                 "https://dai.poa.network"
                 ""
 
-        Native Rootstock ->
-            Web3Context
-                factoryType
-                "https://public-node.rsk.co"
-                ""
 
-        Native RootstockTest ->
-            Web3Context
-                factoryType
-                "https://public-node.testnet.rsk.co"
-                ""
+
+-- Native Rootstock ->
+--     Web3Context
+--         factoryType
+--         "https://public-node.rsk.co"
+--         ""
+-- Native RootstockTest ->
+--     Web3Context
+--         factoryType
+--         "https://public-node.testnet.rsk.co"
+--         ""
 
 
 addressIfNot0x0 : Address -> Maybe Address
@@ -148,12 +145,6 @@ makeViewTxUrl factoryType txHash =
         Native XDai ->
             "https://blockscout.com/poa/dai/tx/" ++ Eth.Utils.txHashToString txHash
 
-        Native Rootstock ->
-            "https://explorer.rsk.co/tx/" ++ Eth.Utils.txHashToString txHash
-
-        Native RootstockTest ->
-            ""
-
 
 makeViewAddressUrl : FactoryType -> Address -> String
 makeViewAddressUrl factoryType address =
@@ -172,12 +163,6 @@ makeViewAddressUrl factoryType address =
 
         Native XDai ->
             "https://blockscout.com/poa/dai/address/" ++ Eth.Utils.addressToString address
-
-        Native Rootstock ->
-            "https://explorer.rsk.co/address/" ++ Eth.Utils.addressToString address
-
-        Native RootstockTest ->
-            ""
 
 
 updateCallValue : BigInt -> Eth.Types.Call a -> Eth.Types.Call a

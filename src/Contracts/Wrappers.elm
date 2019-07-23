@@ -41,7 +41,7 @@ openTrade factoryType parameters =
     callConstructor
         (Config.factoryAddress factoryType)
         parameters.initiatorAddress
-        Config.devFeeAddress
+        (Config.devFeeAddress factoryType)
         (parameters.initiatorRole == Seller)
         (TokenValue.getEvmValue parameters.tradeAmount)
         (TokenValue.getEvmValue <| defaultBuyerDeposit parameters.tradeAmount)

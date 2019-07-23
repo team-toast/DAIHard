@@ -182,12 +182,6 @@ networkModeText model =
         Native Kovan ->
             "Testnet ETH"
 
-        Native Rootstock ->
-            "Rootstock SBTC"
-
-        Native RootstockTest ->
-            "RskTest SBTC"
-
         Native XDai ->
             "xDai"
 

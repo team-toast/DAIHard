@@ -25,12 +25,6 @@ tokenUnitName factoryType =
         Native Kovan ->
             "ETH"
 
-        Native Rootstock ->
-            "SBTC"
-
-        Native RootstockTest ->
-            "SBTC"
-
         Native XDai ->
             "xDai"
 
@@ -60,16 +54,24 @@ factoryAddress factoryType =
         Native Kovan ->
             Eth.Utils.unsafeToAddress "0xA30773FD520cdf845E1a00441aB09cE39B31F676"
 
-        Native Rootstock ->
-            Eth.Utils.unsafeToAddress ""
-
-        Native RootstockTest ->
-            Eth.Utils.unsafeToAddress ""
-
         Native XDai ->
             Eth.Utils.unsafeToAddress "0x7E370099a7a789dC28810a72381bcd7Be834Ad74"
 
 
-devFeeAddress : Address
-devFeeAddress =
-    Eth.Utils.unsafeToAddress "0x2b518987f8c21937B4d0b700b1224736a28fCA23"
+devFeeAddress : FactoryType -> Address
+devFeeAddress factoryType =
+    case factoryType of
+        Token EthDai ->
+            Eth.Utils.unsafeToAddress "0x61F399ED1D5AEC3Bc9d4B026352d5764181d6b35"
+
+        Token KovanDai ->
+            Eth.Utils.unsafeToAddress "0xF59ed429f9753B0498436DE1a3559AEC7a0c2a21"
+
+        Native Eth ->
+            Eth.Utils.unsafeToAddress "0x61F399ED1D5AEC3Bc9d4B026352d5764181d6b35"
+
+        Native Kovan ->
+            Eth.Utils.unsafeToAddress "0xF59ed429f9753B0498436DE1a3559AEC7a0c2a21"
+
+        Native XDai ->
+            Eth.Utils.unsafeToAddress "0x092110996699c3E06e998d89F0f4586026e44F0F"

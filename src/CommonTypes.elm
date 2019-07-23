@@ -13,8 +13,6 @@ type FactoryType
 type NativeFactoryType
     = Eth
     | Kovan
-    | Rootstock
-    | RootstockTest
     | XDai
 
 
