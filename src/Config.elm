@@ -49,16 +49,16 @@ factoryAddress : FactoryType -> Address
 factoryAddress factoryType =
     case factoryType of
         Token EthDai ->
-            Eth.Utils.unsafeToAddress "0x41a8a3C08932d285f2AF190c7338ABcC5cFfFBb4"
+            Eth.Utils.unsafeToAddress "0x5677CFbA35a0Db0469d3d56020d556B942E9ce90"
 
         Token KovanDai ->
-            Eth.Utils.unsafeToAddress "0x4cd4742b61A840630e3509eC0eDb988edB55673f"
+            Eth.Utils.unsafeToAddress "0xbC69Aff9d93C5EA4a841166C46C68518D02aF818"
 
         Native Eth ->
-            Eth.Utils.unsafeToAddress ""
+            Eth.Utils.unsafeToAddress "0xD3b1e8F2bDe0a2DdfC9F6e2EB6e2589e5Ba955b6"
 
         Native Kovan ->
-            Eth.Utils.unsafeToAddress ""
+            Eth.Utils.unsafeToAddress "0xA30773FD520cdf845E1a00441aB09cE39B31F676"
 
         Native Rootstock ->
             Eth.Utils.unsafeToAddress ""
@@ -67,7 +67,7 @@ factoryAddress factoryType =
             Eth.Utils.unsafeToAddress ""
 
         Native XDai ->
-            Eth.Utils.unsafeToAddress "0x4078E3f7a5d475Eb615C643ce5729Cc0cC9Fb11D"
+            Eth.Utils.unsafeToAddress "0x7E370099a7a789dC28810a72381bcd7Be834Ad74"
 
 
 devFeeAddress : Address
