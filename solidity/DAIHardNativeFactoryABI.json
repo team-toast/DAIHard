@@ -7,7 +7,7 @@
                 "type": "address[3]"
             },
             {
-                "name": "initiatorIsCustodian",
+                "name": "initiatedByCustodian",
                 "type": "bool"
             },
             {
@@ -46,7 +46,7 @@
                 "type": "address[2]"
             },
             {
-                "name": "initiatorIsCustodian",
+                "name": "initiatedByCustodian",
                 "type": "bool"
             },
             {
@@ -74,17 +74,6 @@
         "type": "function"
     },
     {
-        "inputs": [
-            {
-                "name": "_founderFeeAddress",
-                "type": "address"
-            }
-        ],
-        "payable": false,
-        "stateMutability": "nonpayable",
-        "type": "constructor"
-    },
-    {
         "anonymous": false,
         "inputs": [
             {
@@ -99,12 +88,23 @@
             },
             {
                 "indexed": true,
-                "name": "initiatorIsCustodian",
-                "type": "bool"
+                "name": "initiator",
+                "type": "address"
             }
         ],
         "name": "NewTrade",
         "type": "event"
+    },
+    {
+        "inputs": [
+            {
+                "name": "_founderFeeAddress",
+                "type": "address"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "nonpayable",
+        "type": "constructor"
     },
     {
         "constant": true,

@@ -114,7 +114,7 @@ contract DAIHardNativeFactory {
     */
 
     function createOpenTrade(address payable[2] calldata addressArgs,
-                             bool initiatorIsCustodian,
+                             bool initiatedByCustodian,
                              uint[8] calldata uintArgs,
                              string calldata terms,
                              string calldata _commPubkey
@@ -124,7 +124,7 @@ contract DAIHardNativeFactory {
     returns (DAIHardNativeTrade) {
         uint[8] memory newUintArgs; // Note that this structure is not the same as the above comment describes. See below in DAIHardNativeTrade.open.
 
-        if (initiatorIsCustodian) {
+        if (initiatedByCustodian) {
             // require: msg.value == tradeAmount + pokeReward + getFounderFee(tradeAmount) + devFee
             require(msg.value == uintArgs[0].add(uintArgs[3]).add(getFounderFee(uintArgs[0])).add(uintArgs[7]),"You didn't include the correct amount of value!");
 
@@ -147,7 +147,7 @@ contract DAIHardNativeFactory {
         emit NewTrade(createdTrades.length - 1, address(newTrade), addressArgs[0]);
 
         // transfer value to the trade and open it
-        newTrade.beginInOpenPhase.value(msg.value)(addressArgs[0], initiatorIsCustodian, newUintArgs, terms, _commPubkey);
+        newTrade.beginInOpenPhase.value(msg.value)(addressArgs[0], initiatedByCustodian, newUintArgs, terms, _commPubkey);
 
         return newTrade;
     }
@@ -171,7 +171,7 @@ contract DAIHardNativeFactory {
     */
 
     function createCommittedTrade(address payable[3] calldata addressArgs,
-                                  bool initiatorIsCustodian,
+                                  bool initiatedByCustodian,
                                   uint[7] calldata uintArgs,
                                   string calldata _terms,
                                   string calldata _initiatorCommPubkey,
@@ -191,7 +191,7 @@ contract DAIHardNativeFactory {
         DAIHardNativeTrade newTrade = new DAIHardNativeTrade(founderFeeAddress, addressArgs[2]);
         createdTrades.push(CreationInfo(address(newTrade), block.number));
 
-        if (initiatorIsCustodian) {
+        if (initiatedByCustodian) {
             emit NewTrade(createdTrades.length - 1, address(newTrade), addressArgs[0]);
         }
         else {
@@ -200,7 +200,7 @@ contract DAIHardNativeFactory {
 
         newTrade.beginInCommittedPhase.value(msg.value)(addressArgs[0],
                                                         addressArgs[1],
-                                                        initiatorIsCustodian,
+                                                        initiatedByCustodian,
                                                         newUintArgs,
                                                         _terms,
                                                         _initiatorCommPubkey,
@@ -242,7 +242,6 @@ contract DAIHardNativeTrade {
         phaseStartBlocknums[uint(p)] = block.number;
     }
 
-
     address payable public initiator;
     address payable public responder;
 
@@ -250,6 +249,7 @@ contract DAIHardNativeTrade {
     // the initiator for example might be either the custodian OR the beneficiary,
     // so we need four 'role' variables to capture each possible combination.
 
+    bool public initiatedByCustodian;
     address payable public custodian;
     address payable public beneficiary;
 
@@ -335,7 +335,7 @@ contract DAIHardNativeTrade {
     */
 
     function beginInOpenPhase(address payable _initiator,
-                              bool initiatorIsCustodian,
+                              bool _initiatedByCustodian,
                               uint[8] calldata uintArgs,
                               string calldata terms,
                               string calldata commPubkey
@@ -359,7 +359,9 @@ contract DAIHardNativeTrade {
 
         require(_initiator != address(0x0), "0x0 is an invalid initiator address!");
         initiator = _initiator;
-        if (initiatorIsCustodian) {
+        initiatedByCustodian = _initiatedByCustodian;
+
+        if (initiatedByCustodian) {
             custodian = initiator;
             tradeAmount = startingBalance.sub(pokeReward.add(founderFee).add(devFee));
             beneficiaryDeposit = responderDeposit;
@@ -390,7 +392,7 @@ contract DAIHardNativeTrade {
 
     function beginInCommittedPhase(address payable _custodian,
                                    address payable _beneficiary,
-                                   bool initiatorIsCustodian,
+                                   bool _initiatedByCustodian,
                                    uint[7] calldata uintArgs,
                                    string calldata terms,
                                    string calldata initiatorCommPubkey,
@@ -416,8 +418,9 @@ contract DAIHardNativeTrade {
         require(_beneficiary != address(0x0), "0x0 is an invalid beneficiary address!");
         custodian = _custodian;
         beneficiary = _beneficiary;
+        initiatedByCustodian = _initiatedByCustodian;
 
-        if (initiatorIsCustodian) {
+        if (initiatedByCustodian) {
             initiator = custodian;
             responder = beneficiary;
         }
@@ -495,7 +498,7 @@ contract DAIHardNativeTrade {
         require(_responder != address(0x0), "0x0 is an invalid responder address!");
         responder = _responder;
 
-        if (initiator == custodian) {
+        if (initiatedByCustodian) {
             beneficiary = responder;
         }
         else {
@@ -733,7 +736,7 @@ contract DAIHardNativeTrade {
     /* any phase */
     /* any msg.sender */
     returns(uint responderDeposit) {
-        if (initiator == custodian) {
+        if (initiatedByCustodian) {
             return beneficiaryDeposit;
         }
         else {
@@ -765,6 +768,7 @@ contract DAIHardNativeTrade {
     /* any phase */
     /* any msg.sender */
     returns (address initiator,
+             bool initiatedByCustodian,
              uint tradeAmount,
              uint beneficiaryDeposit,
              uint abortPunishment,
@@ -775,6 +779,7 @@ contract DAIHardNativeTrade {
              )
     {
         return (this.initiator(),
+                this.initiatedByCustodian(),
                 this.tradeAmount(),
                 this.beneficiaryDeposit(),
                 this.abortPunishment(),

@@ -25,12 +25,6 @@ tokenUnitName factoryType =
         Native Kovan ->
             "ETH"
 
-        Native Rootstock ->
-            "SBTC"
-
-        Native RootstockTest ->
-            "SBTC"
-
         Native XDai ->
             "xDai"
 
@@ -49,27 +43,35 @@ factoryAddress : FactoryType -> Address
 factoryAddress factoryType =
     case factoryType of
         Token EthDai ->
-            Eth.Utils.unsafeToAddress "0x41a8a3C08932d285f2AF190c7338ABcC5cFfFBb4"
+            Eth.Utils.unsafeToAddress "0x5677CFbA35a0Db0469d3d56020d556B942E9ce90"
 
         Token KovanDai ->
-            Eth.Utils.unsafeToAddress "0x4cd4742b61A840630e3509eC0eDb988edB55673f"
+            Eth.Utils.unsafeToAddress "0xbC69Aff9d93C5EA4a841166C46C68518D02aF818"
 
         Native Eth ->
-            Eth.Utils.unsafeToAddress ""
+            Eth.Utils.unsafeToAddress "0xD3b1e8F2bDe0a2DdfC9F6e2EB6e2589e5Ba955b6"
 
         Native Kovan ->
-            Eth.Utils.unsafeToAddress ""
-
-        Native Rootstock ->
-            Eth.Utils.unsafeToAddress ""
-
-        Native RootstockTest ->
-            Eth.Utils.unsafeToAddress ""
+            Eth.Utils.unsafeToAddress "0xA30773FD520cdf845E1a00441aB09cE39B31F676"
 
         Native XDai ->
-            Eth.Utils.unsafeToAddress "0x4078E3f7a5d475Eb615C643ce5729Cc0cC9Fb11D"
+            Eth.Utils.unsafeToAddress "0x7E370099a7a789dC28810a72381bcd7Be834Ad74"
 
 
-devFeeAddress : Address
-devFeeAddress =
-    Eth.Utils.unsafeToAddress "0x2b518987f8c21937B4d0b700b1224736a28fCA23"
+devFeeAddress : FactoryType -> Address
+devFeeAddress factoryType =
+    case factoryType of
+        Token EthDai ->
+            Eth.Utils.unsafeToAddress "0x61F399ED1D5AEC3Bc9d4B026352d5764181d6b35"
+
+        Token KovanDai ->
+            Eth.Utils.unsafeToAddress "0xF59ed429f9753B0498436DE1a3559AEC7a0c2a21"
+
+        Native Eth ->
+            Eth.Utils.unsafeToAddress "0x61F399ED1D5AEC3Bc9d4B026352d5764181d6b35"
+
+        Native Kovan ->
+            Eth.Utils.unsafeToAddress "0xF59ed429f9753B0498436DE1a3559AEC7a0c2a21"
+
+        Native XDai ->
+            Eth.Utils.unsafeToAddress "0x092110996699c3E06e998d89F0f4586026e44F0F"

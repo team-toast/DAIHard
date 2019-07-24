@@ -246,7 +246,6 @@ phasesElement : Model -> Element Msg
 phasesElement model =
     Element.column
         [ Element.width Element.fill
-        , Element.paddingXY 10 0
         , Element.spacing 20
         ]
         [ openPhaseElement
@@ -269,15 +268,10 @@ phasesElement model =
 openPhaseElement : Time.Posix -> Maybe String -> BuyerOrSeller -> Element Msg
 openPhaseElement interval maybeError userRole =
     Element.el
-        [ Element.padding 8
-        , Element.Border.rounded 8
-        , Element.Background.color EH.lightBlue
-        , Element.Border.shadow
-            { offset = ( -3, 3 )
-            , size = 0
-            , blur = 5
-            , color = Element.rgba 0 0 0 0.3
-            }
+        [ Element.Border.rounded 8
+        , Element.Background.color EH.white
+        , Element.clipX
+        , Element.clipY
         ]
     <|
         phaseElement
@@ -292,19 +286,14 @@ openPhaseElement interval maybeError userRole =
 committedPhaseElement : String -> Maybe String -> Time.Posix -> Maybe String -> BuyerOrSeller -> Element Msg
 committedPhaseElement paymentMethodText maybeTextError interval maybeIntervalError userRole =
     Element.column
-        [ Element.padding 8
-        , Element.spacing 15
+        [ Element.spacing 15
         , Element.Border.rounded 8
-        , Element.Background.color EH.lightBlue
-        , Element.Border.shadow
-            { offset = ( -3, 3 )
-            , size = 0
-            , blur = 5
-            , color = Element.rgba 0 0 0 0.3
-            }
+        , Element.clipX
+        , Element.clipY
+        , Element.Background.color EH.white
         ]
         [ phaseElement
-            Images.paymentWindowIcon
+            Images.fiatBag
             "Payment Window"
             (paymentWindowSummary userRole)
             interval
@@ -317,20 +306,15 @@ committedPhaseElement paymentMethodText maybeTextError interval maybeIntervalErr
 judgmentPhaseElement : Time.Posix -> Maybe String -> BuyerOrSeller -> Element Msg
 judgmentPhaseElement interval maybeError userRole =
     Element.el
-        [ Element.padding 8
-        , Element.Border.rounded 8
-        , Element.Background.color EH.lightBlue
-        , Element.Border.shadow
-            { offset = ( -3, 3 )
-            , size = 0
-            , blur = 5
-            , color = Element.rgba 0 0 0 0.3
-            }
+        [ Element.Border.rounded 8
+        , Element.clipX
+        , Element.clipY
+        , Element.Background.color EH.white
         ]
     <|
         phaseElement
             Images.releaseWindowIcon
-            "Judgment Window"
+            "Burn/Release Window"
             (releaseWindowSummary userRole)
             interval
             maybeError
@@ -389,7 +373,8 @@ paymentMethodsElement maybeError initiatorRole inputText =
             Element.Input.multiline
                 [ Element.width Element.fill
                 , Element.height <| Element.px 150
-                , Element.Background.color <| Element.rgba 1 1 1 0.5
+                , Element.Background.color <| Element.rgba255 155 203 255 0.2
+                , Element.Border.width 0
                 ]
                 { onChange = ChangePaymentMethodText
                 , text = inputText
@@ -404,7 +389,13 @@ paymentMethodsElement maybeError initiatorRole inputText =
                 }
     in
     Element.column
-        [ Element.spacing 10
+        [ Element.spacing 20
+        , Element.paddingEach
+            { left = 45
+            , right = 45
+            , top = 0
+            , bottom = 15
+            }
         , Element.width Element.fill
         , Element.above <|
             EH.maybeErrorElement
@@ -424,10 +415,18 @@ paymentMethodsElement maybeError initiatorRole inputText =
 phaseElement : Image -> String -> String -> Time.Posix -> Maybe String -> (Time.Posix -> Msg) -> Element Msg
 phaseElement icon title summary interval maybeError newIntervalMsg =
     let
-        iconElement =
-            Element.el
-                [ Element.width <| Element.px 80 ]
-                (Images.toElement [ Element.centerX ] icon)
+        iconAndTitleElement =
+            Element.row
+                [ Element.spacing 30 ]
+                [ Images.toElement
+                    [ Element.height <| Element.px 40 ]
+                    icon
+                , Element.el
+                    [ Element.Font.size 22
+                    , Element.Font.semiBold
+                    ]
+                    (Element.text title)
+                ]
 
         descriptionElement =
             Element.paragraph
@@ -437,41 +436,42 @@ phaseElement icon title summary interval maybeError newIntervalMsg =
                 ]
                 [ Element.text summary ]
 
-        intervalAndTitleElement =
-            Element.column
-                [ Element.spacing 6 ]
-                [ Element.el
-                    [ Element.Font.size 22
-                    , Element.Font.semiBold
-                    ]
-                    (Element.text title)
-                , Element.el
-                    [ Element.Background.color <| Element.rgba 1 1 1 0.5
-                    , Element.Border.rounded 5
-                    , Element.padding 5
-                    , Element.Border.shadow
-                        { offset = ( -3, 3 )
-                        , size = 0
-                        , blur = 4
-                        , color = Element.rgba 0 0 0 0.15
-                        }
-                    , Element.above <|
-                        EH.maybeErrorElement
-                            [ inputErrorTag ]
-                            maybeError
-                    ]
-                    (EH.intervalInput EH.black interval newIntervalMsg)
+        intervalElement =
+            Element.el
+                [ Element.Background.color <| Element.rgba255 155 203 255 0.2
+                , Element.Border.rounded 5
+                , Element.padding 15
+                , Element.above <|
+                    EH.maybeErrorElement
+                        [ inputErrorTag ]
+                        maybeError
                 ]
+                (EH.intervalInput EH.black interval newIntervalMsg)
     in
-    Element.row
+    Element.column
         [ Element.width Element.fill
-        , Element.spacing 15
         , Element.Border.rounded 10
+        , Element.Background.color <| Element.rgb255 237 237 237
+        , Element.spacing 2
         ]
-        [ iconElement
-        , intervalAndTitleElement
-        , descriptionElement
-        ]
+        (List.map
+            (Element.el
+                [ Element.Background.color EH.white
+                , Element.paddingXY 45 18
+                , Element.width Element.fill
+                ]
+            )
+            [ iconAndTitleElement
+            , Element.row
+                [ Element.width Element.fill
+                , Element.spacing 25
+                , Element.Background.color EH.white
+                ]
+                [ intervalElement
+                , descriptionElement
+                ]
+            ]
+        )
 
 
 getModalOrNone : Model -> Element Msg
@@ -599,10 +599,10 @@ getWarningParagraphs createParameters =
         Just <|
             case createParameters.initiatorRole of
                 Buyer ->
-                    "That Release Window time is quite small! It might take a while to find a committed Seller."
+                    "That Burn/Release Window time is quite small! It might take a while to find a committed Seller."
 
                 Seller ->
-                    "That Release Window time is quite small! This may attract scammers. Only create this trade if you know what you're doing."
+                    "That Burn/Release Window time is quite small! This may attract scammers. Only create this trade if you know what you're doing."
 
       else
         Nothing
@@ -630,7 +630,7 @@ getWarningParagraphs createParameters =
 inputPlaceholder : BuyerOrSeller -> Element.Input.Placeholder Msg
 inputPlaceholder initiatorRole =
     Element.Input.placeholder
-        []
+        [ Element.Font.color <| Element.rgba 0 0 0 0.2 ]
         (case initiatorRole of
             Seller ->
                 Element.text """Some examples:

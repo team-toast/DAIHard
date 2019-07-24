@@ -505,7 +505,7 @@ decodeParameters encodedParameters =
     Result.map3
         (\autorecallInterval depositDeadlineInterval autoreleaseInterval ->
             { initiatorRole =
-                if encodedParameters.initiatorIsCustodian then
+                if encodedParameters.initiatedByCustodian then
                     Seller
 
                 else
