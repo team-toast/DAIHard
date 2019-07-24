@@ -309,47 +309,47 @@ statsElement factoryType trade tradeCache showModal =
             headerText
             (Element.row
                 [ Element.width Element.fill
-                , Element.spacing 30
+                , Element.spacing 20
                 , Element.pointer
                 , Element.Events.onClick ToggleStatsModal
                 ]
-                [ Element.row
-                    []
-                    [ Images.toElement
-                        [ Element.height <| Element.px 28
-                        ]
-                        Images.release
-                    , Element.el
-                        [ Element.Font.size 24
-                        , Element.Font.medium
-                        ]
-                        (Element.text (String.padLeft 2 '0' <| String.fromInt userStats.numReleases))
+                (List.map
+                    (Element.row [ Element.spacing 5 ])
+                    [ [ Images.toElement
+                            [ Element.height <| Element.px 28
+                            ]
+                            Images.released
+                      , Element.el
+                            [ Element.Font.size 24
+                            , Element.Font.medium
+                            , Element.Font.color <| EH.releasedIconColor
+                            ]
+                            (Element.text (String.padLeft 2 '0' <| String.fromInt userStats.numReleases))
+                      ]
+                    , [ Images.toElement
+                            [ Element.height <| Element.px 28
+                            ]
+                            Images.aborted
+                      , Element.el
+                            [ Element.Font.size 24
+                            , Element.Font.medium
+                            , Element.Font.color <| EH.abortedIconColor
+                            ]
+                            (Element.text (String.padLeft 2 '0' <| String.fromInt userStats.numAborts))
+                      ]
+                    , [ Images.toElement
+                            [ Element.height <| Element.px 28
+                            ]
+                            Images.burned
+                      , Element.el
+                            [ Element.Font.size 24
+                            , Element.Font.medium
+                            , Element.Font.color <| EH.burnedIconColor
+                            ]
+                            (Element.text (String.padLeft 2 '0' <| String.fromInt userStats.numBurns))
+                      ]
                     ]
-                , Element.row
-                    []
-                    [ Images.toElement
-                        [ Element.height <| Element.px 28
-                        ]
-                        Images.flame
-                    , Element.el
-                        [ Element.Font.size 24
-                        , Element.Font.medium
-                        ]
-                        (Element.text (String.padLeft 2 '0' <| String.fromInt userStats.numAborts))
-                    ]
-                , Element.row
-                    []
-                    [ Images.toElement
-                        [ Element.height <| Element.px 28
-                        ]
-                        Images.flame
-                    , Element.el
-                        [ Element.Font.size 24
-                        , Element.Font.medium
-                        ]
-                        (Element.text (String.padLeft 2 '0' <| String.fromInt userStats.numBurns))
-                    ]
-                ]
+                )
             )
 
 
@@ -714,7 +714,7 @@ phaseStatusElement viewPhase trade currentTime =
                             "Payment Window"
 
                         CTypes.Judgment ->
-                            "Release Window"
+                            "Burn/Release Window"
 
                         CTypes.Closed ->
                             "Closed"
@@ -815,6 +815,7 @@ phaseIconElement viewPhase viewPhaseState =
             (Images.toElement
                 [ Element.centerX
                 , Element.centerY
+                , Element.height <| Element.px 60
                 ]
                 image
             )
@@ -1126,7 +1127,7 @@ phaseBodyElement factoryType viewPhase currentTime trade maybeUserInfo =
                 ( CTypes.Judgment, Just Buyer ) ->
                     ( "Judgement"
                     , List.map makeParagraph
-                        [ [ Element.text "If the Seller confirms receipt of payment, or fails to decide within the release window, the combined balance of "
+                        [ [ Element.text "If the Seller confirms receipt of payment, or fails to decide within the Burn/Release Window, the combined balance of "
                           , emphasizedText tradePlusDepositString
                           , Element.text " will be released to you."
                           ]
@@ -1158,7 +1159,7 @@ phaseBodyElement factoryType viewPhase currentTime trade maybeUserInfo =
                           , scaryText "burn it all"
                           , Element.text ". You're not getting it back either way, and you wouldn't want the other guy to get it, would you?"
                           ]
-                        , [ Element.text "If you don't decide within the Release Window, the balance will be automatically released."
+                        , [ Element.text "If you don't decide within the Burn/Release Window, the balance will be automatically released."
                           ]
                         ]
                     )
@@ -1176,7 +1177,7 @@ phaseBodyElement factoryType viewPhase currentTime trade maybeUserInfo =
                           , scaryText "burn it all"
                           , Element.text "."
                           ]
-                        , [ Element.text "If the Seller has not made a decision before the Release Window expires, the "
+                        , [ Element.text "If the Seller has not made a decision before the Burn/Release Window expires, the "
                           , emphasizedText tradeAmountString
                           , Element.text " will be automaticall released."
                           ]
@@ -1298,19 +1299,18 @@ actionButtonsElement currentTime trade maybeUserInfo =
 
 chatHistoryButton : Element Msg
 chatHistoryButton =
-    EH.elOnCircle
-        [ Element.pointer
+    Element.el
+        [ Element.Border.rounded 4
+        , Element.pointer
         , Element.Events.onClick ToggleChat
+        , Element.padding 5
+        , Element.Background.color <| Element.rgb255 22 0 255
         ]
-        80
-        (Element.rgb 1 1 1)
-        (Images.toElement
-            [ Element.centerX
-            , Element.centerY
-            , Element.moveRight 5
+    <|
+        Images.toElement
+            [ Element.width <| Element.px 42
             ]
             Images.chatIcon
-        )
 
 
 chatOverlayElement : Model -> Element Msg

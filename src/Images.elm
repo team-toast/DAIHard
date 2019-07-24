@@ -1,12 +1,15 @@
 module Images exposing
     ( Image
+    , aborted
     , addButton
     , backButton
+    , burned
     , chatIcon
     , closeIcon
     , committedPhase
     , daiSymbol
     , downArrow
+    , fiatBag
     , flame
     , image
     , judgmentPhase
@@ -16,13 +19,14 @@ module Images exposing
     , numberOnCircleEl
     , openPhase
     , openWindowIcon
-    , paymentWindowIcon
     , pmBank
     , pmCash
     , pmCustom
     , qmarkCircle
     , release
     , releaseWindowIcon
+    , released
+    , stopWhite
     , toElement
     , upArrow
     )
@@ -123,11 +127,19 @@ openWindowIcon =
         }
 
 
-paymentWindowIcon : Image
-paymentWindowIcon =
+fiatBag : Image
+fiatBag =
     JustImage
-        { src = "/DAIHard/static/img/payment-window-icon.svg"
-        , description = ""
+        { src = "/DAIHard/static/img/fiat-bag-white.svg"
+        , description = "fiat"
+        }
+
+
+stopWhite : Image
+stopWhite =
+    JustImage
+        { src = "/DAIHard/static/img/stop-white.svg"
+        , description = "stop"
         }
 
 
@@ -182,7 +194,7 @@ backButton =
 chatIcon : Image
 chatIcon =
     JustImage
-        { src = "/DAIHard/static/img/chat-icon.svg"
+        { src = "/DAIHard/static/img/chat.svg"
         , description = "chat"
         }
 
@@ -219,10 +231,34 @@ release =
         }
 
 
+released : Image
+released =
+    JustImage
+        { src = "/DAIHard/static/img/released.svg"
+        , description = "released"
+        }
+
+
+aborted : Image
+aborted =
+    JustImage
+        { src = "/DAIHard/static/img/aborted.svg"
+        , description = "aborted"
+        }
+
+
+burned : Image
+burned =
+    JustImage
+        { src = "/DAIHard/static/img/burned.svg"
+        , description = "burned"
+        }
+
+
 openPhase : Image
 openPhase =
     JustImage
-        { src = "/DAIHard/static/img/phase-open.svg"
+        { src = "/DAIHard/static/img/diamond-give-white.svg"
         , description = "open phase"
         }
 
@@ -238,7 +274,7 @@ committedPhase =
 judgmentPhase : Image
 judgmentPhase =
     JustImage
-        { src = "/DAIHard/static/img/phase-judgment.svg"
+        { src = "/DAIHard/static/img/time-clock-fire.svg"
         , description = "judgment phase"
         }
 

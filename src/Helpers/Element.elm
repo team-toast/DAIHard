@@ -1,4 +1,4 @@
-module Helpers.Element exposing (activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, button, closeButton, closeableModal, coloredMargin, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, fiatTypeToSymbolElement, fiatValue, green, headerBackgroundColor, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, marginFloatToConciseUnsignedString, marginSymbol, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, pokeButton, red, redButton, roundBottomCorners, roundTopCorners, scrollbarYEl, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredMargin, white, withHeader, yellow)
+module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredMargin, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, fiatTypeToSymbolElement, fiatValue, green, headerBackgroundColor, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, marginFloatToConciseUnsignedString, marginSymbol, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, pokeButton, red, redButton, releasedIconColor, roundBottomCorners, roundTopCorners, scrollbarYEl, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredMargin, white, withHeader, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -101,7 +101,7 @@ permanentTextColor =
 
 
 pageBackgroundColor =
-    Element.rgb 0.9 0.9 0.9
+    Element.rgb255 242 243 247
 
 
 headerBackgroundColor =
@@ -114,6 +114,18 @@ disabledTextColor =
 
 currencyLabelColor =
     Element.rgb255 109 127 138
+
+
+releasedIconColor =
+    Element.rgb255 0 255 0
+
+
+abortedIconColor =
+    Element.rgb255 250 165 22
+
+
+burnedIconColor =
+    Element.rgb255 255 0 0
 
 
 
