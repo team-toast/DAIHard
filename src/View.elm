@@ -378,7 +378,7 @@ submodelElementAndModal screenWidth model =
         ( submodelEl, modalEls ) =
             case model.submodel of
                 BetaLandingPage ->
-                    ( Landing.View.root (GotoRoute <| Routing.Marketplace Buyer)
+                    ( Landing.View.root
                     , []
                     )
 
