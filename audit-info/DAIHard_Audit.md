@@ -31,7 +31,8 @@ The code is structured as two flattened Solidity files:
 DAIHard.sol - implementation of DAIHard with DAI as the escrowed currency  
 DAIHardNative.sol - implementation of DAIHard with ETH as the escrowed currency
 
-There are no unit test case scripts or deployment scripts included in the repository.
+~There are no unit test case scripts or deployment scripts included in the repository.~
+The unit tests in solidity/dapphub-tests/ require dapphub, and are not included in this audit.
 
 ## Approach
 
@@ -283,11 +284,11 @@ This would allow either party to a DAIHardNative trade to prevent the trade from
 
 _Response_: **Addressed, by replacing transfer() with call(), so that in the worst case, one party fails to receive payment but the other can still get the funds out.**
 
-_Status_: **Closed - noting funds can be permanently locked in the contract, but only if the account due funds is unable to receive ETH.**
+_Status_: **Closed - noting funds can be permanently locked in the contract, but only if the account due funds is a contract that is unable to receive ETH.**
 
 ## General Recommendations
 
-### Add unit test cases
+### Include built unit test cases
 
 It would add significant confidence in the correctness of the code if there were test cases that exercised all of the relevant game paths that can occur.
 
