@@ -11,13 +11,21 @@ import Images exposing (Image)
 import Types exposing (..)
 
 
-root : Msg -> Element Msg
-root letsGoMsg =
+root : Element Msg
+root =
+    let
+        redText =
+            Element.el [ Element.Font.color EH.red ] << Element.text
+
+        boldText =
+            Element.el [ Element.Font.bold ] << Element.text
+    in
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
         , Element.Background.color EH.white
         , Element.Border.rounded 6
+        , Element.spacing 50
         , Element.Border.shadow
             { offset = ( 0, 3 )
             , size = 0
@@ -25,170 +33,109 @@ root letsGoMsg =
             , color = Element.rgba255 0 0 0 0.1
             }
         , Element.Border.rounded 10
-        , Element.spaceEvenly
         , Element.padding 20
         ]
         [ EH.coolCurrencyHbreak False Element.fill
         , Element.column
             [ Element.centerX
-            , Element.spacing 15
             , Element.width (Element.fill |> Element.maximum 700)
+            , Element.spacing 20
             ]
-            (List.map
-                (Element.paragraph
-                    [ Element.width Element.fill
-                    , Element.Font.size 17
-                    , Element.Font.medium
-                    , Element.Font.color EH.permanentTextColor
-                    , Element.Font.center
+            [ Element.paragraph
+                [ Element.Font.size 70
+                , Element.Font.bold
+                , Element.centerX
+                , Element.Font.center
+                ]
+                [ Element.text "DAI"
+                , redText "Hard"
+                ]
+            , Element.row
+                [ Element.Font.size 30
+                , Element.Font.semiBold
+                , Element.centerX
+                , Element.Font.center
+                , Element.Font.italic
+                ]
+                [ Element.text "The "
+                , redText "Global"
+                , Element.text ", "
+                , redText "Unkillable"
+                , Element.text " Crypto Gateway"
+                ]
+            ]
+        , Element.row
+            [ Element.Background.color EH.darkGray
+            , Element.spacing 2
+            , Element.centerX
+            , Element.alignTop
+            , Element.width Element.fill
+            ]
+            [ Element.el
+                [ Element.paddingXY 40 10
+                , Element.Background.color EH.white
+                , Element.width Element.fill
+                , Element.height Element.fill
+                ]
+                (Element.column
+                    [ Element.spacing 60
+                    , Element.alignRight
+                    ]
+                    [ Element.el
+                        [ Element.Font.size 40
+                        , Element.Font.semiBold
+                        , Element.centerX
+                        ]
+                        (Element.text "Want to learn more?")
+                    , Element.link
+                        [ Element.Border.rounded 4
+                        , Element.pointer
+                        , Element.paddingXY 25 17
+                        , Element.Background.color EH.blue
+                        , Element.Font.color EH.white
+                        , Element.Font.bold
+                        , Element.Font.size 24
+                        , Element.centerX
+                        ]
+                        { url = "http://daihard.io"
+                        , label =
+                            Element.paragraph
+                                [ Element.Font.center ]
+                                [ Element.text "Go to the DAIHard Info page" ]
+                        }
                     ]
                 )
-                [ [ Element.el [ Element.Font.size 22, Element.Font.color EH.black ] <| Element.text "Hold on a second!" ]
-                , [ Element.text "This version of DAIHard is live and functional, but a Factory upgrade is coming soon." ]
-                , [ Element.text "When that upgrade hits, all current trades will be hidden in the new interface. So feel free to play around here if you want, but don't use the tool seriously in its current state." ]
-                , [ Element.text "If you'd like to keep up to date with our upgrades and progress, join our "
-                  , Element.newTabLink
-                        [ Element.Font.color EH.blue
-                        , Element.Font.underline
-                        ]
-                        { url = "https://t.me/daihardexchange_group"
-                        , label = Element.text "Telegram group"
-                        }
-                  , Element.text "."
-                  ]
+            , Element.el
+                [ Element.paddingXY 40 10
+                , Element.Background.color EH.white
+                , Element.width Element.fill
+                , Element.height Element.fill
                 ]
-            )
-
-        -- , Element.column
-        --     [ Element.centerX
-        --     , Element.spacing 25
-        --     , Element.Font.center
-        --     ]
-        --     [ Element.paragraph
-        --         [ Element.Font.size 35
-        --         , Element.Font.semiBold
-        --         ]
-        --         [ Element.text "Welcome to DAIHard!" ]
-        --     , Element.column
-        --         [ Element.centerX
-        --         , Element.spacing 5
-        --         ]
-        --         (List.map
-        --             (Element.paragraph
-        --                 [ Element.Font.size 17
-        --                 , Element.Font.medium
-        --                 ]
-        --             )
-        --             [ [ Element.text "Just a couple things to note below before you proceed." ]
-        --             , [ Element.text "This should make things go a bit smoother." ]
-        --             ]
-        --         )
-        --     ]
-        -- , Element.rowcd d
-        --     [ Element.spaceEvenly
-        --     , Element.width Element.fill
-        --     ]
-        --     [ Element.el [ Element.width <| Element.px 1 ] Element.none
-        --     , Element.el [ Element.width <| Element.px 1 ] Element.none
-        --     , numberedNoteElement
-        --         1
-        --         "Confused?"
-        --         [ Element.text "See our "
-        --         , Element.newTabLink
-        --             [ Element.Font.color EH.blue
-        --             , Element.Font.underline
-        --             ]
-        --             { url = "https://www.reddit.com/r/ethereum/comments/bdetr2/daihard_the_unkillable_cryptofiat_gateway_any/"
-        --             , label = Element.text "announcement post"
-        --             }
-        --         , Element.text " for an overview of DAIHard, or the video "
-        --         , Element.newTabLink
-        --             [ Element.Font.color EH.blue
-        --             , Element.Font.underline
-        --             ]
-        --             { url = "https://www.youtube.com/watch?v=TaI1fCzhSt4"
-        --             , label = Element.text "Using DAIHard to Buy and Sell DAI"
-        --             }
-        --         , Element.text " for a quick usage demo."
-        --         ]
-        --     , numberedNoteElement
-        --         2
-        --         "Keep an Eye Out"
-        --         [ Element.text "Make sure you keep an eye on MetaMask for pending notifications or mining transactions; it doesn’t always pop up when it needs your attention." ]
-        --     , Element.el [ Element.width <| Element.px 1 ] Element.none
-        --     , Element.el [ Element.width <| Element.px 1 ] Element.none
-        --     ]
-        -- , Element.row
-        --     [ Element.spaceEvenly
-        --     , Element.width Element.fill
-        --     ]
-        --     [ Element.el [ Element.width <| Element.px 1 ] Element.none
-        --     , Element.el [ Element.width <| Element.px 1 ] Element.none
-        --     , numberedNoteElement
-        --         3
-        --         "Under Rapid Construction"
-        --         [ Element.text "We’re busy refining DaiHard and are regularly adding new functionality, so things might change quickly. Feel free to join our "
-        --         , Element.newTabLink
-        --             [ Element.Font.color EH.blue
-        --             , Element.Font.underline
-        --             ]
-        --             { url = "https://t.me/daihard_exchange"
-        --             , label = Element.text "Telegram channel"
-        --             }
-        --         , Element.text " for announcements."
-        --         ]
-        --     , numberedNoteElement
-        --         4
-        --         "Feedback, Please!"
-        --         [ Element.text "We’d love any feedback or critique you can possibly give us! We'll respond fastest if you use the "
-        --         , Element.newTabLink
-        --             [ Element.Font.color EH.blue
-        --             , Element.Font.underline
-        --             ]
-        --             { url = "https://t.me/daihardexchange_group"
-        --             , label = Element.text "Telegram group"
-        --             }
-        --         , Element.text "."
-        --         ]
-        --     , Element.el [ Element.width <| Element.px 1 ] Element.none
-        --     , Element.el [ Element.width <| Element.px 1 ] Element.none
-        --     ]
-        , Element.el
-            [ Element.centerX
-            , Element.Events.onClick <|
-                AppCmd <|
-                    AppCmd.GTag <|
-                        { event = "lets-go-clicked"
-                        , category = "landing-page"
-                        , label = "\"Let's Go\" clicked"
-                        , value = 0
-                        }
+                (Element.column
+                    [ Element.alignLeft
+                    , Element.spacing 60
+                    ]
+                    [ Element.el
+                        [ Element.Font.size 40
+                        , Element.Font.semiBold
+                        , Element.centerX
+                        ]
+                        (Element.text "Ready to try it out?")
+                    , Element.paragraph
+                        [ Element.Font.size 24
+                        , Element.centerX
+                        , Element.width <| Element.px 400
+                        ]
+                        [ Element.text "Follow the links at the top of this page to browse "
+                        , boldText "Sell Offers"
+                        , Element.text ", browse "
+                        , boldText "Buy Offers"
+                        , Element.text ", or "
+                        , boldText "Create Your Own Offer"
+                        , Element.text "."
+                        ]
+                    ]
+                )
             ]
-            (EH.redButton "Okay, got it. let's go!" letsGoMsg)
-        , EH.coolCurrencyHbreak True Element.fill
-        ]
-
-
-numberedNoteElement : Int -> String -> List (Element msg) -> Element msg
-numberedNoteElement number title textElList =
-    Element.column
-        [ Element.width (Element.fill |> Element.maximum 400)
-        , Element.spacing 10
-        , Element.alignTop
-        ]
-        [ Images.toElement [ Element.centerX ] <| Images.numberOnCircleEl number
-        , Element.el
-            [ Element.Font.size 20
-            , Element.Font.semiBold
-            , Element.centerX
-            ]
-            (Element.text title)
-        , Element.paragraph
-            [ Element.width Element.fill
-            , Element.Font.size 17
-            , Element.Font.medium
-            , Element.Font.color EH.permanentTextColor
-            , Element.Font.center
-            ]
-            textElList
+        , Element.el [ Element.alignBottom ] <| EH.coolCurrencyHbreak True Element.fill
         ]
