@@ -1,6 +1,6 @@
 module TradeCache.State exposing (init, initAndStartCaching, loadedValidTrades, startCaching, subscriptions, update)
 
-import AppCmd
+import AppCmd exposing (AppCmd)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import Contracts.Types as CTypes
@@ -16,7 +16,7 @@ import TradeCache.Types exposing (..)
 import UserNotice as UN exposing (UserNotice)
 
 
-init : EthHelpers.Web3Context -> ( TradeCache, Cmd Msg )
+init : EthHelpers.Web3Context -> ( TradeCache, Cmd Msg, List (AppCmd Msg) )
 init web3Context =
     let
         ( sentry, sentryCmd ) =
@@ -31,6 +31,7 @@ init web3Context =
             Status Nothing 0 0
       }
     , sentryCmd
+    , [ AppCmd.gTag "tradeCache init" "processing" (EthHelpers.factoryTypeToString web3Context.factoryType) 0 ]
     )
 
 
@@ -39,10 +40,10 @@ startCaching tradeCache =
     Contracts.Wrappers.getNumTradesCmd tradeCache.web3Context InitialNumTradesFetched
 
 
-initAndStartCaching : EthHelpers.Web3Context -> ( TradeCache, Cmd Msg )
+initAndStartCaching : EthHelpers.Web3Context -> ( TradeCache, Cmd Msg, List (AppCmd Msg) )
 initAndStartCaching web3Context =
     let
-        ( tc, cmd1 ) =
+        ( tc, cmd1, appCmds ) =
             init web3Context
     in
     ( tc
@@ -50,6 +51,7 @@ initAndStartCaching web3Context =
         [ cmd1
         , startCaching tc
         ]
+    , appCmds
     )
 
 

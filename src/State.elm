@@ -82,7 +82,7 @@ init flags url key =
         txSentry =
             TxSentry.init ( txOut, txIn ) TxSentryMsg web3Context.httpProvider
 
-        ( tradeCache, tcCmd ) =
+        ( tradeCache, tcCmd, tcAppCmds ) =
             TradeCache.initAndStartCaching web3Context
 
         ( model, fromUrlCmd ) =
@@ -99,6 +99,8 @@ init flags url key =
             , screenWidth = flags.width
             }
                 |> updateFromUrl url
+                |> runAppCmds
+                    (AppCmd.mapList TradeCacheMsg tcAppCmds)
     in
     ( model |> addUserNotices userNotices
     , Cmd.batch
@@ -207,7 +209,7 @@ update msg model =
                             ( submodel, submodelCmd, maybeRoute ) =
                                 model.submodel |> updateSubmodelWeb3Context newWeb3Context
 
-                            ( newTradeCache, tradeCacheCmd ) =
+                            ( newTradeCache, tradeCacheCmd, appCmds ) =
                                 TradeCache.initAndStartCaching newWeb3Context
                         in
                         ( { model
@@ -225,6 +227,8 @@ update msg model =
                                     submodelCmd
                             ]
                         )
+                            |> runAppCmds
+                                (AppCmd.mapList TradeCacheMsg appCmds)
 
                     else
                         ( model

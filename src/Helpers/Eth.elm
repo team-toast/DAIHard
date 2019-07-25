@@ -1,4 +1,4 @@
-module Helpers.Eth exposing (Web3Context, addressIfNot0x0, factoryTypeToNetworkId, getLogAt, intToFactoryType, makeViewAddressUrl, makeViewTxUrl, networkIdToFactoryType, updateCallValue, web3Context)
+module Helpers.Eth exposing (Web3Context, addressIfNot0x0, factoryTypeToNetworkId, factoryTypeToString, getLogAt, intToFactoryType, makeViewAddressUrl, makeViewTxUrl, networkIdToFactoryType, updateCallValue, web3Context)
 
 import Array
 import BigInt exposing (BigInt)
@@ -15,6 +15,25 @@ type alias Web3Context =
     , httpProvider : HttpProvider
     , wsProvider : WebsocketProvider
     }
+
+
+factoryTypeToString : FactoryType -> String
+factoryTypeToString factoryType =
+    case factoryType of
+        Token EthDai ->
+            "Ethereum Dai"
+
+        Native Eth ->
+            "Ethereum Eth"
+
+        Token KovanDai ->
+            "Kovan Dai"
+
+        Native Kovan ->
+            "Kovan Eth"
+
+        Native XDai ->
+            "xDai"
 
 
 networkIdToFactoryType : Net.NetworkId -> Maybe FactoryType
