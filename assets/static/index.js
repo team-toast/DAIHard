@@ -14,10 +14,6 @@ window.addEventListener('load', function () {
 
 function startDapp() {
     if (typeof web3 !== 'undefined') {
-        if (window.ethereum) {
-            window.ethereum.autoRefreshOnNetworkChange = false;
-        }
-
         web3.version.getNetwork(function (e, networkId) {
             var id;
             if (e) {
