@@ -1,16 +1,8 @@
-module AppCmd exposing (AppCmd(..), GTagData, map, mapList)
+module AppCmd exposing (AppCmd(..), gTag, map, mapList)
 
 import CommonTypes exposing (..)
 import Routing
 import UserNotice as UN exposing (UserNotice)
-
-
-type alias GTagData =
-    { event : String
-    , category : String
-    , label : String
-    , value : Int
-    }
 
 
 type AppCmd msg
@@ -18,6 +10,16 @@ type AppCmd msg
     | GotoRoute Routing.Route
     | GTag GTagData
     | UserNotice (UserNotice msg)
+
+
+gTag : String -> String -> String -> Int -> AppCmd msg
+gTag event category label value =
+    GTag <|
+        GTagData
+            event
+            category
+            label
+            value
 
 
 map : (msg1 -> msg2) -> AppCmd msg1 -> AppCmd msg2

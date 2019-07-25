@@ -9,6 +9,7 @@ type alias UserNotice msg =
     { noticeType : NoticeType
     , mainParagraphs : List (List (Element msg))
     , align : Alignment
+    , label : String
     }
 
 
@@ -25,6 +26,7 @@ map f userNotice =
             |> List.map (List.map (Element.map f))
         )
         userNotice.align
+        userNotice.label
 
 
 type NoticeType
@@ -42,7 +44,8 @@ placeholderNotice s =
 
 screenToSmall : UserNotice msg
 screenToSmall =
-    { noticeType = Caution
+    { label = "screenToSmall"
+    , noticeType = Caution
     , mainParagraphs =
         [ [ Element.text "Your screen is quite small--things may be very broken! We will be addressing this soon." ] ]
     , align = TopLeft
@@ -51,7 +54,8 @@ screenToSmall =
 
 invalidUrl : UserNotice msg
 invalidUrl =
-    { noticeType = Error
+    { label = "invalidUrl"
+    , noticeType = Error
     , mainParagraphs =
         [ [ Element.text "I don't understand that URL..." ]
         , [ Element.text "I'll just set you down here. Maybe check the URL and try again?" ]
@@ -62,7 +66,8 @@ invalidUrl =
 
 noWeb3Provider : UserNotice msg
 noWeb3Provider =
-    { noticeType = Caution
+    { label = "noWeb3Provider"
+    , noticeType = Caution
     , mainParagraphs =
         [ [ Element.text "No web3 provider detected. Is "
           , Element.newTabLink [ Element.Font.color <| Element.rgb 0 0 1 ]
@@ -78,7 +83,8 @@ noWeb3Provider =
 
 cantConnectNoWeb3 : UserNotice msg
 cantConnectNoWeb3 =
-    { noticeType = Caution
+    { label = "cantConnectNoWeb3"
+    , noticeType = Caution
     , mainParagraphs =
         [ [ Element.text "You need a web3 provider (such as "
           , Element.newTabLink [ Element.Font.color <| Element.rgb 0 0 1 ]
@@ -95,7 +101,8 @@ cantConnectNoWeb3 =
 
 wrongWeb3Network : UserNotice msg
 wrongWeb3Network =
-    { noticeType = Error
+    { label = "wrongWeb3Network"
+    , noticeType = Error
     , mainParagraphs =
         [ [ Element.text "Your wallet is set to an incorrect network." ]
         , [ Element.text "Switch to Ethereum mainnet, Ethereum test, Rootstock, or xDai." ]
@@ -110,7 +117,8 @@ unexpectedError text debugObj =
         _ =
             Debug.log text debugObj
     in
-    { noticeType = ShouldBeImpossible
+    { label = "unexpectedError"
+    , noticeType = ShouldBeImpossible
     , mainParagraphs = [ [ Element.text text ] ]
     , align = BottomRight
     }
@@ -122,7 +130,8 @@ web3FetchError label httpError =
         _ =
             Debug.log (label ++ " fetch error") httpError
     in
-    { noticeType = Error
+    { label = "web3FetchError"
+    , noticeType = Error
     , mainParagraphs =
         [ [ Element.text <|
                 "Failed to fetch \""
@@ -136,7 +145,8 @@ web3FetchError label httpError =
 
 web3SigError : String -> String -> UserNotice msg
 web3SigError label errStr =
-    { noticeType = Caution
+    { label = "web3SigError"
+    , noticeType = Caution
     , mainParagraphs =
         [ [ Element.text <| "Error signing \"" ++ label ++ "\" transaction: " ++ errStr ] ]
     , align = BottomRight
@@ -145,7 +155,8 @@ web3SigError label errStr =
 
 web3MiningError : String -> String -> UserNotice msg
 web3MiningError label errStr =
-    { noticeType = Error
+    { label = "web3MiningError"
+    , noticeType = Error
     , mainParagraphs =
         [ [ Element.text <| "Error mining \"" ++ label ++ "\" transaction: " ++ errStr ] ]
     , align = BottomRight
@@ -154,7 +165,8 @@ web3MiningError label errStr =
 
 cantFindTradeWillRetry : UserNotice msg
 cantFindTradeWillRetry =
-    { noticeType = Error
+    { label = "cantFindTradeWillRetry"
+    , noticeType = Error
     , mainParagraphs =
         [ [ Element.text "Can't find a trade by that ID. I'll try again in half a second." ] ]
     , align = BottomRight
@@ -187,7 +199,8 @@ walletError errStr =
 
 inputError : String -> UserNotice msg
 inputError errStr =
-    { noticeType = Error
+    { label = "inputError"
+    , noticeType = Error
     , mainParagraphs =
         [ [ Element.text errStr ] ]
     , align = BottomRight
@@ -196,7 +209,8 @@ inputError errStr =
 
 tradeParametersNotDefault : UserNotice msg
 tradeParametersNotDefault =
-    { noticeType = Error
+    { label = "tradeParametersNotDefault"
+    , noticeType = Error
     , mainParagraphs =
         [ [ Element.text "Sorry, I'm not yet able to deal with this kind of trade. This must have been created by some other DAIHard interface." ] ]
     , align = BottomRight

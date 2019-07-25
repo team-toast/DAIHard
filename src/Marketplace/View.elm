@@ -1,5 +1,6 @@
 module Marketplace.View exposing (root)
 
+import AppCmd exposing (AppCmd)
 import Array exposing (Array)
 import CommonTypes exposing (..)
 import Config
@@ -269,10 +270,13 @@ fiatInput showTypeDropdown fiatType minFiat maxFiat errors =
                 [ fiatLabelElement
                 , Element.el [ Element.Font.size 16, Element.centerY ] (Element.text "max")
                 ]
+
+        flagClickedMsg =
+            AppCmd <| AppCmd.gTag "click" "misclick" "currency flag" 0
     in
     Element.row [ Element.spacing 5, Element.width Element.shrink ]
         [ Element.el [ Element.alignTop, Element.width <| Element.px 120 ] <|
-            EH.currencySelector showTypeDropdown fiatType (ShowCurrencyDropdown True) FiatTypeInputChanged
+            EH.currencySelector showTypeDropdown fiatType (ShowCurrencyDropdown True) FiatTypeInputChanged flagClickedMsg
         , Element.column [ Element.spacing 5, Element.alignTop, Element.width <| Element.px 200 ]
             [ EH.textInputWithElement
                 [ Element.above <|

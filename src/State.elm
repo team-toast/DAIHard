@@ -137,7 +137,13 @@ update msg model =
 
                 AppCmd.UserNotice userNotice ->
                     ( model |> addUserNotice userNotice
-                    , Cmd.none
+                    , gTagOut <|
+                        encodeGTag <|
+                            GTagData
+                                "user notice"
+                                "user notice"
+                                userNotice.label
+                                0
                     )
 
         DismissNotice id ->
@@ -165,7 +171,16 @@ update msg model =
 
         GotoRoute route ->
             ( model
-            , beginRouteChange model.key route
+            , Cmd.batch
+                [ gTagOut <|
+                    encodeGTag <|
+                        GTagData
+                            "GotoRoute"
+                            "navigation"
+                            (Routing.routeToString route)
+                            0
+                , beginRouteChange model.key route
+                ]
             )
 
         Tick newTime ->
@@ -484,7 +499,7 @@ addUserNotice userNotice prevModel =
     }
 
 
-encodeGTag : AppCmd.GTagData -> Json.Decode.Value
+encodeGTag : GTagData -> Json.Decode.Value
 encodeGTag gtag =
     Json.Encode.object
         [ ( "event", Json.Encode.string gtag.event )

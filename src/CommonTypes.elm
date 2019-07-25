@@ -1,9 +1,15 @@
-module CommonTypes exposing (BuyerOrSeller(..), FactoryType(..), InitiatorOrResponder(..), NativeFactoryType(..), TokenFactoryType(..), UserInfo, buyerOrSellerToString)
-
+module CommonTypes exposing (..)
+  
 import Eth.Types exposing (Address)
 import Json.Decode
 import Json.Encode
 
+type alias GTagData =
+    { event : String
+    , category : String
+    , label : String
+    , value : Int
+    }
 
 type FactoryType
     = Native NativeFactoryType

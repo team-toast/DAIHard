@@ -1,5 +1,6 @@
 module Create.View exposing (root)
 
+import AppCmd exposing (AppCmd)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
 import Config
@@ -134,7 +135,15 @@ daiInputElement factoryType amountString maybeError =
                 ]
                 maybeError
         ]
-        ( Nothing, Just <| EH.daiSymbolAndLabel factoryType )
+        ( Nothing
+        , Just <|
+            Element.el
+                [ Element.Events.onClick <|
+                    AppCmd <|
+                        AppCmd.gTag "click" "misclick" "dai symbol in dai input" 0
+                ]
+                (EH.daiSymbolAndLabel factoryType)
+        )
         "dai input"
         Nothing
         amountString
@@ -159,7 +168,15 @@ fiatInputElement : String -> String -> Bool -> Maybe String -> Maybe String -> E
 fiatInputElement typeString amountString showFiatTypeDropdown maybeAmountError maybeTypeError =
     let
         fiatCharElement =
-            Element.text <| FiatValue.typeStringToCharStringDefaultEmpty typeString
+            Element.el
+                [ Element.Events.onClick <|
+                    AppCmd <|
+                        AppCmd.gTag "click" "misclick" "currency symbol" 0
+                ]
+                (Element.text <| FiatValue.typeStringToCharStringDefaultEmpty typeString)
+
+        flagClickedMsg =
+            AppCmd <| AppCmd.gTag "click" "misclick" "currency flag" 0
 
         currencySelector =
             Element.el
@@ -170,7 +187,7 @@ fiatInputElement typeString amountString showFiatTypeDropdown maybeAmountError m
                         ]
                         maybeTypeError
                 ]
-                (EH.currencySelector showFiatTypeDropdown typeString (ShowCurrencyDropdown True) FiatTypeChanged)
+                (EH.currencySelector showFiatTypeDropdown typeString (ShowCurrencyDropdown True) FiatTypeChanged flagClickedMsg)
     in
     EH.fancyInput
         [ Element.width <| Element.px 250
@@ -226,6 +243,9 @@ feeNotifyElement model =
         , Element.Background.color <| Element.rgb255 10 33 108
         , Element.Border.rounded 8
         , Element.spacing 5
+        , Element.Events.onClick <|
+            AppCmd <|
+                AppCmd.gTag "click" "misclick" "fee notify element" 0
         ]
         [ Element.el
             [ Element.Font.size 18
@@ -419,7 +439,11 @@ phaseElement icon title summary interval maybeError newIntervalMsg =
             Element.row
                 [ Element.spacing 30 ]
                 [ Images.toElement
-                    [ Element.height <| Element.px 40 ]
+                    [ Element.height <| Element.px 40
+                    , Element.Events.onClick <|
+                        AppCmd <|
+                            AppCmd.gTag "click" "misclick" ("symbol for " ++ title) 0
+                    ]
                     icon
                 , Element.el
                     [ Element.Font.size 22
@@ -560,37 +584,61 @@ txChainStatusModal txChainStatus model =
                 AbortCreate
 
         ApproveNeedsSig ->
-            EH.txProcessModal
-                [ Element.text "Waiting for user signature for the approve call."
-                , Element.text "(check Metamask!)"
-                , Element.text "Note that there will be a second transaction to sign after this."
+            Element.el
+                [ Element.Events.onClick <|
+                    AppCmd <|
+                        AppCmd.gTag "txChainModal clicked" "misclick" "ApproveNeedsSig" 0
                 ]
+            <|
+                EH.txProcessModal
+                    [ Element.text "Waiting for user signature for the approve call."
+                    , Element.text "(check Metamask!)"
+                    , Element.text "Note that there will be a second transaction to sign after this."
+                    ]
 
         ApproveMining createParameters txHash ->
-            EH.txProcessModal
-                [ Element.text "Mining the initial approve transaction..."
-                , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                    { url = EthHelpers.makeViewTxUrl model.web3Context.factoryType txHash
-                    , label = Element.text "See the transaction on Etherscan"
-                    }
-                , Element.text "Funds will not leave your wallet until you sign the next transaction."
+            Element.el
+                [ Element.Events.onClick <|
+                    AppCmd <|
+                        AppCmd.gTag "txChainModal clicked" "misclick" "ApproveMining" 0
                 ]
+            <|
+                EH.txProcessModal
+                    [ Element.text "Mining the initial approve transaction..."
+                    , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
+                        { url = EthHelpers.makeViewTxUrl model.web3Context.factoryType txHash
+                        , label = Element.text "See the transaction on Etherscan"
+                        }
+                    , Element.text "Funds will not leave your wallet until you sign the next transaction."
+                    ]
 
         CreateNeedsSig ->
-            EH.txProcessModal
-                [ Element.text "Waiting for user signature for the create call."
-                , Element.text "(check Metamask!)"
+            Element.el
+                [ Element.Events.onClick <|
+                    AppCmd <|
+                        AppCmd.gTag "txChainModal clicked" "misclick" "CreateNeedsSig" 0
                 ]
+            <|
+                EH.txProcessModal
+                    [ Element.text "Waiting for user signature for the create call."
+                    , Element.text "(check Metamask!)"
+                    ]
 
         CreateMining txHash ->
-            EH.txProcessModal
-                [ Element.text "Mining the final create call..."
-                , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                    { url = EthHelpers.makeViewTxUrl model.web3Context.factoryType txHash
-                    , label = Element.text "See the transaction on Etherscan"
-                    }
-                , Element.text "You will be redirected when it's mined."
+            Element.el
+                [ Element.Events.onClick <|
+                    AppCmd <|
+                        AppCmd.gTag "txChainModal clicked" "misclick" "CreateMining" 0
                 ]
+            <|
+                EH.txProcessModal
+                    [ Element.text "Mining the final create call..."
+                    , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
+                        { url = EthHelpers.makeViewTxUrl model.web3Context.factoryType txHash
+                        , label = Element.text "See the transaction on Etherscan"
+                        }
+                    , Element.text "You will be redirected when it's mined."
+                    ]
 
 
 getWarningParagraphs : CTypes.CreateParameters -> List (List (Element Msg))
