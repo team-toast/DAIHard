@@ -49,6 +49,7 @@ type Msg
     | CreateMined (Result String TxReceipt)
     | Web3Connect
     | NoOp
+    | AppCmd (AppCmd Msg)
 
 
 type TxChainStatus

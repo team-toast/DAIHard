@@ -542,8 +542,8 @@ textInputWithElement attributes inputAttributes addedElement labelStr value plac
         ]
 
 
-currencySelector : Bool -> String -> msg -> (String -> msg) -> Element msg
-currencySelector showDropdown typeStringInput openCurrencySelectorMsg typeStringChangedMsgConstructor =
+currencySelector : Bool -> String -> msg -> (String -> msg) -> msg -> Element msg
+currencySelector showDropdown typeStringInput openCurrencySelectorMsg typeStringChangedMsgConstructor flagClickedMsg =
     let
         gotCurrency =
             Dict.get typeStringInput FiatValue.currencyTypes
@@ -604,7 +604,7 @@ currencySelector showDropdown typeStringInput openCurrencySelectorMsg typeString
         [ Element.spacing 4
         , Element.below dropdownEl
         ]
-        [ FiatValue.typeStringToSymbol typeStringInput
+        [ Element.el [ Element.Events.onClick flagClickedMsg ] <| FiatValue.typeStringToSymbol typeStringInput
         , inputElement
         ]
 
