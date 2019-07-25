@@ -216,6 +216,12 @@ update msg model =
         NoOp ->
             noUpdate model
 
+        AppCmd appCmd ->
+            UpdateResult
+                model
+                Cmd.none
+                [ appCmd ]
+
 
 addPaymentInputTerm : Model -> Model
 addPaymentInputTerm model =

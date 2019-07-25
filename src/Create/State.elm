@@ -115,8 +115,17 @@ update msg prevModel =
                 oldInputs =
                     prevModel.inputs
             in
-            justModelUpdate
+            UpdateResult
                 { prevModel | inputs = { oldInputs | userRole = initiatorRole } }
+                Cmd.none
+                ChainCmd.none
+                [ case initiatorRole of
+                    Buyer ->
+                        AppCmd.gTag "create offer type changed" "input" "sell dai" 0
+
+                    Seller ->
+                        AppCmd.gTag "create offer type changed" "input" "buy dai" 0
+                ]
 
         TradeAmountChanged newAmountStr ->
             let
@@ -202,7 +211,7 @@ update msg prevModel =
                 oldInputs =
                     prevModel.inputs
             in
-            justModelUpdate
+            UpdateResult
                 ({ prevModel
                     | showFiatTypeDropdown = flag
                  }
@@ -212,6 +221,14 @@ update msg prevModel =
                         else
                             identity
                        )
+                )
+                Cmd.none
+                ChainCmd.none
+                (if flag then
+                    [ AppCmd.gTag "currency-selector-clicked" "input" "" 0 ]
+
+                 else
+                    []
                 )
 
         CreateClicked userInfo ->
@@ -250,7 +267,11 @@ update msg prevModel =
                         []
 
         AbortCreate ->
-            justModelUpdate { prevModel | txChainStatus = Nothing }
+            UpdateResult
+                { prevModel | txChainStatus = Nothing }
+                Cmd.none
+                ChainCmd.none
+                [ AppCmd.gTag "abort" "abort" "create" 0 ]
 
         ConfirmCreate createParameters fullDepositAmount ->
             let
@@ -394,6 +415,13 @@ update msg prevModel =
 
         NoOp ->
             justModelUpdate prevModel
+
+        AppCmd appCmd ->
+            UpdateResult
+                prevModel
+                Cmd.none
+                ChainCmd.none
+                [ appCmd ]
 
 
 initiateCreateCall : FactoryType -> CTypes.CreateParameters -> ( Maybe TxChainStatus, ChainCmd Msg )

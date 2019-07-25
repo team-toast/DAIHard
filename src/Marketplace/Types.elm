@@ -47,6 +47,7 @@ type Msg
     | TradeClicked Int
     | SortBy ResultColumnType Ordering
     | NoOp
+    | AppCmd (AppCmd Msg)
 
 
 type Ordering
