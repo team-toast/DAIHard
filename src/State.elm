@@ -22,6 +22,7 @@ import Json.Encode
 import List.Extra
 import Marketplace.State
 import Maybe.Extra
+import Notifications
 import QuickCreate.State
 import Routing
 import Time
@@ -146,6 +147,11 @@ update msg model =
                                 "user notice"
                                 userNotice.label
                                 0
+                    )
+
+                AppCmd.BrowserNotification title maybeBody maybeImg ->
+                    ( model
+                    , Notifications.createNotification notifyPort title maybeBody maybeImg
                     )
 
         DismissNotice id ->
@@ -785,3 +791,6 @@ port userPubkeyResult : (Json.Decode.Value -> msg) -> Sub msg
 
 
 port gTagOut : Json.Decode.Value -> Cmd msg
+
+
+port notifyPort : Notifications.NotifyPort msg

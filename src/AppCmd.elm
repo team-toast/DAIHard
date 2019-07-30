@@ -10,6 +10,7 @@ type AppCmd msg
     | GotoRoute Routing.Route
     | GTag GTagData
     | UserNotice (UserNotice msg)
+    | BrowserNotification String (Maybe String) (Maybe String)
 
 
 gTag : String -> String -> String -> Int -> AppCmd msg
@@ -36,6 +37,9 @@ map f appCmd =
 
         GTag data ->
             GTag data
+
+        BrowserNotification a b c ->
+            BrowserNotification a b c
 
 
 mapList : (msg1 -> msg2) -> List (AppCmd msg1) -> List (AppCmd msg2)
