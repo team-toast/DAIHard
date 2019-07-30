@@ -14,14 +14,15 @@ import Trade.ChatHistory.Types exposing (..)
 import UserNotice as UN
 
 
-init : Web3Context -> UserInfo -> BuyerOrSeller -> BuyerOrSeller -> List ( Int, CTypes.DAIHardEvent ) -> ( Model, Bool )
-init web3Context userInfo buyerOrSeller initiatorRole initialEvents =
+init : Web3Context -> UserInfo -> BuyerOrSeller -> BuyerOrSeller -> List ( Int, CTypes.DAIHardEvent ) -> Int -> ( Model, Bool, List (AppCmd Msg) )
+init web3Context userInfo buyerOrSeller initiatorRole initialEvents currentBlocknum =
     Model
         web3Context
         userInfo
         buyerOrSeller
         initiatorRole
         Array.empty
+        currentBlocknum
         ""
         |> handleInitialEvents initialEvents
 
@@ -31,14 +32,14 @@ update msg prevModel =
     case msg of
         NewEvent ( blocknum, event ) ->
             let
-                ( newModel, shouldCallDecrypt ) =
+                ( newModel, shouldCallDecrypt, appCmds ) =
                     handleNewEvent blocknum event prevModel
             in
             UpdateResult
                 newModel
                 shouldCallDecrypt
                 Nothing
-                []
+                appCmds
 
         MessageInputChanged newMessageStr ->
             UpdateResult
@@ -109,26 +110,26 @@ update msg prevModel =
                         ]
 
 
-handleInitialEvents : List ( Int, CTypes.DAIHardEvent ) -> Model -> ( Model, Bool )
+handleInitialEvents : List ( Int, CTypes.DAIHardEvent ) -> Model -> ( Model, Bool, List (AppCmd Msg) )
 handleInitialEvents initialEvents prevModel =
     let
-        helper : List ( Int, CTypes.DAIHardEvent ) -> ( Model, Bool ) -> ( Model, Bool )
-        helper events ( model, shouldDecrypt ) =
+        helper : List ( Int, CTypes.DAIHardEvent ) -> ( Model, Bool, List (AppCmd Msg) ) -> ( Model, Bool, List (AppCmd Msg) )
+        helper events ( model, shouldDecrypt, appCmds ) =
             case events of
                 [] ->
-                    ( model, shouldDecrypt )
+                    ( model, shouldDecrypt, appCmds )
 
                 ( blocknum, event ) :: remainingEvents ->
                     let
-                        ( thisModel, thisShouldDecrypt ) =
+                        ( thisModel, thisShouldDecrypt, newAppCmds ) =
                             handleNewEvent blocknum event model
                     in
-                    helper remainingEvents ( thisModel, shouldDecrypt || thisShouldDecrypt )
+                    helper remainingEvents ( thisModel, shouldDecrypt || thisShouldDecrypt, List.append appCmds newAppCmds )
     in
-    helper initialEvents ( prevModel, False )
+    helper initialEvents ( prevModel, False, [] )
 
 
-handleNewEvent : Int -> CTypes.DAIHardEvent -> Model -> ( Model, Bool )
+handleNewEvent : Int -> CTypes.DAIHardEvent -> Model -> ( Model, Bool, List (AppCmd Msg) )
 handleNewEvent blocknum event prevModel =
     let
         toBuyerOrSeller =
@@ -188,6 +189,21 @@ handleNewEvent blocknum event prevModel =
                 CTypes.PokeEvent ->
                     Nothing
 
+        ( maybeNotifyAppCmd, newLastNotificationBlocknum ) =
+            if blocknum > prevModel.lastNotificationBlocknum then
+                ( maybeHistoryEventInfo
+                    |> Maybe.map
+                        (historyEventToBrowserNotifcationAppCmd
+                            (prevModel.userRole == prevModel.initiatorRole)
+                        )
+                , blocknum
+                )
+
+            else
+                ( Nothing
+                , prevModel.lastNotificationBlocknum
+                )
+
         maybeNewEvent =
             Maybe.map
                 (\historyEventInfo ->
@@ -206,7 +222,10 @@ handleNewEvent blocknum event prevModel =
                 )
 
         newModel =
-            { prevModel | history = newHistory }
+            { prevModel
+                | history = newHistory
+                , lastNotificationBlocknum = newLastNotificationBlocknum
+            }
     in
     ( newModel
     , case maybeHistoryEventInfo of
@@ -215,4 +234,49 @@ handleNewEvent blocknum event prevModel =
 
         _ ->
             False
+    , Maybe.Extra.values [ maybeNotifyAppCmd ]
     )
+
+
+historyEventToBrowserNotifcationAppCmd : Bool -> EventInfo -> AppCmd Msg
+historyEventToBrowserNotifcationAppCmd userIsInitiator event =
+    case event of
+        Statement commMessage ->
+            AppCmd.BrowserNotification
+                "New Message from Trade"
+                Nothing
+                Nothing
+
+        StateChange stateChangeInfo ->
+            let
+                str =
+                    case stateChangeInfo of
+                        Initiated ->
+                            "Trade Opened."
+
+                        Committed _ ->
+                            if userIsInitiator then
+                                "Someone has committed to the Trade!"
+
+                            else
+                                "You are now committed to the Trade!"
+
+                        Recalled ->
+                            "Trade recalled."
+
+                        Claimed ->
+                            "Payment has been confirmed by the Buyer."
+
+                        Aborted ->
+                            "Trade aborted by Buyer."
+
+                        Released ->
+                            "Trade released by Seller."
+
+                        Burned ->
+                            "Trade burned by Seller."
+            in
+            AppCmd.BrowserNotification
+                str
+                Nothing
+                Nothing

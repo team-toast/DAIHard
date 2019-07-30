@@ -1,6 +1,7 @@
 var elm_ethereum_ports = require('elm-ethereum-ports');
 var secureComms = require('./secureComms');
 var networkChangeNotifier = require('./networkChangeNotifier');
+var elmNotifications = require('./elmNotifications');
 window.forge = require('node-forge');
 
 import { Elm } from '../../src/App'
@@ -33,6 +34,7 @@ function startDapp() {
             });
 
             gtagPortStuff(app);
+            notificationPortStuff(app);
 
             web3PortStuff(app, web3);
         });
@@ -47,9 +49,16 @@ function startDapp() {
         });
 
         gtagPortStuff(app);
+        notificationPortStuff(app);
 
         console.log("Metamask not detected.");
     }
+}
+
+function notificationPortStuff(app) {
+    app.ports.notifyPort.subscribe(function (obj) {
+        elmNotifications.notify(obj.title, obj.body, obj.image);
+    });
 }
 
 function gtagPortStuff(app) {

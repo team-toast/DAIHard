@@ -121,21 +121,37 @@ root =
                         , Element.centerX
                         ]
                         (Element.text "Ready to try it out?")
-                    , Element.paragraph
-                        [ Element.Font.size 24
-                        , Element.centerX
+                    , Element.column
+                        [ Element.spacing 10
                         , Element.width <| Element.px 400
+                        , Element.centerX
                         ]
-                        [ Element.text "Follow the links at the top of this page to browse "
-                        , boldText "Sell Offers"
-                        , Element.text ", browse "
-                        , boldText "Buy Offers"
-                        , Element.text ", or "
-                        , boldText "Create Your Own Offer"
-                        , Element.text "."
+                        [ Element.paragraph
+                            [ Element.Font.size 24
+                            , Element.width Element.fill
+                            ]
+                            [ Element.text "Make sure your web3 wallet is unlocked (we recommend using Nifty Wallet over Metamask)."
+                            ]
+                        , Element.paragraph
+                            [ Element.Font.size 24
+                            , Element.width Element.fill
+                            ]
+                            [ Element.text "Then follow the links at the top of this page to browse "
+                            , boldText "Sell Offers"
+                            , Element.text ", browse "
+                            , boldText "Buy Offers"
+                            , Element.text ", or "
+                            , boldText "Create Your Own Offer"
+                            , Element.text "."
+                            ]
                         ]
                     ]
                 )
             ]
-        , Element.el [ Element.alignBottom ] <| EH.coolCurrencyHbreak True Element.fill
+        , Element.el
+            [ Element.alignBottom
+            , Element.width Element.fill
+            ]
+          <|
+            EH.coolCurrencyHbreak True Element.fill
         ]

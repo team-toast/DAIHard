@@ -41,11 +41,13 @@ type alias Model =
     , eventSentry : EventSentry Msg
     , allowance : Maybe BigInt
     , txChainStatus : Maybe TxChainStatus
+    , blocknumOnInit : Maybe Int
     }
 
 
 type Msg
-    = CreationInfoFetched (Result Http.Error DHF.CreatedTrade)
+    = CurrentBlockFetched (Result Http.Error Int)
+    | CreationInfoFetched (Result Http.Error DHF.CreatedTrade)
     | StateFetched (Result Http.Error (Maybe CTypes.State))
     | ParametersFetched (Result Http.Error (Result String CTypes.TradeParameters))
     | PhaseInfoFetched (Result Http.Error (Maybe CTypes.PhaseStartInfo))

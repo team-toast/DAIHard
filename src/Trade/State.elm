@@ -1,6 +1,6 @@
 port module Trade.State exposing (init, subscriptions, update, updateUserInfo)
 
-import AppCmd
+import AppCmd exposing (AppCmd)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -59,8 +59,14 @@ init web3Context userInfo tradeId =
         , eventSentry = eventSentry
         , allowance = Nothing
         , txChainStatus = Nothing
+        , blocknumOnInit = Nothing
         }
-        (Cmd.batch [ getCreationInfoCmd, eventSentryCmd ])
+        (Cmd.batch
+            [ getCreationInfoCmd
+            , eventSentryCmd
+            , getBlockCmd web3Context
+            ]
+        )
         ChainCmd.none
         []
 
@@ -105,13 +111,13 @@ update msg prevModel =
                         _ ->
                             Cmd.none
 
-                ( newChatHistoryModel, shouldDecrypt ) =
+                ( newChatHistoryModel, shouldDecrypt, appCmds ) =
                     case prevModel.chatHistoryModel of
                         Nothing ->
-                            tryInitChatHistory prevModel.web3Context prevModel.trade prevModel.userInfo prevModel.eventsWaitingForChatHistory
+                            tryInitChatHistory prevModel.web3Context prevModel.trade prevModel.userInfo prevModel.blocknumOnInit prevModel.eventsWaitingForChatHistory
 
                         _ ->
-                            ( prevModel.chatHistoryModel, False )
+                            ( prevModel.chatHistoryModel, False, [] )
 
                 decryptCmd =
                     if shouldDecrypt then
@@ -148,10 +154,25 @@ update msg prevModel =
                             ]
                         )
                         ChainCmd.none
-                        []
+                        appCmds
 
                 _ ->
                     justModelUpdate newModel
+
+        CurrentBlockFetched fetchResult ->
+            case fetchResult of
+                Ok blocknum ->
+                    justModelUpdate
+                        { prevModel | blocknumOnInit = Just blocknum }
+
+                Err httpError ->
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        ChainCmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.web3FetchError "blocknum" httpError
+                        ]
 
         AllowanceFetched fetchResult ->
             case fetchResult of
@@ -399,18 +420,23 @@ update msg prevModel =
                                 _ ->
                                     prevModel.secureCommInfo
 
-                        ( newChatHistoryModel, shouldDecrypt ) =
+                        ( newChatHistoryModel, shouldDecrypt, appCmds ) =
                             case prevModel.chatHistoryModel of
                                 Just prevChatHistoryModel ->
                                     ChatHistory.handleNewEvent
                                         decodedEventLog.blockNumber
                                         event
                                         prevChatHistoryModel
-                                        |> Tuple.mapFirst Just
+                                        |> (\( chModel, shouldDecrypt_, appCmds_ ) ->
+                                                ( Just chModel
+                                                , shouldDecrypt_
+                                                , appCmds_ |> List.map (AppCmd.map ChatHistoryMsg)
+                                                )
+                                           )
 
                                 Nothing ->
                                     -- chat is uninitialized; initialize if we can
-                                    tryInitChatHistory prevModel.web3Context newTrade prevModel.userInfo prevModel.eventsWaitingForChatHistory
+                                    tryInitChatHistory prevModel.web3Context newTrade prevModel.userInfo prevModel.blocknumOnInit prevModel.eventsWaitingForChatHistory
 
                         eventsToSave =
                             case newChatHistoryModel of
@@ -441,9 +467,12 @@ update msg prevModel =
                         newModel
                         cmd
                         ChainCmd.none
-                        ([ maybeDecodeErrorNotice ]
-                            |> Maybe.Extra.values
-                            |> List.map AppCmd.UserNotice
+                        (List.append
+                            ([ maybeDecodeErrorNotice ]
+                                |> Maybe.Extra.values
+                                |> List.map AppCmd.UserNotice
+                            )
+                            appCmds
                         )
 
         ExpandPhase phase ->
@@ -873,10 +902,10 @@ initiateCommitCall web3Context trade userAddress commPubkey =
     )
 
 
-tryInitChatHistory : Web3Context -> CTypes.Trade -> Maybe UserInfo -> List ( Int, CTypes.DAIHardEvent ) -> ( Maybe ChatHistory.Model, Bool )
-tryInitChatHistory web3Context maybeTrade maybeUserInfo pendingEvents =
-    case ( maybeTrade, maybeUserInfo ) of
-        ( CTypes.LoadedTrade tradeInfo, Just userInfo ) ->
+tryInitChatHistory : Web3Context -> CTypes.Trade -> Maybe UserInfo -> Maybe Int -> List ( Int, CTypes.DAIHardEvent ) -> ( Maybe ChatHistory.Model, Bool, List (AppCmd Msg) )
+tryInitChatHistory web3Context maybeTrade maybeUserInfo maybeCurrentBlocknum pendingEvents =
+    case ( maybeTrade, maybeUserInfo, maybeCurrentBlocknum ) of
+        ( CTypes.LoadedTrade tradeInfo, Just userInfo, Just blocknum ) ->
             let
                 maybeBuyerOrSeller =
                     CTypes.getBuyerOrSeller tradeInfo userInfo.address
@@ -889,13 +918,19 @@ tryInitChatHistory web3Context maybeTrade maybeUserInfo pendingEvents =
                         buyerOrSeller
                         tradeInfo.parameters.initiatorRole
                         pendingEvents
-                        |> Tuple.mapFirst Just
+                        blocknum
+                        |> (\( chModel, shouldDecrypt, appCmds ) ->
+                                ( Just chModel
+                                , shouldDecrypt
+                                , appCmds |> List.map (AppCmd.map ChatHistoryMsg)
+                                )
+                           )
 
                 Nothing ->
-                    ( Nothing, False )
+                    ( Nothing, False, [] )
 
         _ ->
-            ( Nothing, False )
+            ( Nothing, False, [] )
 
 
 tryBuildDecryptCmd : Model -> Cmd Msg
@@ -953,6 +988,12 @@ decryptNewMessagesCmd model userRole =
                         Cmd.none
             )
         |> Cmd.batch
+
+
+getBlockCmd : EthHelpers.Web3Context -> Cmd Msg
+getBlockCmd web3Context =
+    Eth.getBlockNumber web3Context.httpProvider
+        |> Task.attempt CurrentBlockFetched
 
 
 contractActionSend : ContractAction -> CustomSend Msg
