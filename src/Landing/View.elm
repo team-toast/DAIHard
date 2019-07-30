@@ -97,7 +97,7 @@ root =
                         , Element.Font.size 24
                         , Element.centerX
                         ]
-                        { url = "https://daihardhome.wpcomstaging.com/"
+                        { url = "https://daihardhome.wpcomstaging.com/2019/07/24/re-launch-test-post/"
                         , label =
                             Element.paragraph
                                 [ Element.Font.center ]
