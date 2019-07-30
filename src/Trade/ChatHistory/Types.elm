@@ -16,6 +16,7 @@ type alias Model =
     , userRole : BuyerOrSeller
     , initiatorRole : BuyerOrSeller
     , history : Array Event
+    , lastNotificationBlocknum : Int
     , messageInput : String
     }
 
