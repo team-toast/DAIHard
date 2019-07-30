@@ -59,6 +59,10 @@ function notificationPortStuff(app) {
     app.ports.notifyPort.subscribe(function (obj) {
         elmNotifications.notify(obj.title, obj.body, obj.image);
     });
+
+    app.ports.requestNotifyPermissionPort.subscribe(function () {
+        elmNotifications.requestPermission(function (callback) { });
+    });
 }
 
 function gtagPortStuff(app) {

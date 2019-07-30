@@ -11,6 +11,7 @@ type AppCmd msg
     | GTag GTagData
     | UserNotice (UserNotice msg)
     | BrowserNotification String (Maybe String) (Maybe String)
+    | RequestBrowserNotificationPermission
 
 
 gTag : String -> String -> String -> Int -> AppCmd msg
@@ -40,6 +41,9 @@ map f appCmd =
 
         BrowserNotification a b c ->
             BrowserNotification a b c
+
+        RequestBrowserNotificationPermission ->
+            RequestBrowserNotificationPermission
 
 
 mapList : (msg1 -> msg2) -> List (AppCmd msg1) -> List (AppCmd msg2)
