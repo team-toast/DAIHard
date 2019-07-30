@@ -97,7 +97,7 @@ root =
                         , Element.Font.size 24
                         , Element.centerX
                         ]
-                        { url = "http://daihard.io"
+                        { url = "https://daihardhome.wpcomstaging.com/"
                         , label =
                             Element.paragraph
                                 [ Element.Font.center ]

@@ -79,6 +79,12 @@ contract ERC20Interface {
     event Approval(address indexed tokenOwner, address indexed spender, uint tokens);
 }
 
+/*
+  The following two contracts, DAIHardFactory and DAIHardTrade, were audited by Adam Dossa
+  in June/July 2019. The results of this audit can be seen at:
+  https://github.com/burnable-tech/DAIHard/blob/4f8ef54f297420210a8eae15bd4f76ee051aab13/audit-info/DAIHard_Audit.md
+*/
+
 contract DAIHardFactory {
     using SafeMath for uint;
 
