@@ -154,6 +154,11 @@ update msg model =
                     , Notifications.createNotification notifyPort title maybeBody maybeImg
                     )
 
+                AppCmd.RequestBrowserNotificationPermission ->
+                    ( model
+                    , requestNotifyPermissionPort ()
+                    )
+
         DismissNotice id ->
             ( { model
                 | userNotices =
@@ -791,6 +796,9 @@ port userPubkeyResult : (Json.Decode.Value -> msg) -> Sub msg
 
 
 port gTagOut : Json.Decode.Value -> Cmd msg
+
+
+port requestNotifyPermissionPort : () -> Cmd msg
 
 
 port notifyPort : Notifications.NotifyPort msg

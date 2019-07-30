@@ -68,7 +68,7 @@ init web3Context userInfo tradeId =
             ]
         )
         ChainCmd.none
-        []
+        [ AppCmd.RequestBrowserNotificationPermission ]
 
 
 getContractCreationInfoCmd : EthHelpers.Web3Context -> Int -> Cmd Msg
