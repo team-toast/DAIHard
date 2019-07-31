@@ -15,7 +15,7 @@ root : Element Msg
 root =
     let
         redText =
-            Element.el [ Element.Font.color EH.red ] << Element.text
+            Element.el [ Element.Font.color <| Element.rgb 0.8 0.2 0.2 ] << Element.text
 
         boldText =
             Element.el [ Element.Font.bold ] << Element.text
