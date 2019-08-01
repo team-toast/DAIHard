@@ -87,22 +87,44 @@ root =
                         , Element.centerX
                         ]
                         (Element.text "Want to learn more?")
-                    , Element.link
-                        [ Element.Border.rounded 4
-                        , Element.pointer
-                        , Element.paddingXY 25 17
-                        , Element.Background.color EH.blue
-                        , Element.Font.color EH.white
-                        , Element.Font.bold
-                        , Element.Font.size 24
-                        , Element.centerX
+                    
+                    , Element.column
+                        [ Element.spacing 15]
+                        [ Element.link
+                            [ Element.Border.rounded 4
+                            , Element.width Element.fill
+                            , Element.pointer
+                            , Element.paddingXY 25 17
+                            , Element.Background.color EH.blue
+                            , Element.Font.color EH.white
+                            , Element.Font.bold
+                            , Element.Font.size 24
+                            , Element.centerX
+                            ]
+                            { url = "https://daihardhome.wpcomstaging.com/2019/07/24/re-launch-test-post/"
+                            , label =
+                                Element.paragraph
+                                    [ Element.Font.center ]
+                                    [ Element.text "Go to the DAIHard Info page" ]
+                            }
+                        , Element.link
+                            [ Element.Border.rounded 4
+                            , Element.width Element.fill
+                            , Element.pointer
+                            , Element.paddingXY 25 17
+                            , Element.Background.color EH.blue
+                            , Element.Font.color EH.white
+                            , Element.Font.bold
+                            , Element.Font.size 24
+                            , Element.centerX
+                            ]
+                            { url = "https://t.me/daihardexchange_group"
+                            , label =
+                                Element.paragraph
+                                    [ Element.Font.center ]
+                                    [ Element.text "Join the Telegram Group" ]
+                            }
                         ]
-                        { url = "https://daihardhome.wpcomstaging.com/2019/07/24/re-launch-test-post/"
-                        , label =
-                            Element.paragraph
-                                [ Element.Font.center ]
-                                [ Element.text "Go to the DAIHard Info page" ]
-                        }
                     ]
                 )
             , Element.el
