@@ -1,15 +1,17 @@
-module Marketplace.Types exposing (Errors, FiatTypeAndRange, Model, Msg(..), Ordering(..), Query, ResultColumnType(..), SearchInputs, TokenRange, UpdateResult, noErrors, noUpdate, updateFiatTypeInput, updateMaxDaiInput, updateMaxFiatInput, updateMinDaiInput, updateMinFiatInput, updatePaymentMethodInput, updatePaymentMethodTerms)
+module Marketplace.Types exposing (Errors, Model, Msg(..), ResultColumnType(..), SearchInputs, UpdateResult, justModelUpdate, noErrors, updateFiatTypeInput, updateMaxDaiInput, updateMinDaiInput, updatePaymentMethodInput, updatePaymentMethodTerms)
 
 import AppCmd exposing (AppCmd)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
+import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
 import Dict exposing (Dict)
+import Eth.Net
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
 import FiatValue exposing (FiatValue)
-import Helpers.Eth as EthHelpers exposing (Web3Context)
+import Helpers.Eth as EthHelpers
 import Http
 import Json.Decode
 import PaymentMethods exposing (PaymentMethod)
@@ -17,17 +19,17 @@ import String.Extra
 import Time
 import TokenValue exposing (TokenValue)
 import TradeCache.Types as TradeCache exposing (TradeCache)
+import TradeTable.Types as TradeTable
+import Wallet
 
 
 type alias Model =
-    { web3Context : Web3Context
-    , userInfo : Maybe UserInfo
-    , browsingRole : BuyerOrSeller
+    { wallet : Wallet.State
+    , tradeTable : TradeTable.Model
     , inputs : SearchInputs
     , errors : Errors
     , showCurrencyDropdown : Bool
     , filterFunc : Time.Posix -> CTypes.FullTradeInfo -> Bool
-    , sortFunc : CTypes.FullTradeInfo -> CTypes.FullTradeInfo -> Order
     }
 
 
@@ -35,24 +37,16 @@ type Msg
     = MinDaiChanged String
     | MaxDaiChanged String
     | FiatTypeInputChanged String
-    | MinFiatChanged String
-    | MaxFiatChanged String
     | PaymentMethodInputChanged String
     | ShowCurrencyDropdown Bool
     | FiatTypeLostFocus
     | AddSearchTerm
     | RemoveTerm String
-    | ApplyInputs
+      -- | ApplyInputs
     | ResetSearch
-    | TradeClicked Int
-    | SortBy ResultColumnType Ordering
-    | NoOp
+    | TradeTableMsg TradeTable.Msg
     | AppCmd (AppCmd Msg)
-
-
-type Ordering
-    = Ascending
-    | Descending
+    | NoOp
 
 
 
@@ -63,15 +57,17 @@ type Ordering
 type alias UpdateResult =
     { model : Model
     , cmd : Cmd Msg
+    , chainCmd : ChainCmd Msg
     , appCmds : List (AppCmd Msg)
     }
 
 
-noUpdate : Model -> UpdateResult
-noUpdate model =
+justModelUpdate : Model -> UpdateResult
+justModelUpdate model =
     UpdateResult
         model
         Cmd.none
+        ChainCmd.none
         []
 
 
@@ -79,8 +75,6 @@ type alias SearchInputs =
     { minDai : String
     , maxDai : String
     , fiatType : String
-    , minFiat : String
-    , maxFiat : String
     , paymentMethod : String
     , paymentMethodTerms : List String
     }
@@ -89,33 +83,28 @@ type alias SearchInputs =
 type alias Errors =
     { minDai : Maybe String
     , maxDai : Maybe String
-    , minFiat : Maybe String
-    , maxFiat : Maybe String
     }
 
 
 noErrors =
-    Errors Nothing Nothing Nothing Nothing
+    Errors Nothing Nothing
 
 
-type alias Query =
-    { dai : TokenRange
-    , fiat : Maybe FiatTypeAndRange
-    , paymentMethodTerms : List String
-    }
 
-
-type alias TokenRange =
-    { min : Maybe TokenValue
-    , max : Maybe TokenValue
-    }
-
-
-type alias FiatTypeAndRange =
-    { type_ : String
-    , min : Maybe BigInt
-    , max : Maybe BigInt
-    }
+-- type alias Query =
+--     { dai : TokenRange
+--     , fiat : Maybe FiatTypeAndRange
+--     , paymentMethodTerms : List String
+--     }
+-- type alias TokenRange =
+--     { min : Maybe TokenValue
+--     , max : Maybe TokenValue
+--     }
+-- type alias FiatTypeAndRange =
+--     { type_ : String
+--     , min : Maybe BigInt
+--     , max : Maybe BigInt
+--     }
 
 
 updatePaymentMethodInput : String -> SearchInputs -> SearchInputs
@@ -136,16 +125,6 @@ updateMinDaiInput input inputs =
 updateMaxDaiInput : String -> SearchInputs -> SearchInputs
 updateMaxDaiInput input inputs =
     { inputs | maxDai = input }
-
-
-updateMinFiatInput : String -> SearchInputs -> SearchInputs
-updateMinFiatInput input inputs =
-    { inputs | minFiat = input }
-
-
-updateMaxFiatInput : String -> SearchInputs -> SearchInputs
-updateMaxFiatInput input inputs =
-    { inputs | maxFiat = input }
 
 
 updatePaymentMethodTerms : List String -> SearchInputs -> SearchInputs

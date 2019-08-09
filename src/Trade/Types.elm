@@ -1,24 +1,16 @@
-module Trade.Types exposing
-    ( ContractAction(..)
-    , Model
-    , Msg(..)
-    , PhaseState(..)
-    , TxChainStatus(..)
-    , UpdateResult
-    , actionName
-    , justModelUpdate
-    )
+module Trade.Types exposing (ContractAction(..), Model, Msg(..), PhaseState(..), TxChainStatus(..), UpdateResult, actionName, justModelUpdate)
 
 import AppCmd exposing (AppCmd)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
+import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
 import Contracts.Generated.DAIHardFactory as DHF
 import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Types as CTypes
+import Eth.Net
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address, TxHash, TxReceipt)
-import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
 import Helpers.Eth as EthHelpers
 import Http
 import Json.Decode
@@ -26,11 +18,11 @@ import Routing
 import Time
 import Trade.ChatHistory.SecureComm exposing (..)
 import Trade.ChatHistory.Types as ChatHistory
+import Wallet
 
 
 type alias Model =
-    { web3Context : EthHelpers.Web3Context
-    , userInfo : Maybe UserInfo
+    { wallet : Wallet.State
     , trade : CTypes.Trade
     , expandedPhase : CTypes.Phase
     , chatHistoryModel : Maybe ChatHistory.Model
@@ -93,7 +85,7 @@ justModelUpdate model =
 
 
 type TxChainStatus
-    = ConfirmingCommit CTypes.FullTradeInfo UserInfo BigInt
+    = ConfirmingCommit UserInfo BigInt
     | ApproveNeedsSig
     | ApproveMining TxHash
     | CommitNeedsSig

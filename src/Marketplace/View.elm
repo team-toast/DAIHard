@@ -18,14 +18,17 @@ import Html.Events.Extra
 import Images exposing (Image)
 import Margin
 import Marketplace.Types exposing (..)
+import Maybe.Extra
 import PaymentMethods exposing (PaymentMethod)
 import Time
 import TradeCache.State as TradeCache
-import TradeCache.Types exposing (TradeCache)
+import TradeCache.Types as TradeCache exposing (TradeCache)
+import TradeTable.Types as TradeTable
+import TradeTable.View as TradeTable
 
 
-root : Time.Posix -> TradeCache -> Model -> Element Msg
-root time tradeCache model =
+root : Time.Posix -> List TradeCache -> Model -> Element Msg
+root time tradeCaches model =
     Element.column
         [ Element.Border.rounded 5
         , Element.Background.color EH.white
@@ -38,14 +41,14 @@ root time tradeCache model =
             , Element.spacing 10
             , Element.padding 30
             ]
-            [ searchInputElement model.web3Context.factoryType model.inputs model.errors model.showCurrencyDropdown
+            [ searchInputElement model.inputs model.errors model.showCurrencyDropdown
             ]
-        , maybeResultsElement time tradeCache model
+        , resultsAndStatusElement time tradeCaches model
         ]
 
 
-searchInputElement : FactoryType -> SearchInputs -> Errors -> Bool -> Element Msg
-searchInputElement factoryType inputs errors showCurrencyDropdown =
+searchInputElement : SearchInputs -> Errors -> Bool -> Element Msg
+searchInputElement inputs errors showCurrencyDropdown =
     Element.column
         [ Element.spacing 10
         , Element.width Element.shrink
@@ -60,13 +63,13 @@ searchInputElement factoryType inputs errors showCurrencyDropdown =
                 , Element.alignTop
                 ]
               <|
-                daiRangeInput factoryType inputs.minDai inputs.maxDai errors
+                daiRangeInput inputs.minDai inputs.maxDai errors
             , Element.el
                 [ Element.width Element.shrink
                 , Element.alignTop
                 ]
               <|
-                fiatInput showCurrencyDropdown inputs.fiatType inputs.minFiat inputs.maxFiat errors
+                fiatInput showCurrencyDropdown inputs.fiatType errors
             , Element.column
                 [ Element.width Element.shrink
                 , Element.alignTop
@@ -75,12 +78,13 @@ searchInputElement factoryType inputs errors showCurrencyDropdown =
                 [ paymentMethodsInput inputs.paymentMethod
                 , searchTermsDisplayElement inputs.paymentMethodTerms
                 ]
-            , Element.column
-                [ Element.spacing 5
-                , Element.width Element.shrink
-                ]
-                [ applyButton, resetButton ]
-                |> withInputHeader " "
+
+            -- , Element.column
+            --     [ Element.spacing 5
+            --     , Element.width Element.shrink
+            --     ]
+            --     [ applyButton, resetButton ]
+            --     |> withInputHeader " "
             ]
         ]
 
@@ -122,8 +126,8 @@ removeSearchTermButton term =
         (Element.text "x")
 
 
-maybeResultsElement : Time.Posix -> TradeCache -> Model -> Element Msg
-maybeResultsElement time tradeCache model =
+resultsAndStatusElement : Time.Posix -> List TradeCache -> Model -> Element Msg
+resultsAndStatusElement time tradeCaches model =
     let
         statusMsgElement s =
             Element.el
@@ -136,76 +140,70 @@ maybeResultsElement time tradeCache model =
                 (Element.text s)
 
         visibleTrades =
-            TradeCache.loadedValidTrades tradeCache
-                |> filterAndSortTrades time model.filterFunc model.sortFunc
-    in
-    case ( tradeCache.dataFetchStatus.total, visibleTrades ) of
-        ( Nothing, _ ) ->
-            statusMsgElement "Querying Factory contract..."
+            tradeCaches
+                |> List.map TradeCache.loadedValidTrades
+                |> List.concat
+                |> filterTrades time model.filterFunc
 
-        ( Just 0, _ ) ->
-            statusMsgElement "No trades found."
-
-        ( Just totalTrades, [] ) ->
-            if tradeCache.dataFetchStatus.loaded < (totalTrades - tradeCache.dataFetchStatus.invalid) then
-                statusMsgElement "Searching trades for Open offers..."
+        statusMessages : List (Element Msg)
+        statusMessages =
+            if List.all ((==) TradeCache.NoneFound) (List.map TradeCache.loadingStatus tradeCaches) then
+                [ statusMsgElement "No trades found." ]
 
             else
-                statusMsgElement "No open offers found."
+                tradeCaches
+                    |> List.map
+                        (\tc ->
+                            case TradeCache.loadingStatus tc of
+                                TradeCache.QueryingNumTrades ->
+                                    Just <| factoryName tc.factory ++ "Querying Factory..."
 
-        ( Just totalTrades, _ ) ->
-            resultsElement time visibleTrades model
+                                TradeCache.NoneFound ->
+                                    Nothing
 
+                                TradeCache.FetchingTrades ->
+                                    Just <| factoryName tc.factory ++ "Fetching Trades"
 
-resultsElement : Time.Posix -> List CTypes.FullTradeInfo -> Model -> Element Msg
-resultsElement time visibleTrades model =
-    let
-        buyingOrSellingString =
-            case model.browsingRole of
-                Buyer ->
-                    "Selling"
-
-                Seller ->
-                    "Buying"
+                                TradeCache.AllFetched ->
+                                    Nothing
+                        )
+                    |> Maybe.Extra.values
+                    |> List.map statusMsgElement
     in
     Element.column
-        [ Element.width Element.fill
-        , Element.height Element.fill
-        , Element.padding 30
-        , Element.spacing 5
-        ]
-        [ Element.row
-            [ Element.width Element.fill ]
-            [ Element.row
-                [ Element.width <| Element.fillPortion 7 ]
-                [ cellMaker ( 2, sortableColumnHeader "Expires" Expiring Nothing )
-                , cellMaker ( 1, sortableColumnHeader buyingOrSellingString TradeAmount Nothing )
-                , cellMaker ( 2, sortableColumnHeader "For Fiat" Fiat Nothing )
-                , cellMaker ( 1, sortableColumnHeader "Margin" Margin Nothing )
-                , cellMaker ( 2, sortableColumnHeader "Payment Window" AutoabortWindow Nothing )
-                , cellMaker ( 2, sortableColumnHeader "Auto-Release" AutoreleaseWindow Nothing )
-                ]
-            , Element.el
-                [ Element.width <| Element.fillPortion 1 ]
+        [ Element.spacing 10 ]
+        [ case statusMessages of
+            [] ->
                 Element.none
-            ]
-        , Element.column
-            [ Element.width Element.fill
-            , Element.Border.width 2
-            , Element.Border.rounded 8
-            , Element.Border.color EH.darkGray
-            , Element.spacing 1
-            , Element.Background.color EH.darkGray
-            , Element.clip
-            ]
-            (visibleTrades
-                |> List.map (viewTradeRow time model.browsingRole)
-            )
+
+            _ ->
+                Element.column [ Element.spacing 5 ] statusMessages
+        , maybeResultsElement time visibleTrades model
         ]
 
 
-daiRangeInput : FactoryType -> String -> String -> Errors -> Element Msg
-daiRangeInput factoryType minDai maxDai errors =
+maybeResultsElement : Time.Posix -> List CTypes.FullTradeInfo -> Model -> Element Msg
+maybeResultsElement time visibleTrades model =
+    if visibleTrades == [] then
+        Element.none
+
+    else
+        TradeTable.view
+            time
+            model.tradeTable
+            [ TradeTable.Expires
+            , TradeTable.Offer
+            , TradeTable.FiatPrice
+            , TradeTable.Margin
+            , TradeTable.PaymentWindow
+            , TradeTable.BurnWindow
+            ]
+            visibleTrades
+            |> Element.map TradeTableMsg
+
+
+daiRangeInput : String -> String -> Errors -> Element Msg
+daiRangeInput minDai maxDai errors =
     let
         daiLabelElement =
             EH.daiSymbol [ Element.centerY ]
@@ -231,7 +229,7 @@ daiRangeInput factoryType minDai maxDai errors =
             ]
             [ Element.Events.onFocus (ShowCurrencyDropdown False) ]
             minElement
-            ("min " ++ Config.tokenUnitName factoryType)
+            "min Dai"
             minDai
             Nothing
             Nothing
@@ -244,17 +242,17 @@ daiRangeInput factoryType minDai maxDai errors =
             ]
             [ Element.Events.onFocus (ShowCurrencyDropdown False) ]
             maxElement
-            ("max " ++ Config.tokenUnitName factoryType)
+            "max Dai"
             maxDai
             Nothing
             Nothing
             MaxDaiChanged
         ]
-        |> withInputHeader (Config.tokenUnitName factoryType ++ " Range")
+        |> withInputHeader "Dai Range"
 
 
-fiatInput : Bool -> String -> String -> String -> Errors -> Element Msg
-fiatInput showTypeDropdown fiatType minFiat maxFiat errors =
+fiatInput : Bool -> String -> Errors -> Element Msg
+fiatInput showTypeDropdown fiatType errors =
     let
         fiatLabelElement =
             EH.fiatTypeToSymbolElement fiatType
@@ -274,39 +272,11 @@ fiatInput showTypeDropdown fiatType minFiat maxFiat errors =
         flagClickedMsg =
             AppCmd <| AppCmd.gTag "click" "misclick" "currency flag" 0
     in
-    Element.row [ Element.spacing 5, Element.width Element.shrink ]
-        [ Element.el [ Element.alignTop, Element.width <| Element.px 120 ] <|
-            EH.currencySelector showTypeDropdown fiatType (ShowCurrencyDropdown True) FiatTypeInputChanged flagClickedMsg
-        , Element.column [ Element.spacing 5, Element.alignTop, Element.width <| Element.px 200 ]
-            [ EH.textInputWithElement
-                [ Element.above <|
-                    EH.maybeErrorElement
-                        [ Element.moveUp 5, Element.width (Element.shrink |> Element.maximum 200) ]
-                        errors.minFiat
-                ]
-                [ Element.Events.onFocus (ShowCurrencyDropdown False) ]
-                minElement
-                "min"
-                minFiat
-                Nothing
-                Nothing
-                MinFiatChanged
-            , EH.textInputWithElement
-                [ Element.below <|
-                    EH.maybeErrorElement
-                        [ Element.moveDown 5, Element.width (Element.shrink |> Element.maximum 200) ]
-                        errors.maxFiat
-                ]
-                [ Element.Events.onFocus (ShowCurrencyDropdown False) ]
-                maxElement
-                "max"
-                maxFiat
-                Nothing
-                Nothing
-                MaxFiatChanged
-            ]
-        ]
-        |> withInputHeader "Fiat Type"
+    Element.el
+        [ Element.alignTop, Element.width <| Element.px 120 ]
+        (EH.currencySelector showTypeDropdown fiatType (ShowCurrencyDropdown True) FiatTypeInputChanged flagClickedMsg
+            |> withInputHeader "Fiat Type"
+        )
 
 
 paymentMethodsInput : String -> Element Msg
@@ -332,40 +302,39 @@ paymentMethodsInput searchString =
         |> withInputHeader "Search Payment Methods"
 
 
-applyButton : Element Msg
-applyButton =
-    Element.Input.button
-        [ Element.Background.color EH.blue
-        , Element.padding 10
-        , Element.Border.rounded 5
-        ]
-        { onPress = Just ApplyInputs
-        , label =
-            Element.el
-                [ Element.Font.color EH.white
-                , Element.centerX
-                , Element.centerY
-                ]
-                (Element.text "Apply")
-        }
 
-
-resetButton : Element Msg
-resetButton =
-    Element.Input.button
-        [ Element.Background.color EH.blue
-        , Element.padding 10
-        , Element.Border.rounded 5
-        ]
-        { onPress = Just ResetSearch
-        , label =
-            Element.el
-                [ Element.Font.color EH.white
-                , Element.centerX
-                , Element.centerY
-                ]
-                (Element.text "Reset")
-        }
+-- applyButton : Element Msg
+-- applyButton =
+--     Element.Input.button
+--         [ Element.Background.color EH.blue
+--         , Element.padding 10
+--         , Element.Border.rounded 5
+--         ]
+--         { onPress = Just ApplyInputs
+--         , label =
+--             Element.el
+--                 [ Element.Font.color EH.white
+--                 , Element.centerX
+--                 , Element.centerY
+--                 ]
+--                 (Element.text "Apply")
+--         }
+-- resetButton : Element Msg
+-- resetButton =
+--     Element.Input.button
+--         [ Element.Background.color EH.blue
+--         , Element.padding 10
+--         , Element.Border.rounded 5
+--         ]
+--         { onPress = Just ResetSearch
+--         , label =
+--             Element.el
+--                 [ Element.Font.color EH.white
+--                 , Element.centerX
+--                 , Element.centerY
+--                 ]
+--                 (Element.text "Reset")
+--         }
 
 
 withInputHeader : String -> Element Msg -> Element Msg
@@ -377,181 +346,6 @@ withInputHeader title element =
         [ Element.el [ Element.Font.size 17, Element.Font.medium ] <| Element.text title
         , element
         ]
-
-
-viewTradeRow : Time.Posix -> BuyerOrSeller -> CTypes.FullTradeInfo -> Element Msg
-viewTradeRow time viewAsRole trade =
-    Element.row
-        [ Element.width Element.fill
-        , Element.spacing 1
-        , Element.Background.color EH.lightGray
-        ]
-        [ Element.column
-            [ Element.width Element.fill
-            , Element.spacing 1
-            , Element.width <| Element.fillPortion 7
-            ]
-            [ Element.row
-                [ Element.width <| Element.fillPortion 6
-                , Element.spacing 1
-                ]
-                (List.map cellMaker
-                    [ ( 2, viewExpiring time trade )
-                    , ( 1, viewTradeAmount trade )
-                    , ( 2, viewFiat trade )
-                    , ( 1, viewMargin trade (viewAsRole /= Buyer) )
-                    , ( 2, viewAutoabortWindow viewAsRole trade )
-                    , ( 2, viewAutoreleaseWindow viewAsRole trade )
-                    ]
-                )
-            , cellMaker ( 1, viewPaymentMethods trade.terms.paymentMethods )
-            ]
-        , Element.el
-            [ Element.width <| Element.fillPortion 1
-            , Element.height Element.fill
-            , Element.clip
-            , Element.Background.color EH.white
-            ]
-          <|
-            Element.el
-                [ Element.centerX
-                , Element.centerY
-                ]
-                (viewTradeButton trade.id)
-        ]
-
-
-cellMaker : ( Int, Element Msg ) -> Element Msg
-cellMaker ( portion, cellElement ) =
-    Element.el
-        [ Element.width <| Element.fillPortion portion
-        , Element.height <| Element.px 60
-        , Element.clip
-        , Element.Background.color EH.white
-        ]
-    <|
-        Element.el
-            [ Element.padding 12
-            , Element.centerY
-            , Element.width Element.fill
-            ]
-            cellElement
-
-
-viewExpiring : Time.Posix -> CTypes.FullTradeInfo -> Element Msg
-viewExpiring time trade =
-    case CTypes.getCurrentPhaseTimeoutInfo time trade of
-        CTypes.TimeLeft timeoutInfo ->
-            let
-                baseIntervalColor =
-                    if TimeHelpers.getRatio (Tuple.first timeoutInfo) (Tuple.second timeoutInfo) < 0.05 then
-                        EH.red
-
-                    else
-                        EH.black
-            in
-            EH.intervalWithElapsedBar
-                [ Element.width Element.fill ]
-                [ Element.Font.size 16 ]
-                ( baseIntervalColor, EH.lightGray )
-                timeoutInfo
-
-        CTypes.TimeUp totalInterval ->
-            EH.intervalWithElapsedBar
-                [ Element.width Element.fill ]
-                [ Element.Font.size 16 ]
-                ( EH.red, EH.lightGray )
-                ( Time.millisToPosix 0, totalInterval )
-
-
-viewTradeAmount : CTypes.FullTradeInfo -> Element Msg
-viewTradeAmount trade =
-    EH.daiValue trade.parameters.tradeAmount
-
-
-viewFiat : CTypes.FullTradeInfo -> Element Msg
-viewFiat trade =
-    EH.fiatValue trade.terms.price
-
-
-viewMargin : CTypes.FullTradeInfo -> Bool -> Element Msg
-viewMargin trade upIsGreen =
-    trade.derived.margin
-        |> Maybe.map (EH.coloredMargin upIsGreen)
-        |> Maybe.withDefault Element.none
-
-
-viewPaymentMethods : List PaymentMethod -> Element Msg
-viewPaymentMethods paymentMethods =
-    paymentMethods
-        |> List.head
-        |> Maybe.map PaymentMethods.previewTextHack
-        |> Maybe.withDefault Element.none
-
-
-viewAutoabortWindow : BuyerOrSeller -> CTypes.FullTradeInfo -> Element Msg
-viewAutoabortWindow viewAsRole trade =
-    let
-        lowValColor =
-            case viewAsRole of
-                Buyer ->
-                    EH.red
-
-                Seller ->
-                    EH.green
-
-        baseColor =
-            if Time.posixToMillis trade.parameters.autoabortInterval < (1000 * 60 * 60 * 6) then
-                lowValColor
-
-            else
-                EH.black
-    in
-    EH.interval
-        []
-        []
-        ( baseColor, EH.lightGray )
-        trade.parameters.autoabortInterval
-
-
-viewAutoreleaseWindow : BuyerOrSeller -> CTypes.FullTradeInfo -> Element Msg
-viewAutoreleaseWindow viewAsRole trade =
-    let
-        lowValColor =
-            case viewAsRole of
-                Buyer ->
-                    EH.green
-
-                Seller ->
-                    EH.red
-
-        baseColor =
-            if Time.posixToMillis trade.parameters.autoabortInterval < (1000 * 60 * 60 * 6) then
-                lowValColor
-
-            else
-                EH.black
-    in
-    EH.interval
-        []
-        []
-        ( baseColor, EH.lightGray )
-        trade.parameters.autoreleaseInterval
-
-
-viewTradeButton : Int -> Element Msg
-viewTradeButton factoryID =
-    Element.Input.button
-        [ Element.Background.color <| Element.rgba255 16 7 234 0.2
-        , Element.padding 11
-        , Element.Border.rounded 4
-        , Element.width Element.fill
-        , Element.mouseOver [ Element.Background.color <| Element.rgba255 16 7 234 0.4 ]
-        ]
-        { onPress = Just <| TradeClicked factoryID
-        , label =
-            Element.el [ Element.centerX, Element.Font.color <| Element.rgb255 16 7 234, Element.Font.medium ] <| Element.text "View Offer"
-        }
 
 
 getLoadedTrades : List CTypes.Trade -> List CTypes.FullTradeInfo
@@ -567,53 +361,10 @@ getLoadedTrades =
         )
 
 
-filterAndSortTrades :
+filterTrades :
     Time.Posix
     -> (Time.Posix -> CTypes.FullTradeInfo -> Bool)
-    -> (CTypes.FullTradeInfo -> CTypes.FullTradeInfo -> Order)
     -> List CTypes.FullTradeInfo
     -> List CTypes.FullTradeInfo
-filterAndSortTrades time filterFunc sortFunc =
+filterTrades time filterFunc =
     List.filter (filterFunc time)
-        >> List.sortWith sortFunc
-
-
-sortableColumnHeader : String -> ResultColumnType -> Maybe Ordering -> Element Msg
-sortableColumnHeader title colType sorting =
-    Element.row [ Element.spacing 8 ]
-        [ columnHeader title
-        , Element.column
-            [ Element.spacing 2 ]
-            [ Element.el
-                [ Element.padding 4
-                , Element.pointer
-                , Element.Events.onClick <|
-                    SortBy colType Ascending
-                ]
-                (Images.toElement
-                    [ Element.width <| Element.px 8
-                    , Element.centerX
-                    , Element.centerY
-                    ]
-                    Images.upArrow
-                )
-            , Element.el
-                [ Element.padding 4
-                , Element.pointer
-                , Element.Events.onClick <|
-                    SortBy colType Descending
-                ]
-                (Images.toElement
-                    [ Element.width <| Element.px 8
-                    , Element.centerX
-                    , Element.centerY
-                    ]
-                    Images.downArrow
-                )
-            ]
-        ]
-
-
-columnHeader : String -> Element Msg
-columnHeader title =
-    Element.el [ Element.Font.medium, Element.Font.size 17 ] <| Element.text title

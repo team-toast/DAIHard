@@ -24,6 +24,7 @@ import Maybe.Extra
 import PaymentMethods exposing (PaymentMethod)
 import Time
 import TokenValue exposing (TokenValue)
+import Wallet
 
 
 root : Model -> Element Msg
@@ -44,41 +45,48 @@ root model =
         ]
         [ mainInputElement model
         , phasesElement model
-        , openButtonElement model.userInfo
+        , openButtonElement model.wallet
         ]
 
 
 mainInputElement : Model -> Element Msg
 mainInputElement model =
-    Element.column
-        [ Element.width Element.fill
-        , Element.spacing 20
-        , Element.Background.color EH.white
-        , Element.Border.rounded 5
-        , Element.padding 20
-        , EH.subtleShadow
-        ]
-        [ Element.row
-            [ Element.width Element.fill
-            , Element.spaceEvenly
-            ]
-            [ tradeTypeElement model
-            , daiElement model
-            , fiatElement model
-            ]
-        , feeNotifyElement model
-        ]
+    case Wallet.factory model.wallet of
+        Just factory ->
+            Element.column
+                [ Element.width Element.fill
+                , Element.spacing 20
+                , Element.Background.color EH.white
+                , Element.Border.rounded 5
+                , Element.padding 20
+                , EH.subtleShadow
+                ]
+                [ Element.row
+                    [ Element.width Element.fill
+                    , Element.spaceEvenly
+                    ]
+                    [ tradeTypeElement factory model
+                    , daiElement factory model
+                    ]
+                , feeNotifyElement model
+                ]
+
+        Nothing ->
+            Debug.todo ""
 
 
-tradeTypeElement : Model -> Element Msg
-tradeTypeElement model =
+tradeTypeElement : FactoryType -> Model -> Element Msg
+tradeTypeElement factory model =
     EH.withHeader
         "Trade Type"
-        (roleToggleElement model.web3Context.factoryType model.inputs.userRole)
+        (roleToggleElement
+            (tokenUnitName factory)
+            model.inputs.userRole
+        )
 
 
-roleToggleElement : FactoryType -> BuyerOrSeller -> Element Msg
-roleToggleElement factoryType userRole =
+roleToggleElement : String -> BuyerOrSeller -> Element Msg
+roleToggleElement tokenName userRole =
     let
         baseStyles =
             [ Element.Font.size 24
@@ -101,15 +109,15 @@ roleToggleElement factoryType userRole =
     Element.row [ Element.spacing 20 ]
         [ Element.el
             ([ Element.Events.onClick <| ChangeRole Seller ] ++ sellDaiStyles)
-            (Element.text <| "Sell " ++ Config.tokenUnitName factoryType)
+            (Element.text <| "Sell " ++ tokenName)
         , Element.el
             ([ Element.Events.onClick <| ChangeRole Buyer ] ++ buyDaiStyles)
-            (Element.text <| "Buy " ++ Config.tokenUnitName factoryType)
+            (Element.text <| "Buy " ++ tokenName)
         ]
 
 
-daiElement : Model -> Element Msg
-daiElement model =
+daiElement : FactoryType -> Model -> Element Msg
+daiElement factory model =
     EH.niceBottomBorderEl <|
         EH.withHeader
             (case model.inputs.userRole of
@@ -119,7 +127,11 @@ daiElement model =
                 Seller ->
                     "You're selling"
             )
-            (daiInputElement model.web3Context.factoryType model.inputs.daiAmount model.errors.daiAmount)
+            (daiInputElement
+                factory
+                model.inputs.daiAmount
+                model.errors.daiAmount
+            )
 
 
 daiInputElement : FactoryType -> String -> Maybe String -> Element Msg
@@ -207,15 +219,18 @@ fiatInputElement typeString amountString showFiatTypeDropdown maybeAmountError m
         FiatAmountChanged
 
 
-openButtonElement : Maybe UserInfo -> Element Msg
-openButtonElement maybeUserInfo =
+openButtonElement : Wallet.State -> Element Msg
+openButtonElement wallet =
     Element.el [ Element.centerX ] <|
-        case maybeUserInfo of
-            Just userInfo ->
-                EH.redButton "Open Trade" (CreateClicked userInfo)
+        case ( Wallet.userInfo wallet, Wallet.factory wallet ) of
+            ( Just userInfo, Just factory ) ->
+                EH.redButton "Open Trade" (CreateClicked factory userInfo)
 
-            Nothing ->
+            ( Nothing, _ ) ->
                 EH.redButton "Connect to Wallet" Web3Connect
+
+            ( _, Nothing ) ->
+                EH.disabledButton "Unsupported Network" Nothing
 
 
 feeNotifyElement : Model -> Element Msg
@@ -228,7 +243,7 @@ feeNotifyElement model =
                         ++ TokenValue.toConciseString
                             (TokenValue.div daiAmount 100)
                         ++ " "
-                        ++ Config.tokenUnitName model.web3Context.factoryType
+                        ++ tokenUnitName (Wallet.factoryWithDefault model.wallet)
                         ++ "."
 
                 Nothing ->
@@ -511,18 +526,15 @@ getModalOrNone model =
 txChainStatusModal : TxChainStatus -> Model -> Element Msg
 txChainStatusModal txChainStatus model =
     case txChainStatus of
-        Confirm createParameters ->
+        Confirm factoryType createParameters ->
             let
-                tokenUnitName =
-                    Config.tokenUnitName model.web3Context.factoryType
-
                 ( depositAmountEl, confirmButton ) =
                     case model.depositAmount of
                         Just depositAmount ->
                             ( TokenValue.tokenValue depositAmount
                                 |> TokenValue.toConciseString
                                 |> Element.text
-                            , EH.redButton "Yes, I definitely want to open this trade." (ConfirmCreate createParameters depositAmount)
+                            , EH.redButton "Yes, I definitely want to open this trade." (ConfirmCreate factoryType createParameters depositAmount)
                             )
 
                         Nothing ->
@@ -562,12 +574,12 @@ txChainStatusModal txChainStatus model =
                             (getWarningParagraphs createParameters
                                 ++ [ [ Element.text <| "You will deposit "
                                      , depositAmountEl
-                                     , Element.text <| " " ++ tokenUnitName ++ " (including the 1% dev fee) to open this trade."
+                                     , Element.text <| " " ++ tokenUnitName factoryType ++ " (including the 1% dev fee) to open this trade."
                                      ]
                                    ]
-                                ++ (case model.web3Context.factoryType of
+                                ++ (case factoryType of
                                         Token _ ->
-                                            [ [ Element.text <| "This ususally requires two Metamask signatures. Your " ++ tokenUnitName ++ " will not be deposited until the final transaction has been mined." ] ]
+                                            [ [ Element.text <| "This ususally requires two Metamask signatures. Your " ++ tokenUnitName factoryType ++ " will not be deposited until the final transaction has been mined." ] ]
 
                                         Native _ ->
                                             []
@@ -583,7 +595,7 @@ txChainStatusModal txChainStatus model =
                 )
                 AbortCreate
 
-        ApproveNeedsSig ->
+        ApproveNeedsSig tokenType ->
             Element.el
                 [ Element.Events.onClick <|
                     AppCmd <|
@@ -596,7 +608,7 @@ txChainStatusModal txChainStatus model =
                     , Element.text "Note that there will be a second transaction to sign after this."
                     ]
 
-        ApproveMining createParameters txHash ->
+        ApproveMining tokenType createParameters txHash ->
             Element.el
                 [ Element.Events.onClick <|
                     AppCmd <|
@@ -606,13 +618,13 @@ txChainStatusModal txChainStatus model =
                 EH.txProcessModal
                     [ Element.text "Mining the initial approve transaction..."
                     , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                        { url = EthHelpers.makeViewTxUrl model.web3Context.factoryType txHash
+                        { url = EthHelpers.makeViewTxUrl (Token tokenType) txHash
                         , label = Element.text "See the transaction on Etherscan"
                         }
                     , Element.text "Funds will not leave your wallet until you sign the next transaction."
                     ]
 
-        CreateNeedsSig ->
+        CreateNeedsSig _ ->
             Element.el
                 [ Element.Events.onClick <|
                     AppCmd <|
@@ -624,7 +636,7 @@ txChainStatusModal txChainStatus model =
                     , Element.text "(check Metamask!)"
                     ]
 
-        CreateMining txHash ->
+        CreateMining factoryType txHash ->
             Element.el
                 [ Element.Events.onClick <|
                     AppCmd <|
@@ -634,7 +646,7 @@ txChainStatusModal txChainStatus model =
                 EH.txProcessModal
                     [ Element.text "Mining the final create call..."
                     , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                        { url = EthHelpers.makeViewTxUrl model.web3Context.factoryType txHash
+                        { url = EthHelpers.makeViewTxUrl factoryType txHash
                         , label = Element.text "See the transaction on Etherscan"
                         }
                     , Element.text "You will be redirected when it's mined."

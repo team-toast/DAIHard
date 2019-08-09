@@ -1,8 +1,10 @@
-module CommonTypes exposing (..)
-  
+module CommonTypes exposing (BuyerOrSeller(..), FactoryType(..), GTagData, InitiatorOrResponder(..), NativeFactoryType(..), TokenFactoryType(..), UserInfo, buyerOrSellerToString, factoryName, tokenUnitName)
+
+import Eth.Net
 import Eth.Types exposing (Address)
 import Json.Decode
 import Json.Encode
+
 
 type alias GTagData =
     { event : String
@@ -10,6 +12,7 @@ type alias GTagData =
     , label : String
     , value : Int
     }
+
 
 type FactoryType
     = Native NativeFactoryType
@@ -28,7 +31,8 @@ type TokenFactoryType
 
 
 type alias UserInfo =
-    { address : Address
+    { network : Eth.Net.NetworkId
+    , address : Address
     , commPubkey : String
     }
 
@@ -51,3 +55,41 @@ buyerOrSellerToString role =
 
         Seller ->
             "Seller"
+
+
+factoryName : FactoryType -> String
+factoryName factoryType =
+    case factoryType of
+        Token EthDai ->
+            "Dai"
+
+        Native Eth ->
+            "Ether"
+
+        Token KovanDai ->
+            "Kovan Dai"
+
+        Native Kovan ->
+            "Kovan Ether"
+
+        Native XDai ->
+            "xDai"
+
+
+tokenUnitName : FactoryType -> String
+tokenUnitName factoryType =
+    case factoryType of
+        Token EthDai ->
+            "Dai"
+
+        Token KovanDai ->
+            "Dai"
+
+        Native Eth ->
+            "ETH"
+
+        Native Kovan ->
+            "ETH"
+
+        Native XDai ->
+            "xDai"

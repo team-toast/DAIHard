@@ -18,7 +18,7 @@ import Eth.Types exposing (Address)
 import Eth.Utils
 import FiatValue exposing (FiatValue)
 import Helpers.Element as EH
-import Helpers.Eth as EthHelpers exposing (Web3Context)
+import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
 import Images exposing (Image)
 import PaymentMethods exposing (PaymentMethod)
@@ -27,10 +27,11 @@ import TokenValue exposing (TokenValue)
 import Trade.ChatHistory.View as ChatHistory
 import Trade.Types exposing (..)
 import TradeCache.Types exposing (TradeCache)
+import Wallet
 
 
-root : Int -> Time.Posix -> TradeCache -> Model -> ( Element Msg, List (Element Msg) )
-root screenWidth time tradeCache model =
+root : Int -> Time.Posix -> List TradeCache -> Model -> ( Element Msg, List (Element Msg) )
+root screenWidth time tradeCaches model =
     let
         inRow =
             screenWidth > 1300
@@ -42,13 +43,13 @@ root screenWidth time tradeCache model =
                 , Element.height Element.fill
                 , Element.spacing 40
                 ]
-                [ header time tradeInfo model.userInfo model.web3Context.factoryType tradeCache model.showStatsModal
+                [ header time tradeInfo model.wallet tradeCaches model.showStatsModal
                 , Element.el
                     [ Element.width Element.fill
                     , Element.paddingXY 40 0
                     , Element.spacing 40
                     ]
-                    (phasesElement inRow model.web3Context.factoryType tradeInfo model.expandedPhase model.userInfo time)
+                    (phasesElement inRow tradeInfo model.expandedPhase model.wallet time)
                 ]
 
         CTypes.PartiallyLoadedTrade partialTradeInfo ->
@@ -72,18 +73,18 @@ root screenWidth time tradeCache model =
     )
 
 
-header : Time.Posix -> FullTradeInfo -> Maybe UserInfo -> FactoryType -> TradeCache -> Bool -> Element Msg
-header currentTime trade maybeUserInfo factoryType tradeCache showStatsModal =
+header : Time.Posix -> FullTradeInfo -> Wallet.State -> List TradeCache -> Bool -> Element Msg
+header currentTime trade wallet tradeCaches showStatsModal =
     EH.niceFloatingRow
-        [ tradeStatusElement trade factoryType
-        , daiAmountElement trade maybeUserInfo
+        [ tradeStatusElement trade
+        , daiAmountElement trade wallet
         , fiatElement trade
-        , statsElement factoryType trade tradeCache showStatsModal
+        , statsElement trade tradeCaches showStatsModal
         ]
 
 
-tradeStatusElement : FullTradeInfo -> FactoryType -> Element Msg
-tradeStatusElement trade factoryType =
+tradeStatusElement : FullTradeInfo -> Element Msg
+tradeStatusElement trade =
     EH.withHeader
         "Trade Status"
         (Element.column
@@ -115,19 +116,19 @@ tradeStatusElement trade factoryType =
                 , Element.Font.color EH.blue
                 , Element.Font.underline
                 ]
-                factoryType
+                trade.factory
                 trade.creationInfo.address
             ]
         )
 
 
-daiAmountElement : FullTradeInfo -> Maybe UserInfo -> Element Msg
-daiAmountElement trade maybeUserInfo =
+daiAmountElement : FullTradeInfo -> Wallet.State -> Element Msg
+daiAmountElement trade wallet =
     let
         maybeInitiatorOrResponder =
-            Maybe.andThen
-                (CTypes.getInitiatorOrResponder trade)
-                (Maybe.map .address maybeUserInfo)
+            Wallet.userInfo wallet
+                |> Maybe.map .address
+                |> Maybe.andThen (CTypes.getInitiatorOrResponder trade)
     in
     EH.withHeader
         (case ( trade.parameters.initiatorRole, maybeInitiatorOrResponder ) of
@@ -191,26 +192,31 @@ type alias Stats =
     }
 
 
-generateUserStats : TradeCache -> BuyerOrSeller -> Address -> Stats
-generateUserStats tradeCache forRole userAddress =
+generateUserStats : List TradeCache -> BuyerOrSeller -> Address -> Stats
+generateUserStats tradeCaches forRole userAddress =
     let
         fullTradesByUserAsRole =
-            tradeCache.trades
-                |> Array.toList
-                |> List.filterMap
-                    (\t ->
-                        case t of
-                            CTypes.LoadedTrade loadedT ->
-                                Just loadedT
+            tradeCaches
+                |> List.map
+                    (\tradeCache ->
+                        tradeCache.trades
+                            |> Array.toList
+                            |> List.filterMap
+                                (\t ->
+                                    case t of
+                                        CTypes.LoadedTrade loadedT ->
+                                            Just loadedT
 
-                            _ ->
-                                Nothing
+                                        _ ->
+                                            Nothing
+                                )
+                            |> List.filter
+                                -- filter for trades that share the same user in the same role
+                                (\t ->
+                                    CTypes.getBuyerOrSeller t userAddress == Just forRole
+                                )
                     )
-                |> List.filter
-                    -- filter for trades that share the same Seller
-                    (\t ->
-                        CTypes.getBuyerOrSeller t userAddress == Just forRole
-                    )
+                |> List.concat
 
         talliedVals =
             fullTradesByUserAsRole
@@ -279,12 +285,12 @@ generateUserStats tradeCache forRole userAddress =
     }
 
 
-statsElement : FactoryType -> FullTradeInfo -> TradeCache -> Bool -> Element Msg
-statsElement factoryType trade tradeCache showModal =
+statsElement : FullTradeInfo -> List TradeCache -> Bool -> Element Msg
+statsElement trade tradeCaches showModal =
     let
         userStats =
             trade.parameters.initiatorAddress
-                |> generateUserStats tradeCache trade.parameters.initiatorRole
+                |> generateUserStats tradeCaches trade.parameters.initiatorRole
 
         headerText =
             buyerOrSellerToString trade.parameters.initiatorRole
@@ -297,7 +303,7 @@ statsElement factoryType trade tradeCache showModal =
                     [ Element.moveDown 30
                     , Element.alignRight
                     ]
-                    (statsModal factoryType trade.parameters.initiatorAddress userStats)
+                    (statsModal trade.factory trade.parameters.initiatorAddress userStats)
                 )
             ]
 
@@ -391,7 +397,7 @@ statsModal factoryType address stats =
                             ++ " trades / "
                             ++ TokenValue.toConciseString stats.amountReleased
                             ++ " "
-                            ++ Config.tokenUnitName factoryType
+                            ++ tokenUnitName factoryType
                             ++ " Released"
                       )
                     , ( "Abort Outcomes"
@@ -403,7 +409,7 @@ statsModal factoryType address stats =
                             ++ " trades / "
                             ++ TokenValue.toConciseString stats.amountBurned
                             ++ " "
-                            ++ Config.tokenUnitName factoryType
+                            ++ tokenUnitName factoryType
                             ++ " Burned"
                       )
                     ]
@@ -447,8 +453,8 @@ statsModal factoryType address stats =
         ]
 
 
-phasesElement : Bool -> FactoryType -> FullTradeInfo -> CTypes.Phase -> Maybe UserInfo -> Time.Posix -> Element Msg
-phasesElement inRow factoryType trade expandedPhase maybeUserInfo currentTime =
+phasesElement : Bool -> FullTradeInfo -> CTypes.Phase -> Wallet.State -> Time.Posix -> Element Msg
+phasesElement inRow trade expandedPhase wallet currentTime =
     case trade.state.phase of
         CTypes.Closed ->
             Element.row
@@ -476,9 +482,9 @@ phasesElement inRow factoryType trade expandedPhase maybeUserInfo currentTime =
                         , Element.height Element.shrink
                         , Element.spacing 20
                         ]
-                        [ phaseAndPaymentMethodElement inRow factoryType CTypes.Open trade maybeUserInfo (expandedPhase == CTypes.Open) currentTime
-                        , phaseAndPaymentMethodElement inRow factoryType CTypes.Committed trade maybeUserInfo (expandedPhase == CTypes.Committed) currentTime
-                        , phaseAndPaymentMethodElement inRow factoryType CTypes.Judgment trade maybeUserInfo (expandedPhase == CTypes.Judgment) currentTime
+                        [ phaseAndPaymentMethodElement inRow CTypes.Open trade wallet (expandedPhase == CTypes.Open) currentTime
+                        , phaseAndPaymentMethodElement inRow CTypes.Committed trade wallet (expandedPhase == CTypes.Committed) currentTime
+                        , phaseAndPaymentMethodElement inRow CTypes.Judgment trade wallet (expandedPhase == CTypes.Judgment) currentTime
                         ]
                     , paymentMethodElement trade.terms.paymentMethods
                     ]
@@ -489,9 +495,9 @@ phasesElement inRow factoryType trade expandedPhase maybeUserInfo currentTime =
                     , Element.height Element.shrink
                     , Element.spacing 20
                     ]
-                    [ phaseAndPaymentMethodElement inRow factoryType CTypes.Open trade maybeUserInfo (expandedPhase == CTypes.Open) currentTime
-                    , phaseAndPaymentMethodElement inRow factoryType CTypes.Committed trade maybeUserInfo (expandedPhase == CTypes.Committed) currentTime
-                    , phaseAndPaymentMethodElement inRow factoryType CTypes.Judgment trade maybeUserInfo (expandedPhase == CTypes.Judgment) currentTime
+                    [ phaseAndPaymentMethodElement inRow CTypes.Open trade wallet (expandedPhase == CTypes.Open) currentTime
+                    , phaseAndPaymentMethodElement inRow CTypes.Committed trade wallet (expandedPhase == CTypes.Committed) currentTime
+                    , phaseAndPaymentMethodElement inRow CTypes.Judgment trade wallet (expandedPhase == CTypes.Judgment) currentTime
                     ]
 
 
@@ -538,8 +544,8 @@ phaseState trade phase =
         Finished
 
 
-phaseAndPaymentMethodElement : Bool -> FactoryType -> CTypes.Phase -> FullTradeInfo -> Maybe UserInfo -> Bool -> Time.Posix -> Element Msg
-phaseAndPaymentMethodElement inRow factoryType viewPhase trade maybeUserInfo expanded currentTime =
+phaseAndPaymentMethodElement : Bool -> CTypes.Phase -> FullTradeInfo -> Wallet.State -> Bool -> Time.Posix -> Element Msg
+phaseAndPaymentMethodElement inRow viewPhase trade wallet expanded currentTime =
     let
         viewPhaseState =
             phaseState trade viewPhase
@@ -583,7 +589,7 @@ phaseAndPaymentMethodElement inRow factoryType viewPhase trade maybeUserInfo exp
                 , Element.width Element.fill
                 , Element.height Element.fill
                 ]
-                (phaseBodyElement factoryType viewPhase currentTime trade maybeUserInfo)
+                (phaseBodyElement viewPhase currentTime trade wallet)
 
         borderEl =
             Element.el
@@ -853,14 +859,14 @@ phaseStateElement pState =
                 (Element.text "Finished")
 
 
-phaseBodyElement : FactoryType -> CTypes.Phase -> Time.Posix -> CTypes.FullTradeInfo -> Maybe UserInfo -> Element Msg
-phaseBodyElement factoryType viewPhase currentTime trade maybeUserInfo =
+phaseBodyElement : CTypes.Phase -> Time.Posix -> CTypes.FullTradeInfo -> Wallet.State -> Element Msg
+phaseBodyElement viewPhase currentTime trade wallet =
     let
         phaseIsActive =
             viewPhase == trade.state.phase
 
         maybeBuyerOrSeller =
-            maybeUserInfo
+            Wallet.userInfo wallet
                 |> Maybe.map .address
                 |> Maybe.andThen (CTypes.getBuyerOrSeller trade)
 
@@ -892,13 +898,13 @@ phaseBodyElement factoryType viewPhase currentTime trade maybeUserInfo =
             Element.el [ Element.Font.color <| Element.rgb 1 0 0 ] << Element.text
 
         tradeAmountString =
-            TokenValue.toConciseString trade.parameters.tradeAmount ++ " " ++ Config.tokenUnitName factoryType
+            TokenValue.toConciseString trade.parameters.tradeAmount ++ " " ++ tokenUnitName trade.factory
 
         fiatAmountString =
             FiatValue.renderToStringFull trade.terms.price
 
         buyerDepositString =
-            TokenValue.toConciseString trade.parameters.buyerDeposit ++ " " ++ Config.tokenUnitName factoryType
+            TokenValue.toConciseString trade.parameters.buyerDeposit ++ " " ++ tokenUnitName trade.factory
 
         tradePlusDepositString =
             (TokenValue.add
@@ -907,7 +913,7 @@ phaseBodyElement factoryType viewPhase currentTime trade maybeUserInfo =
                 |> TokenValue.toConciseString
             )
                 ++ " "
-                ++ Config.tokenUnitName factoryType
+                ++ tokenUnitName trade.factory
 
         abortPunishment =
             trade.parameters.abortPunishment
@@ -916,7 +922,7 @@ phaseBodyElement factoryType viewPhase currentTime trade maybeUserInfo =
             TokenValue.toConciseString
                 abortPunishment
                 ++ " "
-                ++ Config.tokenUnitName factoryType
+                ++ tokenUnitName trade.factory
 
         sellerAbortRefundString =
             TokenValue.toConciseString
@@ -925,7 +931,7 @@ phaseBodyElement factoryType viewPhase currentTime trade maybeUserInfo =
                     abortPunishment
                 )
                 ++ " "
-                ++ Config.tokenUnitName factoryType
+                ++ tokenUnitName trade.factory
 
         buyerAbortRefundString =
             TokenValue.toConciseString
@@ -934,7 +940,7 @@ phaseBodyElement factoryType viewPhase currentTime trade maybeUserInfo =
                     abortPunishment
                 )
                 ++ " "
-                ++ Config.tokenUnitName factoryType
+                ++ tokenUnitName trade.factory
 
         threeFlames =
             Element.row []
@@ -957,7 +963,7 @@ phaseBodyElement factoryType viewPhase currentTime trade maybeUserInfo =
                                   , scaryText "Deposit and Commit to Trade"
                                   , Element.text "."
                                   ]
-                                , [ Element.text <| "If the trade is successful, the combined " ++ Config.tokenUnitName factoryType ++ " balance "
+                                , [ Element.text <| "If the trade is successful, the combined " ++ tokenUnitName trade.factory ++ " balance "
                                   , emphasizedText <| "(" ++ tradePlusDepositString ++ ")"
                                   , Element.text " will be released to you. If anything goes wrong, there are "
                                   , scaryText "burnable punishments "
@@ -988,7 +994,7 @@ phaseBodyElement factoryType viewPhase currentTime trade maybeUserInfo =
                                   ]
                                 , [ Element.text "When you receive the "
                                   , emphasizedText fiatAmountString
-                                  , Element.text <| " from the Buyer, the combined " ++ Config.tokenUnitName factoryType ++ " balance "
+                                  , Element.text <| " from the Buyer, the combined " ++ tokenUnitName trade.factory ++ " balance "
                                   , emphasizedText <| "(" ++ tradePlusDepositString ++ ")"
                                   , Element.text " will be released to the Buyer. If anything goes wrong, there are "
                                   , scaryText "burnable punishments "
@@ -1221,7 +1227,7 @@ phaseBodyElement factoryType viewPhase currentTime trade maybeUserInfo =
             ]
             (case phaseState trade viewPhase of
                 Active ->
-                    actionButtonsElement currentTime trade maybeUserInfo
+                    actionButtonsElement currentTime trade wallet
 
                 NotStarted ->
                     Element.el
@@ -1243,9 +1249,9 @@ phaseBodyElement factoryType viewPhase currentTime trade maybeUserInfo =
         ]
 
 
-actionButtonsElement : Time.Posix -> FullTradeInfo -> Maybe UserInfo -> Element Msg
-actionButtonsElement currentTime trade maybeUserInfo =
-    case maybeUserInfo of
+actionButtonsElement : Time.Posix -> FullTradeInfo -> Wallet.State -> Element Msg
+actionButtonsElement currentTime trade wallet =
+    case Wallet.userInfo wallet of
         Just userInfo ->
             case CTypes.getCurrentPhaseTimeoutInfo currentTime trade of
                 CTypes.TimeUp _ ->
@@ -1342,217 +1348,222 @@ chatOverlayElement model =
 
 getModalOrNone : Model -> Element Msg
 getModalOrNone model =
-    case model.txChainStatus of
-        Nothing ->
+    case ( model.txChainStatus, model.trade ) of
+        ( Just txChainStatus, CTypes.LoadedTrade trade ) ->
+            case txChainStatus of
+                ConfirmingCommit userInfo deposit ->
+                    let
+                        depositAmountString =
+                            TokenValue.tokenValue deposit
+                                |> TokenValue.toConciseString
+
+                        fiatPriceString =
+                            FiatValue.renderToStringFull trade.terms.price
+
+                        daiAmountString =
+                            TokenValue.toConciseString trade.parameters.tradeAmount ++ " " ++ tokenUnitName trade.factory
+
+                        ( buyerOrSellerEl, agreeToWhatTextList ) =
+                            case CTypes.getResponderRole trade.parameters of
+                                Buyer ->
+                                    ( Element.el [ Element.Font.medium, Element.Font.color EH.black ] <| Element.text "buyer"
+                                    , [ Element.text "pay the seller "
+                                      , Element.el [ Element.Font.color EH.blue ] <| Element.text fiatPriceString
+                                      , Element.text " in exchange for the "
+                                      , Element.el [ Element.Font.color EH.blue ] <| Element.text daiAmountString
+                                      , Element.text " held in this contract."
+                                      ]
+                                    )
+
+                                Seller ->
+                                    ( Element.el [ Element.Font.medium, Element.Font.color EH.black ] <| Element.text "seller"
+                                    , [ Element.text "accept "
+                                      , Element.el [ Element.Font.color EH.blue ] <| Element.text fiatPriceString
+                                      , Element.text " from the buyer in exchange for the "
+                                      , Element.el [ Element.Font.color EH.blue ] <| Element.text daiAmountString
+                                      , Element.text " held in this contract."
+                                      ]
+                                    )
+                    in
+                    EH.closeableModal
+                        []
+                        (Element.column
+                            [ Element.spacing 20
+                            , Element.padding 20
+                            , Element.centerX
+                            , Element.height Element.fill
+                            , Element.Font.center
+                            ]
+                            [ Element.el
+                                [ Element.Font.size 26
+                                , Element.Font.semiBold
+                                , Element.centerX
+                                , Element.centerY
+                                ]
+                                (Element.text "Just to Confirm...")
+                            , Element.column
+                                [ Element.spacing 20
+                                , Element.centerX
+                                , Element.centerY
+                                ]
+                                (List.map
+                                    (Element.paragraph
+                                        [ Element.centerX
+                                        , Element.Font.size 18
+                                        , Element.Font.medium
+                                        , Element.Font.color EH.permanentTextColor
+                                        ]
+                                    )
+                                    ([ [ Element.text <| "You will deposit "
+                                       , Element.el [ Element.Font.color EH.blue ] <| Element.text <| depositAmountString ++ " " ++ tokenUnitName trade.factory
+                                       , Element.text ", thereby becoming the "
+                                       , buyerOrSellerEl
+                                       , Element.text " of this trade. By doing so, you are agreeing to "
+                                       ]
+                                        ++ agreeToWhatTextList
+                                     ]
+                                        ++ (case trade.factory of
+                                                Token _ ->
+                                                    [ [ Element.text <| "(This ususally requires two Metamask signatures. Your " ++ tokenUnitName trade.factory ++ " will not be deposited until the second transaction has been mined.)" ] ]
+
+                                                _ ->
+                                                    []
+                                           )
+                                    )
+                                )
+                            , Element.el
+                                [ Element.alignBottom
+                                , Element.centerX
+                                ]
+                                (EH.redButton "Yes, I definitely want to commit to this trade." (ConfirmCommit trade userInfo deposit))
+                            ]
+                        )
+                        AbortAction
+
+                ApproveNeedsSig ->
+                    EH.txProcessModal
+                        [ Element.text "Waiting for user signature for the approve call."
+                        , Element.text "(check Metamask!)"
+                        , Element.text "Note that there will be a second transaction to sign after this."
+                        ]
+
+                ApproveMining txHash ->
+                    EH.txProcessModal
+                        [ Element.text "Mining the initial approve transaction..."
+                        , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
+                            { url = EthHelpers.makeViewTxUrl trade.factory txHash
+                            , label = Element.text "See the transaction on Etherscan"
+                            }
+                        , Element.text "Funds will not leave your wallet until you sign the next transaction."
+                        ]
+
+                CommitNeedsSig ->
+                    EH.txProcessModal
+                        [ Element.text "Waiting for user signature for the final commit call."
+                        , Element.text "(check Metamask!)"
+                        , Element.text "This will make the deposit and commit you to the trade."
+                        ]
+
+                CommitMining txHash ->
+                    EH.txProcessModal
+                        [ Element.text "Mining the final commit transaction..."
+                        , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
+                            { url = EthHelpers.makeViewTxUrl trade.factory txHash
+                            , label = Element.text "See the transaction"
+                            }
+                        ]
+
+                ConfirmingAction action ->
+                    EH.closeableModal []
+                        (Element.column
+                            [ Element.spacing 20
+                            , Element.padding 20
+                            , Element.centerX
+                            , Element.height Element.fill
+                            , Element.Font.center
+                            ]
+                            [ Element.el
+                                [ Element.Font.size 26
+                                , Element.Font.semiBold
+                                , Element.centerX
+                                , Element.centerY
+                                ]
+                                (Element.text "Just to Confirm...")
+                            , Element.column
+                                [ Element.spacing 20
+                                , Element.centerX
+                                , Element.centerY
+                                ]
+                                (List.map
+                                    (Element.paragraph
+                                        [ Element.centerX
+                                        , Element.Font.size 18
+                                        , Element.Font.medium
+                                        , Element.Font.color EH.permanentTextColor
+                                        ]
+                                    )
+                                    (case action of
+                                        Poke ->
+                                            []
+
+                                        Recall ->
+                                            []
+
+                                        Claim ->
+                                            [ [ Element.text <| "By clicking \"Confirm Payment\", you are claiming that you've paid the Seller in a way they can verify. Only do this if you are sure the Seller will agree that they have the money--otherwise they may burn the " ++ tokenUnitName trade.factory ++ " rather than release it to you." ] ]
+
+                                        Abort ->
+                                            [ [ Element.text <| "Aborting will incur a small penalty on both parties, and refund the rest of the " ++ tokenUnitName trade.factory ++ "." ] ]
+
+                                        Release ->
+                                            [ [ Element.text "Releasing the payment will irreversibly send the trade's balance to the Buyer. Only do this if you are certain you've received the full agreed-upon payment." ] ]
+
+                                        Burn ->
+                                            [ [ Element.text <| "This will destroy the " ++ tokenUnitName trade.factory ++ " in the payment. Only do this if the Buyer has attempted to scam you, is nonresponsive, or for some reason has failed the payment." ] ]
+                                    )
+                                )
+                            , Element.el
+                                [ Element.alignBottom
+                                , Element.centerX
+                                ]
+                                ((case action of
+                                    Poke ->
+                                        "Poke"
+
+                                    Recall ->
+                                        "Recall"
+
+                                    Claim ->
+                                        "I understand. Confirm Payment"
+
+                                    Abort ->
+                                        "I understand. Abort the trade."
+
+                                    Release ->
+                                        "I understand. Release the " ++ tokenUnitName trade.factory ++ "."
+
+                                    Burn ->
+                                        "I understand. Burn the " ++ tokenUnitName trade.factory ++ "."
+                                 )
+                                    |> (\s -> EH.redButton s (StartContractAction action))
+                                )
+                            ]
+                        )
+                        AbortAction
+
+                ActionNeedsSig action ->
+                    EH.txProcessModal
+                        [ Element.text <| "Waiting for user signature for the " ++ actionName action ++ " call."
+                        , Element.text "(check Metamask!)"
+                        ]
+
+                ActionMining action txHash ->
+                    Element.none
+
+        ( Nothing, _ ) ->
             Element.none
 
-        Just (ConfirmingCommit trade userInfo deposit) ->
-            let
-                depositAmountString =
-                    TokenValue.tokenValue deposit
-                        |> TokenValue.toConciseString
-
-                fiatPriceString =
-                    FiatValue.renderToStringFull trade.terms.price
-
-                daiAmountString =
-                    TokenValue.toConciseString trade.parameters.tradeAmount ++ " " ++ Config.tokenUnitName model.web3Context.factoryType
-
-                ( buyerOrSellerEl, agreeToWhatTextList ) =
-                    case CTypes.getResponderRole trade.parameters of
-                        Buyer ->
-                            ( Element.el [ Element.Font.medium, Element.Font.color EH.black ] <| Element.text "buyer"
-                            , [ Element.text "pay the seller "
-                              , Element.el [ Element.Font.color EH.blue ] <| Element.text fiatPriceString
-                              , Element.text " in exchange for the "
-                              , Element.el [ Element.Font.color EH.blue ] <| Element.text daiAmountString
-                              , Element.text " held in this contract."
-                              ]
-                            )
-
-                        Seller ->
-                            ( Element.el [ Element.Font.medium, Element.Font.color EH.black ] <| Element.text "seller"
-                            , [ Element.text "accept "
-                              , Element.el [ Element.Font.color EH.blue ] <| Element.text fiatPriceString
-                              , Element.text " from the buyer in exchange for the "
-                              , Element.el [ Element.Font.color EH.blue ] <| Element.text daiAmountString
-                              , Element.text " held in this contract."
-                              ]
-                            )
-            in
-            EH.closeableModal
-                []
-                (Element.column
-                    [ Element.spacing 20
-                    , Element.padding 20
-                    , Element.centerX
-                    , Element.height Element.fill
-                    , Element.Font.center
-                    ]
-                    [ Element.el
-                        [ Element.Font.size 26
-                        , Element.Font.semiBold
-                        , Element.centerX
-                        , Element.centerY
-                        ]
-                        (Element.text "Just to Confirm...")
-                    , Element.column
-                        [ Element.spacing 20
-                        , Element.centerX
-                        , Element.centerY
-                        ]
-                        (List.map
-                            (Element.paragraph
-                                [ Element.centerX
-                                , Element.Font.size 18
-                                , Element.Font.medium
-                                , Element.Font.color EH.permanentTextColor
-                                ]
-                            )
-                            ([ [ Element.text <| "You will deposit "
-                               , Element.el [ Element.Font.color EH.blue ] <| Element.text <| depositAmountString ++ " " ++ Config.tokenUnitName model.web3Context.factoryType
-                               , Element.text ", thereby becoming the "
-                               , buyerOrSellerEl
-                               , Element.text " of this trade. By doing so, you are agreeing to "
-                               ]
-                                ++ agreeToWhatTextList
-                             ]
-                                ++ (case model.web3Context.factoryType of
-                                        Token _ ->
-                                            [ [ Element.text <| "(This ususally requires two Metamask signatures. Your " ++ Config.tokenUnitName model.web3Context.factoryType ++ " will not be deposited until the second transaction has been mined.)" ] ]
-
-                                        _ ->
-                                            []
-                                   )
-                            )
-                        )
-                    , Element.el
-                        [ Element.alignBottom
-                        , Element.centerX
-                        ]
-                        (EH.redButton "Yes, I definitely want to commit to this trade." (ConfirmCommit trade userInfo deposit))
-                    ]
-                )
-                AbortAction
-
-        Just ApproveNeedsSig ->
-            EH.txProcessModal
-                [ Element.text "Waiting for user signature for the approve call."
-                , Element.text "(check Metamask!)"
-                , Element.text "Note that there will be a second transaction to sign after this."
-                ]
-
-        Just (ApproveMining txHash) ->
-            EH.txProcessModal
-                [ Element.text "Mining the initial approve transaction..."
-                , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                    { url = EthHelpers.makeViewTxUrl model.web3Context.factoryType txHash
-                    , label = Element.text "See the transaction on Etherscan"
-                    }
-                , Element.text "Funds will not leave your wallet until you sign the next transaction."
-                ]
-
-        Just CommitNeedsSig ->
-            EH.txProcessModal
-                [ Element.text "Waiting for user signature for the final commit call."
-                , Element.text "(check Metamask!)"
-                , Element.text "This will make the deposit and commit you to the trade."
-                ]
-
-        Just (CommitMining txHash) ->
-            EH.txProcessModal
-                [ Element.text "Mining the final commit transaction..."
-                , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                    { url = EthHelpers.makeViewTxUrl model.web3Context.factoryType txHash
-                    , label = Element.text "See the transaction"
-                    }
-                ]
-
-        Just (ConfirmingAction action) ->
-            EH.closeableModal []
-                (Element.column
-                    [ Element.spacing 20
-                    , Element.padding 20
-                    , Element.centerX
-                    , Element.height Element.fill
-                    , Element.Font.center
-                    ]
-                    [ Element.el
-                        [ Element.Font.size 26
-                        , Element.Font.semiBold
-                        , Element.centerX
-                        , Element.centerY
-                        ]
-                        (Element.text "Just to Confirm...")
-                    , Element.column
-                        [ Element.spacing 20
-                        , Element.centerX
-                        , Element.centerY
-                        ]
-                        (List.map
-                            (Element.paragraph
-                                [ Element.centerX
-                                , Element.Font.size 18
-                                , Element.Font.medium
-                                , Element.Font.color EH.permanentTextColor
-                                ]
-                            )
-                            (case action of
-                                Poke ->
-                                    []
-
-                                Recall ->
-                                    []
-
-                                Claim ->
-                                    [ [ Element.text <| "By clicking \"Confirm Payment\", you are claiming that you've paid the Seller in a way they can verify. Only do this if you are sure the Seller will agree that they have the money--otherwise they may burn the " ++ Config.tokenUnitName model.web3Context.factoryType ++ " rather than release it to you." ] ]
-
-                                Abort ->
-                                    [ [ Element.text <| "Aborting will incur a small penalty on both parties, and refund the rest of the " ++ Config.tokenUnitName model.web3Context.factoryType ++ "." ] ]
-
-                                Release ->
-                                    [ [ Element.text "Releasing the payment will irreversibly send the trade's balance to the Buyer. Only do this if you are certain you've received the full agreed-upon payment." ] ]
-
-                                Burn ->
-                                    [ [ Element.text <| "This will destroy the " ++ Config.tokenUnitName model.web3Context.factoryType ++ " in the payment. Only do this if the Buyer has attempted to scam you, is nonresponsive, or for some reason has failed the payment." ] ]
-                            )
-                        )
-                    , Element.el
-                        [ Element.alignBottom
-                        , Element.centerX
-                        ]
-                        ((case action of
-                            Poke ->
-                                "Poke"
-
-                            Recall ->
-                                "Recall"
-
-                            Claim ->
-                                "I understand. Confirm Payment"
-
-                            Abort ->
-                                "I understand. Abort the trade."
-
-                            Release ->
-                                "I understand. Release the " ++ Config.tokenUnitName model.web3Context.factoryType ++ "."
-
-                            Burn ->
-                                "I understand. Burn the " ++ Config.tokenUnitName model.web3Context.factoryType ++ "."
-                         )
-                            |> (\s -> EH.redButton s (StartContractAction action))
-                        )
-                    ]
-                )
-                AbortAction
-
-        Just (ActionNeedsSig action) ->
-            EH.txProcessModal
-                [ Element.text <| "Waiting for user signature for the " ++ actionName action ++ " call."
-                , Element.text "(check Metamask!)"
-                ]
-
-        Just (ActionMining action txHash) ->
+        ( _, _ ) ->
             Element.none
 
 

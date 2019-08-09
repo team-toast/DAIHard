@@ -1,4 +1,4 @@
-module Contracts.Types exposing (ClosedReason(..), CreateParameters, DAIHardEvent(..), FullTradeInfo, PartialTradeInfo, Phase(..), PhaseStartInfo, State, Terms, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, calculateFullInitialDeposit, decodeParameters, decodePhaseStartInfo, decodeState, decodeTerms, defaultAbortPunishment, defaultBuyerDeposit, encodeTerms, eventDecoder, getBuyerOrSeller, getCurrentPhaseTimeoutInfo, getDevFee, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderRole, initiatorOrResponderToBuyerOrSeller, partialTradeInfo, phaseIcon, phaseToInt, phaseToString, responderDeposit, tradeHasDefaultParameters, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePhaseStartInfo, updateState, updateTerms)
+module Contracts.Types exposing (ClosedReason(..), CreateParameters, DAIHardEvent(..), FullTradeInfo, PartialTradeInfo, Phase(..), PhaseStartInfo, State, Terms, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, calculateFullInitialDeposit, decodeParameters, decodePhaseStartInfo, decodeState, decodeTerms, defaultAbortPunishment, defaultBuyerDeposit, encodeTerms, eventDecoder, getBuyerOrSeller, getCurrentPhaseTimeoutInfo, getDevFee, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderRole, initiatorOrResponderToBuyerOrSeller, partialTradeInfo, phaseIcon, phaseToInt, phaseToString, responderDeposit, tradeAddress, tradeFactory, tradeHasDefaultParameters, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePhaseStartInfo, updateState, updateTerms)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
@@ -28,7 +28,8 @@ type Trade
 
 
 type alias PartialTradeInfo =
-    { id : Int
+    { factory : FactoryType
+    , id : Int
     , creationInfo : Maybe TradeCreationInfo
     , parameters : Maybe TradeParameters
     , state : Maybe State
@@ -38,7 +39,8 @@ type alias PartialTradeInfo =
 
 
 type alias FullTradeInfo =
-    { id : Int
+    { factory : FactoryType
+    , id : Int
     , creationInfo : TradeCreationInfo
     , parameters : TradeParameters
     , state : State
@@ -155,6 +157,33 @@ type alias PhaseStartInfo =
     }
 
 
+tradeFactory : Trade -> Maybe FactoryType
+tradeFactory trade =
+    case trade of
+        Invalid ->
+            Nothing
+
+        PartiallyLoadedTrade pTrade ->
+            Just pTrade.factory
+
+        LoadedTrade fTrade ->
+            Just fTrade.factory
+
+
+tradeAddress : Trade -> Maybe Address
+tradeAddress trade =
+    case trade of
+        Invalid ->
+            Nothing
+
+        PartiallyLoadedTrade pTrade ->
+            pTrade.creationInfo
+                |> Maybe.map .address
+
+        LoadedTrade fTrade ->
+            Just fTrade.creationInfo.address
+
+
 defaultBuyerDeposit : TokenValue -> TokenValue
 defaultBuyerDeposit tradeAmount =
     TokenValue.div tradeAmount 3
@@ -190,9 +219,9 @@ responderDeposit parameters =
             parameters.buyerDeposit
 
 
-partialTradeInfo : Int -> Trade
-partialTradeInfo factoryID =
-    PartiallyLoadedTrade (PartialTradeInfo factoryID Nothing Nothing Nothing Nothing Nothing)
+partialTradeInfo : FactoryType -> Int -> Trade
+partialTradeInfo factory factoryID =
+    PartiallyLoadedTrade (PartialTradeInfo factory factoryID Nothing Nothing Nothing Nothing Nothing)
 
 
 updateCreationInfo : TradeCreationInfo -> Trade -> Trade
@@ -287,6 +316,7 @@ checkIfTradeLoaded pInfo =
         ( ( Just creationInfo, Just parameters ), ( Just state, Just terms ), Just phaseStartInfo ) ->
             LoadedTrade
                 (FullTradeInfo
+                    pInfo.factory
                     pInfo.id
                     creationInfo
                     parameters
