@@ -51,28 +51,28 @@ root model =
 
 mainInputElement : Model -> Element Msg
 mainInputElement model =
-    case Wallet.factory model.wallet of
-        Just factory ->
-            Element.column
-                [ Element.width Element.fill
-                , Element.spacing 20
-                , Element.Background.color EH.white
-                , Element.Border.rounded 5
-                , Element.padding 20
-                , EH.subtleShadow
-                ]
-                [ Element.row
-                    [ Element.width Element.fill
-                    , Element.spaceEvenly
-                    ]
-                    [ tradeTypeElement factory model
-                    , daiElement factory model
-                    ]
-                , feeNotifyElement model
-                ]
-
-        Nothing ->
-            Debug.todo ""
+    let
+        factory =
+            Wallet.factoryWithDefault model.wallet
+    in
+    Element.column
+        [ Element.width Element.fill
+        , Element.spacing 20
+        , Element.Background.color EH.white
+        , Element.Border.rounded 5
+        , Element.padding 20
+        , EH.subtleShadow
+        ]
+        [ Element.row
+            [ Element.width Element.fill
+            , Element.spaceEvenly
+            ]
+            [ tradeTypeElement factory model
+            , daiElement factory model
+            , fiatElement model
+            ]
+        , feeNotifyElement model
+        ]
 
 
 tradeTypeElement : FactoryType -> Model -> Element Msg

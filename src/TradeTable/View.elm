@@ -158,7 +158,8 @@ viewTradeRow time colTypes trade =
         [ Element.width Element.fill
         , Element.spacing 1
         , Element.Background.color EH.lightGray
-        , Element.width <| Element.fillPortion 7
+        , Element.pointer
+        , Element.Events.onClick (TradeClicked trade.factory trade.id)
         ]
         [ Element.row
             [ Element.width <| Element.fillPortion 6
