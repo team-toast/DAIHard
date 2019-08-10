@@ -342,5 +342,4 @@ updateWalletState wallet model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    -- Time.every 5000 Refresh
     Sub.none

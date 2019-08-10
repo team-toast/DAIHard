@@ -41,6 +41,8 @@ type LoadingStatus
 type Msg
     = InitialNumTradesFetched (Result Http.Error BigInt)
     | CheckForNewTrades
+    | UpdateTradePhases
+    | PhaseFetched FactoryType Int (Result Http.Error (Maybe CTypes.Phase))
     | NumTradesFetchedAgain (Result Http.Error BigInt)
     | CreationInfoFetched Int (Result Http.Error DHF.CreatedTrade)
     | ParametersFetched Int (Result Http.Error (Result String CTypes.TradeParameters))

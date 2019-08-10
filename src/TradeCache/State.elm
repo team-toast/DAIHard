@@ -120,6 +120,91 @@ update msg prevModel =
                 (Contracts.Wrappers.getNumTradesCmd prevModel.factory NumTradesFetchedAgain)
                 []
 
+        UpdateTradePhases ->
+            let
+                updatePhasesCmd =
+                    loadedTrades prevModel
+                        |> List.map
+                            (\trade ->
+                                case trade.state.phase of
+                                    CTypes.Closed ->
+                                        Nothing
+
+                                    _ ->
+                                        Just <|
+                                            Contracts.Wrappers.getPhaseCmd
+                                                trade.factory
+                                                trade.creationInfo.address
+                                                (PhaseFetched trade.factory trade.id)
+                            )
+                        |> Maybe.Extra.values
+                        |> Cmd.batch
+            in
+            UpdateResult
+                prevModel
+                updatePhasesCmd
+                []
+
+        PhaseFetched factory id fetchResult ->
+            case fetchResult of
+                Ok (Just newPhase) ->
+                    let
+                        intermediateUpdateResult =
+                            prevModel
+                                |> updateTradePhase id newPhase
+
+                        ( cmd, appCmds ) =
+                            case ( newPhase, Array.get id prevModel.trades ) of
+                                ( CTypes.Committed, Just trade ) ->
+                                    case CTypes.getCreationInfo trade of
+                                        Just creationInfo ->
+                                            -- state has changed; update
+                                            ( Contracts.Wrappers.getStateCmd
+                                                factory
+                                                creationInfo.address
+                                                (StateFetched id)
+                                            , []
+                                            )
+
+                                        Nothing ->
+                                            ( Cmd.none
+                                            , [ AppCmd.UserNotice <|
+                                                    UN.unexpectedError "Phase fetched for a trade that has no creationInfo" trade
+                                              ]
+                                            )
+
+                                ( _, Nothing ) ->
+                                    ( Cmd.none
+                                    , [ AppCmd.UserNotice <|
+                                            UN.unexpectedError "Phase fetched for a trade, but then ran into an out-of-range error" Nothing
+                                      ]
+                                    )
+
+                                _ ->
+                                    ( Cmd.none
+                                    , []
+                                    )
+                    in
+                    UpdateResult
+                        intermediateUpdateResult.tradeCache
+                        (Cmd.batch
+                            [ intermediateUpdateResult.cmd
+                            , cmd
+                            ]
+                        )
+                        (List.append
+                            intermediateUpdateResult.appCmds
+                            appCmds
+                        )
+
+                badFetchResult ->
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.fromBadFetchResultMaybe "phase" fetchResult
+                        ]
+
         NumTradesFetchedAgain fetchResult ->
             case ( fetchResult, prevModel.dataFetchState.total ) of
                 ( Ok bigInt, Just oldNumTrades ) ->
@@ -444,6 +529,49 @@ updateTradeParameters id parameters tradeCache =
                 ]
 
 
+updateTradePhase : Int -> CTypes.Phase -> TradeCache -> UpdateResult
+updateTradePhase id newPhase tradeCache =
+    case Array.get id tradeCache.trades of
+        Just (CTypes.LoadedTrade trade) ->
+            let
+                oldState =
+                    trade.state
+
+                newTradeArray =
+                    Array.set
+                        id
+                        (CTypes.LoadedTrade <|
+                            { trade
+                                | state =
+                                    { oldState | phase = newPhase }
+                            }
+                        )
+                        tradeCache.trades
+            in
+            UpdateResult
+                ({ tradeCache | trades = newTradeArray }
+                    |> updateStatus
+                )
+                Cmd.none
+                []
+
+        Just _ ->
+            UpdateResult
+                tradeCache
+                Cmd.none
+                [ AppCmd.UserNotice <|
+                    UN.unexpectedError "updateTradePhase is trying to update a partially loaded trade" ( id, tradeCache.trades )
+                ]
+
+        Nothing ->
+            UpdateResult
+                tradeCache
+                Cmd.none
+                [ AppCmd.UserNotice <|
+                    UN.unexpectedError "updateTradePhase ran into an out-of-range error" ( id, tradeCache.trades )
+                ]
+
+
 updateTradeState : Int -> CTypes.State -> TradeCache -> UpdateResult
 updateTradeState id state tradeCache =
     case Array.get id tradeCache.trades of
@@ -533,4 +661,7 @@ updateTradeTerms id terms tradeCache =
 
 subscriptions : TradeCache -> Sub Msg
 subscriptions tradeCache =
-    Time.every 5000 (\_ -> CheckForNewTrades)
+    Sub.batch
+        [ Time.every 5000 (\_ -> CheckForNewTrades)
+        , Time.every 3000 (\_ -> UpdateTradePhases)
+        ]

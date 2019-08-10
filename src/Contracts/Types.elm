@@ -1,4 +1,4 @@
-module Contracts.Types exposing (ClosedReason(..), CreateParameters, DAIHardEvent(..), FullTradeInfo, PartialTradeInfo, Phase(..), PhaseStartInfo, State, Terms, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, calculateFullInitialDeposit, decodeParameters, decodePhaseStartInfo, decodeState, decodeTerms, defaultAbortPunishment, defaultBuyerDeposit, encodeTerms, eventDecoder, getBuyerOrSeller, getCurrentPhaseTimeoutInfo, getDevFee, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderRole, initiatorOrResponderToBuyerOrSeller, partialTradeInfo, phaseIcon, phaseToInt, phaseToString, responderDeposit, tradeAddress, tradeFactory, tradeHasDefaultParameters, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePhaseStartInfo, updateState, updateTerms)
+module Contracts.Types exposing (ClosedReason(..), CreateParameters, DAIHardEvent(..), FullTradeInfo, PartialTradeInfo, Phase(..), PhaseStartInfo, State, Terms, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, calculateFullInitialDeposit, decodeParameters, decodePhaseStartInfo, decodeState, decodeTerms, defaultAbortPunishment, defaultBuyerDeposit, encodeTerms, eventDecoder, getBuyerOrSeller, getCreationInfo, getCurrentPhaseTimeoutInfo, getDevFee, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderRole, initiatorOrResponderToBuyerOrSeller, partialTradeInfo, phaseIcon, phaseToInt, phaseToString, responderDeposit, tradeAddress, tradeFactory, tradeHasDefaultParameters, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePhaseStartInfo, updateState, updateTerms)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
@@ -155,6 +155,19 @@ type alias PhaseStartInfo =
     , claimedTime : Time.Posix
     , closedTime : Time.Posix
     }
+
+
+getCreationInfo : Trade -> Maybe TradeCreationInfo
+getCreationInfo trade =
+    case trade of
+        LoadedTrade fTrade ->
+            Just fTrade.creationInfo
+
+        PartiallyLoadedTrade pTrade ->
+            pTrade.creationInfo
+
+        Invalid ->
+            Nothing
 
 
 tradeFactory : Trade -> Maybe FactoryType

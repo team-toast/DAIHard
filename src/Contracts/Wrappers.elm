@@ -1,4 +1,4 @@
-module Contracts.Wrappers exposing (getAllowanceCmd, getCreationInfoFromIdCmd, getInitiatedEventDataSentryCmd, getNumTradesCmd, getParametersAndStateCmd, getParametersCmd, getParametersStateAndPhaseInfoCmd, getStateCmd, openTrade)
+module Contracts.Wrappers exposing (getAllowanceCmd, getCreationInfoFromIdCmd, getInitiatedEventDataSentryCmd, getNumTradesCmd, getParametersAndStateCmd, getParametersCmd, getParametersStateAndPhaseInfoCmd, getPhaseCmd, getStateCmd, openTrade)
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -115,6 +115,13 @@ getStateCmd : FactoryType -> Address -> (Result Http.Error (Maybe State) -> msg)
 getStateCmd factoryType ttAddress msgConstructor =
     Eth.call (EthHelpers.httpProviderForFactory factoryType) (DHT.getState ttAddress)
         |> Task.map decodeState
+        |> Task.attempt msgConstructor
+
+
+getPhaseCmd : FactoryType -> Address -> (Result Http.Error (Maybe Phase) -> msg) -> Cmd msg
+getPhaseCmd factoryType ttAddress msgConstructor =
+    Eth.call (EthHelpers.httpProviderForFactory factoryType) (DHT.phase ttAddress)
+        |> Task.map bigIntToPhase
         |> Task.attempt msgConstructor
 
 

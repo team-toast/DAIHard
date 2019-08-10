@@ -49,11 +49,6 @@ type Msg
     | NoOp
 
 
-
---| StateFetched Int (Result Http.Error (Maybe CTypes.State))
---| Refresh Time.Posix
-
-
 type alias UpdateResult =
     { model : Model
     , cmd : Cmd Msg
