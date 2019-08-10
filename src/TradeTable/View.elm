@@ -321,10 +321,10 @@ sortByFunc ( sortCol, ordering ) =
         Phase ->
             \a b ->
                 if a.state.phase == b.state.phase then
-                    sortByFunc ( Expires, Descending ) a b
+                    sortByFunc ( Expires, Ascending ) a b
 
                 else
-                    compare (CTypes.phaseToInt a.state.phase) (CTypes.phaseToInt b.state.phase)
+                    flip compare (CTypes.phaseToInt a.state.phase) (CTypes.phaseToInt b.state.phase)
 
         Expires ->
             \a b -> TimeHelpers.compare a.derived.phaseEndTime b.derived.phaseEndTime
