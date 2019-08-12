@@ -3,10 +3,12 @@ module TradeTable.State exposing (init, update)
 import AppCmd exposing (AppCmd)
 import ChainCmd exposing (ChainCmd)
 import Routing
+import TradeTable.Filters.State as Filters
+import TradeTable.Filters.Types as Filters
 import TradeTable.Types exposing (..)
 
 
-init : ( ColType, Ordering ) -> Model
+init : ( ColType, Ordering ) -> Filters.Model -> Model
 init =
     Model
 
@@ -34,6 +36,13 @@ update msg prevModel =
             justModelUpdate
                 { prevModel
                     | orderBy = newOrderBy
+                }
+
+        FiltersMsg filtersMsg ->
+            justModelUpdate
+                { prevModel
+                    | filtersModel =
+                        prevModel.filtersModel |> Filters.update filtersMsg
                 }
 
         NoOp ->

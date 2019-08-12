@@ -15,6 +15,8 @@ import Images exposing (Image)
 import PaymentMethods exposing (PaymentMethod)
 import Time
 import TokenValue exposing (TokenValue)
+import TradeTable.Filters.Types as Filters
+import TradeTable.Filters.View as Filters
 import TradeTable.Types exposing (..)
 
 
@@ -26,7 +28,8 @@ view time model colTypes trades =
         , Element.padding 30
         , Element.spacing 5
         ]
-        [ viewColHeaders model.orderBy colTypes
+        [ Element.map FiltersMsg <| Filters.view model.filtersModel
+        , viewColHeaders model.orderBy colTypes
         , viewTradeRows time model colTypes trades
         ]
 
@@ -147,6 +150,7 @@ viewTradeRows time model colTypes trades =
         , Element.clip
         ]
         (trades
+            |> Filters.filterTrades model.filtersModel
             |> List.sortWith (sortByFunc model.orderBy)
             |> List.map (viewTradeRow time colTypes)
         )
@@ -162,7 +166,7 @@ viewTradeRow time colTypes trade =
         , Element.Events.onClick (TradeClicked trade.factory trade.id)
         ]
         [ Element.row
-            [ Element.width <| Element.fillPortion 6
+            [ Element.width <| Element.fill
             , Element.spacing 1
             ]
             (colTypes

@@ -25,6 +25,7 @@ import Time
 import TokenValue exposing (TokenValue)
 import TradeCache.State as TradeCache
 import TradeCache.Types as TradeCache exposing (TradeCache)
+import TradeTable.Filters.Types as Filter
 import TradeTable.State as TradeTable
 import TradeTable.Types as TradeTable
 import Wallet
@@ -37,6 +38,10 @@ init wallet agentAddress =
       , tradeTable =
             TradeTable.init
                 ( TradeTable.Phase, TradeTable.Ascending )
+                [ Filter.phases True True True False
+                , Filter.offerType True True
+                , Filter.role agentAddress True True
+                ]
       }
     , Cmd.none
     )

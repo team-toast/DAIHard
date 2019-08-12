@@ -4,16 +4,19 @@ import AppCmd exposing (AppCmd)
 import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
+import TradeTable.Filters.Types as Filters
 
 
 type alias Model =
     { orderBy : ( ColType, Ordering )
+    , filtersModel : Filters.Model
     }
 
 
 type Msg
     = TradeClicked FactoryType Int
     | ChangeSort ColType
+    | FiltersMsg Filters.Msg
     | NoOp
 
 

@@ -54,21 +54,16 @@ pageTitleElement model =
                     userInfo.address == model.agentAddress
     in
     if viewingOwnHistory then
-        Element.el
-            [ Element.paddingXY 30 10
-            , Element.Font.size 24
-            , Element.Font.semiBold
-            ]
-            (Element.text "Your Trades")
+        Element.none
 
     else
         Element.row
             [ Element.spacing 10
             , Element.paddingEach
                 { top = 10
-                , left = 30
-                , right = 30
-                , bottom = 30
+                , left = 20
+                , right = 20
+                , bottom = 20
                 }
             ]
             [ Element.el
@@ -137,7 +132,9 @@ resultsAndStatusElement time tradeCaches model =
                     |> List.map statusMsgElement
     in
     Element.column
-        [ Element.spacing 10 ]
+        [ Element.spacing 10
+        , Element.width Element.fill
+        ]
         [ case statusMessages of
             [] ->
                 Element.none

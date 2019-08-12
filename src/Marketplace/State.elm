@@ -23,6 +23,7 @@ import Time
 import TokenValue exposing (TokenValue)
 import TradeCache.State as TradeCache
 import TradeCache.Types as TradeCache exposing (TradeCache)
+import TradeTable.Filters.Types as Filters
 import TradeTable.State as TradeTable
 import TradeTable.Types as TradeTable
 import Wallet
@@ -34,6 +35,9 @@ init wallet =
       , tradeTable =
             TradeTable.init
                 ( TradeTable.Expires, TradeTable.Ascending )
+                [ Filters.offerType True True
+                , Filters.phases True False False False
+                ]
       , inputs = initialInputs
       , errors = noErrors
       , showCurrencyDropdown = False
