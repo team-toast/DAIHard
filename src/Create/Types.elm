@@ -6,18 +6,18 @@ import CommonTypes exposing (..)
 import Contracts.Types as CTypes
 import Create.PMWizard.Types as PMWizard
 import Eth.Types exposing (Address, TxHash, TxReceipt)
-import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
-import Helpers.Eth as EthHelpers exposing (Web3Context)
+import ChainCmd exposing (ChainCmd)
+import Helpers.Eth as EthHelpers
 import Http
 import PaymentMethods exposing (PaymentMethod)
 import Routing
 import Time
 import TokenValue exposing (TokenValue)
+import Wallet
 
 
 type alias Model =
-    { web3Context : Web3Context
-    , userInfo : Maybe UserInfo
+    { wallet : Wallet.State
     , inputs : Inputs
     , errors : Errors
     , showFiatTypeDropdown : Bool
@@ -40,24 +40,24 @@ type Msg
     | AutoabortIntervalChanged Time.Posix
     | AutoreleaseIntervalChanged Time.Posix
     | ChangePaymentMethodText String
-    | CreateClicked UserInfo
+    | CreateClicked FactoryType UserInfo
     | AbortCreate
-    | ConfirmCreate CTypes.CreateParameters BigInt
-    | AllowanceFetched (Result Http.Error BigInt)
-    | ApproveSigned CTypes.CreateParameters (Result String TxHash)
-    | CreateSigned (Result String TxHash)
-    | CreateMined (Result String TxReceipt)
+    | ConfirmCreate FactoryType CTypes.CreateParameters BigInt
+    | AllowanceFetched TokenFactoryType (Result Http.Error BigInt)
+    | ApproveSigned TokenFactoryType CTypes.CreateParameters (Result String TxHash)
+    | CreateSigned FactoryType (Result String TxHash)
+    | CreateMined FactoryType (Result String TxReceipt)
     | Web3Connect
     | NoOp
     | AppCmd (AppCmd Msg)
 
 
 type TxChainStatus
-    = Confirm CTypes.CreateParameters
-    | ApproveNeedsSig
-    | ApproveMining CTypes.CreateParameters TxHash
-    | CreateNeedsSig
-    | CreateMining TxHash
+    = Confirm FactoryType CTypes.CreateParameters
+    | ApproveNeedsSig TokenFactoryType
+    | ApproveMining TokenFactoryType CTypes.CreateParameters TxHash
+    | CreateNeedsSig FactoryType
+    | CreateMining FactoryType TxHash
 
 
 type alias Inputs =

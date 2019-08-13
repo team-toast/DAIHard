@@ -1,9 +1,10 @@
-module AgentHistory.State exposing (init, subscriptions, update, updateUserInfo, updateWeb3Context)
+module AgentHistory.State exposing (init, subscriptions, update, updateWalletState)
 
 import AgentHistory.Types exposing (..)
 import AppCmd
 import Array exposing (Array)
 import BigInt exposing (BigInt)
+import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
 import Config exposing (..)
 import Contracts.Generated.DAIHardTrade as DHT
@@ -13,9 +14,10 @@ import Eth
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
 import FiatValue exposing (FiatValue)
+import Filters.State as Filters
+import Filters.Types as Filter
 import Flip exposing (flip)
 import Helpers.BigInt as BigIntHelpers
-import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
 import PaymentMethods exposing (PaymentMethod)
@@ -25,15 +27,24 @@ import Time
 import TokenValue exposing (TokenValue)
 import TradeCache.State as TradeCache
 import TradeCache.Types as TradeCache exposing (TradeCache)
+import TradeTable.State as TradeTable
+import TradeTable.Types as TradeTable
+import Wallet
 
 
-init : EthHelpers.Web3Context -> Address -> BuyerOrSeller -> Maybe UserInfo -> ( Model, Cmd Msg )
-init web3Context agentAddress agentRole maybeUserInfo =
-    ( { web3Context = web3Context
+init : Wallet.State -> Address -> ( Model, Cmd Msg )
+init wallet agentAddress =
+    ( { wallet = wallet
       , agentAddress = agentAddress
-      , agentRole = agentRole
-      , userInfo = maybeUserInfo
-      , viewPhase = CTypes.Open
+      , filters =
+            Filters.init
+                [ Filter.phases True True True False
+                , Filter.offerType True True
+                , Filter.role agentAddress True True
+                ]
+      , tradeTable =
+            TradeTable.init
+                ( TradeTable.Phase, TradeTable.Ascending )
       }
     , Cmd.none
     )
@@ -42,20 +53,6 @@ init web3Context agentAddress agentRole maybeUserInfo =
 update : Msg -> Model -> UpdateResult
 update msg prevModel =
     case msg of
-        ViewUserRoleChanged role ->
-            UpdateResult
-                prevModel
-                Cmd.none
-                ChainCmd.none
-                [ AppCmd.GotoRoute (Routing.AgentHistory prevModel.agentAddress role) ]
-
-        ViewPhaseChanged phase ->
-            UpdateResult
-                { prevModel | viewPhase = phase }
-                Cmd.none
-                ChainCmd.none
-                []
-
         Poke address ->
             let
                 txParams =
@@ -80,12 +77,33 @@ update msg prevModel =
                 chainCmd
                 []
 
-        TradeClicked id ->
+        TradeClicked factory id ->
             UpdateResult
                 prevModel
                 Cmd.none
                 ChainCmd.none
-                [ AppCmd.GotoRoute (Routing.Trade id) ]
+                [ AppCmd.GotoRoute (Routing.Trade factory id) ]
+
+        FiltersMsg filtersMsg ->
+            justModelUpdate
+                { prevModel
+                    | filters =
+                        prevModel.filters |> Filters.update filtersMsg
+                }
+
+        TradeTableMsg tradeTableMsg ->
+            let
+                ttUpdateResult =
+                    prevModel.tradeTable
+                        |> TradeTable.update tradeTableMsg
+            in
+            UpdateResult
+                { prevModel
+                    | tradeTable = ttUpdateResult.model
+                }
+                (Cmd.map TradeTableMsg ttUpdateResult.cmd)
+                (ChainCmd.map TradeTableMsg ttUpdateResult.chainCmd)
+                (List.map (AppCmd.map TradeTableMsg) ttUpdateResult.appCmds)
 
         NoOp ->
             noUpdate prevModel
@@ -100,14 +118,9 @@ noUpdate model =
         []
 
 
-updateUserInfo : Maybe UserInfo -> Model -> Model
-updateUserInfo userInfo model =
-    { model | userInfo = userInfo }
-
-
-updateWeb3Context : EthHelpers.Web3Context -> Model -> Model
-updateWeb3Context newWeb3Context model =
-    { model | web3Context = newWeb3Context }
+updateWalletState : Wallet.State -> Model -> Model
+updateWalletState wallet model =
+    { model | wallet = wallet }
 
 
 subscriptions : Model -> Sub Msg

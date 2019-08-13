@@ -1,7 +1,8 @@
-port module Helpers.ChainCmd exposing (ChainCmd, custom, execute, map, none)
+port module ChainCmd exposing (ChainCmd(..), custom, execute, map, none)
 
 import Eth.Sentry.Tx as TxSentry
 import Eth.Types
+import UserNotice as UN
 
 
 type ChainCmd msg
@@ -19,14 +20,26 @@ custom customSend txParams =
     CustomSend customSend txParams
 
 
-execute : TxSentry.TxSentry msg -> ChainCmd msg -> ( TxSentry.TxSentry msg, Cmd msg )
-execute txSentry chainCmdOrder =
-    case chainCmdOrder of
-        None ->
-            ( txSentry, Cmd.none )
+execute : Maybe (TxSentry.TxSentry msg) -> ChainCmd msg -> ( Maybe (TxSentry.TxSentry msg), Cmd msg, List (UN.UserNotice msg) )
+execute maybeTxSentry chainCmdOrder =
+    case ( maybeTxSentry, chainCmdOrder ) of
+        ( _, None ) ->
+            ( maybeTxSentry, Cmd.none, [] )
 
-        CustomSend customSend txParams ->
+        ( Just txSentry, CustomSend customSend txParams ) ->
             TxSentry.customSend txSentry customSend txParams
+                |> (\( a, b ) ->
+                        ( Just a, b, [] )
+                   )
+
+        _ ->
+            ( Nothing
+            , Cmd.none
+            , [ UN.unexpectedError
+                    "submodel sent chainCmd, but there is no txSentry to use!"
+                    Nothing
+              ]
+            )
 
 
 map : (subMsg -> msg) -> ChainCmd subMsg -> ChainCmd msg

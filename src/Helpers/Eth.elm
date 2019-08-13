@@ -1,134 +1,32 @@
-module Helpers.Eth exposing (Web3Context, addressIfNot0x0, factoryTypeToNetworkId, factoryTypeToString, getLogAt, intToFactoryType, makeViewAddressUrl, makeViewTxUrl, networkIdToFactoryType, updateCallValue, web3Context)
+module Helpers.Eth exposing (addressIfNot0x0, getLogAt, httpProviderForFactory, makeViewAddressUrl, makeViewTxUrl, updateCallValue)
 
 import Array
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
 import Config
-import Eth.Net as Net
+import Eth.Net
 import Eth.Sentry.Tx as TxSentry
 import Eth.Types exposing (Address, HttpProvider, TxHash, WebsocketProvider)
 import Eth.Utils
 
 
-type alias Web3Context =
-    { factoryType : FactoryType
-    , httpProvider : HttpProvider
-    , wsProvider : WebsocketProvider
-    }
-
-
-factoryTypeToString : FactoryType -> String
-factoryTypeToString factoryType =
+httpProviderForFactory : FactoryType -> HttpProvider
+httpProviderForFactory factoryType =
     case factoryType of
         Token EthDai ->
-            "Ethereum Dai"
+            "https://mainnet.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9"
 
         Native Eth ->
-            "Ethereum Eth"
+            "https://mainnet.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9"
 
         Token KovanDai ->
-            "Kovan Dai"
+            "https://kovan.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9"
 
         Native Kovan ->
-            "Kovan Eth"
+            "https://kovan.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9"
 
         Native XDai ->
-            "xDai"
-
-
-networkIdToFactoryType : Net.NetworkId -> Maybe FactoryType
-networkIdToFactoryType networkId =
-    case networkId of
-        Net.Mainnet ->
-            Just <| Token EthDai
-
-        Net.Kovan ->
-            Just <| Token KovanDai
-
-        -- Net.RskMain ->
-        --     Just <| Native Rootstock
-        -- Net.RskTest ->
-        --     Just <| Native RootstockTest
-        Net.Private 100 ->
-            Just <| Native XDai
-
-        _ ->
-            Nothing
-
-
-factoryTypeToNetworkId : FactoryType -> Net.NetworkId
-factoryTypeToNetworkId factoryType =
-    case factoryType of
-        Token EthDai ->
-            Net.Mainnet
-
-        Native Eth ->
-            Net.Mainnet
-
-        Token KovanDai ->
-            Net.Kovan
-
-        Native Kovan ->
-            Net.Kovan
-
-        -- Native Rootstock ->
-        --     Net.RskMain
-        -- Native RootstockTest ->
-        --     Net.RskTest
-        Native XDai ->
-            Net.Private 100
-
-
-intToFactoryType : Int -> Maybe FactoryType
-intToFactoryType =
-    Net.toNetworkId >> networkIdToFactoryType
-
-
-web3Context : FactoryType -> Web3Context
-web3Context factoryType =
-    case factoryType of
-        Token EthDai ->
-            Web3Context
-                factoryType
-                "https://mainnet.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9"
-                "wss://mainnet.infura.io/ws"
-
-        Native Eth ->
-            Web3Context
-                factoryType
-                "https://mainnet.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9"
-                "wss://mainnet.infura.io/ws"
-
-        Token KovanDai ->
-            Web3Context
-                factoryType
-                "https://kovan.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9"
-                "wss://kovan.infura.io/ws"
-
-        Native Kovan ->
-            Web3Context
-                factoryType
-                "https://kovan.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9"
-                "wss://kovan.infura.io/ws"
-
-        Native XDai ->
-            Web3Context
-                factoryType
-                "https://dai.poa.network"
-                ""
-
-
-
--- Native Rootstock ->
---     Web3Context
---         factoryType
---         "https://public-node.rsk.co"
---         ""
--- Native RootstockTest ->
---     Web3Context
---         factoryType
---         "https://public-node.testnet.rsk.co"
---         ""
+            "https://dai.poa.network"
 
 
 addressIfNot0x0 : Address -> Maybe Address

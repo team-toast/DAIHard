@@ -1,4 +1,4 @@
-module Contracts.Wrappers exposing (getAllowanceCmd, getCreationInfoFromIdCmd, getInitiatedEventDataSentryCmd, getNumTradesCmd, getParametersAndStateCmd, getParametersCmd, getParametersStateAndPhaseInfoCmd, getStateCmd, openTrade)
+module Contracts.Wrappers exposing (getAllowanceCmd, getCreationInfoFromIdCmd, getInitiatedEventDataSentryCmd, getNumTradesCmd, getParametersAndStateCmd, getParametersCmd, getParametersStateAndPhaseInfoCmd, getPhaseCmd, getStateCmd, openTrade)
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -63,64 +63,71 @@ openTrade factoryType parameters =
            )
 
 
-getAllowanceCmd : EthHelpers.Web3Context -> TokenFactoryType -> Address -> Address -> (Result Http.Error BigInt -> msg) -> Cmd msg
-getAllowanceCmd web3Context tokenFactoryType owner spender msgConstructor =
+getAllowanceCmd : TokenFactoryType -> Address -> Address -> (Result Http.Error BigInt -> msg) -> Cmd msg
+getAllowanceCmd tokenType owner spender msgConstructor =
     Eth.call
-        web3Context.httpProvider
+        (EthHelpers.httpProviderForFactory (Token tokenType))
         (TokenContract.allowance
-            (Config.tokenContractAddress tokenFactoryType)
+            (Config.tokenContractAddress tokenType)
             owner
             spender
         )
         |> Task.attempt msgConstructor
 
 
-getNumTradesCmd : EthHelpers.Web3Context -> (Result Http.Error BigInt -> msg) -> Cmd msg
-getNumTradesCmd web3Context msgConstructor =
-    Eth.call web3Context.httpProvider (DHF.numTrades (Config.factoryAddress web3Context.factoryType))
+getNumTradesCmd : FactoryType -> (Result Http.Error BigInt -> msg) -> Cmd msg
+getNumTradesCmd factoryType msgConstructor =
+    Eth.call (EthHelpers.httpProviderForFactory factoryType) (DHF.numTrades (Config.factoryAddress factoryType))
         |> Task.attempt msgConstructor
 
 
-getCreationInfoFromIdCmd : EthHelpers.Web3Context -> BigInt -> (Result Http.Error DHF.CreatedTrade -> msg) -> Cmd msg
-getCreationInfoFromIdCmd web3Context ttId msgConstructor =
-    Eth.call web3Context.httpProvider (DHF.createdTrades (Config.factoryAddress web3Context.factoryType) ttId)
+getCreationInfoFromIdCmd : FactoryType -> BigInt -> (Result Http.Error DHF.CreatedTrade -> msg) -> Cmd msg
+getCreationInfoFromIdCmd factoryType ttId msgConstructor =
+    Eth.call (EthHelpers.httpProviderForFactory factoryType) (DHF.createdTrades (Config.factoryAddress factoryType) ttId)
         |> Task.attempt msgConstructor
 
 
-getParametersAndStateCmd : EthHelpers.Web3Context -> Address -> (Result Http.Error (Result String TradeParameters) -> msg) -> (Result Http.Error (Maybe State) -> msg) -> Cmd msg
-getParametersAndStateCmd web3Context address parametersMsgConstructor stateMsgConstructor =
+getParametersAndStateCmd : FactoryType -> Address -> (Result Http.Error (Result String TradeParameters) -> msg) -> (Result Http.Error (Maybe State) -> msg) -> Cmd msg
+getParametersAndStateCmd factoryType address parametersMsgConstructor stateMsgConstructor =
     Cmd.batch
-        [ getParametersCmd web3Context address parametersMsgConstructor
-        , getStateCmd web3Context address stateMsgConstructor
+        [ getParametersCmd factoryType address parametersMsgConstructor
+        , getStateCmd factoryType address stateMsgConstructor
         ]
 
 
-getParametersStateAndPhaseInfoCmd : EthHelpers.Web3Context -> Address -> (Result Http.Error (Result String TradeParameters) -> msg) -> (Result Http.Error (Maybe State) -> msg) -> (Result Http.Error (Maybe PhaseStartInfo) -> msg) -> Cmd msg
-getParametersStateAndPhaseInfoCmd web3Context address parametersMsgConstructor stateMsgConstructor phaseStartInfoConstructor =
+getParametersStateAndPhaseInfoCmd : FactoryType -> Address -> (Result Http.Error (Result String TradeParameters) -> msg) -> (Result Http.Error (Maybe State) -> msg) -> (Result Http.Error (Maybe PhaseStartInfo) -> msg) -> Cmd msg
+getParametersStateAndPhaseInfoCmd factoryType address parametersMsgConstructor stateMsgConstructor phaseStartInfoConstructor =
     Cmd.batch
-        [ getParametersCmd web3Context address parametersMsgConstructor
-        , getStateCmd web3Context address stateMsgConstructor
-        , getPhaseStartInfoCmd web3Context address phaseStartInfoConstructor
+        [ getParametersCmd factoryType address parametersMsgConstructor
+        , getStateCmd factoryType address stateMsgConstructor
+        , getPhaseStartInfoCmd factoryType address phaseStartInfoConstructor
         ]
 
 
-getParametersCmd : EthHelpers.Web3Context -> Address -> (Result Http.Error (Result String TradeParameters) -> msg) -> Cmd msg
-getParametersCmd web3Context ttAddress msgConstructor =
-    Eth.call web3Context.httpProvider (DHT.getParameters ttAddress)
+getParametersCmd : FactoryType -> Address -> (Result Http.Error (Result String TradeParameters) -> msg) -> Cmd msg
+getParametersCmd factoryType ttAddress msgConstructor =
+    Eth.call (EthHelpers.httpProviderForFactory factoryType) (DHT.getParameters ttAddress)
         |> Task.map decodeParameters
         |> Task.attempt msgConstructor
 
 
-getStateCmd : EthHelpers.Web3Context -> Address -> (Result Http.Error (Maybe State) -> msg) -> Cmd msg
-getStateCmd web3Context ttAddress msgConstructor =
-    Eth.call web3Context.httpProvider (DHT.getState ttAddress)
+getStateCmd : FactoryType -> Address -> (Result Http.Error (Maybe State) -> msg) -> Cmd msg
+getStateCmd factoryType ttAddress msgConstructor =
+    Eth.call (EthHelpers.httpProviderForFactory factoryType) (DHT.getState ttAddress)
         |> Task.map decodeState
         |> Task.attempt msgConstructor
 
 
-getPhaseStartInfoCmd : EthHelpers.Web3Context -> Address -> (Result Http.Error (Maybe PhaseStartInfo) -> msg) -> Cmd msg
-getPhaseStartInfoCmd web3Context ttAddress msgConstructor =
-    Eth.call web3Context.httpProvider (DHT.getPhaseStartInfo ttAddress)
+getPhaseCmd : FactoryType -> Address -> (Result Http.Error (Maybe Phase) -> msg) -> Cmd msg
+getPhaseCmd factoryType ttAddress msgConstructor =
+    Eth.call (EthHelpers.httpProviderForFactory factoryType) (DHT.phase ttAddress)
+        |> Task.map bigIntToPhase
+        |> Task.attempt msgConstructor
+
+
+getPhaseStartInfoCmd : FactoryType -> Address -> (Result Http.Error (Maybe PhaseStartInfo) -> msg) -> Cmd msg
+getPhaseStartInfoCmd factoryType ttAddress msgConstructor =
+    Eth.call (EthHelpers.httpProviderForFactory factoryType) (DHT.getPhaseStartInfo ttAddress)
         |> Task.map decodePhaseStartInfo
         |> Task.attempt msgConstructor
 

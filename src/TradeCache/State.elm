@@ -3,6 +3,7 @@ module TradeCache.State exposing (init, initAndStartCaching, loadedValidTrades, 
 import AppCmd exposing (AppCmd)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
+import CommonTypes exposing (..)
 import Contracts.Types as CTypes
 import Contracts.Wrappers
 import Dict exposing (Dict)
@@ -10,41 +11,42 @@ import Eth.Sentry.Event as EventSentry
 import Helpers.BigInt as BigIntHelpers
 import Helpers.Eth as EthHelpers
 import List.Extra
+import Maybe.Extra
 import PaymentMethods exposing (PaymentMethod)
 import Time
 import TradeCache.Types exposing (..)
 import UserNotice as UN exposing (UserNotice)
 
 
-init : EthHelpers.Web3Context -> ( TradeCache, Cmd Msg, List (AppCmd Msg) )
-init web3Context =
+init : FactoryType -> ( TradeCache, Cmd Msg, List (AppCmd Msg) )
+init factoryType =
     let
         ( sentry, sentryCmd ) =
             EventSentry.init
                 EventSentryMsg
-                web3Context.httpProvider
+                (EthHelpers.httpProviderForFactory factoryType)
     in
-    ( { web3Context = web3Context
+    ( { factory = factoryType
       , eventSentry = sentry
       , trades = Array.empty
-      , dataFetchStatus =
-            Status Nothing 0 0
+      , dataFetchState =
+            DataState Nothing 0 0
       }
     , sentryCmd
-    , [ AppCmd.gTag "tradeCache init" "processing" (EthHelpers.factoryTypeToString web3Context.factoryType) 0 ]
+    , [ AppCmd.gTag "tradeCache init" "processing" (factoryName factoryType) 0 ]
     )
 
 
 startCaching : TradeCache -> Cmd Msg
 startCaching tradeCache =
-    Contracts.Wrappers.getNumTradesCmd tradeCache.web3Context InitialNumTradesFetched
+    Contracts.Wrappers.getNumTradesCmd tradeCache.factory InitialNumTradesFetched
 
 
-initAndStartCaching : EthHelpers.Web3Context -> ( TradeCache, Cmd Msg, List (AppCmd Msg) )
-initAndStartCaching web3Context =
+initAndStartCaching : FactoryType -> ( TradeCache, Cmd Msg, List (AppCmd Msg) )
+initAndStartCaching factoryType =
     let
         ( tc, cmd1, appCmds ) =
-            init web3Context
+            init factoryType
     in
     ( tc
     , Cmd.batch
@@ -53,6 +55,23 @@ initAndStartCaching web3Context =
         ]
     , appCmds
     )
+
+
+updateStates : List Int -> TradeCache -> Cmd Msg
+updateStates tradeIds tradeCache =
+    tradeIds
+        |> List.map
+            (\id ->
+                Array.get id tradeCache.trades
+                    |> Maybe.andThen CTypes.tradeAddress
+                    |> Maybe.map (\address -> ( id, address ))
+            )
+        |> Maybe.Extra.values
+        |> List.map
+            (\( id, address ) ->
+                Contracts.Wrappers.getStateCmd tradeCache.factory address (StateFetched id)
+            )
+        |> Cmd.batch
 
 
 update : Msg -> TradeCache -> UpdateResult
@@ -70,19 +89,19 @@ update msg prevModel =
                                 (List.range 0 (numTrades - 1)
                                     |> List.map
                                         (\id ->
-                                            Contracts.Wrappers.getCreationInfoFromIdCmd prevModel.web3Context (BigInt.fromInt id) (CreationInfoFetched id)
+                                            Contracts.Wrappers.getCreationInfoFromIdCmd prevModel.factory (BigInt.fromInt id) (CreationInfoFetched id)
                                         )
                                 )
 
                         trades =
                             List.range 0 (numTrades - 1)
-                                |> List.map CTypes.partialTradeInfo
+                                |> List.map (CTypes.partialTradeInfo prevModel.factory)
                                 |> Array.fromList
                     in
                     UpdateResult
                         { prevModel
                             | trades = trades
-                            , dataFetchStatus = Status (Just numTrades) 0 0
+                            , dataFetchState = DataState (Just numTrades) 0 0
                         }
                         fetchCreationInfoCmd
                         []
@@ -98,11 +117,96 @@ update msg prevModel =
         CheckForNewTrades ->
             UpdateResult
                 prevModel
-                (Contracts.Wrappers.getNumTradesCmd prevModel.web3Context NumTradesFetchedAgain)
+                (Contracts.Wrappers.getNumTradesCmd prevModel.factory NumTradesFetchedAgain)
                 []
 
+        UpdateTradePhases ->
+            let
+                updatePhasesCmd =
+                    loadedTrades prevModel
+                        |> List.map
+                            (\trade ->
+                                case trade.state.phase of
+                                    CTypes.Closed ->
+                                        Nothing
+
+                                    _ ->
+                                        Just <|
+                                            Contracts.Wrappers.getPhaseCmd
+                                                trade.factory
+                                                trade.creationInfo.address
+                                                (PhaseFetched trade.factory trade.id)
+                            )
+                        |> Maybe.Extra.values
+                        |> Cmd.batch
+            in
+            UpdateResult
+                prevModel
+                updatePhasesCmd
+                []
+
+        PhaseFetched factory id fetchResult ->
+            case fetchResult of
+                Ok (Just newPhase) ->
+                    let
+                        intermediateUpdateResult =
+                            prevModel
+                                |> updateTradePhase id newPhase
+
+                        ( cmd, appCmds ) =
+                            case ( newPhase, Array.get id prevModel.trades ) of
+                                ( CTypes.Committed, Just trade ) ->
+                                    case CTypes.getCreationInfo trade of
+                                        Just creationInfo ->
+                                            -- state has changed; update
+                                            ( Contracts.Wrappers.getStateCmd
+                                                factory
+                                                creationInfo.address
+                                                (StateFetched id)
+                                            , []
+                                            )
+
+                                        Nothing ->
+                                            ( Cmd.none
+                                            , [ AppCmd.UserNotice <|
+                                                    UN.unexpectedError "Phase fetched for a trade that has no creationInfo" trade
+                                              ]
+                                            )
+
+                                ( _, Nothing ) ->
+                                    ( Cmd.none
+                                    , [ AppCmd.UserNotice <|
+                                            UN.unexpectedError "Phase fetched for a trade, but then ran into an out-of-range error" Nothing
+                                      ]
+                                    )
+
+                                _ ->
+                                    ( Cmd.none
+                                    , []
+                                    )
+                    in
+                    UpdateResult
+                        intermediateUpdateResult.tradeCache
+                        (Cmd.batch
+                            [ intermediateUpdateResult.cmd
+                            , cmd
+                            ]
+                        )
+                        (List.append
+                            intermediateUpdateResult.appCmds
+                            appCmds
+                        )
+
+                badFetchResult ->
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        [ AppCmd.UserNotice <|
+                            UN.fromBadFetchResultMaybe "phase" fetchResult
+                        ]
+
         NumTradesFetchedAgain fetchResult ->
-            case ( fetchResult, prevModel.dataFetchStatus.total ) of
+            case ( fetchResult, prevModel.dataFetchState.total ) of
                 ( Ok bigInt, Just oldNumTrades ) ->
                     let
                         newNumTrades =
@@ -115,22 +219,22 @@ update msg prevModel =
                                     (List.range oldNumTrades (newNumTrades - 1)
                                         |> List.map
                                             (\id ->
-                                                Contracts.Wrappers.getCreationInfoFromIdCmd prevModel.web3Context (BigInt.fromInt id) (CreationInfoFetched id)
+                                                Contracts.Wrappers.getCreationInfoFromIdCmd prevModel.factory (BigInt.fromInt id) (CreationInfoFetched id)
                                             )
                                     )
 
                             additionalTrades =
                                 List.range oldNumTrades (newNumTrades - 1)
-                                    |> List.map CTypes.partialTradeInfo
+                                    |> List.map (CTypes.partialTradeInfo prevModel.factory)
                                     |> Array.fromList
 
-                            oldStatus =
-                                prevModel.dataFetchStatus
+                            oldState =
+                                prevModel.dataFetchState
                         in
                         UpdateResult
                             { prevModel
                                 | trades = Array.append prevModel.trades additionalTrades
-                                , dataFetchStatus = { oldStatus | total = Just newNumTrades }
+                                , dataFetchState = { oldState | total = Just newNumTrades }
                             }
                             fetchCreationInfoCmd
                             []
@@ -172,7 +276,7 @@ update msg prevModel =
 
                         cmd =
                             Cmd.batch
-                                [ Contracts.Wrappers.getParametersStateAndPhaseInfoCmd prevModel.web3Context creationInfo.address (ParametersFetched id) (StateFetched id) (PhaseStartInfoFetched id)
+                                [ Contracts.Wrappers.getParametersStateAndPhaseInfoCmd prevModel.factory creationInfo.address (ParametersFetched id) (StateFetched id) (PhaseStartInfoFetched id)
                                 , sentryCmd
                                 ]
                     in
@@ -280,12 +384,12 @@ update msg prevModel =
 updateStatus : TradeCache -> TradeCache
 updateStatus tradeCache =
     let
-        oldStatus =
-            tradeCache.dataFetchStatus
+        oldState =
+            tradeCache.dataFetchState
     in
     { tradeCache
-        | dataFetchStatus =
-            { oldStatus
+        | dataFetchState =
+            { oldState
                 | loaded =
                     List.length <|
                         loadedTrades tradeCache
@@ -425,6 +529,49 @@ updateTradeParameters id parameters tradeCache =
                 ]
 
 
+updateTradePhase : Int -> CTypes.Phase -> TradeCache -> UpdateResult
+updateTradePhase id newPhase tradeCache =
+    case Array.get id tradeCache.trades of
+        Just (CTypes.LoadedTrade trade) ->
+            let
+                oldState =
+                    trade.state
+
+                newTradeArray =
+                    Array.set
+                        id
+                        (CTypes.LoadedTrade <|
+                            { trade
+                                | state =
+                                    { oldState | phase = newPhase }
+                            }
+                        )
+                        tradeCache.trades
+            in
+            UpdateResult
+                ({ tradeCache | trades = newTradeArray }
+                    |> updateStatus
+                )
+                Cmd.none
+                []
+
+        Just _ ->
+            UpdateResult
+                tradeCache
+                Cmd.none
+                [ AppCmd.UserNotice <|
+                    UN.unexpectedError "updateTradePhase is trying to update a partially loaded trade" ( id, tradeCache.trades )
+                ]
+
+        Nothing ->
+            UpdateResult
+                tradeCache
+                Cmd.none
+                [ AppCmd.UserNotice <|
+                    UN.unexpectedError "updateTradePhase ran into an out-of-range error" ( id, tradeCache.trades )
+                ]
+
+
 updateTradeState : Int -> CTypes.State -> TradeCache -> UpdateResult
 updateTradeState id state tradeCache =
     case Array.get id tradeCache.trades of
@@ -514,4 +661,7 @@ updateTradeTerms id terms tradeCache =
 
 subscriptions : TradeCache -> Sub Msg
 subscriptions tradeCache =
-    Time.every 5000 (\_ -> CheckForNewTrades)
+    Sub.batch
+        [ Time.every 5000 (\_ -> CheckForNewTrades)
+        , Time.every 3000 (\_ -> UpdateTradePhases)
+        ]

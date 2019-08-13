@@ -1,7 +1,8 @@
-module Create.State exposing (init, subscriptions, update, updateUserInfo, updateWeb3Context)
+module Create.State exposing (init, subscriptions, update, updateWalletState)
 
 import AppCmd
 import BigInt exposing (BigInt)
+import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
 import Config
 import Contracts.Generated.ERC20Token as TokenContract
@@ -14,7 +15,6 @@ import Eth.Types exposing (Address)
 import FiatValue exposing (FiatValue)
 import Flip exposing (flip)
 import Helpers.BigInt as BigIntHelpers
-import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
 import Helpers.Tuple exposing (extractTuple3Result, mapEachTuple3)
@@ -27,14 +27,14 @@ import Task
 import Time
 import TokenValue exposing (TokenValue)
 import UserNotice as UN
+import Wallet
 
 
-init : EthHelpers.Web3Context -> Maybe UserInfo -> UpdateResult
-init web3Context userInfo =
+init : Wallet.State -> UpdateResult
+init wallet =
     let
         model =
-            { web3Context = web3Context
-            , userInfo = userInfo
+            { wallet = wallet
             , inputs = initialInputs
             , errors = noErrors
             , showFiatTypeDropdown = False
@@ -63,43 +63,36 @@ initialInputs =
     }
 
 
-updateUserInfo : Maybe UserInfo -> Model -> ( Model, Cmd Msg )
-updateUserInfo userInfo model =
-    ( { model | userInfo = userInfo }
+updateWalletState : Wallet.State -> Model -> ( Model, Cmd Msg )
+updateWalletState wallet model =
+    ( { model | wallet = wallet }
         |> updateInputs model.inputs
-    , case ( userInfo, model.web3Context.factoryType ) of
-        ( Just uInfo, Token tokenType ) ->
+    , case ( Wallet.userInfo wallet, Wallet.factory wallet ) of
+        ( Just uInfo, Just (Token tokenType) ) ->
             Contracts.Wrappers.getAllowanceCmd
-                model.web3Context
                 tokenType
                 uInfo.address
-                (Config.factoryAddress model.web3Context.factoryType)
-                AllowanceFetched
+                (Config.factoryAddress (Token tokenType))
+                (AllowanceFetched tokenType)
 
         _ ->
             Cmd.none
     )
 
 
-updateWeb3Context : EthHelpers.Web3Context -> Model -> Model
-updateWeb3Context newWeb3Context model =
-    { model | web3Context = newWeb3Context }
-
-
 update : Msg -> Model -> UpdateResult
 update msg prevModel =
     case msg of
         Refresh time ->
-            case ( prevModel.userInfo, prevModel.web3Context.factoryType ) of
-                ( Just userInfo, Token tokenType ) ->
+            case ( Wallet.userInfo prevModel.wallet, Wallet.factory prevModel.wallet ) of
+                ( Just userInfo, Just (Token tokenType) ) ->
                     let
                         cmd =
                             Contracts.Wrappers.getAllowanceCmd
-                                prevModel.web3Context
                                 tokenType
                                 userInfo.address
-                                (Config.factoryAddress prevModel.web3Context.factoryType)
-                                AllowanceFetched
+                                (Config.factoryAddress (Token tokenType))
+                                (AllowanceFetched tokenType)
                     in
                     UpdateResult
                         prevModel
@@ -231,8 +224,8 @@ update msg prevModel =
                     []
                 )
 
-        CreateClicked userInfo ->
-            case validateInputs prevModel.web3Context.factoryType prevModel.inputs of
+        CreateClicked factoryType userInfo ->
+            case validateInputs prevModel.inputs of
                 Ok userParameters ->
                     let
                         createParameters =
@@ -240,7 +233,7 @@ update msg prevModel =
                     in
                     justModelUpdate
                         { prevModel
-                            | txChainStatus = Just <| Confirm createParameters
+                            | txChainStatus = Just <| Confirm factoryType createParameters
                             , depositAmount =
                                 Just <|
                                     (CTypes.calculateFullInitialDeposit createParameters
@@ -273,12 +266,12 @@ update msg prevModel =
                 ChainCmd.none
                 [ AppCmd.gTag "abort" "abort" "create" 0 ]
 
-        ConfirmCreate createParameters fullDepositAmount ->
+        ConfirmCreate factoryType createParameters fullDepositAmount ->
             let
                 ( txChainStatus, chainCmd ) =
-                    case prevModel.web3Context.factoryType of
+                    case factoryType of
                         Native _ ->
-                            initiateCreateCall prevModel.web3Context.factoryType createParameters
+                            initiateCreateCall factoryType createParameters
 
                         Token tokenType ->
                             let
@@ -287,13 +280,13 @@ update msg prevModel =
                                         txParams =
                                             TokenContract.approve
                                                 (Config.tokenContractAddress tokenType)
-                                                (Config.factoryAddress prevModel.web3Context.factoryType)
+                                                (Config.factoryAddress factoryType)
                                                 fullDepositAmount
                                                 |> Eth.toSend
 
                                         customSend =
                                             { onMined = Nothing
-                                            , onSign = Just (ApproveSigned createParameters)
+                                            , onSign = Just (ApproveSigned tokenType createParameters)
                                             , onBroadcast = Nothing
                                             }
                                     in
@@ -302,13 +295,13 @@ update msg prevModel =
                             case prevModel.allowance of
                                 Just allowance ->
                                     if BigInt.compare allowance fullDepositAmount /= LT then
-                                        initiateCreateCall prevModel.web3Context.factoryType createParameters
+                                        initiateCreateCall factoryType createParameters
 
                                     else
-                                        ( Just ApproveNeedsSig, approveChainCmd )
+                                        ( Just (ApproveNeedsSig tokenType), approveChainCmd )
 
                                 Nothing ->
-                                    ( Just ApproveNeedsSig, approveChainCmd )
+                                    ( Just (ApproveNeedsSig tokenType), approveChainCmd )
             in
             UpdateResult
                 { prevModel | txChainStatus = txChainStatus }
@@ -316,10 +309,10 @@ update msg prevModel =
                 chainCmd
                 []
 
-        ApproveSigned createParameters result ->
+        ApproveSigned tokenType createParameters result ->
             case result of
                 Ok txHash ->
-                    justModelUpdate { prevModel | txChainStatus = Just <| ApproveMining createParameters txHash }
+                    justModelUpdate { prevModel | txChainStatus = Just <| ApproveMining tokenType createParameters txHash }
 
                 Err s ->
                     UpdateResult
@@ -328,7 +321,7 @@ update msg prevModel =
                         ChainCmd.none
                         [ AppCmd.UserNotice <| UN.web3SigError "appove" s ]
 
-        AllowanceFetched fetchResult ->
+        AllowanceFetched tokenType fetchResult ->
             case fetchResult of
                 Ok allowance ->
                     let
@@ -338,11 +331,11 @@ update msg prevModel =
                             }
                     in
                     case ( newModel.txChainStatus, newModel.depositAmount ) of
-                        ( Just (ApproveMining createParameters _), Just depositAmount ) ->
+                        ( Just (ApproveMining _ createParameters _), Just depositAmount ) ->
                             if BigInt.compare allowance depositAmount /= LT then
                                 let
                                     ( txChainStatus, chainCmd ) =
-                                        initiateCreateCall newModel.web3Context.factoryType createParameters
+                                        initiateCreateCall (Token tokenType) createParameters
                                 in
                                 UpdateResult
                                     { newModel | txChainStatus = txChainStatus }
@@ -363,10 +356,10 @@ update msg prevModel =
                         ChainCmd.none
                         [ AppCmd.UserNotice <| UN.web3FetchError "allowance" httpError ]
 
-        CreateSigned result ->
+        CreateSigned factoryType result ->
             case result of
                 Ok txHash ->
-                    justModelUpdate { prevModel | txChainStatus = Just <| CreateMining txHash }
+                    justModelUpdate { prevModel | txChainStatus = Just <| CreateMining factoryType txHash }
 
                 Err s ->
                     UpdateResult
@@ -375,17 +368,17 @@ update msg prevModel =
                         ChainCmd.none
                         [ AppCmd.UserNotice <| UN.web3SigError "create" s ]
 
-        CreateMined (Err s) ->
+        CreateMined factoryType (Err s) ->
             UpdateResult
                 prevModel
                 Cmd.none
                 ChainCmd.none
                 [ AppCmd.UserNotice <| UN.web3MiningError "create" s ]
 
-        CreateMined (Ok txReceipt) ->
+        CreateMined factory (Ok txReceipt) ->
             let
                 maybeId =
-                    CTypes.txReceiptToCreatedTradeSellId prevModel.web3Context.factoryType txReceipt
+                    CTypes.txReceiptToCreatedTradeSellId factory txReceipt
                         |> Result.toMaybe
                         |> Maybe.andThen BigIntHelpers.toInt
             in
@@ -395,7 +388,7 @@ update msg prevModel =
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.GotoRoute (Routing.Trade id) ]
+                        [ AppCmd.GotoRoute (Routing.Trade factory id) ]
 
                 Nothing ->
                     UpdateResult
@@ -434,12 +427,12 @@ initiateCreateCall factoryType parameters =
                 |> Eth.toSend
 
         customSend =
-            { onMined = Just ( CreateMined, Nothing )
-            , onSign = Just CreateSigned
+            { onMined = Just ( CreateMined factoryType, Nothing )
+            , onSign = Just (CreateSigned factoryType)
             , onBroadcast = Nothing
             }
     in
-    ( Just CreateNeedsSig
+    ( Just (CreateNeedsSig factoryType)
     , ChainCmd.custom customSend txParams
     )
 
@@ -454,7 +447,7 @@ updateParameters : Model -> Model
 updateParameters model =
     let
         validateResult =
-            validateInputs model.web3Context.factoryType model.inputs
+            validateInputs model.inputs
 
         -- Don't log errors right away (wait until the user tries to submit)
         -- But if there are already errors displaying, update them accordingly
@@ -474,14 +467,14 @@ updateParameters model =
         | createParameters =
             Maybe.map2
                 CTypes.buildCreateParameters
-                model.userInfo
+                (Wallet.userInfo model.wallet)
                 (Result.toMaybe validateResult)
         , errors = newErrors
     }
 
 
-validateInputs : FactoryType -> Inputs -> Result Errors CTypes.UserParameters
-validateInputs factoryType inputs =
+validateInputs : Inputs -> Result Errors CTypes.UserParameters
+validateInputs inputs =
     Result.map5
         (\daiAmount fiatAmount fiatType paymentMethod ( autorecallInterval, autoabortInterval, autoreleaseInterval ) ->
             { initiatorRole = inputs.userRole
@@ -497,7 +490,7 @@ validateInputs factoryType inputs =
                 ]
             }
         )
-        (interpretDaiAmount factoryType inputs.daiAmount
+        (interpretDaiAmount inputs.daiAmount
             |> Result.mapError (\e -> { noErrors | daiAmount = Just e })
         )
         (interpretFiatAmount inputs.fiatAmount
@@ -536,8 +529,8 @@ validateInputs factoryType inputs =
         )
 
 
-interpretDaiAmount : FactoryType -> String -> Result String TokenValue
-interpretDaiAmount factoryType input =
+interpretDaiAmount : String -> Result String TokenValue
+interpretDaiAmount input =
     if input == "" then
         Err "You must specify a trade amount."
 
@@ -548,7 +541,7 @@ interpretDaiAmount factoryType input =
 
             Just value ->
                 if TokenValue.getFloatValueWithWarning value < 1 then
-                    Err <| "Trade amount must be a least 1 " ++ Config.tokenUnitName factoryType ++ "."
+                    Err <| "Trade amount can't be less than 1."
 
                 else
                     Ok value

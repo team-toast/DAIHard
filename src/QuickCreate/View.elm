@@ -33,7 +33,11 @@ root model =
                 , Element.centerX
                 ]
                 (menuItems
-                    |> List.map (menuItemElement model.web3Context.factoryType True)
+                    |> List.map
+                        (menuItemElement
+                            (EthHelpers.factoryTypeWithDefault model.userInfo)
+                            True
+                        )
                 )
 
         Spec recipe specState ->
@@ -41,17 +45,20 @@ root model =
                 [ Element.spacing 20
                 , Element.centerX
                 ]
-                [ menuItemElement model.web3Context.factoryType False recipe
+                [ menuItemElement
+                    (EthHelpers.factoryTypeWithDefault model.userInfo)
+                    False
+                    recipe
                 , Element.column
                     [ Element.spacing 10
                     , Element.centerX
                     ]
                     [ textInputPrompt recipe.initiatorRole recipe.fiatValue
                     , textInputElement recipe.initiatorRole model.textInput
-                    , openTradeButton model.userInfo model.state
+                    , openTradeButton (EthHelpers.factoryTypeWithDefault model.userInfo) model.userInfo model.state
                     ]
                 ]
-    , [ txModalOrNone model.web3Context.factoryType model.userInfo model.state ]
+    , [ txModalOrNone (EthHelpers.factoryTypeWithDefault model.userInfo) model.userInfo model.state ]
     )
 
 
@@ -61,16 +68,16 @@ menuItemElement factoryType showButtons recipe =
         [ Element.spacing 40 ]
         [ recipeSummaryElement factoryType recipe
         , if showButtons then
-            startButton recipe
+            startButton factoryType recipe
 
           else
             Element.none
         ]
 
 
-startButton : TradeRecipe -> Element Msg
-startButton recipe =
-    EH.blueButton "Start" (StartClicked recipe)
+startButton : FactoryType -> TradeRecipe -> Element Msg
+startButton factoryType recipe =
+    EH.blueButton "Start" (StartClicked factoryType recipe)
 
 
 recipeSummaryElement : FactoryType -> TradeRecipe -> Element Msg
@@ -204,8 +211,8 @@ textInputPlaceholder initiatorRole =
         |> Element.Input.placeholder []
 
 
-openTradeButton : Maybe UserInfo -> State -> Element Msg
-openTradeButton maybeUserInfo state =
+openTradeButton : FactoryType -> Maybe UserInfo -> State -> Element Msg
+openTradeButton factoryType maybeUserInfo state =
     case maybeUserInfo of
         Just userInfo ->
             case state of
@@ -215,7 +222,7 @@ openTradeButton maybeUserInfo state =
                             EH.disabledButton "Mining Prepare tx..." Nothing
 
                         ReadyToOpen ->
-                            EH.redButton "Open Trade" (OpenClicked userInfo recipe)
+                            EH.redButton "Open Trade" (OpenClicked factoryType userInfo recipe)
 
                         OpenNeedsSig ->
                             Element.none
@@ -263,7 +270,7 @@ dollarValueString dollars =
 txModalOrNone : FactoryType -> Maybe UserInfo -> State -> Element Msg
 txModalOrNone factoryType maybeUserInfo state =
     (case state of
-        Menu (StartPrompt recipe) ->
+        Menu (StartPrompt tokenType recipe) ->
             Just <|
                 EH.closeableModal
                     []
@@ -282,7 +289,7 @@ txModalOrNone factoryType maybeUserInfo state =
                                         ++ Config.tokenUnitName factoryType
                                         ++ " for deposit"
                                     )
-                                    (ApproveClicked recipe)
+                                    (ApproveClicked tokenType recipe)
 
                             Nothing ->
                                 EH.redButton "Connect to Wallet" Web3Connect
@@ -290,7 +297,7 @@ txModalOrNone factoryType maybeUserInfo state =
                     )
                     (ChangeState <| Menu NoneStarted)
 
-        Menu (ApproveNeedsSig recipe) ->
+        Menu (ApproveNeedsSig tokenType recipe) ->
             Just <|
                 EH.closeableModal []
                     (Element.column

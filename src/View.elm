@@ -1,5 +1,7 @@
 module View exposing (root)
 
+-- import QuickCreate.View
+
 import AgentHistory.View
 import Browser
 import CommonTypes exposing (..)
@@ -19,11 +21,11 @@ import Helpers.Tuple exposing (mapTuple2)
 import Landing.View
 import Marketplace.Types
 import Marketplace.View
-import QuickCreate.View
 import Routing
 import Trade.View
 import Types exposing (..)
 import UserNotice as UN exposing (UserNotice)
+import Wallet
 
 
 root : Model -> Browser.Document Msg
@@ -91,6 +93,16 @@ headerContent model =
         , Element.paddingXY 30 17
         ]
         [ headerLink
+            "Browse Offers"
+            (GotoRoute Routing.Marketplace)
+            (case model.submodel of
+                MarketplaceModel marketplaceModel ->
+                    Active
+
+                _ ->
+                    Normal
+            )
+        , headerLink
             "Create a New Offer"
             (GotoRoute Routing.Create)
             (case model.submodel of
@@ -100,39 +112,11 @@ headerContent model =
                 _ ->
                     Normal
             )
-        , headerLink
-            "Sell Offers"
-            (GotoRoute <| Routing.Marketplace Buyer)
-            (case model.submodel of
-                MarketplaceModel marketplaceModel ->
-                    if marketplaceModel.browsingRole == Buyer then
-                        Active
-
-                    else
-                        Normal
-
-                _ ->
-                    Normal
-            )
-        , headerLink
-            "Buy Offers"
-            (GotoRoute <| Routing.Marketplace Seller)
-            (case model.submodel of
-                MarketplaceModel marketplaceModel ->
-                    if marketplaceModel.browsingRole == Seller then
-                        Active
-
-                    else
-                        Normal
-
-                _ ->
-                    Normal
-            )
-        , case model.userInfo of
+        , case Wallet.userInfo model.wallet of
             Just userInfo ->
                 headerLink
                     "My Trades"
-                    (GotoRoute <| Routing.AgentHistory userInfo.address Seller)
+                    (GotoRoute <| Routing.AgentHistory userInfo.address)
                     (case model.submodel of
                         AgentHistoryModel agentHistoryModel ->
                             if agentHistoryModel.agentAddress == userInfo.address then
@@ -156,40 +140,8 @@ headerContent model =
             , Element.paddingXY 8 0
             ]
             [ logoElement
-            , networkModeElement model
             ]
         ]
-
-
-networkModeElement : Model -> Element Msg
-networkModeElement model =
-    Element.el
-        [ Element.Font.size 18
-        , Element.Font.color <| Element.rgb 0.8 0.8 1
-        , Element.Font.semiBold
-        , Element.Font.italic
-        , Element.centerX
-        ]
-        (Element.text (networkModeText model))
-
-
-networkModeText : Model -> String
-networkModeText model =
-    case model.web3Context.factoryType of
-        Native Eth ->
-            "Mainnet ETH"
-
-        Native Kovan ->
-            "Testnet ETH"
-
-        Native XDai ->
-            "xDai"
-
-        Token EthDai ->
-            "Mainnet Dai"
-
-        Token KovanDai ->
-            "Testnet Dai"
 
 
 type HeaderLinkStyle
@@ -387,25 +339,23 @@ submodelElementAndModal screenWidth model =
                     , []
                     )
 
-                QuickCreateModel quickCreateModel ->
-                    QuickCreate.View.root quickCreateModel
-                        |> Tuple.mapBoth
-                            (Element.map QuickCreateMsg)
-                            (List.map (Element.map QuickCreateMsg))
-
+                -- QuickCreateModel quickCreateModel ->
+                --     QuickCreate.View.root quickCreateModel
+                --             (Element.map QuickCreateMsg)
+                --             (List.map (Element.map QuickCreateMsg))
                 TradeModel tradeModel ->
-                    Trade.View.root screenWidth model.time model.tradeCache tradeModel
+                    Trade.View.root screenWidth model.time model.tradeCaches tradeModel
                         |> Tuple.mapBoth
                             (Element.map TradeMsg)
                             (List.map (Element.map TradeMsg))
 
                 MarketplaceModel marketplaceModel ->
-                    ( Element.map MarketplaceMsg (Marketplace.View.root model.time model.tradeCache marketplaceModel)
+                    ( Element.map MarketplaceMsg (Marketplace.View.root model.time model.tradeCaches marketplaceModel)
                     , []
                     )
 
                 AgentHistoryModel agentHistoryModel ->
-                    ( Element.map AgentHistoryMsg (AgentHistory.View.root model.time model.tradeCache agentHistoryModel)
+                    ( Element.map AgentHistoryMsg (AgentHistory.View.root model.time model.tradeCaches agentHistoryModel)
                     , []
                     )
     in

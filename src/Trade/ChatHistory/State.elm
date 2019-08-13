@@ -5,22 +5,22 @@ import Array exposing (Array)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
 import Eth
-import Helpers.Eth as EthHelpers exposing (Web3Context)
+import Helpers.Eth as EthHelpers
 import Json.Decode
 import Json.Encode
 import Maybe.Extra
 import Trade.ChatHistory.SecureComm exposing (..)
 import Trade.ChatHistory.Types exposing (..)
 import UserNotice as UN
+import Wallet
 
 
-init : Web3Context -> UserInfo -> BuyerOrSeller -> BuyerOrSeller -> List ( Int, CTypes.DAIHardEvent ) -> Int -> ( Model, Bool, List (AppCmd Msg) )
-init web3Context userInfo buyerOrSeller initiatorRole initialEvents currentBlocknum =
+init : Wallet.State -> BuyerOrSeller -> CTypes.FullTradeInfo -> List ( Int, CTypes.DAIHardEvent ) -> Int -> ( Model, Bool, List (AppCmd Msg) )
+init wallet userRole trade initialEvents currentBlocknum =
     Model
-        web3Context
-        userInfo
-        buyerOrSeller
-        initiatorRole
+        wallet
+        trade
+        userRole
         Array.empty
         currentBlocknum
         ""
@@ -133,7 +133,7 @@ handleNewEvent : Int -> CTypes.DAIHardEvent -> Model -> ( Model, Bool, List (App
 handleNewEvent blocknum event prevModel =
     let
         toBuyerOrSeller =
-            CTypes.initiatorOrResponderToBuyerOrSeller prevModel.initiatorRole
+            CTypes.initiatorOrResponderToBuyerOrSeller prevModel.trade.parameters.initiatorRole
 
         maybeHistoryEventInfo =
             case event of
@@ -194,7 +194,7 @@ handleNewEvent blocknum event prevModel =
                 ( maybeHistoryEventInfo
                     |> Maybe.map
                         (historyEventToBrowserNotifcationAppCmd
-                            (prevModel.userRole == prevModel.initiatorRole)
+                            (prevModel.userRole == prevModel.trade.parameters.initiatorRole)
                         )
                 , blocknum
                 )

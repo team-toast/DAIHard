@@ -12,6 +12,7 @@ import Element.Input
 import Eth.Utils
 import Helpers.Element as EH
 import Trade.ChatHistory.Types exposing (..)
+import Wallet
 
 
 window : Model -> Element Msg
@@ -37,7 +38,7 @@ historyAndCommsElement model =
         , Element.padding 20
         ]
         [ historyElement
-            model.web3Context.factoryType
+            model.trade.factory
             model.userRole
             (model.history |> Array.toList |> List.sortBy .blocknum)
         , commInputElement model
@@ -175,10 +176,10 @@ renderEvent factoryType userRole event =
                             Just ( Element.rgb 0 1 0, EH.white, "Buyer marked the fiat transfer complete" )
 
                         Released ->
-                            Just ( Element.rgb 0 0 1, EH.white, "Seller released the " ++ Config.tokenUnitName factoryType ++ " and closed the contract" )
+                            Just ( Element.rgb 0 0 1, EH.white, "Seller released the " ++ tokenUnitName factoryType ++ " and closed the contract" )
 
                         Burned ->
-                            Just ( Element.rgb 0 0 1, EH.white, "Seller burned the " ++ Config.tokenUnitName factoryType ++ " and closed the contract" )
+                            Just ( Element.rgb 0 0 1, EH.white, "Seller burned the " ++ tokenUnitName factoryType ++ " and closed the contract" )
             in
             case maybeElementInfo of
                 Nothing ->
