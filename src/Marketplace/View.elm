@@ -12,6 +12,8 @@ import Element.Events
 import Element.Font
 import Element.Input
 import FiatValue exposing (FiatValue)
+import Filters.Types as Filters
+import Filters.View as Filters
 import Helpers.Element as EH
 import Helpers.Time as TimeHelpers
 import Html.Events.Extra
@@ -35,58 +37,102 @@ root time tradeCaches model =
         , Element.width Element.fill
         , Element.height Element.fill
         , Element.Events.onClick (ShowCurrencyDropdown False)
+        , Element.padding 30
         ]
         [ Element.row
             [ Element.width Element.fill
             , Element.spacing 10
-            , Element.padding 30
             ]
-            [ searchInputElement model.inputs model.errors model.showCurrencyDropdown
+            [ statusFiltersAndSearchElement tradeCaches model.filters model.inputs model.errors model.showCurrencyDropdown
             ]
-        , resultsAndStatusElement time tradeCaches model
+        , maybeResultsElement time tradeCaches model
         ]
 
 
-searchInputElement : SearchInputs -> Errors -> Bool -> Element Msg
-searchInputElement inputs errors showCurrencyDropdown =
-    Element.column
-        [ Element.spacing 10
-        , Element.width Element.shrink
-        , Element.centerX
-        ]
-        [ Element.row
-            [ Element.width Element.shrink
-            , Element.spacing 10
-            ]
-            [ Element.el
-                [ Element.width <| Element.shrink
-                , Element.alignTop
+statusFiltersAndSearchElement : List TradeCache -> Filters.Model -> SearchInputs -> Errors -> Bool -> Element Msg
+statusFiltersAndSearchElement tradeCaches filters inputs errors showCurrencyDropdown =
+    let
+        statusMsgElement s =
+            Element.el
+                [ Element.Font.size 20
+                , Element.Font.semiBold
+                , Element.Font.color EH.darkGray
+                , Element.centerX
                 ]
-              <|
-                daiRangeInput inputs.minDai inputs.maxDai errors
-            , Element.el
+                (Element.text s)
+
+        statusMessages : List (Element Msg)
+        statusMessages =
+            if List.all ((==) TradeCache.NoneFound) (List.map TradeCache.loadingStatus tradeCaches) then
+                [ statusMsgElement "No trades found." ]
+
+            else
+                tradeCaches
+                    |> List.map
+                        (\tc ->
+                            case TradeCache.loadingStatus tc of
+                                TradeCache.QueryingNumTrades ->
+                                    Just <| "Querying " ++ factoryName tc.factory ++ " Factory..."
+
+                                TradeCache.NoneFound ->
+                                    Nothing
+
+                                TradeCache.FetchingTrades ->
+                                    Just <| "Fetching " ++ factoryName tc.factory ++ " Trades..."
+
+                                TradeCache.AllFetched ->
+                                    Nothing
+                        )
+                    |> Maybe.Extra.values
+                    |> List.map statusMsgElement
+    in
+    Element.el
+        [ Element.width Element.fill
+        , Element.inFront <|
+            Element.column
+                [ Element.spacing 5
+                , Element.alignLeft
+                ]
+                statusMessages
+        ]
+    <|
+        Element.row
+            [ Element.centerX
+            , Element.spacing 50
+            ]
+            [ Element.map FiltersMsg <| Filters.view filters
+            , Element.row
                 [ Element.width Element.shrink
-                , Element.alignTop
+                , Element.spacing 10
                 ]
-              <|
-                fiatInput showCurrencyDropdown inputs.fiatType errors
-            , Element.column
-                [ Element.width Element.shrink
-                , Element.alignTop
-                , Element.spacing 5
+                [ Element.el
+                    [ Element.width <| Element.shrink
+                    , Element.alignTop
+                    ]
+                  <|
+                    daiRangeInput inputs.minDai inputs.maxDai errors
+                , Element.el
+                    [ Element.width Element.shrink
+                    , Element.alignTop
+                    ]
+                  <|
+                    fiatInput showCurrencyDropdown inputs.fiatType errors
+                , Element.column
+                    [ Element.width Element.shrink
+                    , Element.alignTop
+                    , Element.spacing 5
+                    ]
+                    [ paymentMethodsInput inputs.paymentMethod
+                    , searchTermsDisplayElement inputs.paymentMethodTerms
+                    ]
+                , Element.column
+                    [ Element.spacing 5
+                    , Element.width Element.shrink
+                    ]
+                    [ applyButton, resetButton ]
+                    |> withInputHeader " "
                 ]
-                [ paymentMethodsInput inputs.paymentMethod
-                , searchTermsDisplayElement inputs.paymentMethodTerms
-                ]
-
-            -- , Element.column
-            --     [ Element.spacing 5
-            --     , Element.width Element.shrink
-            --     ]
-            --     [ applyButton, resetButton ]
-            --     |> withInputHeader " "
             ]
-        ]
 
 
 searchTermsDisplayElement : List String -> Element Msg
@@ -126,64 +172,15 @@ removeSearchTermButton term =
         (Element.text "x")
 
 
-resultsAndStatusElement : Time.Posix -> List TradeCache -> Model -> Element Msg
-resultsAndStatusElement time tradeCaches model =
+maybeResultsElement : Time.Posix -> List TradeCache -> Model -> Element Msg
+maybeResultsElement time tradeCaches model =
     let
-        statusMsgElement s =
-            Element.el
-                [ Element.Font.size 24
-                , Element.Font.semiBold
-                , Element.Font.color EH.darkGray
-                , Element.centerX
-                , Element.padding 20
-                ]
-                (Element.text s)
-
         visibleTrades =
             tradeCaches
                 |> List.map TradeCache.loadedValidTrades
                 |> List.concat
                 |> filterTrades time model.filterFunc
-
-        statusMessages : List (Element Msg)
-        statusMessages =
-            if List.all ((==) TradeCache.NoneFound) (List.map TradeCache.loadingStatus tradeCaches) then
-                [ statusMsgElement "No trades found." ]
-
-            else
-                tradeCaches
-                    |> List.map
-                        (\tc ->
-                            case TradeCache.loadingStatus tc of
-                                TradeCache.QueryingNumTrades ->
-                                    Just <| factoryName tc.factory ++ "Querying Factory..."
-
-                                TradeCache.NoneFound ->
-                                    Nothing
-
-                                TradeCache.FetchingTrades ->
-                                    Just <| factoryName tc.factory ++ "Fetching Trades"
-
-                                TradeCache.AllFetched ->
-                                    Nothing
-                        )
-                    |> Maybe.Extra.values
-                    |> List.map statusMsgElement
     in
-    Element.column
-        [ Element.spacing 10 ]
-        [ case statusMessages of
-            [] ->
-                Element.none
-
-            _ ->
-                Element.column [ Element.spacing 5 ] statusMessages
-        , maybeResultsElement time visibleTrades model
-        ]
-
-
-maybeResultsElement : Time.Posix -> List CTypes.FullTradeInfo -> Model -> Element Msg
-maybeResultsElement time visibleTrades model =
     if visibleTrades == [] then
         Element.none
 
@@ -302,39 +299,40 @@ paymentMethodsInput searchString =
         |> withInputHeader "Search Payment Methods"
 
 
+applyButton : Element Msg
+applyButton =
+    Element.Input.button
+        [ Element.Background.color EH.blue
+        , Element.padding 10
+        , Element.Border.rounded 5
+        ]
+        { onPress = Just ApplyInputs
+        , label =
+            Element.el
+                [ Element.Font.color EH.white
+                , Element.centerX
+                , Element.centerY
+                ]
+                (Element.text "Apply")
+        }
 
--- applyButton : Element Msg
--- applyButton =
---     Element.Input.button
---         [ Element.Background.color EH.blue
---         , Element.padding 10
---         , Element.Border.rounded 5
---         ]
---         { onPress = Just ApplyInputs
---         , label =
---             Element.el
---                 [ Element.Font.color EH.white
---                 , Element.centerX
---                 , Element.centerY
---                 ]
---                 (Element.text "Apply")
---         }
--- resetButton : Element Msg
--- resetButton =
---     Element.Input.button
---         [ Element.Background.color EH.blue
---         , Element.padding 10
---         , Element.Border.rounded 5
---         ]
---         { onPress = Just ResetSearch
---         , label =
---             Element.el
---                 [ Element.Font.color EH.white
---                 , Element.centerX
---                 , Element.centerY
---                 ]
---                 (Element.text "Reset")
---         }
+
+resetButton : Element Msg
+resetButton =
+    Element.Input.button
+        [ Element.Background.color EH.blue
+        , Element.padding 10
+        , Element.Border.rounded 5
+        ]
+        { onPress = Just ResetSearch
+        , label =
+            Element.el
+                [ Element.Font.color EH.white
+                , Element.centerX
+                , Element.centerY
+                ]
+                (Element.text "Reset")
+        }
 
 
 withInputHeader : String -> Element Msg -> Element Msg

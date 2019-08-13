@@ -14,6 +14,8 @@ import Eth
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
 import FiatValue exposing (FiatValue)
+import Filters.State as Filters
+import Filters.Types as Filter
 import Flip exposing (flip)
 import Helpers.BigInt as BigIntHelpers
 import Helpers.Eth as EthHelpers
@@ -25,7 +27,6 @@ import Time
 import TokenValue exposing (TokenValue)
 import TradeCache.State as TradeCache
 import TradeCache.Types as TradeCache exposing (TradeCache)
-import TradeTable.Filters.Types as Filter
 import TradeTable.State as TradeTable
 import TradeTable.Types as TradeTable
 import Wallet
@@ -35,13 +36,15 @@ init : Wallet.State -> Address -> ( Model, Cmd Msg )
 init wallet agentAddress =
     ( { wallet = wallet
       , agentAddress = agentAddress
-      , tradeTable =
-            TradeTable.init
-                ( TradeTable.Phase, TradeTable.Ascending )
+      , filters =
+            Filters.init
                 [ Filter.phases True True True False
                 , Filter.offerType True True
                 , Filter.role agentAddress True True
                 ]
+      , tradeTable =
+            TradeTable.init
+                ( TradeTable.Phase, TradeTable.Ascending )
       }
     , Cmd.none
     )
@@ -80,6 +83,13 @@ update msg prevModel =
                 Cmd.none
                 ChainCmd.none
                 [ AppCmd.GotoRoute (Routing.Trade factory id) ]
+
+        FiltersMsg filtersMsg ->
+            justModelUpdate
+                { prevModel
+                    | filters =
+                        prevModel.filters |> Filters.update filtersMsg
+                }
 
         TradeTableMsg tradeTableMsg ->
             let

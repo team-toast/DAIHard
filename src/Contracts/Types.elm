@@ -358,7 +358,7 @@ deriveValues parameters state terms =
                     parameters.autoreleaseInterval
 
                 Closed ->
-                    Time.millisToPosix 0
+                    Time.millisToPosix (2 ^ 31 - 1)
     in
     { phaseEndTime =
         TimeHelpers.add

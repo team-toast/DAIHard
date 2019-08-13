@@ -1,9 +1,9 @@
-module TradeTable.Filters.View exposing (view)
+module Filters.View exposing (view)
 
 import Element exposing (Element)
 import Element.Font
 import Element.Input
-import TradeTable.Filters.Types exposing (..)
+import Filters.Types exposing (..)
 
 
 view : Model -> Element Msg

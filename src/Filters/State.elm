@@ -1,7 +1,7 @@
-module TradeTable.Filters.State exposing (init, update)
+module Filters.State exposing (init, update)
 
+import Filters.Types exposing (..)
 import List.Extra
-import TradeTable.Filters.Types exposing (..)
 
 
 init : List FilterSet -> Model

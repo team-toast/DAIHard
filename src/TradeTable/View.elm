@@ -15,8 +15,6 @@ import Images exposing (Image)
 import PaymentMethods exposing (PaymentMethod)
 import Time
 import TokenValue exposing (TokenValue)
-import TradeTable.Filters.Types as Filters
-import TradeTable.Filters.View as Filters
 import TradeTable.Types exposing (..)
 
 
@@ -25,11 +23,9 @@ view time model colTypes trades =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
-        , Element.padding 30
         , Element.spacing 5
         ]
-        [ Element.map FiltersMsg <| Filters.view model.filtersModel
-        , viewColHeaders model.orderBy colTypes
+        [ viewColHeaders model.orderBy colTypes
         , viewTradeRows time model colTypes trades
         ]
 
@@ -150,7 +146,6 @@ viewTradeRows time model colTypes trades =
         , Element.clip
         ]
         (trades
-            |> Filters.filterTrades model.filtersModel
             |> List.sortWith (sortByFunc model.orderBy)
             |> List.map (viewTradeRow time colTypes)
         )

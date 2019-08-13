@@ -12,6 +12,7 @@ import Element.Font
 import Element.Input
 import Eth.Types exposing (Address)
 import FiatValue exposing (FiatValue)
+import Filters.View as Filters
 import Helpers.Element as EH
 import Helpers.Time as TimeHelpers
 import Html.Events.Extra
@@ -35,10 +36,11 @@ root time tradeCaches model =
         , Element.Background.color EH.white
         , Element.width Element.fill
         , Element.height Element.fill
-        , Element.paddingXY 0 20
+        , Element.paddingXY 30 20
         ]
         [ pageTitleElement model
-        , resultsAndStatusElement time tradeCaches model
+        , statusAndFiltersElement tradeCaches model
+        , maybeResultsElement time tradeCaches model
         ]
 
 
@@ -75,36 +77,17 @@ pageTitleElement model =
             ]
 
 
-tradeMatchesUserRole : CTypes.FullTradeInfo -> BuyerOrSeller -> Address -> Bool
-tradeMatchesUserRole trade role userAddress =
-    CTypes.getBuyerOrSeller trade userAddress == Just role
-
-
-resultsAndStatusElement : Time.Posix -> List TradeCache -> Model -> Element Msg
-resultsAndStatusElement time tradeCaches model =
+statusAndFiltersElement : List TradeCache -> Model -> Element Msg
+statusAndFiltersElement tradeCaches model =
     let
         statusMsgElement s =
             Element.el
-                [ Element.Font.size 24
+                [ Element.Font.size 20
                 , Element.Font.semiBold
                 , Element.Font.color EH.darkGray
                 , Element.centerX
-                , Element.padding 20
                 ]
                 (Element.text s)
-
-        userTrades =
-            tradeCaches
-                |> List.map
-                    (\tradeCache ->
-                        TradeCache.loadedValidTrades tradeCache
-                            |> filterTrades
-                                (basicFilterFunc model)
-                    )
-                |> List.concat
-
-        visibleTrades =
-            userTrades
 
         statusMessages : List (Element Msg)
         statusMessages =
@@ -117,13 +100,13 @@ resultsAndStatusElement time tradeCaches model =
                         (\tc ->
                             case TradeCache.loadingStatus tc of
                                 TradeCache.QueryingNumTrades ->
-                                    Just <| factoryName tc.factory ++ "Querying Factory..."
+                                    Just <| "Querying " ++ factoryName tc.factory ++ " Factory..."
 
                                 TradeCache.NoneFound ->
                                     Nothing
 
                                 TradeCache.FetchingTrades ->
-                                    Just <| factoryName tc.factory ++ "Fetching Trades"
+                                    Just <| "Fetching " ++ factoryName tc.factory ++ " Trades..."
 
                                 TradeCache.AllFetched ->
                                     Nothing
@@ -131,22 +114,34 @@ resultsAndStatusElement time tradeCaches model =
                     |> Maybe.Extra.values
                     |> List.map statusMsgElement
     in
-    Element.column
-        [ Element.spacing 10
-        , Element.width Element.fill
+    Element.el
+        [ Element.width Element.fill
+        , Element.inFront <|
+            Element.column
+                [ Element.spacing 5
+                , Element.alignLeft
+                ]
+                statusMessages
         ]
-        [ case statusMessages of
-            [] ->
-                Element.none
-
-            _ ->
-                Element.column [ Element.spacing 5 ] statusMessages
-        , maybeResultsElement time visibleTrades model
-        ]
+        (Element.el
+            [ Element.centerX ]
+            (Element.map FiltersMsg <| Filters.view model.filters)
+        )
 
 
-maybeResultsElement : Time.Posix -> List CTypes.FullTradeInfo -> Model -> Element Msg
-maybeResultsElement time visibleTrades model =
+maybeResultsElement : Time.Posix -> List TradeCache -> Model -> Element Msg
+maybeResultsElement time tradeCaches model =
+    let
+        visibleTrades =
+            tradeCaches
+                |> List.map
+                    (\tradeCache ->
+                        TradeCache.loadedValidTrades tradeCache
+                            |> filterTrades
+                                (basicFilterFunc model)
+                    )
+                |> List.concat
+    in
     if visibleTrades == [] then
         Element.none
 

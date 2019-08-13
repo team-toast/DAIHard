@@ -1,4 +1,4 @@
-module TradeTable.Filters.Types exposing (FilterSet, Model, Msg(..), Option, filterTrades, offerType, phases, role)
+module Filters.Types exposing (FilterSet, Model, Msg(..), Option, filterTrade, filterTrades, offerType, phases, role)
 
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
@@ -82,15 +82,17 @@ offerType buyingChecked sellingChecked =
 filterTrades : List FilterSet -> List CTypes.FullTradeInfo -> List CTypes.FullTradeInfo
 filterTrades filterSets trades =
     trades
-        |> List.filter
-            (\trade ->
-                filterSets
-                    |> List.all
-                        (\filterSet ->
-                            filterSet.options
-                                |> List.any
-                                    (\option ->
-                                        option.checked && option.testTrade trade
-                                    )
+        |> List.filter (filterTrade filterSets)
+
+
+filterTrade : List FilterSet -> CTypes.FullTradeInfo -> Bool
+filterTrade filterSets trade =
+    filterSets
+        |> List.all
+            (\filterSet ->
+                filterSet.options
+                    |> List.any
+                        (\option ->
+                            option.checked && option.testTrade trade
                         )
             )

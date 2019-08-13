@@ -1,4 +1,4 @@
-module Marketplace.Types exposing (Errors, Model, Msg(..), ResultColumnType(..), SearchInputs, UpdateResult, justModelUpdate, noErrors, updateFiatTypeInput, updateMaxDaiInput, updateMinDaiInput, updatePaymentMethodInput, updatePaymentMethodTerms)
+module Marketplace.Types exposing (Errors, Model, Msg(..), Query, SearchInputs, TokenRange, UpdateResult, justModelUpdate, noErrors, updateFiatTypeInput, updateMaxDaiInput, updateMinDaiInput, updatePaymentMethodInput, updatePaymentMethodTerms)
 
 import AppCmd exposing (AppCmd)
 import Array exposing (Array)
@@ -11,6 +11,7 @@ import Eth.Net
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
 import FiatValue exposing (FiatValue)
+import Filters.Types as Filters
 import Helpers.Eth as EthHelpers
 import Http
 import Json.Decode
@@ -25,10 +26,11 @@ import Wallet
 
 type alias Model =
     { wallet : Wallet.State
-    , tradeTable : TradeTable.Model
     , inputs : SearchInputs
     , errors : Errors
     , showCurrencyDropdown : Bool
+    , tradeTable : TradeTable.Model
+    , filters : Filters.Model
     , filterFunc : Time.Posix -> CTypes.FullTradeInfo -> Bool
     }
 
@@ -42,9 +44,10 @@ type Msg
     | FiatTypeLostFocus
     | AddSearchTerm
     | RemoveTerm String
-      -- | ApplyInputs
+    | ApplyInputs
     | ResetSearch
     | TradeTableMsg TradeTable.Msg
+    | FiltersMsg Filters.Msg
     | AppCmd (AppCmd Msg)
     | NoOp
 
@@ -85,21 +88,17 @@ noErrors =
     Errors Nothing Nothing
 
 
+type alias Query =
+    { dai : TokenRange
+    , fiatType : Maybe String
+    , paymentMethodTerms : List String
+    }
 
--- type alias Query =
---     { dai : TokenRange
---     , fiat : Maybe FiatTypeAndRange
---     , paymentMethodTerms : List String
---     }
--- type alias TokenRange =
---     { min : Maybe TokenValue
---     , max : Maybe TokenValue
---     }
--- type alias FiatTypeAndRange =
---     { type_ : String
---     , min : Maybe BigInt
---     , max : Maybe BigInt
---     }
+
+type alias TokenRange =
+    { min : Maybe TokenValue
+    , max : Maybe TokenValue
+    }
 
 
 updatePaymentMethodInput : String -> SearchInputs -> SearchInputs
@@ -125,13 +124,3 @@ updateMaxDaiInput input inputs =
 updatePaymentMethodTerms : List String -> SearchInputs -> SearchInputs
 updatePaymentMethodTerms terms inputs =
     { inputs | paymentMethodTerms = terms }
-
-
-type ResultColumnType
-    = Expiring
-    | TradeAmount
-    | Fiat
-    | Margin
-    | PaymentMethods
-    | AutoabortWindow
-    | AutoreleaseWindow

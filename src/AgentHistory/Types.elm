@@ -1,4 +1,4 @@
-module AgentHistory.Types exposing (Model, Msg(..), UpdateResult)
+module AgentHistory.Types exposing (Model, Msg(..), UpdateResult, justModelUpdate)
 
 import AppCmd exposing (AppCmd)
 import Array exposing (Array)
@@ -11,6 +11,7 @@ import Eth.Net
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
 import FiatValue exposing (FiatValue)
+import Filters.Types as Filters
 import Helpers.Eth as EthHelpers
 import Http
 import Json.Decode
@@ -27,6 +28,7 @@ import Wallet
 type alias Model =
     { wallet : Wallet.State
     , agentAddress : Address
+    , filters : Filters.Model
     , tradeTable : TradeTable.Model
     }
 
@@ -34,6 +36,7 @@ type alias Model =
 type Msg
     = Poke Address
     | TradeClicked FactoryType Int
+    | FiltersMsg Filters.Msg
     | TradeTableMsg TradeTable.Msg
     | NoOp
 
@@ -44,3 +47,12 @@ type alias UpdateResult =
     , chainCmd : ChainCmd Msg
     , appCmds : List (AppCmd Msg)
     }
+
+
+justModelUpdate : Model -> UpdateResult
+justModelUpdate model =
+    UpdateResult
+        model
+        Cmd.none
+        ChainCmd.none
+        []

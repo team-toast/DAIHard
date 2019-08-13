@@ -11,6 +11,8 @@ import Contracts.Wrappers
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
 import FiatValue exposing (FiatValue)
+import Filters.State as Filters
+import Filters.Types as Filters
 import Flip exposing (flip)
 import Helpers.BigInt as BigIntHelpers
 import Helpers.Eth as EthHelpers
@@ -23,7 +25,6 @@ import Time
 import TokenValue exposing (TokenValue)
 import TradeCache.State as TradeCache
 import TradeCache.Types as TradeCache exposing (TradeCache)
-import TradeTable.Filters.Types as Filters
 import TradeTable.State as TradeTable
 import TradeTable.Types as TradeTable
 import Wallet
@@ -35,15 +36,17 @@ init wallet =
       , tradeTable =
             TradeTable.init
                 ( TradeTable.Expires, TradeTable.Ascending )
-                [ Filters.offerType True True
-                , Filters.phases True False False False
-                ]
       , inputs = initialInputs
       , errors = noErrors
       , showCurrencyDropdown = False
+      , filters =
+            Filters.init
+                [ Filters.offerType True True
+                , Filters.phases True False False False
+                ]
       , filterFunc = baseFilterFunc
       }
-      -- |> applyInputs
+        |> applyInputs
     , Cmd.none
     )
 
@@ -107,14 +110,25 @@ update msg prevModel =
             justModelUpdate
                 (prevModel |> removePaymentInputTerm term)
 
-        -- ApplyInputs ->
-        --     UpdateResult
-        --         (prevModel |> applyInputs)
-        --         Cmd.none
-        --         []
+        ApplyInputs ->
+            UpdateResult
+                (prevModel |> applyInputs)
+                Cmd.none
+                ChainCmd.none
+                []
+
         ResetSearch ->
             justModelUpdate
                 (prevModel |> resetSearch)
+
+        FiltersMsg filtersMsg ->
+            justModelUpdate
+                ({ prevModel
+                    | filters =
+                        prevModel.filters |> Filters.update filtersMsg
+                 }
+                    |> applyInputs
+                )
 
         TradeTableMsg tradeTableMsg ->
             let
@@ -162,10 +176,7 @@ addPaymentInputTerm model =
                     |> updatePaymentMethodInput ""
                     |> updatePaymentMethodTerms newSearchTerms
         }
-
-
-
--- |> applyInputs
+            |> applyInputs
 
 
 removePaymentInputTerm : String -> Model -> Model
@@ -176,101 +187,85 @@ removePaymentInputTerm term model =
                 |> List.filter ((/=) term)
     in
     { model | inputs = model.inputs |> updatePaymentMethodTerms newTermList }
+        |> applyInputs
 
 
+applyInputs : Model -> Model
+applyInputs prevModel =
+    let
+        model =
+            prevModel |> addPaymentInputTerm
+    in
+    case inputsToQuery model.inputs of
+        Err errors ->
+            { prevModel | errors = errors }
 
--- |> applyInputs
--- applyInputs : Model -> Model
--- applyInputs prevModel =
---     let
---         model =
---             prevModel |> addPaymentInputTerm
---     in
---     case inputsToQuery model.inputs of
---         Err errors ->
---             { prevModel | errors = errors }
---         Ok query ->
---             let
---                 searchTest time trade =
---                     case query.paymentMethodTerms of
---                         [] ->
---                             True
---                         terms ->
---                             testTextMatch terms trade.terms.paymentMethods
---                 daiTest trade =
---                     (case query.dai.min of
---                         Nothing ->
---                             True
---                         Just min ->
---                             TokenValue.compare trade.parameters.tradeAmount min /= LT
---                     )
---                         && (case query.dai.max of
---                                 Nothing ->
---                                     True
---                                 Just max ->
---                                     TokenValue.compare trade.parameters.tradeAmount max /= GT
---                            )
---                 fiatTest trade =
---                     case query.fiat of
---                         Nothing ->
---                             True
---                         Just fiatQuery ->
---                             (trade.terms.price.fiatType == fiatQuery.type_)
---                                 && (case fiatQuery.min of
---                                         Nothing ->
---                                             True
---                                         Just min ->
---                                             BigInt.compare trade.terms.price.amount min /= LT
---                                    )
---                                 && (case fiatQuery.max of
---                                         Nothing ->
---                                             True
---                                         Just max ->
---                                             BigInt.compare trade.terms.price.amount max /= GT
---                                    )
---                 newFilterFunc now trade =
---                     baseFilterFunc now trade
---                         && (trade.parameters.initiatorRole /= model.browsingRole)
---                         && searchTest now trade
---                         && daiTest trade
---                         && fiatTest trade
---             in
---             { model
---                 | filterFunc = newFilterFunc
---             }
--- inputsToQuery : SearchInputs -> Result Errors Query
--- inputsToQuery inputs =
---     Result.map4
---         (\minDai maxDai fiatMin fiatMax ->
---             { dai =
---                 { min = minDai
---                 , max = maxDai
---                 }
---             , fiat =
---                 Maybe.map
---                     (\typeString ->
---                         { type_ = typeString
---                         , min = fiatMin
---                         , max = fiatMax
---                         }
---                     )
---                     (String.Extra.nonEmpty inputs.fiatType)
---             , paymentMethodTerms =
---                 inputs.paymentMethodTerms
---             }
---         )
---         (interpretDaiAmount inputs.minDai
---             |> Result.mapError (\e -> { noErrors | minDai = Just e })
---         )
---         (interpretDaiAmount inputs.maxDai
---             |> Result.mapError (\e -> { noErrors | maxDai = Just e })
---         )
---         (interpretFiatAmount inputs.minFiat
---             |> Result.mapError (\e -> { noErrors | minFiat = Just e })
---         )
---         (interpretFiatAmount inputs.maxFiat
---             |> Result.mapError (\e -> { noErrors | maxFiat = Just e })
---         )
+        Ok query ->
+            let
+                searchTest time trade =
+                    case query.paymentMethodTerms of
+                        [] ->
+                            True
+
+                        terms ->
+                            testTextMatch terms trade.terms.paymentMethods
+
+                daiTest trade =
+                    (case query.dai.min of
+                        Nothing ->
+                            True
+
+                        Just min ->
+                            TokenValue.compare trade.parameters.tradeAmount min /= LT
+                    )
+                        && (case query.dai.max of
+                                Nothing ->
+                                    True
+
+                                Just max ->
+                                    TokenValue.compare trade.parameters.tradeAmount max /= GT
+                           )
+
+                fiatTest trade =
+                    case query.fiatType of
+                        Nothing ->
+                            True
+
+                        Just fiatType ->
+                            trade.terms.price.fiatType == fiatType
+
+                newFilterFunc now trade =
+                    baseFilterFunc now trade
+                        && searchTest now trade
+                        && daiTest trade
+                        && fiatTest trade
+                        && Filters.filterTrade model.filters trade
+            in
+            { model
+                | filterFunc = newFilterFunc
+            }
+
+
+inputsToQuery : SearchInputs -> Result Errors Query
+inputsToQuery inputs =
+    Result.map2
+        (\minDai maxDai ->
+            { dai =
+                { min = minDai
+                , max = maxDai
+                }
+            , fiatType =
+                String.Extra.nonEmpty inputs.fiatType
+            , paymentMethodTerms =
+                inputs.paymentMethodTerms
+            }
+        )
+        (interpretDaiAmount inputs.minDai
+            |> Result.mapError (\e -> { noErrors | minDai = Just e })
+        )
+        (interpretDaiAmount inputs.maxDai
+            |> Result.mapError (\e -> { noErrors | maxDai = Just e })
+        )
 
 
 interpretDaiAmount : String -> Result String (Maybe TokenValue)
@@ -307,17 +302,12 @@ resetSearch model =
         | filterFunc = baseFilterFunc
         , inputs = initialInputs
     }
-
-
-initialSortFunc : CTypes.FullTradeInfo -> CTypes.FullTradeInfo -> Order
-initialSortFunc a b =
-    compare a.creationInfo.blocknum b.creationInfo.blocknum
+        |> applyInputs
 
 
 baseFilterFunc : Time.Posix -> CTypes.FullTradeInfo -> Bool
 baseFilterFunc now trade =
-    (trade.state.phase == CTypes.Open)
-        && (TimeHelpers.compare trade.derived.phaseEndTime now == GT)
+    TimeHelpers.compare trade.derived.phaseEndTime now == GT
 
 
 testTextMatch : List String -> List PaymentMethod -> Bool
