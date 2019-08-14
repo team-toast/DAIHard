@@ -33,20 +33,22 @@ import TradeTable.View as TradeTable
 root : Time.Posix -> List TradeCache -> Model -> Element Msg
 root time tradeCaches model =
     let
-        showPhase =
+        onlyOpenPhaseChecked =
             let
-                numPhasesChecked =
+                nonOpenPhasesChecked =
                     model.filters
                         |> Filters.getFilterSet Filters.Phase
                         |> Maybe.map
                             (\filterSet ->
                                 List.Extra.count
-                                    .checked
+                                    (\filter ->
+                                        filter.checked && filter.label /= "Open"
+                                    )
                                     filterSet.options
                             )
                         |> Maybe.withDefault 0
             in
-            numPhasesChecked /= 1
+            nonOpenPhasesChecked == 0
     in
     Element.column
         [ Element.Border.rounded 5
@@ -64,7 +66,7 @@ root time tradeCaches model =
             ]
         , maybeResultsElement
             time
-            showPhase
+            onlyOpenPhaseChecked
             tradeCaches
             model
         ]
@@ -194,7 +196,7 @@ removeSearchTermButton term =
 
 
 maybeResultsElement : Time.Posix -> Bool -> List TradeCache -> Model -> Element Msg
-maybeResultsElement time showPhase tradeCaches model =
+maybeResultsElement time onlyOpenTrades tradeCaches model =
     let
         visibleTrades =
             tradeCaches
@@ -209,20 +211,17 @@ maybeResultsElement time showPhase tradeCaches model =
         TradeTable.view
             time
             model.tradeTable
-            ((if showPhase then
-                [ TradeTable.Phase ]
+            [ if onlyOpenTrades then
+                TradeTable.Expires
 
               else
-                []
-             )
-                ++ [ TradeTable.Expires
-                   , TradeTable.Offer
-                   , TradeTable.FiatPrice
-                   , TradeTable.Margin
-                   , TradeTable.PaymentWindow
-                   , TradeTable.BurnWindow
-                   ]
-            )
+                TradeTable.Phase
+            , TradeTable.Offer
+            , TradeTable.FiatPrice
+            , TradeTable.Margin
+            , TradeTable.PaymentWindow
+            , TradeTable.BurnWindow
+            ]
             visibleTrades
             |> Element.map TradeTableMsg
 

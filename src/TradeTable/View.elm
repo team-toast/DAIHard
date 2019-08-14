@@ -61,7 +61,7 @@ colTypePortion colType =
             1
 
         Expires ->
-            2
+            1
 
         Offer ->
             1
@@ -188,8 +188,41 @@ viewTradeCell time colType trade =
         (colTypePortion colType)
         (case colType of
             Phase ->
-                Element.text <|
-                    CTypes.phaseToString trade.state.phase
+                let
+                    phaseTitle =
+                        CTypes.phaseToString trade.state.phase
+                in
+                case ( CTypes.getCurrentPhaseTimeoutInfo time trade, trade.state.phase ) of
+                    ( _, CTypes.Closed ) ->
+                        Element.text phaseTitle
+
+                    ( CTypes.TimeLeft timeoutInfo, _ ) ->
+                        let
+                            baseIntervalColor =
+                                if TimeHelpers.getRatio (Tuple.first timeoutInfo) (Tuple.second timeoutInfo) < 0.05 then
+                                    EH.red
+
+                                else
+                                    EH.black
+                        in
+                        Element.column
+                            [ Element.spacing 3 ]
+                            [ Element.text phaseTitle
+                            , EH.intervalWithElapsedBar
+                                [ Element.width Element.fill ]
+                                [ Element.Font.size 16 ]
+                                ( baseIntervalColor, EH.lightGray )
+                                timeoutInfo
+                            ]
+
+                    ( CTypes.TimeUp totalInterval, _ ) ->
+                        Element.row
+                            [ Element.spacing 6
+                            , Element.Font.color EH.darkGray
+                            ]
+                            [ Element.text phaseTitle
+                            , Element.el [ Element.Font.size 16 ] <| Element.text "(stale)"
+                            ]
 
             Expires ->
                 case trade.state.phase of
@@ -320,10 +353,10 @@ sortByFunc ( sortCol, ordering ) =
         Phase ->
             \a b ->
                 if a.state.phase == b.state.phase then
-                    sortByFunc ( Expires, Ascending ) a b
+                    sortByFunc ( Expires, Descending ) a b
 
                 else
-                    flip compare (CTypes.phaseToInt a.state.phase) (CTypes.phaseToInt b.state.phase)
+                    compare (CTypes.phaseToInt a.state.phase) (CTypes.phaseToInt b.state.phase)
 
         Expires ->
             \a b -> TimeHelpers.compare a.derived.phaseEndTime b.derived.phaseEndTime
