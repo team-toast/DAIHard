@@ -12,6 +12,7 @@ import Element.Font
 import Element.Input
 import Eth.Types exposing (Address)
 import FiatValue exposing (FiatValue)
+import Filters.Types as Filters
 import Filters.View as Filters
 import Helpers.Element as EH
 import Helpers.Time as TimeHelpers
@@ -141,6 +142,7 @@ maybeResultsElement time tradeCaches model =
                                 (basicFilterFunc model)
                     )
                 |> List.concat
+                |> Filters.filterTrades model.filters
     in
     if visibleTrades == [] then
         Element.none
