@@ -62,8 +62,25 @@ init wallet factory tradeId =
 initFromCached : Wallet.State -> CTypes.FullTradeInfo -> UpdateResult
 initFromCached wallet trade =
     let
-        ( eventSentry, eventSentryCmd ) =
-            initEventSentry trade.factory
+        ( eventSentry, eventSentryCmd, _ ) =
+            let
+                ( initialSentry, initialCmd ) =
+                    initEventSentry trade.factory
+            in
+            EventSentry.watch
+                EventLogFetched
+                initialSentry
+                { address = trade.creationInfo.address
+                , fromBlock = Eth.Types.BlockNum trade.creationInfo.blocknum
+                , toBlock = Eth.Types.LatestBlock
+                , topics = []
+                }
+                |> (\( a, b, c ) ->
+                        ( a
+                        , Cmd.batch [ initialCmd, b ]
+                        , c
+                        )
+                   )
     in
     UpdateResult
         (initModel (CTypes.LoadedTrade trade) eventSentry wallet)
