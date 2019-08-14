@@ -12,9 +12,9 @@ init =
 update : Msg -> Model -> Model
 update msg filterSets =
     case msg of
-        SetOption filterSetLabel optionLabel checked ->
+        SetOption filterType optionLabel checked ->
             filterSets
-                |> List.Extra.updateIf (.label >> (==) filterSetLabel)
+                |> List.Extra.updateIf (.type_ >> (==) filterType)
                     (\filterSet ->
                         { filterSet
                             | options =

@@ -24,19 +24,19 @@ viewFilterSet filterSet =
             [ Element.Font.size 28
             , Element.Font.medium
             ]
-            (Element.text filterSet.label)
+            (Element.text <| filterTypeLabel filterSet.type_)
         , Element.column
             [ Element.spacing 5 ]
           <|
-            List.map (viewOption filterSet.label) filterSet.options
+            List.map (viewOption filterSet.type_) filterSet.options
         ]
 
 
-viewOption : String -> Option -> Element Msg
-viewOption filterSetLabel option =
+viewOption : FilterType -> Option -> Element Msg
+viewOption filterType option =
     Element.Input.checkbox
         []
-        { onChange = SetOption filterSetLabel option.label
+        { onChange = SetOption filterType option.label
         , icon = Element.Input.defaultCheckbox
         , checked = option.checked
         , label = Element.Input.labelRight [] <| Element.text option.label

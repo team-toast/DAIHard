@@ -1,8 +1,9 @@
-module Filters.Types exposing (FilterSet, Model, Msg(..), Option, filterTrade, filterTrades, offerType, phases, role)
+module Filters.Types exposing (FilterSet, FilterType(..), Model, Msg(..), Option, filterTrade, filterTrades, filterTypeLabel, getFilterSet, offerType, phases, role)
 
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
 import Eth.Types exposing (Address)
+import List.Extra
 
 
 type alias Model =
@@ -10,11 +11,11 @@ type alias Model =
 
 
 type Msg
-    = SetOption String String Bool
+    = SetOption FilterType String Bool
 
 
 type alias FilterSet =
-    { label : String
+    { type_ : FilterType
     , options : List Option
     }
 
@@ -26,10 +27,36 @@ type alias Option =
     }
 
 
+type FilterType
+    = Phase
+    | Role
+    | OfferType
+
+
+filterTypeLabel : FilterType -> String
+filterTypeLabel filterType =
+    case filterType of
+        Phase ->
+            "Phases"
+
+        Role ->
+            "Role"
+
+        OfferType ->
+            "Offer Type"
+
+
+getFilterSet : FilterType -> Model -> Maybe FilterSet
+getFilterSet filterType filterSets =
+    List.Extra.find
+        (.type_ >> (==) filterType)
+        filterSets
+
+
 phases : Bool -> Bool -> Bool -> Bool -> FilterSet
 phases openChecked committedChecked judgementChecked closedChecked =
     FilterSet
-        "Phase"
+        Phase
         [ Option
             "Open"
             openChecked
@@ -52,7 +79,7 @@ phases openChecked committedChecked judgementChecked closedChecked =
 role : Address -> Bool -> Bool -> FilterSet
 role addr buyerChecked sellerChecked =
     FilterSet
-        "Role"
+        Role
         [ Option
             "Buyer"
             buyerChecked
@@ -67,7 +94,7 @@ role addr buyerChecked sellerChecked =
 offerType : Bool -> Bool -> FilterSet
 offerType buyingChecked sellingChecked =
     FilterSet
-        "Offer Type"
+        OfferType
         [ Option
             "Buying"
             buyingChecked
