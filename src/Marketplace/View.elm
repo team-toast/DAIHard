@@ -49,6 +49,11 @@ root time tradeCaches model =
                         |> Maybe.withDefault 0
             in
             nonOpenPhasesChecked == 0
+
+        tcDoneLoading =
+            List.all
+                (TradeCache.loadingStatus >> (==) TradeCache.AllFetched)
+                tradeCaches
     in
     Element.column
         [ Element.Border.rounded 5
@@ -67,6 +72,7 @@ root time tradeCaches model =
         , maybeResultsElement
             time
             onlyOpenPhaseChecked
+            tcDoneLoading
             tradeCaches
             model
         ]
@@ -195,8 +201,8 @@ removeSearchTermButton term =
         (Element.text "x")
 
 
-maybeResultsElement : Time.Posix -> Bool -> List TradeCache -> Model -> Element Msg
-maybeResultsElement time onlyOpenTrades tradeCaches model =
+maybeResultsElement : Time.Posix -> Bool -> Bool -> List TradeCache -> Model -> Element Msg
+maybeResultsElement time onlyOpenTrades tcDoneLoading tradeCaches model =
     let
         visibleTrades =
             tradeCaches
@@ -205,7 +211,23 @@ maybeResultsElement time onlyOpenTrades tradeCaches model =
                 |> filterTrades time model.filterFunc
     in
     if visibleTrades == [] then
-        Element.none
+        Element.el
+            [ Element.centerX
+            , Element.Font.size 24
+            , Element.paddingEach
+                { top = 30
+                , left = 0
+                , right = 0
+                , bottom = 0
+                }
+            , Element.Font.italic
+            ]
+            (if tcDoneLoading then
+                Element.text "No trades found with those filters."
+
+             else
+                Element.text "Initializing Trade Cache..."
+            )
 
     else
         TradeTable.view

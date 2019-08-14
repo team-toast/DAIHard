@@ -41,7 +41,13 @@ root time tradeCaches model =
         ]
         [ pageTitleElement model
         , statusAndFiltersElement tradeCaches model
-        , maybeResultsElement time tradeCaches model
+        , let
+            tcDoneLoading =
+                List.all
+                    (TradeCache.loadingStatus >> (==) TradeCache.AllFetched)
+                    tradeCaches
+          in
+          maybeResultsElement time tcDoneLoading tradeCaches model
         ]
 
 
@@ -130,8 +136,8 @@ statusAndFiltersElement tradeCaches model =
         )
 
 
-maybeResultsElement : Time.Posix -> List TradeCache -> Model -> Element Msg
-maybeResultsElement time tradeCaches model =
+maybeResultsElement : Time.Posix -> Bool -> List TradeCache -> Model -> Element Msg
+maybeResultsElement time tcDoneLoading tradeCaches model =
     let
         visibleTrades =
             tradeCaches
@@ -145,7 +151,23 @@ maybeResultsElement time tradeCaches model =
                 |> Filters.filterTrades model.filters
     in
     if visibleTrades == [] then
-        Element.none
+        Element.el
+            [ Element.centerX
+            , Element.Font.size 24
+            , Element.paddingEach
+                { top = 30
+                , left = 0
+                , right = 0
+                , bottom = 0
+                }
+            , Element.Font.italic
+            ]
+            (if tcDoneLoading then
+                Element.text "No trades found with those filters."
+
+             else
+                Element.text "Initializing Trade Cache..."
+            )
 
     else
         TradeTable.view
