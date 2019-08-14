@@ -358,12 +358,17 @@ deriveValues parameters state terms =
                     parameters.autoreleaseInterval
 
                 Closed ->
-                    Time.millisToPosix (2 ^ 31 - 1)
+                    Time.millisToPosix 0
     in
     { phaseEndTime =
-        TimeHelpers.add
-            state.phaseStartTime
-            currentPhaseInterval
+        case state.phase of
+            Closed ->
+                Time.millisToPosix  (2 ^ 53 - 1)
+
+            _ ->
+                TimeHelpers.add
+                    state.phaseStartTime
+                    currentPhaseInterval
     , margin =
         Margin.margin parameters.tradeAmount terms.price
     }
