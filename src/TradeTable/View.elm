@@ -95,10 +95,10 @@ sortableColumnHeader colType maybeOrdering =
                         [ Element.width <| Element.px 8 ]
                         (case ordering of
                             Ascending ->
-                                Images.upArrow
+                                Images.downArrow
 
                             Descending ->
-                                Images.downArrow
+                                Images.upArrow
                         )
                     )
 
@@ -350,8 +350,8 @@ sortByFunc ( sortCol, ordering ) =
                 TimeHelpers.compare a.parameters.autoreleaseInterval b.parameters.autoreleaseInterval
     )
         |> (if ordering == Ascending then
-                flip
+                identity
 
             else
-                identity
+                flip
            )
