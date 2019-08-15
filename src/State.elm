@@ -242,6 +242,7 @@ update msg model =
             in
             ( { model
                 | userAddress = walletSentry.account
+                , wallet = Wallet.OnlyNetwork walletSentry.networkId
               }
             , genCommPubkeyCmd
             )
@@ -284,7 +285,7 @@ update msg model =
                                 |> addUserNotice
                                     (UN.unexpectedError
                                         "Unexpected wallet state encounted when setting commPubkey!"
-                                        Nothing
+                                        ( model.userAddress, model.wallet )
                                     )
                             , Cmd.none
                             )
