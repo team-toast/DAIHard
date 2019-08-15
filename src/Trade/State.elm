@@ -378,7 +378,9 @@ update msg prevModel =
 
                     else
                         UpdateResult
-                            prevModel
+                            { prevModel
+                                | trade = CTypes.Invalid
+                            }
                             Cmd.none
                             ChainCmd.none
                             [ AppCmd.UserNotice UN.tradeParametersNotDefault ]
