@@ -32,10 +32,6 @@ import Wallet
 
 root : Int -> Time.Posix -> List TradeCache -> Model -> ( Element Msg, List (Element Msg) )
 root screenWidth time tradeCaches model =
-    let
-        inRow =
-            screenWidth > 1300
-    in
     ( case model.trade of
         CTypes.LoadedTrade tradeInfo ->
             Element.column
@@ -49,7 +45,7 @@ root screenWidth time tradeCaches model =
                     , Element.paddingXY 40 0
                     , Element.spacing 40
                     ]
-                    (phasesElement inRow tradeInfo model.expandedPhase model.wallet time)
+                    (phasesElement tradeInfo model.expandedPhase model.wallet time)
                 ]
 
         CTypes.PartiallyLoadedTrade partialTradeInfo ->
@@ -453,8 +449,8 @@ statsModal factoryType address stats =
         ]
 
 
-phasesElement : Bool -> FullTradeInfo -> CTypes.Phase -> Wallet.State -> Time.Posix -> Element Msg
-phasesElement inRow trade expandedPhase wallet currentTime =
+phasesElement : FullTradeInfo -> CTypes.Phase -> Wallet.State -> Time.Posix -> Element Msg
+phasesElement trade expandedPhase wallet currentTime =
     case trade.state.phase of
         CTypes.Closed ->
             Element.row
@@ -472,33 +468,21 @@ phasesElement inRow trade expandedPhase wallet currentTime =
                 ]
 
         _ ->
-            if inRow then
-                Element.column
-                    [ Element.width Element.fill
-                    , Element.spacing 10
-                    ]
-                    [ Element.row
-                        [ Element.width Element.fill
-                        , Element.height Element.shrink
-                        , Element.spacing 20
-                        ]
-                        [ phaseAndPaymentMethodElement inRow CTypes.Open trade wallet (expandedPhase == CTypes.Open) currentTime
-                        , phaseAndPaymentMethodElement inRow CTypes.Committed trade wallet (expandedPhase == CTypes.Committed) currentTime
-                        , phaseAndPaymentMethodElement inRow CTypes.Judgment trade wallet (expandedPhase == CTypes.Judgment) currentTime
-                        ]
-                    , paymentMethodElement trade.terms.paymentMethods
-                    ]
-
-            else
-                Element.column
+            Element.column
+                [ Element.width Element.fill
+                , Element.spacing 10
+                ]
+                [ Element.row
                     [ Element.width Element.fill
                     , Element.height Element.shrink
                     , Element.spacing 20
                     ]
-                    [ phaseAndPaymentMethodElement inRow CTypes.Open trade wallet (expandedPhase == CTypes.Open) currentTime
-                    , phaseAndPaymentMethodElement inRow CTypes.Committed trade wallet (expandedPhase == CTypes.Committed) currentTime
-                    , phaseAndPaymentMethodElement inRow CTypes.Judgment trade wallet (expandedPhase == CTypes.Judgment) currentTime
+                    [ phaseAndPaymentMethodElement CTypes.Open trade wallet (expandedPhase == CTypes.Open) currentTime
+                    , phaseAndPaymentMethodElement CTypes.Committed trade wallet (expandedPhase == CTypes.Committed) currentTime
+                    , phaseAndPaymentMethodElement CTypes.Judgment trade wallet (expandedPhase == CTypes.Judgment) currentTime
                     ]
+                , paymentMethodElement trade.terms.paymentMethods
+                ]
 
 
 activePhaseAttributes =
@@ -510,20 +494,6 @@ activePhaseAttributes =
 inactivePhaseAttributes =
     [ Element.Background.color EH.white
     ]
-
-
-commonPhaseAttributes : Bool -> List (Attribute Msg)
-commonPhaseAttributes inRow =
-    if inRow then
-        [ Element.Border.rounded 12
-        , Element.alignTop
-        , Element.height (Element.shrink |> Element.minimum 380)
-        ]
-
-    else
-        [ Element.Border.rounded 12
-        , Element.centerX
-        ]
 
 
 phaseState : CTypes.FullTradeInfo -> CTypes.Phase -> PhaseState
@@ -544,9 +514,15 @@ phaseState trade phase =
         Finished
 
 
-phaseAndPaymentMethodElement : Bool -> CTypes.Phase -> FullTradeInfo -> Wallet.State -> Bool -> Time.Posix -> Element Msg
-phaseAndPaymentMethodElement inRow viewPhase trade wallet expanded currentTime =
+phaseAndPaymentMethodElement : CTypes.Phase -> FullTradeInfo -> Wallet.State -> Bool -> Time.Posix -> Element Msg
+phaseAndPaymentMethodElement viewPhase trade wallet expanded currentTime =
     let
+        commonPhaseAttributes =
+            [ Element.Border.rounded 12
+            , Element.alignTop
+            , Element.height (Element.shrink |> Element.minimum 380)
+            ]
+
         viewPhaseState =
             phaseState trade viewPhase
 
@@ -604,53 +580,34 @@ phaseAndPaymentMethodElement inRow viewPhase trade wallet expanded currentTime =
                             EH.lightGray
                 ]
                 Element.none
-
-        phaseElement =
-            if expanded then
-                Element.row
-                    (commonPhaseAttributes inRow
-                        ++ (if viewPhaseState == Active then
-                                activePhaseAttributes
-
-                            else
-                                inactivePhaseAttributes
-                           )
-                        ++ [ Element.width Element.fill ]
-                    )
-                    [ firstEl, borderEl, secondEl ]
-
-            else
-                Element.row
-                    (commonPhaseAttributes inRow
-                        ++ (if viewPhaseState == Active then
-                                activePhaseAttributes
-
-                            else
-                                inactivePhaseAttributes
-                           )
-                        ++ [ Element.pointer
-                           , Element.Events.onClick <| ExpandPhase viewPhase
-                           ]
-                    )
-                    [ firstEl ]
     in
-    if not inRow && viewPhaseState == Active then
-        Element.column
-            [ Element.width Element.fill
-            , Element.spacing 20
-            , Element.paddingEach
-                { bottom = 20
-                , top = 0
-                , left = 0
-                , right = 0
-                }
-            ]
-            [ phaseElement
-            , paymentMethodElement trade.terms.paymentMethods
-            ]
+    if expanded then
+        Element.row
+            (commonPhaseAttributes
+                ++ (if viewPhaseState == Active then
+                        activePhaseAttributes
+
+                    else
+                        inactivePhaseAttributes
+                   )
+                ++ [ Element.width Element.fill ]
+            )
+            [ firstEl, borderEl, secondEl ]
 
     else
-        phaseElement
+        Element.row
+            (commonPhaseAttributes
+                ++ (if viewPhaseState == Active then
+                        activePhaseAttributes
+
+                    else
+                        inactivePhaseAttributes
+                   )
+                ++ [ Element.pointer
+                   , Element.Events.onClick <| ExpandPhase viewPhase
+                   ]
+            )
+            [ firstEl ]
 
 
 paymentMethodElement : List PaymentMethod -> Element Msg
