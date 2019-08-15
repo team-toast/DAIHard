@@ -4,17 +4,18 @@ import AppCmd exposing (AppCmd)
 import Array exposing (Array)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
+import Eth.Net
 import Eth.Types exposing (Address)
-import Helpers.Eth as EthHelpers exposing (Web3Context)
+import Helpers.Eth as EthHelpers
 import Json.Decode
 import Time
+import Wallet
 
 
 type alias Model =
-    { web3Context : Web3Context
-    , userInfo : UserInfo
+    { wallet : Wallet.State
+    , trade : CTypes.FullTradeInfo
     , userRole : BuyerOrSeller
-    , initiatorRole : BuyerOrSeller
     , history : Array Event
     , lastNotificationBlocknum : Int
     , messageInput : String

@@ -1,7 +1,8 @@
-module QuickCreate.State exposing (init, subscriptions, update, updateUserInfo, updateWeb3Context)
+module QuickCreate.State exposing (init, subscriptions, update, updateWalletState)
 
 import AppCmd
 import BigInt exposing (BigInt)
+import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
 import Config
 import Contracts.Generated.ERC20Token as TokenContract
@@ -12,8 +13,7 @@ import Eth.Types exposing (Address)
 import FiatValue exposing (FiatValue)
 import Flip exposing (flip)
 import Helpers.BigInt as BigIntHelpers
-import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
-import Helpers.Eth as EthHelpers exposing (Web3Context)
+import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
 import Http
 import Maybe.Extra
@@ -24,61 +24,38 @@ import Task
 import Time
 import TokenValue exposing (TokenValue)
 import UserNotice as UN exposing (UserNotice)
+import Wallet
 
 
-init : EthHelpers.Web3Context -> Maybe UserInfo -> UpdateResult
-init web3Context userInfo =
-    let
-        model =
-            { web3Context = web3Context
-            , userInfo = userInfo
-            , state = Menu NoneStarted
-            , tokenAllowance = Nothing
-            , textInput = ""
-            }
-
-        cmd =
-            case userInfo of
-                Just uInfo ->
-                    getAllowanceCmdIfNeeded model.web3Context uInfo AllowanceFetched
-
-                Nothing ->
-                    Cmd.none
-    in
+init : Wallet.State -> UpdateResult
+init wallet =
     UpdateResult
-        model
-        cmd
+        { wallet = wallet
+        , state = Menu NoneStarted
+        , tokenAllowance = Nothing
+        , textInput = ""
+        }
+        (getAllowanceCmdIfNeeded wallet AllowanceFetched)
         ChainCmd.none
         []
 
 
-updateUserInfo : Maybe UserInfo -> Model -> ( Model, Cmd Msg )
-updateUserInfo maybeUserInfo model =
-    ( { model | userInfo = maybeUserInfo }
-    , case maybeUserInfo of
-        Just userInfo ->
-            getAllowanceCmdIfNeeded model.web3Context userInfo AllowanceFetched
-
-        Nothing ->
-            Cmd.none
+updateWalletState : Wallet.State -> Model -> ( Model, Cmd Msg )
+updateWalletState wallet model =
+    ( { model | wallet = wallet }
+    , getAllowanceCmdIfNeeded wallet AllowanceFetched
     )
 
 
-updateWeb3Context : EthHelpers.Web3Context -> Model -> Model
-updateWeb3Context newWeb3Context model =
-    { model | web3Context = newWeb3Context }
-
-
-getAllowanceCmdIfNeeded : Web3Context -> UserInfo -> (Result Http.Error BigInt -> Msg) -> Cmd Msg
-getAllowanceCmdIfNeeded web3Context userInfo msgConstructor =
-    case web3Context.factoryType of
-        Token tokenType ->
+getAllowanceCmdIfNeeded : Wallet.State -> (TokenFactoryType -> Result Http.Error BigInt -> Msg) -> Cmd Msg
+getAllowanceCmdIfNeeded wallet msgConstructor =
+    case ( Wallet.factory wallet, Wallet.userInfo wallet ) of
+        ( Just (Token tokenType), Just userInfo ) ->
             Contracts.Wrappers.getAllowanceCmd
-                web3Context
                 tokenType
                 userInfo.address
-                (Config.factoryAddress web3Context.factoryType)
-                msgConstructor
+                (Config.factoryAddress (Token tokenType))
+                (msgConstructor tokenType)
 
         _ ->
             Cmd.none
@@ -88,29 +65,33 @@ update : Msg -> Model -> UpdateResult
 update msg prevModel =
     case msg of
         Refresh time ->
-            case ( prevModel.userInfo, prevModel.web3Context.factoryType ) of
-                ( Just userInfo, Token tokenType ) ->
-                    let
-                        cmd =
-                            Contracts.Wrappers.getAllowanceCmd
-                                prevModel.web3Context
-                                tokenType
-                                userInfo.address
-                                (Config.factoryAddress prevModel.web3Context.factoryType)
-                                AllowanceFetched
-                    in
-                    UpdateResult
-                        prevModel
-                        cmd
-                        ChainCmd.none
-                        []
+            case prevModel.wallet of
+                Wallet.Active userInfo ->
+                    case Wallet.factory prevModel.wallet of
+                        Just (Token tokenType) ->
+                            let
+                                cmd =
+                                    Contracts.Wrappers.getAllowanceCmd
+                                        tokenType
+                                        userInfo.address
+                                        (Config.factoryAddress (Token tokenType))
+                                        (AllowanceFetched tokenType)
+                            in
+                            UpdateResult
+                                prevModel
+                                cmd
+                                ChainCmd.none
+                                []
+
+                        _ ->
+                            justModelUpdate prevModel
 
                 _ ->
                     justModelUpdate prevModel
 
-        StartClicked tradeRecipe ->
-            case prevModel.web3Context.factoryType of
-                Token _ ->
+        StartClicked factoryType tradeRecipe ->
+            case factoryType of
+                Token tokenType ->
                     let
                         newState =
                             case prevModel.tokenAllowance of
@@ -119,10 +100,10 @@ update msg prevModel =
                                         Spec tradeRecipe ReadyToOpen
 
                                     else
-                                        Menu (StartPrompt tradeRecipe)
+                                        Menu (StartPrompt tokenType tradeRecipe)
 
                                 Nothing ->
-                                    Menu (StartPrompt tradeRecipe)
+                                    Menu (StartPrompt tokenType tradeRecipe)
                     in
                     justModelUpdate { prevModel | state = newState }
 
@@ -133,31 +114,22 @@ update msg prevModel =
                                 Spec tradeRecipe ReadyToOpen
                         }
 
-        ApproveClicked tradeRecipe ->
-            case prevModel.web3Context.factoryType of
-                Token tokenType ->
-                    let
-                        chainCmd =
-                            approveChainCmd tokenType tradeRecipe.daiAmountIn
-                    in
-                    UpdateResult
-                        { prevModel
-                            | state = Menu (ApproveNeedsSig tradeRecipe)
-                        }
-                        Cmd.none
-                        chainCmd
-                        []
+        ApproveClicked tokenType tradeRecipe ->
+            let
+                chainCmd =
+                    approveChainCmd tokenType tradeRecipe.daiAmountIn
+            in
+            UpdateResult
+                { prevModel
+                    | state = Menu (ApproveNeedsSig tokenType tradeRecipe)
+                }
+                Cmd.none
+                chainCmd
+                []
 
-                Native _ ->
-                    UpdateResult
-                        prevModel
-                        Cmd.none
-                        ChainCmd.none
-                        [ AppCmd.UserNotice <| UN.unexpectedError "Approve Clicked msg received, but factoryType is not a token factory!" tradeRecipe ]
-
-        ApproveSigned txHashResult ->
+        ApproveSigned tokenType txHashResult ->
             case ( txHashResult, prevModel.state ) of
-                ( Ok txHash, Menu (ApproveNeedsSig tradeRecipe) ) ->
+                ( Ok txHash, Menu (ApproveNeedsSig _ tradeRecipe) ) ->
                     justModelUpdate
                         { prevModel | state = Spec tradeRecipe (ApproveMining txHash) }
 
@@ -175,7 +147,7 @@ update msg prevModel =
                         ChainCmd.none
                         [ AppCmd.UserNotice <| UN.unexpectedError "Approve signed, but factoryType is not a token factory!" txHashResult ]
 
-        AllowanceFetched fetchResult ->
+        AllowanceFetched tokenType fetchResult ->
             case ( fetchResult, prevModel.state ) of
                 ( Ok tokenAllowance, Spec tradeRecipe (ApproveMining _) ) ->
                     if BigInt.compare tokenAllowance (TokenValue.getEvmValue tradeRecipe.daiAmountIn) /= LT then
@@ -199,13 +171,13 @@ update msg prevModel =
                 _ ->
                     justModelUpdate prevModel
 
-        OpenClicked userInfo recipe ->
+        OpenClicked factoryType userInfo recipe ->
             let
                 createParameters =
                     constructCreateParameters userInfo recipe prevModel.textInput
 
                 chainCmd =
-                    initiateCreateCall prevModel.web3Context.factoryType createParameters
+                    initiateCreateCall factoryType createParameters
 
                 txChainStatus =
                     OpenNeedsSig
@@ -221,11 +193,11 @@ update msg prevModel =
                 chainCmd
                 []
 
-        OpenSigned txHashResult ->
+        OpenSigned _ txHashResult ->
             case ( txHashResult, prevModel.state ) of
-                ( Ok txHash, Spec createParameters _ ) ->
+                ( Ok txHash, Spec recipe _ ) ->
                     justModelUpdate
-                        { prevModel | state = Spec createParameters OpenMining }
+                        { prevModel | state = Spec recipe OpenMining }
 
                 ( Err e, _ ) ->
                     UpdateResult
@@ -239,14 +211,14 @@ update msg prevModel =
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.UserNotice <| UN.unexpectedError "Open signed, but factoryType is not a token factory!" txHashResult ]
+                        [ AppCmd.UserNotice <| UN.unexpectedError "Open signed, but there is no recipe!" txHashResult ]
 
-        OpenMined txReceiptResult ->
+        OpenMined factory txReceiptResult ->
             case txReceiptResult of
                 Ok txReceipt ->
                     let
                         maybeId =
-                            CTypes.txReceiptToCreatedTradeSellId prevModel.web3Context.factoryType txReceipt
+                            CTypes.txReceiptToCreatedTradeSellId factory txReceipt
                                 |> Result.toMaybe
                                 |> Maybe.andThen BigIntHelpers.toInt
                     in
@@ -256,7 +228,7 @@ update msg prevModel =
                                 prevModel
                                 Cmd.none
                                 ChainCmd.none
-                                [ AppCmd.GotoRoute (Routing.Trade id) ]
+                                [ AppCmd.GotoRoute (Routing.Trade factory id) ]
 
                         Nothing ->
                             UpdateResult
@@ -308,7 +280,7 @@ approveChainCmd tokenType amount =
 
         customSend =
             { onMined = Nothing
-            , onSign = Just ApproveSigned
+            , onSign = Just (ApproveSigned tokenType)
             , onBroadcast = Nothing
             }
     in
@@ -325,8 +297,8 @@ initiateCreateCall factoryType parameters =
                 |> Eth.toSend
 
         customSend =
-            { onMined = Just ( OpenMined, Nothing )
-            , onSign = Just OpenSigned
+            { onMined = Just ( OpenMined factoryType, Nothing )
+            , onSign = Just (OpenSigned factoryType)
             , onBroadcast = Nothing
             }
     in

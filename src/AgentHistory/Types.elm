@@ -1,16 +1,18 @@
-module AgentHistory.Types exposing (Model, Msg(..), UpdateResult)
+module AgentHistory.Types exposing (Model, Msg(..), UpdateResult, justModelUpdate)
 
 import AppCmd exposing (AppCmd)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
+import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
 import Dict exposing (Dict)
+import Eth.Net
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
 import FiatValue exposing (FiatValue)
-import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
-import Helpers.Eth as EthHelpers exposing (Web3Context)
+import Filters.Types as Filters
+import Helpers.Eth as EthHelpers
 import Http
 import Json.Decode
 import PaymentMethods exposing (PaymentMethod)
@@ -19,22 +21,23 @@ import String.Extra
 import Time
 import TokenValue exposing (TokenValue)
 import TradeCache.Types as TradeCache exposing (TradeCache)
+import TradeTable.Types as TradeTable
+import Wallet
 
 
 type alias Model =
-    { web3Context : Web3Context
+    { wallet : Wallet.State
     , agentAddress : Address
-    , agentRole : BuyerOrSeller
-    , userInfo : Maybe UserInfo
-    , viewPhase : CTypes.Phase
+    , filters : Filters.Model
+    , tradeTable : TradeTable.Model
     }
 
 
 type Msg
-    = ViewUserRoleChanged BuyerOrSeller
-    | ViewPhaseChanged CTypes.Phase
-    | Poke Address
-    | TradeClicked Int
+    = Poke Address
+    | TradeClicked FactoryType Int
+    | FiltersMsg Filters.Msg
+    | TradeTableMsg TradeTable.Msg
     | NoOp
 
 
@@ -44,3 +47,12 @@ type alias UpdateResult =
     , chainCmd : ChainCmd Msg
     , appCmds : List (AppCmd Msg)
     }
+
+
+justModelUpdate : Model -> UpdateResult
+justModelUpdate model =
+    UpdateResult
+        model
+        Cmd.none
+        ChainCmd.none
+        []

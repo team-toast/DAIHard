@@ -1,13 +1,18 @@
 port module State exposing (init, subscriptions, update)
 
+-- import QuickCreate.State
+
 import AgentHistory.State
 import AppCmd
+import Array exposing (Array)
 import BigInt
 import Browser
 import Browser.Dom
 import Browser.Navigation
+import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
 import Config
+import Contracts.Types as CTypes
 import Create.State
 import Element
 import Eth.Net
@@ -15,15 +20,14 @@ import Eth.Sentry.Tx as TxSentry
 import Eth.Sentry.Wallet as WalletSentry exposing (WalletSentry)
 import Eth.Types exposing (Address)
 import Eth.Utils
-import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
-import Helpers.Eth as EthHelpers exposing (Web3Context)
+import Helpers.Eth as EthHelpers
+import Helpers.Tuple
 import Json.Decode
 import Json.Encode
 import List.Extra
 import Marketplace.State
 import Maybe.Extra
 import Notifications
-import QuickCreate.State
 import Routing
 import Time
 import Trade.State
@@ -32,6 +36,7 @@ import TradeCache.Types exposing (TradeCache)
 import Types exposing (..)
 import Url exposing (Url)
 import UserNotice as UN exposing (UserNotice)
+import Wallet
 
 
 init : Flags -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
@@ -44,68 +49,79 @@ init flags url key =
             else
                 Nothing
 
-        ( factoryType, initialWeb3State ) =
+        wallet =
             if flags.networkId == 0 then
-                ( Native XDai
-                , NoWeb3
-                )
+                Wallet.NoneDetected
 
             else
-                case EthHelpers.intToFactoryType flags.networkId of
-                    Nothing ->
-                        ( Native XDai
-                        , WrongNetwork
-                        )
-
-                    Just factoryType_ ->
-                        ( factoryType_
-                        , AllGood
-                        )
+                Wallet.OnlyNetwork <| Eth.Net.toNetworkId flags.networkId
 
         providerNotice =
-            case initialWeb3State of
-                NoWeb3 ->
-                    Just UN.noWeb3Provider
+            if wallet == Wallet.NoneDetected then
+                Just UN.noWeb3Provider
 
-                WrongNetwork ->
-                    Just UN.wrongWeb3Network
+            else
+                case Wallet.factory wallet of
+                    Nothing ->
+                        Just UN.wrongWeb3Network
 
-                AllGood ->
-                    Nothing
+                    Just _ ->
+                        Nothing
 
         userNotices =
             Maybe.Extra.values
                 [ tooSmallNotice, providerNotice ]
 
-        web3Context =
-            EthHelpers.web3Context factoryType
-
         txSentry =
-            TxSentry.init ( txOut, txIn ) TxSentryMsg web3Context.httpProvider
+            Wallet.httpProvider wallet
+                |> Maybe.map
+                    (\httpProvider ->
+                        TxSentry.init ( txOut, txIn ) TxSentryMsg httpProvider
+                    )
 
-        ( tradeCache, tcCmd, tcAppCmds ) =
-            TradeCache.initAndStartCaching web3Context
+        tcInitResults =
+            Config.activeFactories
+                |> List.map TradeCache.initAndStartCaching
+
+        ( tradeCaches, tcCmds, tcAppCmdLists ) =
+            ( List.map Helpers.Tuple.tuple3First tcInitResults
+            , List.map Helpers.Tuple.tuple3Second tcInitResults
+            , List.map Helpers.Tuple.tuple3Third tcInitResults
+            )
+
+        appCmds =
+            tcAppCmdLists
+                |> List.indexedMap
+                    (\tcId tcAppCmds ->
+                        AppCmd.mapList (TradeCacheMsg tcId) tcAppCmds
+                    )
+                |> List.concat
+
+        tcCmd =
+            tcCmds
+                |> List.indexedMap
+                    (\tcId cmd ->
+                        Cmd.map (TradeCacheMsg tcId) cmd
+                    )
+                |> Cmd.batch
 
         ( model, fromUrlCmd ) =
             { key = key
-            , initialWeb3State = initialWeb3State
-            , time = Time.millisToPosix 0
-            , web3Context = web3Context
-            , txSentry = txSentry
+            , wallet = wallet
             , userAddress = Nothing
-            , userInfo = Nothing
-            , tradeCache = tradeCache
+            , time = Time.millisToPosix 0
+            , txSentry = txSentry
+            , tradeCaches = tradeCaches
             , submodel = BetaLandingPage
             , userNotices = []
             , screenWidth = flags.width
             }
                 |> updateFromUrl url
-                |> runAppCmds
-                    (AppCmd.mapList TradeCacheMsg tcAppCmds)
+                |> runAppCmds appCmds
     in
     ( model |> addUserNotices userNotices
     , Cmd.batch
-        [ Cmd.map TradeCacheMsg tcCmd
+        [ tcCmd
         , fromUrlCmd
         ]
     )
@@ -199,69 +215,9 @@ update msg model =
         Tick newTime ->
             ( { model | time = newTime }, Cmd.none )
 
-        NetworkUpdate newNetworkValue ->
-            let
-                newNetworkIdResult =
-                    Json.Decode.decodeValue Json.Decode.int newNetworkValue
-                        |> Result.map Eth.Net.toNetworkId
-
-                maybeNewFactoryType =
-                    newNetworkIdResult
-                        |> Result.toMaybe
-                        |> Maybe.andThen EthHelpers.networkIdToFactoryType
-            in
-            case ( newNetworkIdResult, maybeNewFactoryType ) of
-                ( Ok newNetworkId, Just newFactoryType ) ->
-                    if newNetworkId /= EthHelpers.factoryTypeToNetworkId model.web3Context.factoryType then
-                        let
-                            newWeb3Context =
-                                EthHelpers.web3Context newFactoryType
-
-                            ( submodel, submodelCmd, maybeRoute ) =
-                                model.submodel |> updateSubmodelWeb3Context newWeb3Context
-
-                            ( newTradeCache, tradeCacheCmd, appCmds ) =
-                                TradeCache.initAndStartCaching newWeb3Context
-                        in
-                        ( { model
-                            | submodel = submodel
-                            , tradeCache = newTradeCache
-                            , web3Context = newWeb3Context
-                          }
-                        , Cmd.batch
-                            [ Cmd.map TradeCacheMsg tradeCacheCmd
-                            , case maybeRoute of
-                                Just newRoute ->
-                                    beginRouteChange model.key newRoute
-
-                                Nothing ->
-                                    submodelCmd
-                            ]
-                        )
-                            |> runAppCmds
-                                (AppCmd.mapList TradeCacheMsg appCmds)
-
-                    else
-                        ( model
-                        , Cmd.none
-                        )
-
-                ( Err jsonDecodeError, _ ) ->
-                    ( model
-                        |> (addUserNotice <| UN.unexpectedError "Can't decode networkID from Javascript" jsonDecodeError)
-                    , Cmd.none
-                    )
-
-                ( _, Nothing ) ->
-                    ( model
-                        |> addUserNotice
-                            UN.wrongWeb3Network
-                    , Cmd.none
-                    )
-
         ConnectToWeb3 ->
-            case model.initialWeb3State of
-                NoWeb3 ->
+            case model.wallet of
+                Wallet.NoneDetected ->
                     ( model |> addUserNotice UN.cantConnectNoWeb3
                     , Cmd.none
                     )
@@ -286,6 +242,7 @@ update msg model =
             in
             ( { model
                 | userAddress = walletSentry.account
+                , wallet = Wallet.OnlyNetwork walletSentry.networkId
               }
             , genCommPubkeyCmd
             )
@@ -293,31 +250,42 @@ update msg model =
         UserPubkeySet commPubkeyValue ->
             case Json.Decode.decodeValue Json.Decode.string commPubkeyValue of
                 Ok commPubkey ->
-                    case model.userAddress of
-                        Just userAddress ->
+                    case ( model.userAddress, model.wallet ) of
+                        ( Just userAddress, Wallet.OnlyNetwork network ) ->
                             let
-                                userInfo =
-                                    Just
-                                        { address = userAddress
-                                        , commPubkey = commPubkey
-                                        }
+                                wallet =
+                                    Wallet.Active <|
+                                        UserInfo
+                                            network
+                                            userAddress
+                                            commPubkey
 
                                 ( submodel, cmd ) =
-                                    model.submodel |> updateSubmodelUserInfo userInfo
+                                    model.submodel |> updateSubmodelWalletState wallet
                             in
                             ( { model
-                                | userInfo = userInfo
+                                | wallet = wallet
                                 , submodel = submodel
                               }
                             , cmd
                             )
 
-                        Nothing ->
+                        ( Nothing, _ ) ->
                             ( model
                                 |> addUserNotice
                                     (UN.unexpectedError
                                         "User pubkey set, but I can no longer find the user address!"
                                         Nothing
+                                    )
+                            , Cmd.none
+                            )
+
+                        ( _, _ ) ->
+                            ( model
+                                |> addUserNotice
+                                    (UN.unexpectedError
+                                        "Unexpected wallet state encounted when setting commPubkey!"
+                                        ( model.userAddress, model.wallet )
                                     )
                             , Cmd.none
                             )
@@ -334,7 +302,7 @@ update msg model =
                         updateResult =
                             Create.State.update createMsg createModel
 
-                        ( newTxSentry, chainCmd ) =
+                        ( newTxSentry, chainCmd, userNotices ) =
                             ChainCmd.execute model.txSentry (ChainCmd.map CreateMsg updateResult.chainCmd)
                     in
                     ( { model
@@ -347,36 +315,37 @@ update msg model =
                         ]
                     )
                         |> runAppCmds
-                            (AppCmd.mapList CreateMsg updateResult.appCmds)
+                            (AppCmd.mapList CreateMsg updateResult.appCmds
+                                ++ List.map AppCmd.UserNotice userNotices
+                            )
 
                 _ ->
                     ( model, Cmd.none )
 
-        QuickCreateMsg quickCreateMsg ->
-            case model.submodel of
-                QuickCreateModel quickCreateModel ->
-                    let
-                        updateResult =
-                            QuickCreate.State.update quickCreateMsg quickCreateModel
-
-                        ( newTxSentry, chainCmd ) =
-                            ChainCmd.execute model.txSentry (ChainCmd.map QuickCreateMsg updateResult.chainCmd)
-                    in
-                    ( { model
-                        | submodel = QuickCreateModel updateResult.model
-                        , txSentry = newTxSentry
-                      }
-                    , Cmd.batch
-                        [ Cmd.map QuickCreateMsg updateResult.cmd
-                        , chainCmd
-                        ]
-                    )
-                        |> runAppCmds
-                            (AppCmd.mapList QuickCreateMsg updateResult.appCmds)
-
-                _ ->
-                    ( model, Cmd.none )
-
+        -- QuickCreateMsg quickCreateMsg ->
+        --     case model.submodel of
+        --         QuickCreateModel quickCreateModel ->
+        --             let
+        --                 updateResult =
+        --                     QuickCreate.State.update quickCreateMsg quickCreateModel
+        --                 ( newTxSentry, chainCmd, userNotices ) =
+        --                     ChainCmd.execute model.txSentry (ChainCmd.map QuickCreateMsg updateResult.chainCmd)
+        --             in
+        --             ( { model
+        --                 | submodel = QuickCreateModel updateResult.model
+        --                 , txSentry = newTxSentry
+        --               }
+        --             , Cmd.batch
+        --                 [ Cmd.map QuickCreateMsg updateResult.cmd
+        --                 , chainCmd
+        --                 ]
+        --             )
+        --                 |> runAppCmds
+        --                     (AppCmd.mapList QuickCreateMsg updateResult.appCmds
+        --                         ++ List.map AppCmd.UserNotice userNotices
+        --                     )
+        --         _ ->
+        --             ( model, Cmd.none )
         TradeMsg tradeMsg ->
             case model.submodel of
                 TradeModel tradeModel ->
@@ -384,7 +353,7 @@ update msg model =
                         updateResult =
                             Trade.State.update tradeMsg tradeModel
 
-                        ( newTxSentry, chainCmd ) =
+                        ( newTxSentry, chainCmd, userNotices ) =
                             ChainCmd.execute model.txSentry (ChainCmd.map TradeMsg updateResult.chainCmd)
                     in
                     ( { model
@@ -397,7 +366,9 @@ update msg model =
                         ]
                     )
                         |> runAppCmds
-                            (AppCmd.mapList TradeMsg updateResult.appCmds)
+                            (AppCmd.mapList TradeMsg updateResult.appCmds
+                                ++ List.map AppCmd.UserNotice userNotices
+                            )
 
                 _ ->
                     ( model, Cmd.none )
@@ -425,7 +396,7 @@ update msg model =
                         updateResult =
                             AgentHistory.State.update agentHistoryMsg agentHistoryModel
 
-                        ( newTxSentry, chainCmd ) =
+                        ( newTxSentry, chainCmd, userNotices ) =
                             ChainCmd.execute model.txSentry (ChainCmd.map AgentHistoryMsg updateResult.chainCmd)
                     in
                     ( { model
@@ -438,28 +409,46 @@ update msg model =
                         ]
                     )
                         |> runAppCmds
-                            (AppCmd.mapList AgentHistoryMsg updateResult.appCmds)
+                            (AppCmd.mapList AgentHistoryMsg updateResult.appCmds
+                                ++ List.map AppCmd.UserNotice userNotices
+                            )
 
                 _ ->
                     ( model, Cmd.none )
 
         TxSentryMsg subMsg ->
             let
-                ( submodel, subCmd ) =
-                    TxSentry.update subMsg model.txSentry
-            in
-            ( { model | txSentry = submodel }, subCmd )
+                ( newTxSentry, subCmd ) =
+                    case model.txSentry of
+                        Just txSentry ->
+                            TxSentry.update subMsg txSentry
+                                |> Tuple.mapFirst Just
 
-        TradeCacheMsg tradeCacheMsg ->
-            let
-                updateResult =
-                    TradeCache.update
-                        tradeCacheMsg
-                        model.tradeCache
+                        Nothing ->
+                            ( Nothing, Cmd.none )
             in
-            ( { model | tradeCache = updateResult.tradeCache }
-            , updateResult.cmd |> Cmd.map TradeCacheMsg
-            )
+            ( { model | txSentry = newTxSentry }, subCmd )
+
+        TradeCacheMsg tcId tradeCacheMsg ->
+            case List.Extra.getAt tcId model.tradeCaches of
+                Nothing ->
+                    ( model, Cmd.none )
+                        |> runAppCmd (AppCmd.UserNotice <| UN.unexpectedError "Encountered an out-of-range error when trying to route a TradeCacheMsg" Nothing)
+
+                Just tradeCache ->
+                    let
+                        updateResult =
+                            TradeCache.update
+                                tradeCacheMsg
+                                tradeCache
+                    in
+                    ( { model
+                        | tradeCaches =
+                            model.tradeCaches
+                                |> List.Extra.setAt tcId updateResult.tradeCache
+                      }
+                    , updateResult.cmd |> Cmd.map (TradeCacheMsg tcId)
+                    )
 
         NoOp ->
             ( model, Cmd.none )
@@ -559,9 +548,9 @@ gotoRoute oldModel route =
         Routing.Create ->
             let
                 updateResult =
-                    Create.State.init oldModel.web3Context oldModel.userInfo
+                    Create.State.init oldModel.wallet
 
-                ( newTxSentry, chainCmd ) =
+                ( newTxSentry, chainCmd, userNotices ) =
                     ChainCmd.execute oldModel.txSentry (ChainCmd.map CreateMsg updateResult.chainCmd)
             in
             ( { oldModel
@@ -574,34 +563,41 @@ gotoRoute oldModel route =
                 ]
             )
                 |> runAppCmds
-                    (AppCmd.mapList CreateMsg updateResult.appCmds)
+                    (AppCmd.mapList CreateMsg updateResult.appCmds
+                        ++ List.map AppCmd.UserNotice userNotices
+                    )
 
-        Routing.QuickCreate ->
+        -- Routing.QuickCreate ->
+        --     let
+        --         updateResult =
+        --             QuickCreate.State.init oldModel.wallet
+        --         ( newTxSentry, chainCmd, userNotices ) =
+        --             ChainCmd.execute oldModel.txSentry (ChainCmd.map QuickCreateMsg updateResult.chainCmd)
+        --     in
+        --     ( { oldModel
+        --         | submodel = QuickCreateModel updateResult.model
+        --         , txSentry = newTxSentry
+        --       }
+        --     , Cmd.batch
+        --         [ Cmd.map QuickCreateMsg updateResult.cmd
+        --         , chainCmd
+        --         ]
+        --     )
+        --         |> runAppCmds
+        --             (AppCmd.mapList QuickCreateMsg updateResult.appCmds
+        --                 ++ List.map AppCmd.UserNotice userNotices
+        --             )
+        Routing.Trade factory id ->
             let
                 updateResult =
-                    QuickCreate.State.init oldModel.web3Context oldModel.userInfo
+                    case getTradeFromCaches factory id oldModel.tradeCaches of
+                        Just (CTypes.LoadedTrade trade) ->
+                            Trade.State.initFromCached oldModel.wallet trade
 
-                ( newTxSentry, chainCmd ) =
-                    ChainCmd.execute oldModel.txSentry (ChainCmd.map QuickCreateMsg updateResult.chainCmd)
-            in
-            ( { oldModel
-                | submodel = QuickCreateModel updateResult.model
-                , txSentry = newTxSentry
-              }
-            , Cmd.batch
-                [ Cmd.map QuickCreateMsg updateResult.cmd
-                , chainCmd
-                ]
-            )
-                |> runAppCmds
-                    (AppCmd.mapList QuickCreateMsg updateResult.appCmds)
+                        _ ->
+                            Trade.State.init oldModel.wallet factory id
 
-        Routing.Trade id ->
-            let
-                updateResult =
-                    Trade.State.init oldModel.web3Context oldModel.userInfo id
-
-                ( newTxSentry, chainCmd ) =
+                ( newTxSentry, chainCmd, userNotices ) =
                     ChainCmd.execute oldModel.txSentry (ChainCmd.map TradeMsg updateResult.chainCmd)
             in
             ( { oldModel
@@ -614,12 +610,14 @@ gotoRoute oldModel route =
                 ]
             )
                 |> runAppCmds
-                    (AppCmd.mapList TradeMsg updateResult.appCmds)
+                    (AppCmd.mapList TradeMsg updateResult.appCmds
+                        ++ List.map AppCmd.UserNotice userNotices
+                    )
 
-        Routing.Marketplace browsingRole ->
+        Routing.Marketplace ->
             let
                 ( marketplaceModel, marketplaceCmd ) =
-                    Marketplace.State.init oldModel.web3Context browsingRole oldModel.userInfo
+                    Marketplace.State.init oldModel.wallet
             in
             ( { oldModel
                 | submodel = MarketplaceModel marketplaceModel
@@ -629,10 +627,10 @@ gotoRoute oldModel route =
                 ]
             )
 
-        Routing.AgentHistory address agentRole ->
+        Routing.AgentHistory address ->
             let
                 ( agentHistoryModel, agentHistoryCmd ) =
-                    AgentHistory.State.init oldModel.web3Context address agentRole oldModel.userInfo
+                    AgentHistory.State.init oldModel.wallet address
             in
             ( { oldModel
                 | submodel = AgentHistoryModel agentHistoryModel
@@ -648,8 +646,16 @@ gotoRoute oldModel route =
             )
 
 
-updateSubmodelUserInfo : Maybe UserInfo -> Submodel -> ( Submodel, Cmd Msg )
-updateSubmodelUserInfo userInfo submodel =
+getTradeFromCaches : FactoryType -> Int -> List TradeCache -> Maybe CTypes.Trade
+getTradeFromCaches factory id tradeCaches =
+    tradeCaches
+        |> List.Extra.find (\tc -> tc.factory == factory)
+        |> Maybe.map .trades
+        |> Maybe.andThen (Array.get id)
+
+
+updateSubmodelWalletState : Wallet.State -> Submodel -> ( Submodel, Cmd Msg )
+updateSubmodelWalletState wallet submodel =
     case submodel of
         BetaLandingPage ->
             ( submodel
@@ -659,77 +665,37 @@ updateSubmodelUserInfo userInfo submodel =
         CreateModel createModel ->
             let
                 ( newCreateModel, createCmd ) =
-                    createModel |> Create.State.updateUserInfo userInfo
+                    createModel |> Create.State.updateWalletState wallet
             in
             ( CreateModel newCreateModel
             , Cmd.map CreateMsg createCmd
             )
 
-        QuickCreateModel quickCreateModel ->
-            let
-                ( newQuickCreateModel, quickCreateCmd ) =
-                    quickCreateModel |> QuickCreate.State.updateUserInfo userInfo
-            in
-            ( QuickCreateModel newQuickCreateModel
-            , Cmd.map QuickCreateMsg quickCreateCmd
-            )
-
+        -- QuickCreateModel quickCreateModel ->
+        --     let
+        --         ( newQuickCreateModel, quickCreateCmd ) =
+        --             quickCreateModel |> QuickCreate.State.updateWalletState wallet
+        --     in
+        --     ( QuickCreateModel newQuickCreateModel
+        --     , Cmd.map QuickCreateMsg quickCreateCmd
+        --     )
         TradeModel tradeModel ->
             let
                 ( newTradeModel, tradeCmd ) =
-                    tradeModel |> Trade.State.updateUserInfo userInfo
+                    tradeModel |> Trade.State.updateWalletState wallet
             in
             ( TradeModel newTradeModel
             , Cmd.map TradeMsg tradeCmd
             )
 
         MarketplaceModel marketplaceModel ->
-            ( MarketplaceModel (marketplaceModel |> Marketplace.State.updateUserInfo userInfo)
+            ( MarketplaceModel (marketplaceModel |> Marketplace.State.updateWalletState wallet)
             , Cmd.none
             )
 
         AgentHistoryModel agentHistoryModel ->
-            ( AgentHistoryModel (agentHistoryModel |> AgentHistory.State.updateUserInfo userInfo)
+            ( AgentHistoryModel (agentHistoryModel |> AgentHistory.State.updateWalletState wallet)
             , Cmd.none
-            )
-
-
-updateSubmodelWeb3Context : EthHelpers.Web3Context -> Submodel -> ( Submodel, Cmd Msg, Maybe Routing.Route )
-updateSubmodelWeb3Context newWeb3Context submodel =
-    case submodel of
-        BetaLandingPage ->
-            ( submodel, Cmd.none, Nothing )
-
-        CreateModel createModel ->
-            ( CreateModel (createModel |> Create.State.updateWeb3Context newWeb3Context)
-            , Cmd.none
-            , Nothing
-            )
-
-        QuickCreateModel quickCreateModel ->
-            ( QuickCreateModel (quickCreateModel |> QuickCreate.State.updateWeb3Context newWeb3Context)
-            , Cmd.none
-            , Nothing
-            )
-
-        TradeModel tradeModel ->
-            -- Doesn't make sense to look at the same trade on a new network
-            -- so just redirect to marketplace
-            ( submodel
-            , Cmd.none
-            , Just <| Routing.Marketplace Buyer
-            )
-
-        MarketplaceModel marketplaceModel ->
-            ( MarketplaceModel (marketplaceModel |> Marketplace.State.updateWeb3Context newWeb3Context)
-            , Cmd.none
-            , Nothing
-            )
-
-        AgentHistoryModel agentHistoryModel ->
-            ( AgentHistoryModel (agentHistoryModel |> AgentHistory.State.updateWeb3Context newWeb3Context)
-            , Cmd.none
-            , Nothing
             )
 
 
@@ -743,10 +709,14 @@ subscriptions model =
     Sub.batch
         ([ Time.every 1000 Tick
          , walletSentryPort (WalletSentry.decodeToMsg failedWalletDecodeToMsg WalletStatus)
-         , TxSentry.listen model.txSentry
+         , Maybe.map TxSentry.listen model.txSentry
+            |> Maybe.withDefault Sub.none
          , userPubkeyResult UserPubkeySet
-         , Sub.map TradeCacheMsg <| TradeCache.subscriptions model.tradeCache
-         , networkSentryPort NetworkUpdate
+         , model.tradeCaches
+            |> List.map TradeCache.subscriptions
+            |> List.indexedMap
+                (\tcId sub -> Sub.map (TradeCacheMsg tcId) sub)
+            |> Sub.batch
          ]
             ++ [ submodelSubscriptions model ]
         )
@@ -761,9 +731,8 @@ submodelSubscriptions model =
         CreateModel createModel ->
             Sub.map CreateMsg <| Create.State.subscriptions createModel
 
-        QuickCreateModel quickCreateModel ->
-            Sub.map QuickCreateMsg <| QuickCreate.State.subscriptions quickCreateModel
-
+        -- QuickCreateModel quickCreateModel ->
+        --     Sub.map QuickCreateMsg <| QuickCreate.State.subscriptions quickCreateModel
         TradeModel tradeModel ->
             Sub.map TradeMsg <| Trade.State.subscriptions tradeModel
 
@@ -775,9 +744,6 @@ submodelSubscriptions model =
 
 
 port walletSentryPort : (Json.Decode.Value -> msg) -> Sub msg
-
-
-port networkSentryPort : (Json.Decode.Value -> msg) -> Sub msg
 
 
 port connectToWeb3 : () -> Cmd msg

@@ -847,7 +847,7 @@ daiSymbolAndLabel factoryType =
             , Element.Font.medium
             , Element.Font.color currencyLabelColor
             ]
-            (Element.text <| Config.tokenUnitName factoryType)
+            (Element.text <| tokenUnitName factoryType)
         ]
 
 

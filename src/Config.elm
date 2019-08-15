@@ -1,4 +1,4 @@
-module Config exposing (devFeeAddress, factoryAddress, tokenContractAddress, tokenDecimals, tokenUnitName)
+module Config exposing (activeFactories, devFeeAddress, factoryAddress, tokenContractAddress, tokenDecimals)
 
 import CommonTypes exposing (..)
 import Eth.Net
@@ -10,23 +10,11 @@ tokenDecimals =
     18
 
 
-tokenUnitName : FactoryType -> String
-tokenUnitName factoryType =
-    case factoryType of
-        Token EthDai ->
-            "Dai"
-
-        Token KovanDai ->
-            "Dai"
-
-        Native Eth ->
-            "ETH"
-
-        Native Kovan ->
-            "ETH"
-
-        Native XDai ->
-            "xDai"
+activeFactories : List FactoryType
+activeFactories =
+    [ Token EthDai
+    , Native XDai
+    ]
 
 
 tokenContractAddress : TokenFactoryType -> Address

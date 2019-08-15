@@ -12,11 +12,11 @@ import Url.Parser exposing ((</>), (<?>), Parser)
 
 type Route
     = Home
-    | QuickCreate
+      -- | QuickCreate
     | Create
-    | Trade Int
-    | Marketplace BuyerOrSeller
-    | AgentHistory Address BuyerOrSeller
+    | Trade FactoryType Int
+    | Marketplace
+    | AgentHistory Address
     | NotFound
 
 
@@ -25,12 +25,13 @@ routeParser =
     Url.Parser.s "DAIHard"
         </> Url.Parser.oneOf
                 [ Url.Parser.map Home Url.Parser.top
-                , Url.Parser.map QuickCreate (Url.Parser.s "quickcreate")
+
+                -- , Url.Parser.map QuickCreate (Url.Parser.s "quickcreate")
                 , Url.Parser.map Create (Url.Parser.s "create")
-                , Url.Parser.map Trade (Url.Parser.s "trade" </> Url.Parser.int)
-                , Url.Parser.map Marketplace (Url.Parser.s "marketplace" </> buyerOrSellerParser)
-                , Url.Parser.map AgentHistory (Url.Parser.s "history" </> addressParser </> buyerOrSellerParser)
-                , Url.Parser.map (\address -> AgentHistory address Seller) (Url.Parser.s "history" </> addressParser)
+                , Url.Parser.map Trade (Url.Parser.s "trade" </> factoryParser </> Url.Parser.int)
+                , Url.Parser.map Marketplace (Url.Parser.s "marketplace")
+                , Url.Parser.map AgentHistory (Url.Parser.s "history" </> addressParser)
+                , Url.Parser.map (\address -> AgentHistory address) (Url.Parser.s "history" </> addressParser)
                 ]
 
 
@@ -39,6 +40,51 @@ addressParser =
     Url.Parser.custom
         "ADDRESS"
         (Eth.Utils.toAddress >> Result.toMaybe)
+
+
+factoryParser : Parser (FactoryType -> a) a
+factoryParser =
+    Url.Parser.custom
+        "FACTORY"
+        (\s ->
+            case s of
+                "eth" ->
+                    Just <| Native Eth
+
+                "keth" ->
+                    Just <| Native Kovan
+
+                "dai" ->
+                    Just <| Token EthDai
+
+                "kdai" ->
+                    Just <| Token KovanDai
+
+                "xdai" ->
+                    Just <| Native XDai
+
+                _ ->
+                    Nothing
+        )
+
+
+factoryToString : FactoryType -> String
+factoryToString factory =
+    case factory of
+        Native Eth ->
+            "eth"
+
+        Native Kovan ->
+            "keth"
+
+        Token EthDai ->
+            "dai"
+
+        Token KovanDai ->
+            "kdai"
+
+        Native XDai ->
+            "xdai"
 
 
 buyerOrSellerParser : Parser (BuyerOrSeller -> a) a
@@ -79,31 +125,19 @@ routeToString route =
         Home ->
             Url.Builder.absolute [ "DAIHard" ] []
 
-        QuickCreate ->
-            Url.Builder.absolute [ "DAIHard", "quickcreate" ] []
-
+        -- QuickCreate ->
+        --     Url.Builder.absolute [ "DAIHard", "quickcreate" ] []
         Create ->
             Url.Builder.absolute [ "DAIHard", "create" ] []
 
-        Trade id ->
-            Url.Builder.absolute [ "DAIHard", "trade", String.fromInt id ] []
+        Trade factory id ->
+            Url.Builder.absolute [ "DAIHard", "trade", factoryToString factory, String.fromInt id ] []
 
-        Marketplace buyerOrSeller ->
-            Url.Builder.absolute [ "DAIHard", "marketplace", buyerOrSellerToString buyerOrSeller ] []
+        Marketplace ->
+            Url.Builder.absolute [ "DAIHard", "marketplace" ] []
 
-        AgentHistory address buyerOrSeller ->
-            Url.Builder.absolute
-                [ "DAIHard"
-                , "history"
-                , Eth.Utils.addressToString address
-                , case buyerOrSeller of
-                    Buyer ->
-                        "buyer"
-
-                    Seller ->
-                        "seller"
-                ]
-                []
+        AgentHistory address ->
+            Url.Builder.absolute [ "DAIHard", "history", Eth.Utils.addressToString address ] []
 
         NotFound ->
             Url.Builder.absolute [] []

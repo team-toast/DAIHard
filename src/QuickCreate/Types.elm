@@ -4,20 +4,21 @@ import AppCmd exposing (AppCmd)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
+import Eth.Net
 import Eth.Types exposing (Address, TxHash, TxReceipt)
 import FiatValue exposing (FiatValue)
-import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
-import Helpers.Eth as EthHelpers exposing (Web3Context)
+import ChainCmd exposing (ChainCmd)
+import Helpers.Eth as EthHelpers
 import Http
 import PaymentMethods exposing (PaymentMethod)
 import Routing
 import Time
 import TokenValue exposing (TokenValue)
+import Wallet
 
 
 type alias Model =
-    { web3Context : Web3Context
-    , userInfo : Maybe UserInfo
+    { wallet : Wallet.State
     , state : State
     , tokenAllowance : Maybe TokenValue
     , textInput : String
@@ -31,8 +32,8 @@ type State
 
 type MenuState
     = NoneStarted
-    | StartPrompt TradeRecipe
-    | ApproveNeedsSig TradeRecipe
+    | StartPrompt TokenFactoryType TradeRecipe
+    | ApproveNeedsSig TokenFactoryType TradeRecipe
 
 
 type SpecState
@@ -44,13 +45,13 @@ type SpecState
 
 type Msg
     = Refresh Time.Posix
-    | StartClicked TradeRecipe
-    | ApproveClicked TradeRecipe
-    | AllowanceFetched (Result Http.Error BigInt)
-    | OpenClicked UserInfo TradeRecipe
-    | ApproveSigned (Result String TxHash)
-    | OpenSigned (Result String TxHash)
-    | OpenMined (Result String TxReceipt)
+    | StartClicked FactoryType TradeRecipe
+    | ApproveClicked TokenFactoryType TradeRecipe
+    | AllowanceFetched TokenFactoryType (Result Http.Error BigInt)
+    | OpenClicked FactoryType UserInfo TradeRecipe
+    | ApproveSigned TokenFactoryType (Result String TxHash)
+    | OpenSigned FactoryType (Result String TxHash)
+    | OpenMined FactoryType (Result String TxReceipt)
     | TextInputChanged String
     | ChangeState State
     | AbortCreate

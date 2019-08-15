@@ -1,8 +1,9 @@
-port module Trade.State exposing (init, subscriptions, update, updateUserInfo)
+port module Trade.State exposing (init, initFromCached, subscriptions, update, updateWalletState)
 
 import AppCmd exposing (AppCmd)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
+import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
 import Config
 import Contracts.Generated.DAIHardNativeTrade as DHNT
@@ -17,8 +18,7 @@ import Eth.Sentry.Tx exposing (CustomSend)
 import Eth.Types exposing (Address)
 import Eth.Utils
 import Helpers.BigInt as BigIntHelpers
-import Helpers.ChainCmd as ChainCmd exposing (ChainCmd)
-import Helpers.Eth as EthHelpers exposing (Web3Context)
+import Helpers.Eth as EthHelpers
 import Http
 import Json.Decode
 import Json.Encode
@@ -35,58 +35,105 @@ import Trade.ChatHistory.State as ChatHistory
 import Trade.ChatHistory.Types as ChatHistory
 import Trade.Types exposing (..)
 import UserNotice as UN
+import Wallet
 
 
-init : EthHelpers.Web3Context -> Maybe UserInfo -> Int -> UpdateResult
-init web3Context userInfo tradeId =
+init : Wallet.State -> FactoryType -> Int -> UpdateResult
+init wallet factory tradeId =
     let
-        getCreationInfoCmd =
-            getContractCreationInfoCmd web3Context tradeId
+        creationInfoCmd =
+            getCreationInfoCmd factory tradeId
 
         ( eventSentry, eventSentryCmd ) =
-            EventSentry.init EventSentryMsg web3Context.httpProvider
+            initEventSentry factory
     in
     UpdateResult
-        { web3Context = web3Context
-        , userInfo = userInfo
-        , trade = CTypes.partialTradeInfo tradeId
-        , expandedPhase = CTypes.Open
-        , chatHistoryModel = Nothing
-        , showChatHistory = False
-        , showStatsModal = False
-        , eventsWaitingForChatHistory = []
-        , secureCommInfo = partialCommInfo
-        , eventSentry = eventSentry
-        , allowance = Nothing
-        , txChainStatus = Nothing
-        , blocknumOnInit = Nothing
-        }
+        (initModel (CTypes.partialTradeInfo factory tradeId) eventSentry wallet)
         (Cmd.batch
-            [ getCreationInfoCmd
+            [ creationInfoCmd
             , eventSentryCmd
-            , getBlockCmd web3Context
+            , getBlockCmd (EthHelpers.httpProviderForFactory factory)
             ]
         )
         ChainCmd.none
         [ AppCmd.RequestBrowserNotificationPermission ]
 
 
-getContractCreationInfoCmd : EthHelpers.Web3Context -> Int -> Cmd Msg
-getContractCreationInfoCmd web3Context id =
-    Contracts.Wrappers.getCreationInfoFromIdCmd web3Context (BigInt.fromInt id) CreationInfoFetched
+initFromCached : Wallet.State -> CTypes.FullTradeInfo -> UpdateResult
+initFromCached wallet trade =
+    let
+        ( eventSentry, eventSentryCmd, _ ) =
+            let
+                ( initialSentry, initialCmd ) =
+                    initEventSentry trade.factory
+            in
+            EventSentry.watch
+                EventLogFetched
+                initialSentry
+                { address = trade.creationInfo.address
+                , fromBlock = Eth.Types.BlockNum trade.creationInfo.blocknum
+                , toBlock = Eth.Types.LatestBlock
+                , topics = []
+                }
+                |> (\( a, b, c ) ->
+                        ( a
+                        , Cmd.batch [ initialCmd, b ]
+                        , c
+                        )
+                   )
+    in
+    UpdateResult
+        (initModel (CTypes.LoadedTrade trade) eventSentry wallet)
+        (Cmd.batch
+            [ eventSentryCmd
+            , getBlockCmd (EthHelpers.httpProviderForFactory trade.factory)
+            ]
+        )
+        ChainCmd.none
+        [ AppCmd.RequestBrowserNotificationPermission ]
 
 
-updateUserInfo : Maybe UserInfo -> Model -> ( Model, Cmd Msg )
-updateUserInfo userInfo model =
-    ( { model | userInfo = userInfo }
-    , case ( userInfo, model.trade, model.web3Context.factoryType ) of
-        ( Just uInfo, CTypes.LoadedTrade trade, Token tokenType ) ->
-            Contracts.Wrappers.getAllowanceCmd
-                model.web3Context
-                tokenType
-                uInfo.address
-                trade.creationInfo.address
-                AllowanceFetched
+initModel : CTypes.Trade -> EventSentry Msg -> Wallet.State -> Model
+initModel trade eventSentry wallet =
+    { wallet = wallet
+    , trade = trade
+    , expandedPhase = CTypes.Open
+    , chatHistoryModel = Nothing
+    , showChatHistory = False
+    , showStatsModal = False
+    , eventsWaitingForChatHistory = []
+    , secureCommInfo = partialCommInfo
+    , eventSentry = eventSentry
+    , allowance = Nothing
+    , txChainStatus = Nothing
+    , blocknumOnInit = Nothing
+    }
+
+
+initEventSentry : FactoryType -> ( EventSentry Msg, Cmd Msg )
+initEventSentry factory =
+    EventSentry.init EventSentryMsg (EthHelpers.httpProviderForFactory factory)
+
+
+getCreationInfoCmd : FactoryType -> Int -> Cmd Msg
+getCreationInfoCmd factoryType id =
+    Contracts.Wrappers.getCreationInfoFromIdCmd factoryType (BigInt.fromInt id) CreationInfoFetched
+
+
+updateWalletState : Wallet.State -> Model -> ( Model, Cmd Msg )
+updateWalletState wallet model =
+    ( { model | wallet = wallet }
+    , case ( Wallet.userInfo wallet, Wallet.factory wallet, model.trade ) of
+        ( Just uInfo, Just (Token tokenType), CTypes.LoadedTrade trade ) ->
+            if Wallet.factory wallet == Just trade.factory then
+                Contracts.Wrappers.getAllowanceCmd
+                    tokenType
+                    uInfo.address
+                    trade.creationInfo.address
+                    AllowanceFetched
+
+            else
+                Cmd.none
 
         _ ->
             Cmd.none
@@ -103,7 +150,7 @@ update msg prevModel =
                         CTypes.PartiallyLoadedTrade pInfo ->
                             case pInfo.creationInfo of
                                 Nothing ->
-                                    getContractCreationInfoCmd prevModel.web3Context pInfo.id
+                                    getCreationInfoCmd pInfo.factory pInfo.id
 
                                 _ ->
                                     Cmd.none
@@ -114,7 +161,7 @@ update msg prevModel =
                 ( newChatHistoryModel, shouldDecrypt, appCmds ) =
                     case prevModel.chatHistoryModel of
                         Nothing ->
-                            tryInitChatHistory prevModel.web3Context prevModel.trade prevModel.userInfo prevModel.blocknumOnInit prevModel.eventsWaitingForChatHistory
+                            tryInitChatHistory prevModel.wallet prevModel.trade prevModel.blocknumOnInit prevModel.eventsWaitingForChatHistory
 
                         _ ->
                             ( prevModel.chatHistoryModel, False, [] )
@@ -127,14 +174,17 @@ update msg prevModel =
                         Cmd.none
 
                 fetchAllowanceCmd =
-                    case ( prevModel.userInfo, prevModel.trade, prevModel.web3Context.factoryType ) of
-                        ( Just userInfo, CTypes.LoadedTrade trade, Token tokenType ) ->
-                            Contracts.Wrappers.getAllowanceCmd
-                                prevModel.web3Context
-                                tokenType
-                                userInfo.address
-                                trade.creationInfo.address
-                                AllowanceFetched
+                    case ( Wallet.userInfo prevModel.wallet, Wallet.factory prevModel.wallet, prevModel.trade ) of
+                        ( Just userInfo, Just (Token tokenType), CTypes.LoadedTrade trade ) ->
+                            if Wallet.factory prevModel.wallet == Just trade.factory then
+                                Contracts.Wrappers.getAllowanceCmd
+                                    tokenType
+                                    userInfo.address
+                                    trade.creationInfo.address
+                                    AllowanceFetched
+
+                            else
+                                Cmd.none
 
                         _ ->
                             Cmd.none
@@ -147,9 +197,10 @@ update msg prevModel =
                     UpdateResult
                         newModel
                         (Cmd.batch
-                            [ Contracts.Wrappers.getStateCmd prevModel.web3Context tradeInfo.creationInfo.address StateFetched
+                            [ Contracts.Wrappers.getStateCmd tradeInfo.factory tradeInfo.creationInfo.address StateFetched
                             , decryptCmd
-                            , fetchCreationInfoCmd
+
+                            -- , fetchCreationInfoCmd
                             , fetchAllowanceCmd
                             ]
                         )
@@ -183,12 +234,12 @@ update msg prevModel =
                                 | allowance = Just allowance
                             }
                     in
-                    case ( newModel.txChainStatus, newModel.trade, newModel.userInfo ) of
-                        ( Just (ApproveMining _), CTypes.LoadedTrade trade, Just userInfo ) ->
+                    case ( newModel.txChainStatus, newModel.trade, newModel.wallet ) of
+                        ( Just (ApproveMining _), CTypes.LoadedTrade trade, Wallet.Active userInfo ) ->
                             if BigInt.compare allowance (CTypes.responderDeposit trade.parameters |> TokenValue.getEvmValue) /= LT then
                                 let
                                     ( txChainStatus, chainCmd ) =
-                                        initiateCommitCall prevModel.web3Context trade userInfo.address userInfo.commPubkey
+                                        initiateCommitCall trade userInfo.address userInfo.commPubkey
                                 in
                                 UpdateResult
                                     { newModel | txChainStatus = txChainStatus }
@@ -213,11 +264,11 @@ update msg prevModel =
 
         CreationInfoFetched fetchResult ->
             case fetchResult of
-                Ok createdSell ->
+                Ok createdTrade ->
                     let
                         newCreationInfo =
-                            { address = createdSell.address_
-                            , blocknum = BigIntHelpers.toIntWithWarning createdSell.blocknum
+                            { address = createdTrade.address_
+                            , blocknum = BigIntHelpers.toIntWithWarning createdTrade.blocknum
                             }
 
                         ( newSentry, sentryCmd, _ ) =
@@ -236,10 +287,14 @@ update msg prevModel =
                                 , eventSentry = newSentry
                             }
 
+                        factory =
+                            CTypes.tradeFactory newModel.trade
+                                |> Maybe.withDefault Wallet.defaultFactory
+
                         cmd =
                             Cmd.batch
                                 [ sentryCmd
-                                , Contracts.Wrappers.getParametersStateAndPhaseInfoCmd newModel.web3Context newCreationInfo.address ParametersFetched StateFetched PhaseInfoFetched
+                                , Contracts.Wrappers.getParametersStateAndPhaseInfoCmd factory newCreationInfo.address ParametersFetched StateFetched PhaseInfoFetched
                                 ]
                     in
                     UpdateResult
@@ -323,7 +378,9 @@ update msg prevModel =
 
                     else
                         UpdateResult
-                            prevModel
+                            { prevModel
+                                | trade = CTypes.Invalid
+                            }
                             Cmd.none
                             ChainCmd.none
                             [ AppCmd.UserNotice UN.tradeParametersNotDefault ]
@@ -420,44 +477,49 @@ update msg prevModel =
                                 _ ->
                                     prevModel.secureCommInfo
 
-                        ( newChatHistoryModel, shouldDecrypt, appCmds ) =
+                        ( maybeChatHistoryModel, firstShouldDecrypt, firstAppCmds ) =
                             case prevModel.chatHistoryModel of
                                 Just prevChatHistoryModel ->
-                                    ChatHistory.handleNewEvent
+                                    ( Just prevChatHistoryModel, False, [] )
+
+                                Nothing ->
+                                    tryInitChatHistory prevModel.wallet newTrade prevModel.blocknumOnInit prevModel.eventsWaitingForChatHistory
+
+                        ( ( updatedChatHistory, finalShouldDecrypt, finalAppCmds ), newEventsWaitingForChatHistory ) =
+                            case maybeChatHistoryModel of
+                                Just chatHistoryModel ->
+                                    ( ChatHistory.handleNewEvent
                                         decodedEventLog.blockNumber
                                         event
-                                        prevChatHistoryModel
+                                        chatHistoryModel
                                         |> (\( chModel, shouldDecrypt_, appCmds_ ) ->
                                                 ( Just chModel
-                                                , shouldDecrypt_
-                                                , appCmds_ |> List.map (AppCmd.map ChatHistoryMsg)
+                                                , shouldDecrypt_ || firstShouldDecrypt
+                                                , List.append
+                                                    firstAppCmds
+                                                    (List.map (AppCmd.map ChatHistoryMsg) appCmds_)
                                                 )
                                            )
+                                    , []
+                                    )
 
                                 Nothing ->
-                                    -- chat is uninitialized; initialize if we can
-                                    tryInitChatHistory prevModel.web3Context newTrade prevModel.userInfo prevModel.blocknumOnInit prevModel.eventsWaitingForChatHistory
-
-                        eventsToSave =
-                            case newChatHistoryModel of
-                                Nothing ->
-                                    List.append
+                                    ( ( Nothing, False, firstAppCmds )
+                                    , List.append
                                         prevModel.eventsWaitingForChatHistory
                                         [ ( decodedEventLog.blockNumber, event ) ]
-
-                                Just _ ->
-                                    []
+                                    )
 
                         newModel =
                             { prevModel
                                 | trade = newTrade
-                                , chatHistoryModel = newChatHistoryModel
+                                , chatHistoryModel = updatedChatHistory
                                 , secureCommInfo = newSecureCommInfo
-                                , eventsWaitingForChatHistory = eventsToSave
+                                , eventsWaitingForChatHistory = newEventsWaitingForChatHistory
                             }
 
                         cmd =
-                            if shouldDecrypt then
+                            if finalShouldDecrypt then
                                 tryBuildDecryptCmd newModel
 
                             else
@@ -472,7 +534,7 @@ update msg prevModel =
                                 |> Maybe.Extra.values
                                 |> List.map AppCmd.UserNotice
                             )
-                            appCmds
+                            finalAppCmds
                         )
 
         ExpandPhase phase ->
@@ -507,7 +569,7 @@ update msg prevModel =
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.GotoRoute (Routing.AgentHistory trade.parameters.initiatorAddress asRole) ]
+                        [ AppCmd.GotoRoute (Routing.AgentHistory trade.parameters.initiatorAddress) ]
 
                 _ ->
                     UpdateResult
@@ -519,7 +581,7 @@ update msg prevModel =
                         ]
 
         CommitClicked trade userInfo depositAmount ->
-            justModelUpdate { prevModel | txChainStatus = Just <| ConfirmingCommit trade userInfo depositAmount }
+            justModelUpdate { prevModel | txChainStatus = Just <| ConfirmingCommit userInfo depositAmount }
 
         AbortAction ->
             justModelUpdate { prevModel | txChainStatus = Nothing }
@@ -527,9 +589,9 @@ update msg prevModel =
         ConfirmCommit trade userInfo depositAmount ->
             let
                 ( txChainStatus, chainCmd ) =
-                    case prevModel.web3Context.factoryType of
+                    case trade.factory of
                         Native _ ->
-                            initiateCommitCall prevModel.web3Context trade userInfo.address userInfo.commPubkey
+                            initiateCommitCall trade userInfo.address userInfo.commPubkey
 
                         Token tokenType ->
                             let
@@ -553,7 +615,7 @@ update msg prevModel =
                             case prevModel.allowance of
                                 Just allowance ->
                                     if BigInt.compare allowance (CTypes.responderDeposit trade.parameters |> TokenValue.getEvmValue) /= LT then
-                                        initiateCommitCall prevModel.web3Context trade userInfo.address userInfo.commPubkey
+                                        initiateCommitCall trade userInfo.address userInfo.commPubkey
 
                                     else
                                         ( Just ApproveNeedsSig, approveChainCmd )
@@ -795,8 +857,8 @@ update msg prevModel =
                     decodeEncryptionResult encryptedMessagesValue
                         |> Result.andThen encodeEncryptedMessages
             in
-            case ( prevModel.userInfo, prevModel.trade, encodedEncryptionMessages ) of
-                ( Just userInfo, CTypes.LoadedTrade tradeInfo, Ok encodedEncryptedMessages ) ->
+            case ( prevModel.wallet, prevModel.trade, encodedEncryptionMessages ) of
+                ( Wallet.Active userInfo, CTypes.LoadedTrade tradeInfo, Ok encodedEncryptedMessages ) ->
                     case CTypes.getInitiatorOrResponder tradeInfo userInfo.address of
                         Nothing ->
                             UpdateResult
@@ -869,11 +931,11 @@ update msg prevModel =
                 [ AppCmd.Web3Connect ]
 
 
-initiateCommitCall : EthHelpers.Web3Context -> CTypes.FullTradeInfo -> Address -> String -> ( Maybe TxChainStatus, ChainCmd Msg )
-initiateCommitCall web3Context trade userAddress commPubkey =
+initiateCommitCall : CTypes.FullTradeInfo -> Address -> String -> ( Maybe TxChainStatus, ChainCmd Msg )
+initiateCommitCall trade userAddress commPubkey =
     let
         commitConstructor =
-            case web3Context.factoryType of
+            case trade.factory of
                 Token _ ->
                     DHT.commit
 
@@ -882,7 +944,7 @@ initiateCommitCall web3Context trade userAddress commPubkey =
 
         txParams =
             commitConstructor trade.creationInfo.address userAddress commPubkey
-                |> (case web3Context.factoryType of
+                |> (case trade.factory of
                         Token _ ->
                             identity
 
@@ -902,9 +964,9 @@ initiateCommitCall web3Context trade userAddress commPubkey =
     )
 
 
-tryInitChatHistory : Web3Context -> CTypes.Trade -> Maybe UserInfo -> Maybe Int -> List ( Int, CTypes.DAIHardEvent ) -> ( Maybe ChatHistory.Model, Bool, List (AppCmd Msg) )
-tryInitChatHistory web3Context maybeTrade maybeUserInfo maybeCurrentBlocknum pendingEvents =
-    case ( maybeTrade, maybeUserInfo, maybeCurrentBlocknum ) of
+tryInitChatHistory : Wallet.State -> CTypes.Trade -> Maybe Int -> List ( Int, CTypes.DAIHardEvent ) -> ( Maybe ChatHistory.Model, Bool, List (AppCmd Msg) )
+tryInitChatHistory wallet maybeTrade maybeCurrentBlocknum pendingEvents =
+    case ( maybeTrade, Wallet.userInfo wallet, maybeCurrentBlocknum ) of
         ( CTypes.LoadedTrade tradeInfo, Just userInfo, Just blocknum ) ->
             let
                 maybeBuyerOrSeller =
@@ -913,10 +975,9 @@ tryInitChatHistory web3Context maybeTrade maybeUserInfo maybeCurrentBlocknum pen
             case maybeBuyerOrSeller of
                 Just buyerOrSeller ->
                     ChatHistory.init
-                        web3Context
-                        userInfo
+                        wallet
                         buyerOrSeller
-                        tradeInfo.parameters.initiatorRole
+                        tradeInfo
                         pendingEvents
                         blocknum
                         |> (\( chModel, shouldDecrypt, appCmds ) ->
@@ -946,7 +1007,7 @@ tryBuildDecryptCmd model =
                     _ ->
                         Nothing
                 )
-                (model.userInfo
+                (Wallet.userInfo model.wallet
                     |> Maybe.map (\i -> i.address)
                 )
                 |> Maybe.Extra.join
@@ -990,9 +1051,9 @@ decryptNewMessagesCmd model userRole =
         |> Cmd.batch
 
 
-getBlockCmd : EthHelpers.Web3Context -> Cmd Msg
-getBlockCmd web3Context =
-    Eth.getBlockNumber web3Context.httpProvider
+getBlockCmd : Eth.Types.HttpProvider -> Cmd Msg
+getBlockCmd httpProvider =
+    Eth.getBlockNumber httpProvider
         |> Task.attempt CurrentBlockFetched
 
 
