@@ -475,44 +475,49 @@ update msg prevModel =
                                 _ ->
                                     prevModel.secureCommInfo
 
-                        ( newChatHistoryModel, shouldDecrypt, appCmds ) =
+                        ( maybeChatHistoryModel, firstShouldDecrypt, firstAppCmds ) =
                             case prevModel.chatHistoryModel of
                                 Just prevChatHistoryModel ->
-                                    ChatHistory.handleNewEvent
-                                        decodedEventLog.blockNumber
-                                        event
-                                        prevChatHistoryModel
-                                        |> (\( chModel, shouldDecrypt_, appCmds_ ) ->
-                                                ( Just chModel
-                                                , shouldDecrypt_
-                                                , appCmds_ |> List.map (AppCmd.map ChatHistoryMsg)
-                                                )
-                                           )
+                                    ( Just prevChatHistoryModel, False, [] )
 
                                 Nothing ->
-                                    -- chat is uninitialized; initialize if we can
                                     tryInitChatHistory prevModel.wallet newTrade prevModel.blocknumOnInit prevModel.eventsWaitingForChatHistory
 
-                        eventsToSave =
-                            case newChatHistoryModel of
+                        ( ( updatedChatHistory, finalShouldDecrypt, finalAppCmds ), newEventsWaitingForChatHistory ) =
+                            case maybeChatHistoryModel of
+                                Just chatHistoryModel ->
+                                    ( ChatHistory.handleNewEvent
+                                        decodedEventLog.blockNumber
+                                        event
+                                        chatHistoryModel
+                                        |> (\( chModel, shouldDecrypt_, appCmds_ ) ->
+                                                ( Just chModel
+                                                , shouldDecrypt_ || firstShouldDecrypt
+                                                , List.append
+                                                    firstAppCmds
+                                                    (List.map (AppCmd.map ChatHistoryMsg) appCmds_)
+                                                )
+                                           )
+                                    , []
+                                    )
+
                                 Nothing ->
-                                    List.append
+                                    ( ( Nothing, False, firstAppCmds )
+                                    , List.append
                                         prevModel.eventsWaitingForChatHistory
                                         [ ( decodedEventLog.blockNumber, event ) ]
-
-                                Just _ ->
-                                    []
+                                    )
 
                         newModel =
                             { prevModel
                                 | trade = newTrade
-                                , chatHistoryModel = newChatHistoryModel
+                                , chatHistoryModel = updatedChatHistory
                                 , secureCommInfo = newSecureCommInfo
-                                , eventsWaitingForChatHistory = eventsToSave
+                                , eventsWaitingForChatHistory = newEventsWaitingForChatHistory
                             }
 
                         cmd =
-                            if shouldDecrypt then
+                            if finalShouldDecrypt then
                                 tryBuildDecryptCmd newModel
 
                             else
@@ -527,7 +532,7 @@ update msg prevModel =
                                 |> Maybe.Extra.values
                                 |> List.map AppCmd.UserNotice
                             )
-                            appCmds
+                            finalAppCmds
                         )
 
         ExpandPhase phase ->
