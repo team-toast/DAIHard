@@ -1,4 +1,4 @@
-module CommonTypes exposing (BuyerOrSeller(..), FactoryType(..), GTagData, InitiatorOrResponder(..), NativeFactoryType(..), TokenFactoryType(..), UserInfo, buyerOrSellerToString, factoryName, tokenUnitName)
+module CommonTypes exposing (BuyerOrSeller(..), FactoryType(..), GTagData, InitiatorOrResponder(..), NativeFactoryType(..), TokenFactoryType(..), UserInfo, buyerOrSellerToString, factoryName, networkNameForFactory, tokenUnitName)
 
 import Eth.Net
 import Eth.Types exposing (Address)
@@ -90,6 +90,25 @@ tokenUnitName factoryType =
 
         Native Kovan ->
             "ETH"
+
+        Native XDai ->
+            "xDai"
+
+
+networkNameForFactory : FactoryType -> String
+networkNameForFactory factoryType =
+    case factoryType of
+        Token EthDai ->
+            "Ethereum"
+
+        Native Eth ->
+            "Ethereum"
+
+        Token KovanDai ->
+            "Kovan"
+
+        Native Kovan ->
+            "Kovan"
 
         Native XDai ->
             "xDai"
