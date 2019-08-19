@@ -14,6 +14,7 @@ import Element.Border
 import Element.Events
 import Element.Font
 import Element.Input
+import Eth.Net
 import Eth.Types exposing (Address)
 import Eth.Utils
 import FiatValue exposing (FiatValue)
@@ -1210,51 +1211,64 @@ actionButtonsElement : Time.Posix -> FullTradeInfo -> Wallet.State -> Element Ms
 actionButtonsElement currentTime trade wallet =
     case Wallet.userInfo wallet of
         Just userInfo ->
-            case CTypes.getCurrentPhaseTimeoutInfo currentTime trade of
-                CTypes.TimeUp _ ->
-                    Element.none
+            if Wallet.networkForFactory trade.factory /= userInfo.network then
+                Element.paragraph
+                    [ Element.Font.size 18
+                    , Element.Font.italic
+                    , Element.Font.color EH.darkGray
+                    ]
+                    [ Element.text <|
+                        "You must connect to the "
+                            ++ networkNameForFactory trade.factory
+                            ++ " network to interact with this trade."
+                    ]
 
-                CTypes.TimeLeft _ ->
-                    Element.row
-                        [ Element.spacing 8 ]
-                        (case
-                            ( trade.state.phase
-                            , CTypes.getInitiatorOrResponder trade userInfo.address
-                            , CTypes.getBuyerOrSeller trade userInfo.address
+            else
+                case CTypes.getCurrentPhaseTimeoutInfo currentTime trade of
+                    CTypes.TimeUp _ ->
+                        Element.none
+
+                    CTypes.TimeLeft _ ->
+                        Element.row
+                            [ Element.spacing 8 ]
+                            (case
+                                ( trade.state.phase
+                                , CTypes.getInitiatorOrResponder trade userInfo.address
+                                , CTypes.getBuyerOrSeller trade userInfo.address
+                                )
+                             of
+                                ( CTypes.Open, Just Initiator, _ ) ->
+                                    [ Element.map StartContractAction <| EH.blueButton "Remove and Refund this Trade" Recall ]
+
+                                ( CTypes.Open, Nothing, _ ) ->
+                                    let
+                                        depositAmount =
+                                            CTypes.responderDeposit trade.parameters
+                                                |> TokenValue.getEvmValue
+                                    in
+                                    [ EH.redButton "Deposit and Commit to Trade" <| CommitClicked trade userInfo depositAmount ]
+
+                                ( CTypes.Committed, _, Just Buyer ) ->
+                                    [ Element.map ContractActionClicked <| EH.orangeButton "Abort Trade" Abort
+                                    , Element.map ContractActionClicked <| EH.redButton "Confirm Payment" Claim
+                                    , chatHistoryButton
+                                    ]
+
+                                ( CTypes.Committed, _, Just Seller ) ->
+                                    [ chatHistoryButton ]
+
+                                ( CTypes.Judgment, _, Just Seller ) ->
+                                    [ Element.map ContractActionClicked <| EH.redButton "Burn it All!" Burn
+                                    , Element.map ContractActionClicked <| EH.blueButton "Release Everything" Release
+                                    , chatHistoryButton
+                                    ]
+
+                                ( CTypes.Judgment, _, Just Buyer ) ->
+                                    [ chatHistoryButton ]
+
+                                _ ->
+                                    []
                             )
-                         of
-                            ( CTypes.Open, Just Initiator, _ ) ->
-                                [ Element.map StartContractAction <| EH.blueButton "Remove and Refund this Trade" Recall ]
-
-                            ( CTypes.Open, Nothing, _ ) ->
-                                let
-                                    depositAmount =
-                                        CTypes.responderDeposit trade.parameters
-                                            |> TokenValue.getEvmValue
-                                in
-                                [ EH.redButton "Deposit and Commit to Trade" <| CommitClicked trade userInfo depositAmount ]
-
-                            ( CTypes.Committed, _, Just Buyer ) ->
-                                [ Element.map ContractActionClicked <| EH.orangeButton "Abort Trade" Abort
-                                , Element.map ContractActionClicked <| EH.redButton "Confirm Payment" Claim
-                                , chatHistoryButton
-                                ]
-
-                            ( CTypes.Committed, _, Just Seller ) ->
-                                [ chatHistoryButton ]
-
-                            ( CTypes.Judgment, _, Just Seller ) ->
-                                [ Element.map ContractActionClicked <| EH.redButton "Burn it All!" Burn
-                                , Element.map ContractActionClicked <| EH.blueButton "Release Everything" Release
-                                , chatHistoryButton
-                                ]
-
-                            ( CTypes.Judgment, _, Just Buyer ) ->
-                                [ chatHistoryButton ]
-
-                            _ ->
-                                []
-                        )
 
         Nothing ->
             EH.redButton "Connect to Wallet" Web3Connect
