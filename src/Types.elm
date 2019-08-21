@@ -1,7 +1,5 @@
 module Types exposing (Flags, Model, Msg(..), Submodel(..))
 
--- import QuickCreate.Types
-
 import AgentHistory.Types
 import AppCmd
 import Array exposing (Array)
@@ -10,6 +8,7 @@ import Browser
 import Browser.Navigation
 import CommonTypes exposing (..)
 import Create.Types
+import CryptoSwap.Types
 import Eth.Net
 import Eth.Sentry.Tx as TxSentry exposing (TxSentry)
 import Eth.Sentry.Wallet as WalletSentry exposing (WalletSentry)
@@ -49,7 +48,7 @@ type alias Model =
 type Submodel
     = BetaLandingPage
     | CreateModel Create.Types.Model
-      -- | QuickCreateModel QuickCreate.Types.Model
+    | CryptoSwapModel CryptoSwap.Types.Model
     | TradeModel Trade.Types.Model
     | MarketplaceModel Marketplace.Types.Model
     | AgentHistoryModel AgentHistory.Types.Model
@@ -66,7 +65,7 @@ type Msg
     | TxSentryMsg TxSentry.Msg
     | UserPubkeySet Json.Decode.Value
     | CreateMsg Create.Types.Msg
-      -- | QuickCreateMsg QuickCreate.Types.Msg
+    | CryptoSwapMsg CryptoSwap.Types.Msg
     | TradeCacheMsg Int TradeCache.Msg
     | TradeMsg Trade.Types.Msg
     | MarketplaceMsg Marketplace.Types.Msg

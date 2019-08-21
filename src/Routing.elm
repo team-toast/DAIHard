@@ -12,7 +12,7 @@ import Url.Parser exposing ((</>), (<?>), Parser)
 
 type Route
     = Home
-      -- | QuickCreate
+    | CryptoSwap
     | Create
     | Trade FactoryType Int
     | Marketplace
@@ -25,8 +25,7 @@ routeParser =
     Url.Parser.s "DAIHard"
         </> Url.Parser.oneOf
                 [ Url.Parser.map Home Url.Parser.top
-
-                -- , Url.Parser.map QuickCreate (Url.Parser.s "quickcreate")
+                , Url.Parser.map CryptoSwap (Url.Parser.s "cryptoswap")
                 , Url.Parser.map Create (Url.Parser.s "create")
                 , Url.Parser.map Trade (Url.Parser.s "trade" </> factoryParser </> Url.Parser.int)
                 , Url.Parser.map Marketplace (Url.Parser.s "marketplace")
@@ -125,8 +124,9 @@ routeToString route =
         Home ->
             Url.Builder.absolute [ "DAIHard" ] []
 
-        -- QuickCreate ->
-        --     Url.Builder.absolute [ "DAIHard", "quickcreate" ] []
+        CryptoSwap ->
+            Url.Builder.absolute [ "DAIHard", "cryptoswap" ] []
+
         Create ->
             Url.Builder.absolute [ "DAIHard", "create" ] []
 

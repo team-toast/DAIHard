@@ -83,13 +83,13 @@ tokenUnitName factoryType =
             "Dai"
 
         Token KovanDai ->
-            "Dai"
+            "(k)Dai"
 
         Native Eth ->
             "ETH"
 
         Native Kovan ->
-            "ETH"
+            "(k)ETH"
 
         Native XDai ->
             "xDai"

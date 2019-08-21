@@ -1,13 +1,12 @@
 module View exposing (root)
 
--- import QuickCreate.View
-
 import AgentHistory.View
 import Browser
 import CommonTypes exposing (..)
 import Config
 import Contracts.Types as CTypes
 import Create.View
+import CryptoSwap.View
 import Dict
 import Element exposing (Attribute, Element)
 import Element.Background
@@ -339,10 +338,12 @@ submodelElementAndModal screenWidth model =
                     , []
                     )
 
-                -- QuickCreateModel quickCreateModel ->
-                --     QuickCreate.View.root quickCreateModel
-                --             (Element.map QuickCreateMsg)
-                --             (List.map (Element.map QuickCreateMsg))
+                CryptoSwapModel cryptoSwapModel ->
+                    CryptoSwap.View.root cryptoSwapModel
+                        |> Tuple.mapBoth
+                            (Element.map CryptoSwapMsg)
+                            (List.map (Element.map CryptoSwapMsg))
+
                 TradeModel tradeModel ->
                     Trade.View.root screenWidth model.time model.tradeCaches tradeModel
                         |> Tuple.mapBoth

@@ -1,6 +1,6 @@
 port module State exposing (init, subscriptions, update)
 
--- import QuickCreate.State
+-- import CryptoSwap.State
 
 import AgentHistory.State
 import AppCmd
@@ -14,6 +14,8 @@ import CommonTypes exposing (..)
 import Config
 import Contracts.Types as CTypes
 import Create.State
+import CryptoSwap.State
+import CryptoSwap.Types as CryptoSwap
 import Element
 import Eth.Net
 import Eth.Sentry.Tx as TxSentry
@@ -322,30 +324,33 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        -- QuickCreateMsg quickCreateMsg ->
-        --     case model.submodel of
-        --         QuickCreateModel quickCreateModel ->
-        --             let
-        --                 updateResult =
-        --                     QuickCreate.State.update quickCreateMsg quickCreateModel
-        --                 ( newTxSentry, chainCmd, userNotices ) =
-        --                     ChainCmd.execute model.txSentry (ChainCmd.map QuickCreateMsg updateResult.chainCmd)
-        --             in
-        --             ( { model
-        --                 | submodel = QuickCreateModel updateResult.model
-        --                 , txSentry = newTxSentry
-        --               }
-        --             , Cmd.batch
-        --                 [ Cmd.map QuickCreateMsg updateResult.cmd
-        --                 , chainCmd
-        --                 ]
-        --             )
-        --                 |> runAppCmds
-        --                     (AppCmd.mapList QuickCreateMsg updateResult.appCmds
-        --                         ++ List.map AppCmd.UserNotice userNotices
-        --                     )
-        --         _ ->
-        --             ( model, Cmd.none )
+        CryptoSwapMsg cryptoSwapMsg ->
+            case model.submodel of
+                CryptoSwapModel cryptoSwapModel ->
+                    let
+                        updateResult =
+                            CryptoSwap.State.update cryptoSwapMsg cryptoSwapModel
+
+                        ( newTxSentry, chainCmd, userNotices ) =
+                            ChainCmd.execute model.txSentry (ChainCmd.map CryptoSwapMsg updateResult.chainCmd)
+                    in
+                    ( { model
+                        | submodel = CryptoSwapModel updateResult.model
+                        , txSentry = newTxSentry
+                      }
+                    , Cmd.batch
+                        [ Cmd.map CryptoSwapMsg updateResult.cmd
+                        , chainCmd
+                        ]
+                    )
+                        |> runAppCmds
+                            (AppCmd.mapList CryptoSwapMsg updateResult.appCmds
+                                ++ List.map AppCmd.UserNotice userNotices
+                            )
+
+                _ ->
+                    ( model, Cmd.none )
+
         TradeMsg tradeMsg ->
             case model.submodel of
                 TradeModel tradeModel ->
@@ -567,26 +572,28 @@ gotoRoute oldModel route =
                         ++ List.map AppCmd.UserNotice userNotices
                     )
 
-        -- Routing.QuickCreate ->
-        --     let
-        --         updateResult =
-        --             QuickCreate.State.init oldModel.wallet
-        --         ( newTxSentry, chainCmd, userNotices ) =
-        --             ChainCmd.execute oldModel.txSentry (ChainCmd.map QuickCreateMsg updateResult.chainCmd)
-        --     in
-        --     ( { oldModel
-        --         | submodel = QuickCreateModel updateResult.model
-        --         , txSentry = newTxSentry
-        --       }
-        --     , Cmd.batch
-        --         [ Cmd.map QuickCreateMsg updateResult.cmd
-        --         , chainCmd
-        --         ]
-        --     )
-        --         |> runAppCmds
-        --             (AppCmd.mapList QuickCreateMsg updateResult.appCmds
-        --                 ++ List.map AppCmd.UserNotice userNotices
-        --             )
+        Routing.CryptoSwap ->
+            let
+                updateResult =
+                    CryptoSwap.State.init oldModel.wallet
+
+                ( newTxSentry, chainCmd, userNotices ) =
+                    ChainCmd.execute oldModel.txSentry (ChainCmd.map CryptoSwapMsg updateResult.chainCmd)
+            in
+            ( { oldModel
+                | submodel = CryptoSwapModel updateResult.model
+                , txSentry = newTxSentry
+              }
+            , Cmd.batch
+                [ Cmd.map CryptoSwapMsg updateResult.cmd
+                , chainCmd
+                ]
+            )
+                |> runAppCmds
+                    (AppCmd.mapList CryptoSwapMsg updateResult.appCmds
+                        ++ List.map AppCmd.UserNotice userNotices
+                    )
+
         Routing.Trade factory id ->
             let
                 updateResult =
@@ -671,14 +678,15 @@ updateSubmodelWalletState wallet submodel =
             , Cmd.map CreateMsg createCmd
             )
 
-        -- QuickCreateModel quickCreateModel ->
-        --     let
-        --         ( newQuickCreateModel, quickCreateCmd ) =
-        --             quickCreateModel |> QuickCreate.State.updateWalletState wallet
-        --     in
-        --     ( QuickCreateModel newQuickCreateModel
-        --     , Cmd.map QuickCreateMsg quickCreateCmd
-        --     )
+        CryptoSwapModel cryptoSwapModel ->
+            let
+                ( newCryptoSwapModel, cryptoSwapCmd ) =
+                    cryptoSwapModel |> CryptoSwap.State.updateWalletState wallet
+            in
+            ( CryptoSwapModel newCryptoSwapModel
+            , Cmd.map CryptoSwapMsg cryptoSwapCmd
+            )
+
         TradeModel tradeModel ->
             let
                 ( newTradeModel, tradeCmd ) =
@@ -731,8 +739,9 @@ submodelSubscriptions model =
         CreateModel createModel ->
             Sub.map CreateMsg <| Create.State.subscriptions createModel
 
-        -- QuickCreateModel quickCreateModel ->
-        --     Sub.map QuickCreateMsg <| QuickCreate.State.subscriptions quickCreateModel
+        CryptoSwapModel cryptoSwapModel ->
+            Sub.map CryptoSwapMsg <| CryptoSwap.State.subscriptions cryptoSwapModel
+
         TradeModel tradeModel ->
             Sub.map TradeMsg <| Trade.State.subscriptions tradeModel
 
