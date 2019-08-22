@@ -1,4 +1,4 @@
-module TokenValue exposing (TokenValue, add, compare, decoder, div, encode, fromIntTokenValue, fromString, getEvmValue, getFloatValueWithWarning, isZero, mul, sub, toConciseString, tokenValue, zero)
+module TokenValue exposing (TokenValue, add, compare, decoder, div, divFloatWithWarning, encode, fromFloatWithWarning, fromIntTokenValue, fromString, getEvmValue, getFloatValueWithWarning, isZero, mul, mulFloatWithWarning, sub, toConciseString, toFloatString, tokenValue, zero)
 
 import BigInt exposing (BigInt)
 import Config
@@ -22,6 +22,20 @@ fromIntTokenValue val =
         |> BigInt.mul
             (BigInt.pow (BigInt.fromInt 10) (BigInt.fromInt Config.tokenDecimals))
         |> tokenValue
+
+
+fromFloatWithWarning : Float -> TokenValue
+fromFloatWithWarning val =
+    case userStringToEvmValue (String.fromFloat val) of
+        Just bigint ->
+            tokenValue bigint
+
+        Nothing ->
+            let
+                _ =
+                    Debug.log "Error converting float to tokenValue" ""
+            in
+            tokenValue (BigInt.fromInt 0)
 
 
 fromString : String -> Maybe TokenValue
@@ -48,13 +62,7 @@ getEvmValue (TokenValue tokens) =
 
 getFloatValueWithWarning : TokenValue -> Float
 getFloatValueWithWarning tokens =
-    let
-        toFloat =
-            tokens
-                |> toFloatString Nothing
-                |> String.toFloat
-    in
-    case toFloat of
+    case tokens |> toFloatString Nothing |> String.toFloat of
         Just f ->
             f
 
@@ -78,39 +86,50 @@ toFloatString maxDigitsAfterDecimal tokens =
 
 toConciseString : TokenValue -> String
 toConciseString tv =
-    let
-        s =
-            evmValueToUserFloatString (getEvmValue tv)
-    in
-    case String.indexes "." s of
-        [] ->
-            s
+    if BigInt.compare (getEvmValue tv) (BigInt.fromInt 0) == LT then
+        "-" ++ toConciseString (negate tv)
 
-        [ 0 ] ->
-            "0" ++ String.left 3 s
+    else
+        let
+            s =
+                evmValueToUserFloatString (getEvmValue tv)
+        in
+        case String.indexes "." s of
+            [] ->
+                s
 
-        [ 1 ] ->
-            String.toFloat s
-                |> Maybe.map ((*) 100.0)
-                |> Maybe.map round
-                |> Maybe.map toFloat
-                |> Maybe.map (\f -> f / 100.0)
-                |> Maybe.map String.fromFloat
-                |> Maybe.withDefault s
-                |> String.left 4
+            [ 0 ] ->
+                "0" ++ String.left 3 s
 
-        [ i ] ->
-            String.toFloat s
-                |> Maybe.map round
-                |> Maybe.map String.fromInt
-                |> Maybe.withDefault (String.left i s)
+            [ 1 ] ->
+                String.toFloat s
+                    |> Maybe.map ((*) 100.0)
+                    |> Maybe.map round
+                    |> Maybe.map toFloat
+                    |> Maybe.map (\f -> f / 100.0)
+                    |> Maybe.map String.fromFloat
+                    |> Maybe.withDefault s
+                    |> String.left 4
 
-        _ ->
-            let
-                _ =
-                    Debug.log "Error interpreting evmValueToString result. More than one decimal??"
-            in
-            "???"
+            [ i ] ->
+                String.toFloat s
+                    |> Maybe.map round
+                    |> Maybe.map String.fromInt
+                    |> Maybe.withDefault (String.left i s)
+
+            _ ->
+                let
+                    _ =
+                        Debug.log "Error interpreting evmValueToString result. More than one decimal??"
+                in
+                "???"
+
+
+negate : TokenValue -> TokenValue
+negate t =
+    getEvmValue t
+        |> BigInt.negate
+        |> tokenValue
 
 
 add : TokenValue -> TokenValue -> TokenValue
@@ -137,12 +156,26 @@ mul t i =
         |> TokenValue
 
 
+mulFloatWithWarning : TokenValue -> Float -> TokenValue
+mulFloatWithWarning t f =
+    getFloatValueWithWarning t
+        * f
+        |> fromFloatWithWarning
+
+
 div : TokenValue -> Int -> TokenValue
 div t i =
     BigInt.div
         (getEvmValue t)
         (BigInt.fromInt i)
         |> TokenValue
+
+
+divFloatWithWarning : TokenValue -> Float -> TokenValue
+divFloatWithWarning t f =
+    getFloatValueWithWarning t
+        / f
+        |> fromFloatWithWarning
 
 
 compare : TokenValue -> TokenValue -> Order
@@ -184,22 +217,23 @@ userStringToEvmValue amountString =
                 Config.tokenDecimals - numDigitsMoved
 
             maybeBigIntAmount =
-                BigInt.fromString newString
+                if numDigitsLeftToMove < 0 then
+                    -- indicates there is too much precision; we must cut some off the end
+                    BigInt.fromString (String.dropRight (Basics.negate numDigitsLeftToMove) newString)
+
+                else
+                    BigInt.fromString newString
         in
-        if numDigitsLeftToMove < 0 then
-            Nothing
+        case maybeBigIntAmount of
+            Nothing ->
+                Nothing
 
-        else
-            case maybeBigIntAmount of
-                Nothing ->
-                    Nothing
-
-                Just bigIntAmount ->
-                    let
-                        evmValue =
-                            BigInt.mul bigIntAmount (BigInt.pow (BigInt.fromInt 10) (BigInt.fromInt numDigitsLeftToMove))
-                    in
-                    Just evmValue
+            Just bigIntAmount ->
+                let
+                    evmValue =
+                        BigInt.mul bigIntAmount (BigInt.pow (BigInt.fromInt 10) (BigInt.fromInt numDigitsLeftToMove))
+                in
+                Just evmValue
 
 
 pullAnyFirstDecimalOffToRight : String -> ( String, Int )
@@ -247,25 +281,29 @@ evmValueToTruncatedUserFloatString maxDigitsAfterDecimal evmValue =
 
 evmValueToUserFloatString : BigInt -> String
 evmValueToUserFloatString evmValue =
-    let
-        zeroPaddedString =
-            evmValue
-                |> BigInt.toString
-                |> String.padLeft Config.tokenDecimals '0'
+    if BigInt.compare evmValue (BigInt.fromInt 0) == LT then
+        "-" ++ evmValueToUserFloatString (BigInt.negate evmValue)
 
-        withDecimalString =
-            String.dropRight Config.tokenDecimals zeroPaddedString
-                ++ "."
-                ++ String.right Config.tokenDecimals zeroPaddedString
-    in
-    removeUnnecessaryZerosAndDots withDecimalString
-        |> (\s ->
-                if s == "" then
-                    "0"
+    else
+        let
+            zeroPaddedString =
+                evmValue
+                    |> BigInt.toString
+                    |> String.padLeft Config.tokenDecimals '0'
 
-                else
-                    s
-           )
+            withDecimalString =
+                String.dropRight Config.tokenDecimals zeroPaddedString
+                    ++ "."
+                    ++ String.right Config.tokenDecimals zeroPaddedString
+        in
+        removeUnnecessaryZerosAndDots withDecimalString
+            |> (\s ->
+                    if s == "" then
+                        "0"
+
+                    else
+                        s
+               )
 
 
 removeUnnecessaryZerosAndDots : String -> String

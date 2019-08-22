@@ -1,5 +1,6 @@
-module CommonTypes exposing (BuyerOrSeller(..), FactoryType(..), GTagData, InitiatorOrResponder(..), NativeFactoryType(..), TokenFactoryType(..), UserInfo, buyerOrSellerToString, factoryName, networkNameForFactory, tokenUnitName)
+module CommonTypes exposing (BuyerOrSeller(..), FactoryType(..), ForeignCrypto(..), GTagData, InitiatorOrResponder(..), NativeFactoryType(..), TokenFactoryType(..), UserInfo, buyerOrSellerToString, factoryName, foreignCryptoFromName, foreignCryptoList, foreignCryptoName, networkNameForFactory, tokenUnitName)
 
+import Dict
 import Eth.Net
 import Eth.Types exposing (Address)
 import Json.Decode
@@ -112,3 +113,42 @@ networkNameForFactory factoryType =
 
         Native XDai ->
             "xDai"
+
+
+type ForeignCrypto
+    = ZEC
+    | XMR
+    | BTC
+
+
+foreignCryptoList =
+    [ ZEC
+    , XMR
+    , BTC
+    ]
+
+
+foreignCryptoName : ForeignCrypto -> String
+foreignCryptoName crypto =
+    case crypto of
+        ZEC ->
+            "ZEC"
+
+        XMR ->
+            "XMR"
+
+        BTC ->
+            "BTC"
+
+
+foreignCryptoFromName : String -> Maybe ForeignCrypto
+foreignCryptoFromName name =
+    foreignCryptoList
+        |> List.map
+            (\fCrypto ->
+                ( foreignCryptoName fCrypto
+                , fCrypto
+                )
+            )
+        |> Dict.fromList
+        |> Dict.get name

@@ -574,7 +574,7 @@ txChainStatusModal txChainStatus model =
                             (getWarningParagraphs createParameters
                                 ++ [ [ Element.text <| "You will deposit "
                                      , depositAmountEl
-                                     , Element.text <| " " ++ tokenUnitName factoryType ++ " (including the 1% dev fee) to open this trade."
+                                     , Element.text <| " " ++ tokenUnitName factoryType ++ " (this includes the 1% dev fee) to open this trade."
                                      ]
                                    ]
                                 ++ (case factoryType of

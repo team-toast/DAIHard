@@ -10,8 +10,11 @@ import Contracts.Generated.ERC20Token as TokenContract
 import Contracts.Types as CTypes
 import Contracts.Wrappers
 import CryptoSwap.Types exposing (..)
+import Dict
 import Eth
 import Helpers.BigInt as BigIntHelpers
+import Helpers.Time as TimeHelpers
+import PriceFetch
 import Routing
 import Time
 import TokenValue exposing (TokenValue)
@@ -21,33 +24,31 @@ import Wallet
 
 init : Wallet.State -> UpdateResult
 init wallet =
-    UpdateResult
-        ({ wallet = wallet
-         , initiatorRole = Seller
-         , amountInInput = ""
-         , amountIn = Nothing
-         , dhToken =
-            Wallet.factory wallet
-                |> Maybe.withDefault (Native XDai)
-         , foreignCrypto = ZEC
-         , marginInput = "+10"
-         , margin = Nothing
-         , amountOut = Nothing
-         , receiveAddressInput = ""
-         , receiveAddress = Nothing
-         , showDhTokenDropdown = False
-         , showForeignCryptoDropdown = False
-         , showAdditionalSettings = False
-         , errors = noErrors
-         , txChainStatus = Nothing
-         , depositAmount = Nothing
-         , allowance = Nothing
-         }
-            |> applyInputs
-        )
-        Cmd.none
-        ChainCmd.none
-        []
+    { wallet = wallet
+    , initiatorRole = Seller
+    , amountInInput = ""
+    , amountIn = Nothing
+    , dhToken =
+        Wallet.factory wallet
+            |> Maybe.withDefault (Native XDai)
+    , foreignCrypto = ZEC
+    , marginInput = "2"
+    , margin = Nothing
+    , amountOut = Nothing
+    , receiveAddressInput = ""
+    , receiveAddress = Nothing
+    , showDhTokenDropdown = False
+    , showForeignCryptoDropdown = False
+    , showAdditionalSettings = False
+    , errors = noErrors
+    , txChainStatus = Nothing
+    , depositAmount = Nothing
+    , allowance = Nothing
+    , prices = []
+    , now = Time.millisToPosix 0
+    }
+        |> applyInputs
+        |> update Refresh
 
 
 updateWalletState : Wallet.State -> Model -> ( Model, Cmd Msg )
@@ -69,25 +70,68 @@ updateWalletState wallet model =
 update : Msg -> Model -> UpdateResult
 update msg prevModel =
     case msg of
-        Refresh time ->
-            case ( Wallet.userInfo prevModel.wallet, Wallet.factory prevModel.wallet ) of
-                ( Just userInfo, Just (Token tokenType) ) ->
-                    let
-                        cmd =
+        UpdateNow time ->
+            justModelUpdate
+                { prevModel | now = time }
+
+        Refresh ->
+            let
+                maybeAllowanceCmd =
+                    case ( Wallet.userInfo prevModel.wallet, Wallet.factory prevModel.wallet ) of
+                        ( Just userInfo, Just (Token tokenType) ) ->
                             Contracts.Wrappers.getAllowanceCmd
                                 tokenType
                                 userInfo.address
                                 (Config.factoryAddress (Token tokenType))
                                 (AllowanceFetched tokenType)
+
+                        _ ->
+                            Cmd.none
+
+                fetchExchangeRateCmd =
+                    PriceFetch.fetch PricesFetched
+            in
+            UpdateResult
+                prevModel
+                (Cmd.batch
+                    [ maybeAllowanceCmd
+                    , fetchExchangeRateCmd
+                    ]
+                )
+                ChainCmd.none
+                []
+
+        PricesFetched fetchResult ->
+            case fetchResult of
+                Ok pricesAndTimestamps ->
+                    let
+                        newPrices =
+                            pricesAndTimestamps
+                                |> List.map
+                                    (Tuple.mapSecond
+                                        (\priceAndTimestamp ->
+                                            PriceInfo
+                                                priceAndTimestamp.price
+                                                (TimeHelpers.compare
+                                                    (TimeHelpers.sub
+                                                        prevModel.now
+                                                        priceAndTimestamp.timestamp
+                                                    )
+                                                    (Time.millisToPosix <| 1000 * 60 * 6)
+                                                    == GT
+                                                )
+                                        )
+                                    )
                     in
+                    justModelUpdate
+                        { prevModel | prices = newPrices }
+
+                Err httpErr ->
                     UpdateResult
                         prevModel
-                        cmd
+                        Cmd.none
                         ChainCmd.none
-                        []
-
-                _ ->
-                    justModelUpdate prevModel
+                        [ AppCmd.UserNotice UN.cantFetchPrices ]
 
         AmountInChanged input ->
             justModelUpdate
@@ -301,11 +345,15 @@ update msg prevModel =
                 ChainCmd.none
                 [ appCmd ]
 
+        NoOp ->
+            justModelUpdate
+                prevModel
+
 
 applyInputs : Model -> Model
 applyInputs prevModel =
     let
-        ( amountIn, amountInError ) =
+        ( maybeAmountIn, amountInError ) =
             case interpretAmountIn prevModel.amountInInput of
                 Ok (Just amountIn_) ->
                     ( Just amountIn_, Nothing )
@@ -316,7 +364,7 @@ applyInputs prevModel =
                 Err errStr ->
                     ( Nothing, Just errStr )
 
-        ( margin, marginError ) =
+        ( maybeMargin, marginError ) =
             case interpretMargin prevModel.marginInput of
                 Ok (Just margin_) ->
                     ( Just margin_, Nothing )
@@ -327,7 +375,7 @@ applyInputs prevModel =
                 Err errStr ->
                     ( Nothing, Just errStr )
 
-        ( receiveAddress, receiveAddressError ) =
+        ( maybeReceiveAddress, receiveAddressError ) =
             case interpretReceiveAddress prevModel.foreignCrypto prevModel.receiveAddressInput of
                 Ok (Just address) ->
                     ( Just address, Nothing )
@@ -337,11 +385,46 @@ applyInputs prevModel =
 
                 Err errStr ->
                     ( Nothing, Just errStr )
+
+        maybeAmountOut =
+            Maybe.map3
+                (\amountIn margin priceInfo ->
+                    case prevModel.initiatorRole of
+                        Buyer ->
+                            let
+                                equivalentDai =
+                                    TokenValue.mulFloatWithWarning amountIn priceInfo.price
+
+                                equivalentDaiMinusMargin =
+                                    TokenValue.sub
+                                        equivalentDai
+                                        (TokenValue.mulFloatWithWarning equivalentDai margin)
+                            in
+                            equivalentDaiMinusMargin
+
+                        Seller ->
+                            let
+                                tradeAmountAfterDevFee =
+                                    TokenValue.sub
+                                        amountIn
+                                        (TokenValue.div amountIn 101)
+
+                                equivalentForeignCrypto =
+                                    TokenValue.divFloatWithWarning tradeAmountAfterDevFee priceInfo.price
+                            in
+                            TokenValue.sub
+                                equivalentForeignCrypto
+                                (TokenValue.mulFloatWithWarning equivalentForeignCrypto margin)
+                )
+                maybeAmountIn
+                maybeMargin
+                (foreignCryptoPriceInfo prevModel prevModel.foreignCrypto)
     in
     { prevModel
-        | amountIn = amountIn
-        , margin = margin
-        , receiveAddress = receiveAddress
+        | amountIn = maybeAmountIn
+        , margin = maybeMargin
+        , receiveAddress = maybeReceiveAddress
+        , amountOut = maybeAmountOut
         , errors =
             { amountIn = amountInError
             , margin = marginError
@@ -372,6 +455,7 @@ interpretMargin input =
     else
         String.toFloat input
             |> Result.fromMaybe "Invalid margin"
+            |> Result.map (\percent -> percent / 100.0)
             |> Result.map Just
 
 
@@ -430,4 +514,7 @@ initiateCreateCall factoryType parameters =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Time.every 2000 Refresh
+    Sub.batch
+        [ Time.every 10000 (always Refresh)
+        , Time.every 500 UpdateNow
+        ]

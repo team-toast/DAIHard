@@ -1,14 +1,16 @@
-module CryptoSwap.Types exposing (Errors, ForeignCrypto(..), Model, Msg(..), TxChainStatus(..), UpdateResult, exampleAddressForForeignCrypto, foreignCryptoName, foreignCryptoToFiatValue, justModelUpdate, maybeUserParameters, noErrors)
+module CryptoSwap.Types exposing (Errors, Model, Msg(..), PriceInfo, TxChainStatus(..), UpdateResult, exampleAddressForForeignCrypto, foreignCryptoPriceInfo, foreignCryptoToFiatValue, justModelUpdate, maybeUserParameters, noErrors)
 
 import AppCmd exposing (AppCmd)
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
+import Dict exposing (Dict)
 import Eth.Types exposing (Address, TxHash, TxReceipt)
 import FiatValue exposing (FiatValue)
 import Http
 import PaymentMethods exposing (PaymentMethod)
+import PriceFetch
 import Time
 import TokenValue exposing (TokenValue)
 import Wallet
@@ -33,6 +35,14 @@ type alias Model =
     , txChainStatus : Maybe TxChainStatus
     , depositAmount : Maybe BigInt
     , allowance : Maybe BigInt
+    , prices : List ( ForeignCrypto, PriceInfo )
+    , now : Time.Posix
+    }
+
+
+type alias PriceInfo =
+    { price : Float
+    , warnAboutTimestamp : Bool
     }
 
 
@@ -45,7 +55,9 @@ type TxChainStatus
 
 
 type Msg
-    = Refresh Time.Posix
+    = UpdateNow Time.Posix
+    | Refresh
+    | PricesFetched (Result Http.Error (List ( ForeignCrypto, PriceFetch.PriceAndTimestamp )))
     | AmountInChanged String
     | MarginChanged String
     | TokenTypeClicked
@@ -60,6 +72,7 @@ type Msg
     | CreateMined FactoryType (Result String TxReceipt)
     | ToggleAdditionalSettings
     | AppCmd (AppCmd Msg)
+    | NoOp
 
 
 type alias UpdateResult =
@@ -77,32 +90,6 @@ justModelUpdate model =
         Cmd.none
         ChainCmd.none
         []
-
-
-type ForeignCrypto
-    = ZEC
-    | XMR
-    | BTC
-
-
-foreignCryptoName : ForeignCrypto -> String
-foreignCryptoName crypto =
-    case crypto of
-        ZEC ->
-            "ZEC"
-
-        XMR ->
-            "XMR"
-
-        BTC ->
-            "BTC"
-
-
-foreignCryptoToFiatValue : ForeignCrypto -> TokenValue -> FiatValue
-foreignCryptoToFiatValue cryptoType amount =
-    FiatValue
-        (foreignCryptoName cryptoType)
-        (TokenValue.getEvmValue amount)
 
 
 type alias Errors =
@@ -176,3 +163,18 @@ maybeUserParameters model =
                 model.margin
                 model.receiveAddress
                 model.amountOut
+
+
+foreignCryptoToFiatValue : ForeignCrypto -> TokenValue -> FiatValue
+foreignCryptoToFiatValue cryptoType amount =
+    FiatValue
+        (foreignCryptoName cryptoType)
+        (TokenValue.getEvmValue amount)
+
+
+foreignCryptoPriceInfo : Model -> ForeignCrypto -> Maybe PriceInfo
+foreignCryptoPriceInfo model crypto =
+    model.prices
+        |> List.filter (Tuple.first >> (==) crypto)
+        |> List.head
+        |> Maybe.map Tuple.second

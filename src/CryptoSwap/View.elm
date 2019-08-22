@@ -21,21 +21,58 @@ import Wallet
 root : Model -> ( Element Msg, List (Element Msg) )
 root model =
     ( Element.column
-        [ Element.spacing 40
-        , Element.padding 10
-        , Element.Background.color EH.white
-        , Element.Border.rounded 8
-        , Element.centerX
-        , Element.inFront <|
-            getModalOrNone model
+        [ Element.paddingEach
+            { top = 40
+            , bottom = 0
+            , right = 0
+            , left = 0
+            }
+        , Element.spacing 60
+        , Element.width Element.fill
         ]
-        [ titleElement model
+        [ Element.column
+            [ Element.spacing 20
+            , Element.Font.color EH.white
+            , Element.width Element.fill
+            ]
+            [ Element.el
+                [ Element.Font.size 34
+                , Element.Font.semiBold
+                , Element.centerX
+                ]
+                (Element.text "Dai is boring. Get that sexy sexy zCash instead!")
+            , Element.el
+                [ Element.Font.size 18
+                , Element.centerX
+                ]
+                (Element.text "Use this 100% visually unique interface to get started.")
+            ]
         , Element.column
-            [ Element.spacing 20 ]
-            [ fromToElement model
-            , tradeOutputAndMaybeAddressInput model
-            , placeOrderButton model
-            , additionalSettingsElement model.showAdditionalSettings
+            [ Element.Background.color <| Element.rgb 0.95 0.98 1
+            , Element.spacing 20
+            , Element.Border.rounded 8
+            , Element.clip
+            , Element.centerX
+            , Element.width (Element.fill |> Element.maximum 1000)
+            , Element.Border.shadow
+                { offset = ( 0, 0 )
+                , size = 1
+                , blur = 3
+                , color = Element.rgba 0 0 0 0.2
+                }
+            , Element.inFront <|
+                getModalOrNone model
+            ]
+            [ titleElement model
+            , Element.column
+                [ Element.spacing 20
+                , Element.padding 15
+                , Element.width Element.fill
+                ]
+                [ fromToElement model
+                , tradeOutputAndMaybeAddressInput model
+                , Element.el [ Element.centerX ] (placeOrderButton model)
+                ]
             ]
         ]
     , []
@@ -44,58 +81,110 @@ root model =
 
 titleElement : Model -> Element Msg
 titleElement model =
-    let
-        swapTitle =
-            Element.el
-                [ Element.Font.size 24
-                , Element.Font.medium
-                , Element.Font.underline
-                ]
-                (Element.text "Swap")
-
-        customLink =
-            Element.el
-                [ Element.Font.size 24
-                , Element.Font.medium
-                , Element.pointer
-                , Element.Events.onClick <|
-                    AppCmd <|
-                        AppCmd.GotoRoute Routing.Create
-                ]
-                (Element.text "Custom...")
-    in
     Element.el
-        [ Element.centerX
-        , Element.onRight <|
-            Element.el [ Element.moveRight 10 ] customLink
+        [ Element.width Element.fill
+        , Element.padding 15
+        , Element.Background.color EH.white
+        , Element.Border.shadow
+            { offset = ( 0, 0 )
+            , size = 0
+            , blur = 30
+            , color = Element.rgba 0 0 0 0.15
+            }
         ]
-        swapTitle
+    <|
+        Element.row
+            [ Element.spacing 40
+            , Element.centerX
+            ]
+            [ headerTab
+                True
+                "QUICKSWAP"
+                NoOp
+            , headerTab
+                False
+                "CUSTOM"
+                (AppCmd <| AppCmd.GotoRoute Routing.Create)
+            ]
+
+
+headerTab : Bool -> String -> Msg -> Element Msg
+headerTab selected title onClickMsg =
+    Element.el
+        ([ Element.Font.size 16
+         , Element.Events.onClick onClickMsg
+         , Element.pointer
+         , Element.centerY
+         ]
+            ++ (if selected then
+                    [ Element.Font.bold
+                    , Element.Font.color EH.red
+                    ]
+
+                else
+                    [ Element.Font.regular
+                    , Element.Font.color <| Element.rgb 0.2 0.2 0.2
+                    ]
+               )
+        )
+        (Element.text title)
+
+
+inputHeader : String -> Element Msg
+inputHeader title =
+    Element.el
+        [ Element.Font.size 20
+        , Element.paddingXY 20 0
+        , Element.Font.color EH.red
+        ]
+        (Element.text title)
 
 
 fromToElement : Model -> Element Msg
 fromToElement model =
     Element.row
-        [ Element.spacing 10 ]
+        [ Element.spacing 10
+        , Element.width Element.fill
+        ]
         [ Element.column
             [ Element.spacing 5
             , Element.alignBottom
+            , Element.width Element.fill
             ]
-            [ Element.el [ Element.Font.size 20 ] <| Element.text "From:"
+            [ inputHeader "From:"
             , fromInputBox model
             ]
         , Images.toElement
             [ Element.alignBottom
-            , Element.width <| Element.px 30
+            , Element.width <| Element.px 24
+            , Element.paddingEach
+                { bottom = 18
+                , top = 0
+                , right = 0
+                , left = 0
+                }
             ]
             Images.swapArrows
         , Element.column
             [ Element.spacing 5
             , Element.alignBottom
+            , Element.width Element.fill
             ]
-            [ Element.el [ Element.Font.size 20 ] <| Element.text "To:"
+            [ inputHeader "To:"
             , toInputBox model
             ]
         ]
+
+
+inputBoxStyles : List (Element.Attribute Msg)
+inputBoxStyles =
+    [ Element.Border.rounded 20
+    , Element.paddingXY 20 0
+    , Element.Border.width 1
+    , Element.Background.color EH.white
+    , Element.Border.color <| Element.rgba 0 0 0 0.1
+    , Element.height <| Element.px 60
+    ]
 
 
 fromInputBox : Model -> Element Msg
@@ -110,12 +199,12 @@ fromInputBox model =
                     dhTokenTypeElement model.dhToken
     in
     Element.row
-        [ Element.Border.width 1
-        , Element.Border.color EH.black
-        , Element.Border.rounded 5
-        , Element.padding 5
-        , Element.spacing 3
-        ]
+        (inputBoxStyles
+            ++ [ Element.spacing 15
+               , Element.width Element.fill
+               , Element.centerY
+               ]
+        )
         [ tokenSelector
         , amountInInputElement model.amountInInput
         ]
@@ -133,14 +222,13 @@ toInputBox model =
                     foreignCryptoTypeElement model.foreignCrypto
     in
     Element.row
-        [ Element.Border.width 1
-        , Element.Border.color EH.black
-        , Element.Border.rounded 5
-        , Element.padding 5
-        , Element.spacing 3
-        ]
+        (inputBoxStyles
+            ++ [ Element.spacing 15
+               , Element.width Element.fill
+               , Element.centerY
+               ]
+        )
         [ tokenSelector
-        , Element.text "@"
         , marginInput model.marginInput
         ]
 
@@ -148,13 +236,14 @@ toInputBox model =
 dhTokenTypeElement : FactoryType -> Element Msg
 dhTokenTypeElement currentToken =
     Element.row
-        [ Element.spacing 3
+        [ Element.spacing 8
         , Element.pointer
         , Element.Events.onClick TokenTypeClicked
+        , Element.centerY
         ]
         [ Element.text <| tokenUnitName currentToken
         , Images.toElement
-            [ Element.width <| Element.px 5 ]
+            [ Element.width <| Element.px 12 ]
             Images.downArrow
         ]
 
@@ -162,13 +251,14 @@ dhTokenTypeElement currentToken =
 foreignCryptoTypeElement : ForeignCrypto -> Element Msg
 foreignCryptoTypeElement currentCrypto =
     Element.row
-        [ Element.spacing 3
+        [ Element.spacing 8
         , Element.pointer
         , Element.Events.onClick ForeignCryptoTypeClicked
+        , Element.centerY
         ]
         [ Element.text <| foreignCryptoName currentCrypto
         , Images.toElement
-            [ Element.width <| Element.px 5 ]
+            [ Element.width <| Element.px 12 ]
             Images.downArrow
         ]
 
@@ -177,14 +267,17 @@ amountInInputElement : String -> Element Msg
 amountInInputElement input =
     Element.Input.text
         [ Element.Border.width 0
-        , Element.width <| Element.px 100
+        , Element.width Element.fill
+        , Element.Font.alignRight
         ]
         { onChange = AmountInChanged
         , text = input
         , placeholder =
             Just <|
                 Element.Input.placeholder
-                    [ Element.Font.color EH.darkGray ]
+                    [ Element.Font.color EH.lightGray
+                    , Element.Font.alignRight
+                    ]
                     (Element.text "0")
         , label = Element.Input.labelHidden "amount in"
         }
@@ -192,37 +285,63 @@ amountInInputElement input =
 
 marginInput : String -> Element Msg
 marginInput input =
-    Element.Input.text
-        [ Element.Border.width 0
-        , Element.width <| Element.px 100
+    Element.row
+        [ Element.centerY
+        , Element.spacing 0
+        , Element.Font.size 18
+        , Element.width Element.shrink
         ]
-        { onChange = MarginChanged
-        , text = input
-        , placeholder =
-            if input == "" then
-                Just <|
-                    Element.Input.placeholder
-                        [ Element.Font.color EH.darkGray ]
-                        (Element.text "0")
-
-            else
+        [ Element.text "( -"
+        , Element.Input.text
+            [ Element.Border.width 0
+            , Element.padding 0
+            , Element.Font.size 18
+            , Element.width <|
+                (Element.px (10 * String.length input) |> Element.minimum 10)
+            ]
+            { onChange = MarginChanged
+            , text = input
+            , placeholder =
                 Nothing
-        , label = Element.Input.labelHidden "margin"
-        }
+            , label = Element.Input.labelHidden "margin"
+            }
+        , Element.text "%)"
+        ]
 
 
 tradeOutputAndMaybeAddressInput : Model -> Element Msg
 tradeOutputAndMaybeAddressInput model =
     case model.initiatorRole of
         Buyer ->
-            tradeOutputElement model
+            Element.el
+                [ Element.centerX ]
+                (tradeOutputElement model)
 
         Seller ->
             Element.row
-                [ Element.spacing 20 ]
-                [ tradeOutputElement model
-                , Element.text "to"
-                , addressInputElement model.receiveAddressInput model.foreignCrypto
+                [ Element.spacing 10
+                , Element.width Element.fill
+                ]
+                [ Element.el
+                    [ Element.width Element.fill
+                    , Element.alignBottom
+                    ]
+                  <|
+                    tradeOutputElement model
+                , Element.el
+                    [ Element.width <| Element.px 24 ]
+                    Element.none
+                , Element.column
+                    [ Element.spacing 5
+                    , Element.alignBottom
+                    , Element.width Element.fill
+                    ]
+                    [ inputHeader <|
+                        "Send "
+                            ++ foreignCryptoName model.foreignCrypto
+                            ++ " To:"
+                    , addressInputElement model.receiveAddressInput model.foreignCrypto
+                    ]
                 ]
 
 
@@ -231,9 +350,15 @@ tradeOutputElement model =
     case model.amountOut of
         Just amount ->
             Element.row
-                [ Element.spacing 10 ]
+                [ Element.spacing 10
+                , Element.alignBottom
+                , Element.alignRight
+                , Element.padding 20
+                , Element.Font.size 24
+                , Element.Font.color <| Element.rgb 0.2 0.2 0.2
+                ]
                 [ Element.text "="
-                , Element.text <| TokenValue.toConciseString amount
+                , Element.text <| TokenValue.toFloatString (Just 6) amount
                 , Element.text <|
                     case model.initiatorRole of
                         Buyer ->
@@ -249,20 +374,27 @@ tradeOutputElement model =
 
 addressInputElement : String -> ForeignCrypto -> Element Msg
 addressInputElement input foreignCrypto =
-    Element.Input.text []
-        { onChange = ReceiveAddressChanged
-        , text = input
-        , placeholder =
-            if input == "" then
+    Element.el
+        (inputBoxStyles
+            ++ [ Element.width Element.fill
+               , Element.paddingXY 10 0
+               ]
+        )
+    <|
+        Element.Input.text
+            [ Element.centerY
+            , Element.width Element.fill
+            , Element.Border.width 0
+            ]
+            { onChange = ReceiveAddressChanged
+            , text = input
+            , placeholder =
                 Just <|
                     Element.Input.placeholder
-                        [ Element.Font.color EH.darkGray ]
+                        [ Element.Font.color EH.lightGray ]
                         (Element.text <| exampleAddressForForeignCrypto foreignCrypto)
-
-            else
-                Nothing
-        , label = Element.Input.labelHidden "receive address"
-        }
+            , label = Element.Input.labelHidden "receive address"
+            }
 
 
 placeOrderButton : Model -> Element Msg
@@ -366,7 +498,7 @@ txChainStatusModal txChainStatus model =
                             )
                             ([ [ Element.text <| "You will deposit "
                                , depositAmountEl
-                               , Element.text <| " " ++ tokenUnitName factoryType ++ " (including the 1% dev fee) to open this trade."
+                               , Element.text <| " " ++ tokenUnitName factoryType ++ " to open this trade."
                                ]
                              ]
                                 ++ (case factoryType of

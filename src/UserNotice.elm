@@ -1,4 +1,4 @@
-module UserNotice exposing (Alignment(..), NoticeType(..), UserNotice, cantConnectNoWeb3, cantFindTradeWillRetry, fromBadFetchResultMaybe, inputError, invalidUrl, map, noWeb3Provider, placeholderNotice, screenToSmall, tradeParametersNotDefault, unexpectedError, walletError, web3FetchError, web3MiningError, web3SigError, wrongWeb3Network)
+module UserNotice exposing (Alignment(..), NoticeType(..), UserNotice, cantConnectNoWeb3, cantFetchPrices, cantFindTradeWillRetry, fromBadFetchResultMaybe, inputError, invalidUrl, map, noWeb3Provider, placeholderNotice, screenToSmall, tradeParametersNotDefault, unexpectedError, walletError, web3FetchError, web3MiningError, web3SigError, wrongWeb3Network)
 
 import Element exposing (Attribute, Element)
 import Element.Font
@@ -60,6 +60,16 @@ invalidUrl =
         [ [ Element.text "I don't understand that URL..." ]
         , [ Element.text "I'll just set you down here. Maybe check the URL and try again?" ]
         ]
+    , align = BottomRight
+    }
+
+
+cantFetchPrices : UserNotice msg
+cantFetchPrices =
+    { label = "cantFetchPrices"
+    , noticeType = Caution
+    , mainParagraphs =
+        [ [ Element.text "Error encountered fetching crypto prices." ] ]
     , align = BottomRight
     }
 

@@ -45,7 +45,15 @@ root model =
                 ]
                     ++ List.map Element.inFront modalEls
           in
-          Element.layout
+          Element.layoutWith
+            { options =
+                [ Element.focusStyle
+                    { borderColor = Nothing
+                    , backgroundColor = Nothing
+                    , shadow = Nothing
+                    }
+                ]
+            }
             mainElementAttributes
             pageEl
         ]
