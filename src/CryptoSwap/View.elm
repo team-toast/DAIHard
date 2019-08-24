@@ -71,7 +71,12 @@ root model =
                 , Element.width Element.fill
                 ]
                 [ fromToElement model
-                , tradeOutputAndMaybeAddressInput model
+                , Element.row
+                    [ Element.width Element.fill ]
+                    [ Element.el [ Element.width (Element.fillPortion 1) ] Element.none
+                    , Element.el [ Element.width (Element.fillPortion 2) ] <| maybeAddressInput model
+                    , Element.el [ Element.width (Element.fillPortion 1) ] Element.none
+                    ]
                 , Element.el [ Element.centerX ] (placeOrderButton model)
                 ]
             ]
@@ -274,6 +279,7 @@ toInputBox model =
         )
         [ tokenSelector
         , marginInput model.marginInput
+        , tradeOutputElement model
         ]
 
 
@@ -395,39 +401,24 @@ marginInput input =
         ]
 
 
-tradeOutputAndMaybeAddressInput : Model -> Element Msg
-tradeOutputAndMaybeAddressInput model =
+maybeAddressInput : Model -> Element Msg
+maybeAddressInput model =
     case model.initiatorRole of
         Buyer ->
-            Element.el
-                [ Element.centerX ]
-                (tradeOutputElement model)
+            Element.none
 
         Seller ->
-            Element.row
-                [ Element.spacing 10
+            Element.column
+                [ Element.spacing 5
+                , Element.alignBottom
                 , Element.width Element.fill
+                , Element.clipX
                 ]
-                [ Element.el
-                    [ Element.width Element.fill
-                    , Element.alignBottom
-                    ]
-                  <|
-                    tradeOutputElement model
-                , Element.el
-                    [ Element.width <| Element.px 24 ]
-                    Element.none
-                , Element.column
-                    [ Element.spacing 5
-                    , Element.alignBottom
-                    , Element.width Element.fill
-                    ]
-                    [ inputHeader <|
-                        "Send "
-                            ++ foreignCryptoName model.foreignCrypto
-                            ++ " To:"
-                    , addressInputElement model.receiveAddressInput model.foreignCrypto
-                    ]
+                [ inputHeader <|
+                    "Send "
+                        ++ foreignCryptoName model.foreignCrypto
+                        ++ " To:"
+                , addressInputElement model.receiveAddress model.foreignCrypto
                 ]
 
 
@@ -437,10 +428,6 @@ tradeOutputElement model =
         Just amount ->
             Element.row
                 [ Element.spacing 10
-                , Element.alignBottom
-                , Element.alignRight
-                , Element.padding 20
-                , Element.Font.size 24
                 , Element.Font.color <| Element.rgb 0.2 0.2 0.2
                 ]
                 [ Element.text "="

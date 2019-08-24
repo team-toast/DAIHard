@@ -36,8 +36,7 @@ init wallet =
     , marginInput = "2"
     , margin = Nothing
     , amountOut = Nothing
-    , receiveAddressInput = ""
-    , receiveAddress = Nothing
+    , receiveAddress = ""
     , showDhTokenDropdown = False
     , showForeignCryptoDropdown = False
     , errors = noErrors
@@ -186,7 +185,7 @@ update msg prevModel =
         ReceiveAddressChanged input ->
             justModelUpdate
                 ({ prevModel
-                    | receiveAddressInput =
+                    | receiveAddress =
                         input
                  }
                     |> applyInputs
