@@ -1,7 +1,7 @@
 module Marketplace.View exposing (root)
 
-import AppCmd exposing (AppCmd)
 import Array exposing (Array)
+import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Config
 import Contracts.Types as CTypes
@@ -60,7 +60,6 @@ root time tradeCaches model =
         , Element.Background.color EH.white
         , Element.width Element.fill
         , Element.height Element.fill
-        , Element.Events.onClick (ShowCurrencyDropdown False)
         , Element.padding 30
         ]
         [ Element.row
@@ -317,7 +316,7 @@ fiatInput showTypeDropdown symbol errors =
                 ]
 
         flagClickedMsg =
-            AppCmd <| AppCmd.gTag "click" "misclick" "currency flag" 0
+            CmdUp <| CmdUp.gTag "click" "misclick" "currency flag" 0
     in
     Element.el
         [ Element.alignTop, Element.width <| Element.px 120 ]

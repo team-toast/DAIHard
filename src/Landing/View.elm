@@ -1,6 +1,6 @@
 module Landing.View exposing (root)
 
-import AppCmd
+import CmdUp
 import Element exposing (Attribute, Element)
 import Element.Background
 import Element.Border

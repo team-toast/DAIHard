@@ -1,11 +1,12 @@
 module Types exposing (Flags, Model, Msg(..), Submodel(..))
 
 import AgentHistory.Types
-import AppCmd
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import Browser
 import Browser.Navigation
+import CmdDown
+import CmdUp
 import CommonTypes exposing (..)
 import Create.Types
 import CryptoSwap.Types
@@ -59,7 +60,7 @@ type Msg
     | UrlChanged Url
     | GotoRoute Routing.Route
     | Tick Time.Posix
-    | AppCmd (AppCmd.AppCmd Msg)
+    | CmdUp (CmdUp.CmdUp Msg)
     | ConnectToWeb3
     | WalletStatus WalletSentry
     | TxSentryMsg TxSentry.Msg
@@ -71,5 +72,6 @@ type Msg
     | MarketplaceMsg Marketplace.Types.Msg
     | AgentHistoryMsg AgentHistory.Types.Msg
     | DismissNotice Int
+    | ClickHappened
     | NoOp
     | Test String

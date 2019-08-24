@@ -1,6 +1,6 @@
 module Marketplace.Types exposing (Errors, Model, Msg(..), Query, SearchInputs, TokenRange, UpdateResult, justModelUpdate, noErrors, updateFiatTypeInput, updateMaxDaiInput, updateMinDaiInput, updatePaymentMethodInput, updatePaymentMethodTerms)
 
-import AppCmd exposing (AppCmd)
+import CmdUp exposing (CmdUp)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -48,7 +48,7 @@ type Msg
     | ResetSearch
     | TradeTableMsg TradeTable.Msg
     | FiltersMsg Filters.Msg
-    | AppCmd (AppCmd Msg)
+    | CmdUp (CmdUp Msg)
     | NoOp
 
 
@@ -56,7 +56,7 @@ type alias UpdateResult =
     { model : Model
     , cmd : Cmd Msg
     , chainCmd : ChainCmd Msg
-    , appCmds : List (AppCmd Msg)
+    , cmdUps : List (CmdUp Msg)
     }
 
 

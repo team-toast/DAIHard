@@ -14,12 +14,12 @@ import Element.Border
 import Element.Events
 import Element.Font
 import Element.Input
-import Prices
 import Helpers.Element as EH
 import Helpers.Tuple exposing (mapTuple2)
 import Landing.View
 import Marketplace.Types
 import Marketplace.View
+import Prices
 import Routing
 import Trade.View
 import Types exposing (..)
@@ -38,6 +38,7 @@ root model =
             mainElementAttributes =
                 [ Element.width Element.fill
                 , Element.height Element.fill
+                , Element.Events.onClick ClickHappened
                 , Element.Font.family
                     [ Element.Font.typeface "Soleil"
                     , Element.Font.sansSerif

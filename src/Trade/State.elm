@@ -1,9 +1,10 @@
-port module Trade.State exposing (init, initFromCached, subscriptions, update, updateWalletState)
+port module Trade.State exposing (init, initFromCached, runCmdDown, subscriptions, update)
 
-import AppCmd exposing (AppCmd)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
+import CmdDown
+import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Config
 import Contracts.Generated.DAIHardNativeTrade as DHNT
@@ -56,7 +57,7 @@ init wallet factory tradeId =
             ]
         )
         ChainCmd.none
-        [ AppCmd.RequestBrowserNotificationPermission ]
+        [ CmdUp.RequestBrowserNotificationPermission ]
 
 
 initFromCached : Wallet.State -> CTypes.FullTradeInfo -> UpdateResult
@@ -90,7 +91,7 @@ initFromCached wallet trade =
             ]
         )
         ChainCmd.none
-        [ AppCmd.RequestBrowserNotificationPermission ]
+        [ CmdUp.RequestBrowserNotificationPermission ]
 
 
 initModel : CTypes.Trade -> EventSentry Msg -> Wallet.State -> Model
@@ -120,26 +121,6 @@ getCreationInfoCmd factoryType id =
     Contracts.Wrappers.getCreationInfoFromIdCmd factoryType (BigInt.fromInt id) CreationInfoFetched
 
 
-updateWalletState : Wallet.State -> Model -> ( Model, Cmd Msg )
-updateWalletState wallet model =
-    ( { model | wallet = wallet }
-    , case ( Wallet.userInfo wallet, Wallet.factory wallet, model.trade ) of
-        ( Just uInfo, Just (Token tokenType), CTypes.LoadedTrade trade ) ->
-            if Wallet.factory wallet == Just trade.factory then
-                Contracts.Wrappers.getAllowanceCmd
-                    tokenType
-                    uInfo.address
-                    trade.creationInfo.address
-                    AllowanceFetched
-
-            else
-                Cmd.none
-
-        _ ->
-            Cmd.none
-    )
-
-
 update : Msg -> Model -> UpdateResult
 update msg prevModel =
     case msg of
@@ -158,7 +139,7 @@ update msg prevModel =
                         _ ->
                             Cmd.none
 
-                ( newChatHistoryModel, shouldDecrypt, appCmds ) =
+                ( newChatHistoryModel, shouldDecrypt, cmdUps ) =
                     case prevModel.chatHistoryModel of
                         Nothing ->
                             tryInitChatHistory prevModel.wallet prevModel.trade prevModel.blocknumOnInit prevModel.eventsWaitingForChatHistory
@@ -205,7 +186,7 @@ update msg prevModel =
                             ]
                         )
                         ChainCmd.none
-                        appCmds
+                        cmdUps
 
                 _ ->
                     justModelUpdate newModel
@@ -221,7 +202,7 @@ update msg prevModel =
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.web3FetchError "blocknum" httpError
                         ]
 
@@ -258,7 +239,7 @@ update msg prevModel =
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.web3FetchError "allowance" httpError
                         ]
 
@@ -308,7 +289,7 @@ update msg prevModel =
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.cantFindTradeWillRetry
                         ]
 
@@ -317,7 +298,7 @@ update msg prevModel =
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.UserNotice <| UN.web3FetchError "trade state" httpError ]
+                        [ CmdUp.UserNotice <| UN.web3FetchError "trade state" httpError ]
 
         StateFetched fetchResult ->
             case fetchResult of
@@ -356,7 +337,7 @@ update msg prevModel =
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.fromBadFetchResultMaybe "trade state" fetchResult
                         ]
 
@@ -383,14 +364,14 @@ update msg prevModel =
                             }
                             Cmd.none
                             ChainCmd.none
-                            [ AppCmd.UserNotice UN.tradeParametersNotDefault ]
+                            [ CmdUp.UserNotice UN.tradeParametersNotDefault ]
 
                 Ok (Err s) ->
                     UpdateResult
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.unexpectedError "Error decoding fetched trade parameters" s
                         ]
 
@@ -399,7 +380,7 @@ update msg prevModel =
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.web3FetchError "trade parameters" httpErr
                         ]
 
@@ -423,7 +404,7 @@ update msg prevModel =
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.fromBadFetchResultMaybe "trade state" fetchResult
                         ]
 
@@ -438,7 +419,7 @@ update msg prevModel =
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.unexpectedError "Error decoding contract event" err
                         ]
 
@@ -477,7 +458,7 @@ update msg prevModel =
                                 _ ->
                                     prevModel.secureCommInfo
 
-                        ( maybeChatHistoryModel, firstShouldDecrypt, firstAppCmds ) =
+                        ( maybeChatHistoryModel, firstShouldDecrypt, firstCmdUps ) =
                             case prevModel.chatHistoryModel of
                                 Just prevChatHistoryModel ->
                                     ( Just prevChatHistoryModel, False, [] )
@@ -485,26 +466,26 @@ update msg prevModel =
                                 Nothing ->
                                     tryInitChatHistory prevModel.wallet newTrade prevModel.blocknumOnInit prevModel.eventsWaitingForChatHistory
 
-                        ( ( updatedChatHistory, finalShouldDecrypt, finalAppCmds ), newEventsWaitingForChatHistory ) =
+                        ( ( updatedChatHistory, finalShouldDecrypt, finalCmdUps ), newEventsWaitingForChatHistory ) =
                             case maybeChatHistoryModel of
                                 Just chatHistoryModel ->
                                     ( ChatHistory.handleNewEvent
                                         decodedEventLog.blockNumber
                                         event
                                         chatHistoryModel
-                                        |> (\( chModel, shouldDecrypt_, appCmds_ ) ->
+                                        |> (\( chModel, shouldDecrypt_, cmdUps_ ) ->
                                                 ( Just chModel
                                                 , shouldDecrypt_ || firstShouldDecrypt
                                                 , List.append
-                                                    firstAppCmds
-                                                    (List.map (AppCmd.map ChatHistoryMsg) appCmds_)
+                                                    firstCmdUps
+                                                    (List.map (CmdUp.map ChatHistoryMsg) cmdUps_)
                                                 )
                                            )
                                     , []
                                     )
 
                                 Nothing ->
-                                    ( ( Nothing, False, firstAppCmds )
+                                    ( ( Nothing, False, firstCmdUps )
                                     , List.append
                                         prevModel.eventsWaitingForChatHistory
                                         [ ( decodedEventLog.blockNumber, event ) ]
@@ -532,9 +513,9 @@ update msg prevModel =
                         (List.append
                             ([ maybeDecodeErrorNotice ]
                                 |> Maybe.Extra.values
-                                |> List.map AppCmd.UserNotice
+                                |> List.map CmdUp.UserNotice
                             )
-                            finalAppCmds
+                            finalCmdUps
                         )
 
         ExpandPhase phase ->
@@ -569,14 +550,14 @@ update msg prevModel =
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.GotoRoute (Routing.AgentHistory trade.parameters.initiatorAddress) ]
+                        [ CmdUp.GotoRoute (Routing.AgentHistory trade.parameters.initiatorAddress) ]
 
                 _ ->
                     UpdateResult
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.unexpectedError "Trying to view a user's history for a not-yet-loaded Trade" prevModel.trade
                         ]
 
@@ -639,7 +620,7 @@ update msg prevModel =
 
         StartContractAction actionMsg ->
             let
-                ( txChainStatus, chainCmd, appCmds ) =
+                ( txChainStatus, chainCmd, cmdUps ) =
                     case prevModel.trade of
                         CTypes.LoadedTrade tradeInfo ->
                             case actionMsg of
@@ -712,7 +693,7 @@ update msg prevModel =
                         tradeInfoNotYetLoaded ->
                             ( prevModel.txChainStatus
                             , ChainCmd.none
-                            , [ AppCmd.UserNotice <|
+                            , [ CmdUp.UserNotice <|
                                     UN.unexpectedError "Trying to handle StartContractAction msg for a not-yet-loaded Trade" tradeInfoNotYetLoaded
                               ]
                             )
@@ -723,7 +704,7 @@ update msg prevModel =
                 }
                 Cmd.none
                 chainCmd
-                appCmds
+                cmdUps
 
         ApproveSigned txHashResult ->
             case txHashResult of
@@ -735,7 +716,7 @@ update msg prevModel =
                         { prevModel | txChainStatus = Nothing }
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.web3SigError "approve" s
                         ]
 
@@ -749,7 +730,7 @@ update msg prevModel =
                         { prevModel | txChainStatus = Nothing }
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.web3SigError "commit" s
                         ]
 
@@ -766,7 +747,7 @@ update msg prevModel =
                         { prevModel | txChainStatus = Nothing }
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.web3SigError (actionName action) s
                         ]
 
@@ -834,9 +815,9 @@ update msg prevModel =
                             ]
                         )
                         ChainCmd.none
-                        (AppCmd.mapList ChatHistoryMsg updateResult.appCmds
+                        (CmdUp.mapList ChatHistoryMsg updateResult.cmdUps
                             ++ (maybeUserNotice
-                                    |> Maybe.map AppCmd.UserNotice
+                                    |> Maybe.map CmdUp.UserNotice
                                     |> Maybe.map List.singleton
                                     |> Maybe.withDefault []
                                )
@@ -847,7 +828,7 @@ update msg prevModel =
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.unexpectedError "Got a chat history message, but there is no chat history model!" chatHistoryMsg
                         ]
 
@@ -865,7 +846,7 @@ update msg prevModel =
                                 prevModel
                                 Cmd.none
                                 ChainCmd.none
-                                [ AppCmd.UserNotice <|
+                                [ CmdUp.UserNotice <|
                                     UN.unexpectedError "Trying to encrypt, but the user is not involved in this trade." Nothing
                                 ]
 
@@ -898,7 +879,7 @@ update msg prevModel =
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.unexpectedError "Error translating JS encryption result into Elm." encodingErrStr
                         ]
 
@@ -907,7 +888,7 @@ update msg prevModel =
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.unexpectedError "Encryption successful, but the user or trade is no longer valid." ( maybeUserInfo, maybeTradeInfo )
                         ]
 
@@ -919,7 +900,7 @@ update msg prevModel =
                 prevModel
                 Cmd.none
                 ChainCmd.none
-                [ AppCmd.UserNotice <|
+                [ CmdUp.UserNotice <|
                     UN.web3MiningError "message" s
                 ]
 
@@ -928,7 +909,7 @@ update msg prevModel =
                 prevModel
                 Cmd.none
                 ChainCmd.none
-                [ AppCmd.Web3Connect ]
+                [ CmdUp.Web3Connect ]
 
 
 initiateCommitCall : CTypes.FullTradeInfo -> Address -> String -> ( Maybe TxChainStatus, ChainCmd Msg )
@@ -964,7 +945,39 @@ initiateCommitCall trade userAddress commPubkey =
     )
 
 
-tryInitChatHistory : Wallet.State -> CTypes.Trade -> Maybe Int -> List ( Int, CTypes.DAIHardEvent ) -> ( Maybe ChatHistory.Model, Bool, List (AppCmd Msg) )
+runCmdDown : CmdDown.CmdDown -> Model -> UpdateResult
+runCmdDown cmdDown prevModel =
+    case cmdDown of
+        CmdDown.UpdateWallet wallet ->
+            UpdateResult
+                { prevModel | wallet = wallet }
+                (case ( Wallet.userInfo wallet, Wallet.factory wallet, prevModel.trade ) of
+                    ( Just uInfo, Just (Token tokenType), CTypes.LoadedTrade trade ) ->
+                        if Wallet.factory wallet == Just trade.factory then
+                            Contracts.Wrappers.getAllowanceCmd
+                                tokenType
+                                uInfo.address
+                                trade.creationInfo.address
+                                AllowanceFetched
+
+                        else
+                            Cmd.none
+
+                    _ ->
+                        Cmd.none
+                )
+                ChainCmd.none
+                []
+
+        CmdDown.CloseAnyDropdownsOrModals ->
+            justModelUpdate
+                { prevModel
+                    | showChatHistory = False
+                    , showStatsModal = False
+                }
+
+
+tryInitChatHistory : Wallet.State -> CTypes.Trade -> Maybe Int -> List ( Int, CTypes.DAIHardEvent ) -> ( Maybe ChatHistory.Model, Bool, List (CmdUp Msg) )
 tryInitChatHistory wallet maybeTrade maybeCurrentBlocknum pendingEvents =
     case ( maybeTrade, Wallet.userInfo wallet, maybeCurrentBlocknum ) of
         ( CTypes.LoadedTrade tradeInfo, Just userInfo, Just blocknum ) ->
@@ -980,10 +993,10 @@ tryInitChatHistory wallet maybeTrade maybeCurrentBlocknum pendingEvents =
                         tradeInfo
                         pendingEvents
                         blocknum
-                        |> (\( chModel, shouldDecrypt, appCmds ) ->
+                        |> (\( chModel, shouldDecrypt, cmdUps ) ->
                                 ( Just chModel
                                 , shouldDecrypt
-                                , appCmds |> List.map (AppCmd.map ChatHistoryMsg)
+                                , cmdUps |> List.map (CmdUp.map ChatHistoryMsg)
                                 )
                            )
 

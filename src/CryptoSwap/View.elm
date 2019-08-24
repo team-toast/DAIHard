@@ -1,6 +1,6 @@
 module CryptoSwap.View exposing (root)
 
-import AppCmd exposing (AppCmd)
+import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
 import CryptoSwap.Types exposing (..)
@@ -104,7 +104,7 @@ titleElement model =
             , headerTab
                 False
                 "CUSTOM"
-                (AppCmd <| AppCmd.GotoRoute Routing.Create)
+                (CmdUp <| CmdUp.GotoRoute Routing.Create)
             ]
 
 
@@ -414,7 +414,7 @@ placeOrderButton model =
                     )
 
         ( Nothing, _ ) ->
-            EH.redButton "Connect to Wallet" (AppCmd AppCmd.Web3Connect)
+            EH.redButton "Connect to Wallet" (CmdUp CmdUp.Web3Connect)
 
         ( _, Nothing ) ->
             EH.disabledButton "Place Order" Nothing
@@ -504,8 +504,8 @@ txChainStatusModal txChainStatus model =
         ApproveNeedsSig tokenType ->
             Element.el
                 [ Element.Events.onClick <|
-                    AppCmd <|
-                        AppCmd.gTag "txChainModal clicked" "misclick" "ApproveNeedsSig" 0
+                    CmdUp <|
+                        CmdUp.gTag "txChainModal clicked" "misclick" "ApproveNeedsSig" 0
                 ]
             <|
                 EH.txProcessModal
@@ -517,8 +517,8 @@ txChainStatusModal txChainStatus model =
         ApproveMining tokenType createParameters txHash ->
             Element.el
                 [ Element.Events.onClick <|
-                    AppCmd <|
-                        AppCmd.gTag "txChainModal clicked" "misclick" "ApproveMining" 0
+                    CmdUp <|
+                        CmdUp.gTag "txChainModal clicked" "misclick" "ApproveMining" 0
                 ]
             <|
                 EH.txProcessModal
@@ -533,8 +533,8 @@ txChainStatusModal txChainStatus model =
         CreateNeedsSig _ ->
             Element.el
                 [ Element.Events.onClick <|
-                    AppCmd <|
-                        AppCmd.gTag "txChainModal clicked" "misclick" "CreateNeedsSig" 0
+                    CmdUp <|
+                        CmdUp.gTag "txChainModal clicked" "misclick" "CreateNeedsSig" 0
                 ]
             <|
                 EH.txProcessModal
@@ -545,8 +545,8 @@ txChainStatusModal txChainStatus model =
         CreateMining factoryType txHash ->
             Element.el
                 [ Element.Events.onClick <|
-                    AppCmd <|
-                        AppCmd.gTag "txChainModal clicked" "misclick" "CreateMining" 0
+                    CmdUp <|
+                        CmdUp.gTag "txChainModal clicked" "misclick" "CreateMining" 0
                 ]
             <|
                 EH.txProcessModal

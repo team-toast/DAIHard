@@ -1,6 +1,6 @@
 module CryptoSwap.Types exposing (Errors, Model, Msg(..), PriceInfo, TxChainStatus(..), UpdateResult, exampleAddressForForeignCrypto, foreignCryptoPriceInfo, justModelUpdate, maybeUserParameters, noErrors)
 
-import AppCmd exposing (AppCmd)
+import CmdUp exposing (CmdUp)
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
@@ -69,7 +69,7 @@ type Msg
     | ApproveSigned TokenFactoryType CTypes.CreateParameters (Result String TxHash)
     | CreateSigned FactoryType (Result String TxHash)
     | CreateMined FactoryType (Result String TxReceipt)
-    | AppCmd (AppCmd Msg)
+    | CmdUp (CmdUp Msg)
     | NoOp
 
 
@@ -77,7 +77,7 @@ type alias UpdateResult =
     { model : Model
     , cmd : Cmd Msg
     , chainCmd : ChainCmd Msg
-    , appCmds : List (AppCmd Msg)
+    , cmdUps : List (CmdUp Msg)
     }
 
 

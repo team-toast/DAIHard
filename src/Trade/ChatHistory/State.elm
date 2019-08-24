@@ -1,6 +1,6 @@
 module Trade.ChatHistory.State exposing (handleNewEvent, init, update)
 
-import AppCmd exposing (AppCmd)
+import CmdUp exposing (CmdUp)
 import Array exposing (Array)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
@@ -15,7 +15,7 @@ import UserNotice as UN
 import Wallet
 
 
-init : Wallet.State -> BuyerOrSeller -> CTypes.FullTradeInfo -> List ( Int, CTypes.DAIHardEvent ) -> Int -> ( Model, Bool, List (AppCmd Msg) )
+init : Wallet.State -> BuyerOrSeller -> CTypes.FullTradeInfo -> List ( Int, CTypes.DAIHardEvent ) -> Int -> ( Model, Bool, List (CmdUp Msg) )
 init wallet userRole trade initialEvents currentBlocknum =
     Model
         wallet
@@ -32,14 +32,14 @@ update msg prevModel =
     case msg of
         NewEvent ( blocknum, event ) ->
             let
-                ( newModel, shouldCallDecrypt, appCmds ) =
+                ( newModel, shouldCallDecrypt, cmdUps ) =
                     handleNewEvent blocknum event prevModel
             in
             UpdateResult
                 newModel
                 shouldCallDecrypt
                 Nothing
-                appCmds
+                cmdUps
 
         MessageInputChanged newMessageStr ->
             UpdateResult
@@ -87,7 +87,7 @@ update msg prevModel =
                                         prevModel
                                         False
                                         Nothing
-                                        [ AppCmd.UserNotice <|
+                                        [ CmdUp.UserNotice <|
                                             UN.unexpectedError "got a decryption result, but for an event that is not a message!" historyEvent
                                         ]
 
@@ -96,7 +96,7 @@ update msg prevModel =
                                 prevModel
                                 False
                                 Nothing
-                                [ AppCmd.UserNotice <|
+                                [ CmdUp.UserNotice <|
                                     UN.unexpectedError "got a decryption result, but for an id out of bounds!" ( id, prevModel.history )
                                 ]
 
@@ -105,31 +105,31 @@ update msg prevModel =
                         prevModel
                         False
                         Nothing
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.unexpectedError "Error decoding decryption result" s
                         ]
 
 
-handleInitialEvents : List ( Int, CTypes.DAIHardEvent ) -> Model -> ( Model, Bool, List (AppCmd Msg) )
+handleInitialEvents : List ( Int, CTypes.DAIHardEvent ) -> Model -> ( Model, Bool, List (CmdUp Msg) )
 handleInitialEvents initialEvents prevModel =
     let
-        helper : List ( Int, CTypes.DAIHardEvent ) -> ( Model, Bool, List (AppCmd Msg) ) -> ( Model, Bool, List (AppCmd Msg) )
-        helper events ( model, shouldDecrypt, appCmds ) =
+        helper : List ( Int, CTypes.DAIHardEvent ) -> ( Model, Bool, List (CmdUp Msg) ) -> ( Model, Bool, List (CmdUp Msg) )
+        helper events ( model, shouldDecrypt, cmdUps ) =
             case events of
                 [] ->
-                    ( model, shouldDecrypt, appCmds )
+                    ( model, shouldDecrypt, cmdUps )
 
                 ( blocknum, event ) :: remainingEvents ->
                     let
-                        ( thisModel, thisShouldDecrypt, newAppCmds ) =
+                        ( thisModel, thisShouldDecrypt, newCmdUps ) =
                             handleNewEvent blocknum event model
                     in
-                    helper remainingEvents ( thisModel, shouldDecrypt || thisShouldDecrypt, List.append appCmds newAppCmds )
+                    helper remainingEvents ( thisModel, shouldDecrypt || thisShouldDecrypt, List.append cmdUps newCmdUps )
     in
     helper initialEvents ( prevModel, False, [] )
 
 
-handleNewEvent : Int -> CTypes.DAIHardEvent -> Model -> ( Model, Bool, List (AppCmd Msg) )
+handleNewEvent : Int -> CTypes.DAIHardEvent -> Model -> ( Model, Bool, List (CmdUp Msg) )
 handleNewEvent blocknum event prevModel =
     let
         toBuyerOrSeller =
@@ -189,11 +189,11 @@ handleNewEvent blocknum event prevModel =
                 CTypes.PokeEvent ->
                     Nothing
 
-        ( maybeNotifyAppCmd, newLastNotificationBlocknum ) =
+        ( maybeNotifyCmdUp, newLastNotificationBlocknum ) =
             if blocknum > prevModel.lastNotificationBlocknum then
                 ( maybeHistoryEventInfo
                     |> Maybe.map
-                        (historyEventToBrowserNotifcationAppCmd
+                        (historyEventToBrowserNotifcationCmdUp
                             (prevModel.userRole == prevModel.trade.parameters.initiatorRole)
                         )
                 , blocknum
@@ -234,15 +234,15 @@ handleNewEvent blocknum event prevModel =
 
         _ ->
             False
-    , Maybe.Extra.values [ maybeNotifyAppCmd ]
+    , Maybe.Extra.values [ maybeNotifyCmdUp ]
     )
 
 
-historyEventToBrowserNotifcationAppCmd : Bool -> EventInfo -> AppCmd Msg
-historyEventToBrowserNotifcationAppCmd userIsInitiator event =
+historyEventToBrowserNotifcationCmdUp : Bool -> EventInfo -> CmdUp Msg
+historyEventToBrowserNotifcationCmdUp userIsInitiator event =
     case event of
         Statement commMessage ->
-            AppCmd.BrowserNotification
+            CmdUp.BrowserNotification
                 "New Message from Trade"
                 Nothing
                 Nothing
@@ -276,7 +276,7 @@ historyEventToBrowserNotifcationAppCmd userIsInitiator event =
                         Burned ->
                             "Trade burned by Seller."
             in
-            AppCmd.BrowserNotification
+            CmdUp.BrowserNotification
                 str
                 Nothing
                 Nothing

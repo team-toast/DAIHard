@@ -1,6 +1,6 @@
 module Trade.ChatHistory.Types exposing (CommMessage, EncryptedMessage, Event, EventInfo(..), MessageContent(..), Model, Msg(..), StateChangeInfo(..), UpdateResult)
 
-import AppCmd exposing (AppCmd)
+import CmdUp exposing (CmdUp)
 import Array exposing (Array)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
@@ -26,7 +26,7 @@ type alias UpdateResult =
     { model : Model
     , shouldCallDecrypt : Bool
     , maybeMessageSubmit : Maybe String
-    , appCmds : List (AppCmd Msg)
+    , cmdUps : List (CmdUp Msg)
     }
 
 

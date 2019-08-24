@@ -1,6 +1,6 @@
 module AgentHistory.Types exposing (Model, Msg(..), UpdateResult, justModelUpdate)
 
-import AppCmd exposing (AppCmd)
+import CmdUp exposing (CmdUp)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -45,7 +45,7 @@ type alias UpdateResult =
     { model : Model
     , cmd : Cmd Msg
     , chainCmd : ChainCmd Msg
-    , appCmds : List (AppCmd Msg)
+    , cmdUps : List (CmdUp Msg)
     }
 
 

@@ -1,9 +1,10 @@
-module Marketplace.State exposing (init, subscriptions, update, updateWalletState)
+module Marketplace.State exposing (init, runCmdDown, subscriptions, update)
 
-import AppCmd
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
+import CmdDown
+import CmdUp
 import CommonTypes exposing (..)
 import Config
 import Contracts.Types as CTypes
@@ -142,17 +143,28 @@ update msg prevModel =
                 }
                 (Cmd.map TradeTableMsg ttUpdateResult.cmd)
                 (ChainCmd.map TradeTableMsg ttUpdateResult.chainCmd)
-                (List.map (AppCmd.map TradeTableMsg) ttUpdateResult.appCmds)
+                (List.map (CmdUp.map TradeTableMsg) ttUpdateResult.cmdUps)
 
         NoOp ->
             justModelUpdate prevModel
 
-        AppCmd appCmd ->
+        CmdUp cmdUp ->
             UpdateResult
                 prevModel
                 Cmd.none
                 ChainCmd.none
-                [ appCmd ]
+                [ cmdUp ]
+
+
+runCmdDown : CmdDown.CmdDown -> Model -> UpdateResult
+runCmdDown cmdDown prevModel =
+    case cmdDown of
+        CmdDown.UpdateWallet wallet ->
+            justModelUpdate { prevModel | wallet = wallet }
+
+        CmdDown.CloseAnyDropdownsOrModals ->
+            prevModel
+                |> update (ShowCurrencyDropdown False)
 
 
 addPaymentInputTerm : Model -> Model
@@ -327,11 +339,6 @@ testTextMatch terms paymentMethods =
             (\method ->
                 searchForAllTerms method.info
             )
-
-
-updateWalletState : Wallet.State -> Model -> Model
-updateWalletState wallet model =
-    { model | wallet = wallet }
 
 
 subscriptions : Model -> Sub Msg

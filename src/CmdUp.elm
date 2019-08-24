@@ -1,11 +1,11 @@
-module AppCmd exposing (AppCmd(..), gTag, map, mapList)
+module CmdUp exposing (CmdUp(..), gTag, map, mapList)
 
 import CommonTypes exposing (..)
 import Routing
 import UserNotice as UN exposing (UserNotice)
 
 
-type AppCmd msg
+type CmdUp msg
     = Web3Connect
     | GotoRoute Routing.Route
     | GTag GTagData
@@ -14,7 +14,7 @@ type AppCmd msg
     | RequestBrowserNotificationPermission
 
 
-gTag : String -> String -> String -> Int -> AppCmd msg
+gTag : String -> String -> String -> Int -> CmdUp msg
 gTag event category label value =
     GTag <|
         GTagData
@@ -24,9 +24,9 @@ gTag event category label value =
             value
 
 
-map : (msg1 -> msg2) -> AppCmd msg1 -> AppCmd msg2
-map f appCmd =
-    case appCmd of
+map : (msg1 -> msg2) -> CmdUp msg1 -> CmdUp msg2
+map f cmdUp =
+    case cmdUp of
         UserNotice userNotice ->
             UserNotice (userNotice |> UN.map f)
 
@@ -46,8 +46,8 @@ map f appCmd =
             RequestBrowserNotificationPermission
 
 
-mapList : (msg1 -> msg2) -> List (AppCmd msg1) -> List (AppCmd msg2)
-mapList f appCmds =
+mapList : (msg1 -> msg2) -> List (CmdUp msg1) -> List (CmdUp msg2)
+mapList f cmdUps =
     List.map
         (map f)
-        appCmds
+        cmdUps

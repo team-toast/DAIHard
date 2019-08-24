@@ -1,10 +1,11 @@
-module AgentHistory.State exposing (init, subscriptions, update, updateWalletState)
+module AgentHistory.State exposing (init, runCmdDown, subscriptions, update)
 
 import AgentHistory.Types exposing (..)
-import AppCmd
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
+import CmdDown
+import CmdUp
 import CommonTypes exposing (..)
 import Config exposing (..)
 import Contracts.Generated.DAIHardTrade as DHT
@@ -13,7 +14,6 @@ import Contracts.Wrappers
 import Eth
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
-import Prices exposing (Price)
 import Filters.State as Filters
 import Filters.Types as Filter
 import Flip exposing (flip)
@@ -21,6 +21,7 @@ import Helpers.BigInt as BigIntHelpers
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
 import PaymentMethods exposing (PaymentMethod)
+import Prices exposing (Price)
 import Routing
 import String.Extra
 import Time
@@ -82,7 +83,7 @@ update msg prevModel =
                 prevModel
                 Cmd.none
                 ChainCmd.none
-                [ AppCmd.GotoRoute (Routing.Trade factory id) ]
+                [ CmdUp.GotoRoute (Routing.Trade factory id) ]
 
         FiltersMsg filtersMsg ->
             justModelUpdate
@@ -103,24 +104,20 @@ update msg prevModel =
                 }
                 (Cmd.map TradeTableMsg ttUpdateResult.cmd)
                 (ChainCmd.map TradeTableMsg ttUpdateResult.chainCmd)
-                (List.map (AppCmd.map TradeTableMsg) ttUpdateResult.appCmds)
+                (List.map (CmdUp.map TradeTableMsg) ttUpdateResult.cmdUps)
 
         NoOp ->
-            noUpdate prevModel
+            justModelUpdate prevModel
 
 
-noUpdate : Model -> UpdateResult
-noUpdate model =
-    UpdateResult
-        model
-        Cmd.none
-        ChainCmd.none
-        []
+runCmdDown : CmdDown.CmdDown -> Model -> UpdateResult
+runCmdDown cmdDown prevModel =
+    case cmdDown of
+        CmdDown.UpdateWallet wallet ->
+            justModelUpdate { prevModel | wallet = wallet }
 
-
-updateWalletState : Wallet.State -> Model -> Model
-updateWalletState wallet model =
-    { model | wallet = wallet }
+        CmdDown.CloseAnyDropdownsOrModals ->
+            justModelUpdate prevModel
 
 
 subscriptions : Model -> Sub Msg

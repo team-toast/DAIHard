@@ -1,7 +1,7 @@
 module Create.View exposing (root)
 
-import AppCmd exposing (AppCmd)
 import BigInt exposing (BigInt)
+import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Config
 import Contracts.Types as CTypes
@@ -39,7 +39,6 @@ root model =
             , left = 40
             , bottom = 30
             }
-        , Element.Events.onClick <| ShowCurrencyDropdown False
         , Element.inFront <|
             getModalOrNone model
         ]
@@ -151,8 +150,8 @@ daiInputElement factoryType amountString maybeError =
         , Just <|
             Element.el
                 [ Element.Events.onClick <|
-                    AppCmd <|
-                        AppCmd.gTag "click" "misclick" "dai symbol in dai input" 0
+                    CmdUp <|
+                        CmdUp.gTag "click" "misclick" "dai symbol in dai input" 0
                 ]
                 (EH.daiSymbolAndLabel factoryType)
         )
@@ -184,8 +183,8 @@ fiatInputElement symbol amountString showFiatTypeDropdown maybeAmountError maybe
                 Just char ->
                     Element.el
                         [ Element.Events.onClick <|
-                            AppCmd <|
-                                AppCmd.gTag "click" "misclick" "currency symbol" 0
+                            CmdUp <|
+                                CmdUp.gTag "click" "misclick" "currency symbol" 0
                         ]
                         (Element.text <| char)
 
@@ -193,7 +192,7 @@ fiatInputElement symbol amountString showFiatTypeDropdown maybeAmountError maybe
                     Element.none
 
         flagClickedMsg =
-            AppCmd <| AppCmd.gTag "click" "misclick" "currency flag" 0
+            CmdUp <| CmdUp.gTag "click" "misclick" "currency flag" 0
 
         currencySelector =
             Element.el
@@ -264,8 +263,8 @@ feeNotifyElement model =
         , Element.Border.rounded 8
         , Element.spacing 5
         , Element.Events.onClick <|
-            AppCmd <|
-                AppCmd.gTag "click" "misclick" "fee notify element" 0
+            CmdUp <|
+                CmdUp.gTag "click" "misclick" "fee notify element" 0
         ]
         [ Element.el
             [ Element.Font.size 18
@@ -461,8 +460,8 @@ phaseElement icon title summary interval maybeError newIntervalMsg =
                 [ Images.toElement
                     [ Element.height <| Element.px 40
                     , Element.Events.onClick <|
-                        AppCmd <|
-                            AppCmd.gTag "click" "misclick" ("symbol for " ++ title) 0
+                        CmdUp <|
+                            CmdUp.gTag "click" "misclick" ("symbol for " ++ title) 0
                     ]
                     icon
                 , Element.el
@@ -603,8 +602,8 @@ txChainStatusModal txChainStatus model =
         ApproveNeedsSig tokenType ->
             Element.el
                 [ Element.Events.onClick <|
-                    AppCmd <|
-                        AppCmd.gTag "txChainModal clicked" "misclick" "ApproveNeedsSig" 0
+                    CmdUp <|
+                        CmdUp.gTag "txChainModal clicked" "misclick" "ApproveNeedsSig" 0
                 ]
             <|
                 EH.txProcessModal
@@ -616,8 +615,8 @@ txChainStatusModal txChainStatus model =
         ApproveMining tokenType createParameters txHash ->
             Element.el
                 [ Element.Events.onClick <|
-                    AppCmd <|
-                        AppCmd.gTag "txChainModal clicked" "misclick" "ApproveMining" 0
+                    CmdUp <|
+                        CmdUp.gTag "txChainModal clicked" "misclick" "ApproveMining" 0
                 ]
             <|
                 EH.txProcessModal
@@ -632,8 +631,8 @@ txChainStatusModal txChainStatus model =
         CreateNeedsSig _ ->
             Element.el
                 [ Element.Events.onClick <|
-                    AppCmd <|
-                        AppCmd.gTag "txChainModal clicked" "misclick" "CreateNeedsSig" 0
+                    CmdUp <|
+                        CmdUp.gTag "txChainModal clicked" "misclick" "CreateNeedsSig" 0
                 ]
             <|
                 EH.txProcessModal
@@ -644,8 +643,8 @@ txChainStatusModal txChainStatus model =
         CreateMining factoryType txHash ->
             Element.el
                 [ Element.Events.onClick <|
-                    AppCmd <|
-                        AppCmd.gTag "txChainModal clicked" "misclick" "CreateMining" 0
+                    CmdUp <|
+                        CmdUp.gTag "txChainModal clicked" "misclick" "CreateMining" 0
                 ]
             <|
                 EH.txProcessModal

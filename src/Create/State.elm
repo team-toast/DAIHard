@@ -1,8 +1,9 @@
-module Create.State exposing (init, subscriptions, update, updateWalletState)
+module Create.State exposing (init, runCmdDown, subscriptions, update)
 
-import AppCmd
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
+import CmdDown
+import CmdUp
 import CommonTypes exposing (..)
 import Config
 import Contracts.Generated.ERC20Token as TokenContract
@@ -63,23 +64,6 @@ initialInputs =
     }
 
 
-updateWalletState : Wallet.State -> Model -> ( Model, Cmd Msg )
-updateWalletState wallet model =
-    ( { model | wallet = wallet }
-        |> updateInputs model.inputs
-    , case ( Wallet.userInfo wallet, Wallet.factory wallet ) of
-        ( Just uInfo, Just (Token tokenType) ) ->
-            Contracts.Wrappers.getAllowanceCmd
-                tokenType
-                uInfo.address
-                (Config.factoryAddress (Token tokenType))
-                (AllowanceFetched tokenType)
-
-        _ ->
-            Cmd.none
-    )
-
-
 update : Msg -> Model -> UpdateResult
 update msg prevModel =
     case msg of
@@ -114,10 +98,10 @@ update msg prevModel =
                 ChainCmd.none
                 [ case initiatorRole of
                     Buyer ->
-                        AppCmd.gTag "create offer type changed" "input" "sell dai" 0
+                        CmdUp.gTag "create offer type changed" "input" "sell dai" 0
 
                     Seller ->
-                        AppCmd.gTag "create offer type changed" "input" "buy dai" 0
+                        CmdUp.gTag "create offer type changed" "input" "buy dai" 0
                 ]
 
         TradeAmountChanged newAmountStr ->
@@ -218,7 +202,7 @@ update msg prevModel =
                 Cmd.none
                 ChainCmd.none
                 (if flag then
-                    [ AppCmd.gTag "currency-selector-clicked" "input" "" 0 ]
+                    [ CmdUp.gTag "currency-selector-clicked" "input" "" 0 ]
 
                  else
                     []
@@ -264,7 +248,7 @@ update msg prevModel =
                 { prevModel | txChainStatus = Nothing }
                 Cmd.none
                 ChainCmd.none
-                [ AppCmd.gTag "abort" "abort" "create" 0 ]
+                [ CmdUp.gTag "abort" "abort" "create" 0 ]
 
         ConfirmCreate factoryType createParameters fullDepositAmount ->
             let
@@ -319,7 +303,7 @@ update msg prevModel =
                         { prevModel | txChainStatus = Nothing }
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.UserNotice <| UN.web3SigError "appove" s ]
+                        [ CmdUp.UserNotice <| UN.web3SigError "appove" s ]
 
         AllowanceFetched tokenType fetchResult ->
             case fetchResult of
@@ -354,7 +338,7 @@ update msg prevModel =
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.UserNotice <| UN.web3FetchError "allowance" httpError ]
+                        [ CmdUp.UserNotice <| UN.web3FetchError "allowance" httpError ]
 
         CreateSigned factoryType result ->
             case result of
@@ -366,14 +350,14 @@ update msg prevModel =
                         { prevModel | txChainStatus = Nothing }
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.UserNotice <| UN.web3SigError "create" s ]
+                        [ CmdUp.UserNotice <| UN.web3SigError "create" s ]
 
         CreateMined factoryType (Err s) ->
             UpdateResult
                 prevModel
                 Cmd.none
                 ChainCmd.none
-                [ AppCmd.UserNotice <| UN.web3MiningError "create" s ]
+                [ CmdUp.UserNotice <| UN.web3MiningError "create" s ]
 
         CreateMined factory (Ok txReceipt) ->
             let
@@ -388,14 +372,14 @@ update msg prevModel =
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.GotoRoute (Routing.Trade factory id) ]
+                        [ CmdUp.GotoRoute (Routing.Trade factory id) ]
 
                 Nothing ->
                     UpdateResult
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.unexpectedError "Error getting the ID of the created offer. Check the \"My Trades\" page for your open offer." txReceipt
                         ]
 
@@ -404,17 +388,42 @@ update msg prevModel =
                 prevModel
                 Cmd.none
                 ChainCmd.none
-                [ AppCmd.Web3Connect ]
+                [ CmdUp.Web3Connect ]
 
         NoOp ->
             justModelUpdate prevModel
 
-        AppCmd appCmd ->
+        CmdUp cmdUp ->
             UpdateResult
                 prevModel
                 Cmd.none
                 ChainCmd.none
-                [ appCmd ]
+                [ cmdUp ]
+
+
+runCmdDown : CmdDown.CmdDown -> Model -> UpdateResult
+runCmdDown cmdDown prevModel =
+    case cmdDown of
+        CmdDown.UpdateWallet wallet ->
+            UpdateResult
+                ({ prevModel | wallet = wallet } |> updateInputs prevModel.inputs)
+                (case ( Wallet.userInfo wallet, Wallet.factory wallet ) of
+                    ( Just uInfo, Just (Token tokenType) ) ->
+                        Contracts.Wrappers.getAllowanceCmd
+                            tokenType
+                            uInfo.address
+                            (Config.factoryAddress (Token tokenType))
+                            (AllowanceFetched tokenType)
+
+                    _ ->
+                        Cmd.none
+                )
+                ChainCmd.none
+                []
+
+        CmdDown.CloseAnyDropdownsOrModals ->
+            justModelUpdate
+                { prevModel | showFiatTypeDropdown = False }
 
 
 initiateCreateCall : FactoryType -> CTypes.CreateParameters -> ( Maybe TxChainStatus, ChainCmd Msg )
