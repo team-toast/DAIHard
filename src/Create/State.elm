@@ -12,7 +12,6 @@ import Create.PMWizard.State as PMWizard
 import Create.Types exposing (..)
 import Eth
 import Eth.Types exposing (Address)
-import FiatValue exposing (FiatValue)
 import Flip exposing (flip)
 import Helpers.BigInt as BigIntHelpers
 import Helpers.Eth as EthHelpers
@@ -20,6 +19,7 @@ import Helpers.Time as TimeHelpers
 import Helpers.Tuple exposing (extractTuple3Result, mapEachTuple3)
 import Maybe.Extra
 import PaymentMethods exposing (PaymentMethod)
+import Prices exposing (Price)
 import Routing
 import SmoothScroll exposing (scrollToWithOptions)
 import String.Extra
@@ -479,7 +479,10 @@ validateInputs inputs =
         (\daiAmount fiatAmount fiatType paymentMethod ( autorecallInterval, autoabortInterval, autoreleaseInterval ) ->
             { initiatorRole = inputs.userRole
             , tradeAmount = daiAmount
-            , price = { fiatType = fiatType, amount = fiatAmount }
+            , price =
+                Price
+                    fiatType
+                    fiatAmount
             , autorecallInterval = autorecallInterval
             , autoabortInterval = autoabortInterval
             , autoreleaseInterval = autoreleaseInterval
@@ -553,20 +556,15 @@ interpretFiatType input =
         |> Result.fromMaybe "You must specify a fiat type."
 
 
-interpretFiatAmount : String -> Result String BigInt
+interpretFiatAmount : String -> Result String Float
 interpretFiatAmount input =
     if input == "" then
         Err "You must specify a fiat price."
 
     else
-        case BigInt.fromString input of
+        case String.toFloat input of
             Nothing ->
-                case String.toFloat input of
-                    Just _ ->
-                        Err "Fractional fiat amounts (i.e. $1.20) are not supported. Use a whole number."
-
-                    _ ->
-                        Err "I don't understand this number."
+                Err "I don't understand this number."
 
             Just value ->
                 Ok value

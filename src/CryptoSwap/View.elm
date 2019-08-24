@@ -358,7 +358,7 @@ tradeOutputElement model =
                 , Element.Font.color <| Element.rgb 0.2 0.2 0.2
                 ]
                 [ Element.text "="
-                , Element.text <| TokenValue.toFloatString (Just 6) amount
+                , Element.text <| String.fromFloat amount
                 , Element.text <|
                     case model.initiatorRole of
                         Buyer ->
@@ -418,24 +418,6 @@ placeOrderButton model =
 
         ( _, Nothing ) ->
             EH.disabledButton "Place Order" Nothing
-
-
-additionalSettingsElement : Bool -> Element Msg
-additionalSettingsElement showAdditionalSettings =
-    if showAdditionalSettings then
-        Debug.todo ""
-
-    else
-        Element.row
-            [ Element.spacing 5
-            , Element.pointer
-            , Element.Events.onClick ToggleAdditionalSettings
-            ]
-            [ Element.text "Trade Lifecycle Settings"
-            , Images.toElement
-                [ Element.width <| Element.px 5 ]
-                Images.downArrow
-            ]
 
 
 getModalOrNone : Model -> Element Msg

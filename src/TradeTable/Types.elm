@@ -29,7 +29,7 @@ type ColType
     = Phase
     | Expires
     | Offer
-    | FiatPrice
+    | Price
     | Margin
     | PaymentWindow
     | BurnWindow

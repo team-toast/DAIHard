@@ -10,12 +10,12 @@ import Dict exposing (Dict)
 import Eth.Net
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
-import FiatValue exposing (FiatValue)
 import Filters.Types as Filters
 import Helpers.Eth as EthHelpers
 import Http
 import Json.Decode
 import PaymentMethods exposing (PaymentMethod)
+import Prices exposing (Price)
 import String.Extra
 import Time
 import TokenValue exposing (TokenValue)
@@ -72,7 +72,7 @@ justModelUpdate model =
 type alias SearchInputs =
     { minDai : String
     , maxDai : String
-    , fiatType : String
+    , fiatType : Prices.Symbol
     , paymentMethod : String
     , paymentMethodTerms : List String
     }
@@ -90,7 +90,7 @@ noErrors =
 
 type alias Query =
     { dai : TokenRange
-    , fiatType : Maybe String
+    , fiatSymbol : Maybe Prices.Symbol
     , paymentMethodTerms : List String
     }
 

@@ -11,7 +11,6 @@ import Element.Events
 import Element.Font
 import Element.Input
 import Eth.Types exposing (Address)
-import FiatValue exposing (FiatValue)
 import Filters.Types as Filters
 import Filters.View as Filters
 import Helpers.Element as EH
@@ -21,6 +20,7 @@ import Images exposing (Image)
 import Margin
 import Maybe.Extra
 import PaymentMethods exposing (PaymentMethod)
+import Prices exposing (Price)
 import Time
 import TokenValue exposing (TokenValue)
 import TradeCache.State as TradeCache
@@ -175,7 +175,7 @@ maybeResultsElement time tcDoneLoading tradeCaches model =
             model.tradeTable
             [ TradeTable.Phase
             , TradeTable.Offer
-            , TradeTable.FiatPrice
+            , TradeTable.Price
             , TradeTable.Margin
             , TradeTable.PaymentWindow
             , TradeTable.BurnWindow

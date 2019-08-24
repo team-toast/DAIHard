@@ -14,7 +14,6 @@ import Eth.Decode
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address, Call)
 import Eth.Utils
-import FiatValue exposing (FiatValue)
 import Flip exposing (flip)
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
@@ -22,6 +21,7 @@ import Http
 import Json.Decode
 import Json.Encode
 import PaymentMethods
+import Prices exposing (Price)
 import Task
 import Time
 import TokenValue exposing (TokenValue)

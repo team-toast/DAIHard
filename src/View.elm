@@ -14,7 +14,7 @@ import Element.Border
 import Element.Events
 import Element.Font
 import Element.Input
-import FiatValue
+import Prices
 import Helpers.Element as EH
 import Helpers.Tuple exposing (mapTuple2)
 import Landing.View
@@ -86,7 +86,7 @@ headerBackground : Element Msg
 headerBackground =
     Element.el
         [ Element.width Element.fill
-        , Element.height <| Element.px 150
+        , Element.height <| Element.px 400
         , Element.Background.color EH.headerBackgroundColor
         ]
         Element.none

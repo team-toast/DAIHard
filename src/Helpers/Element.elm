@@ -1,4 +1,4 @@
-module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredMargin, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, fiatTypeToSymbolElement, fiatValue, green, headerBackgroundColor, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, marginFloatToConciseUnsignedString, marginSymbol, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, pokeButton, red, redButton, releasedIconColor, roundBottomCorners, roundTopCorners, scrollbarYEl, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredMargin, white, withHeader, yellow)
+module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredMargin, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, headerBackgroundColor, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, marginFloatToConciseUnsignedString, marginSymbol, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, pokeButton, price, red, redButton, releasedIconColor, roundBottomCorners, roundTopCorners, scrollbarYEl, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredMargin, white, withHeader, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -16,7 +16,6 @@ import Element.Font
 import Element.Input
 import Eth.Types exposing (Address)
 import Eth.Utils
-import FiatValue exposing (FiatValue)
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
 import Html.Attributes
@@ -27,6 +26,7 @@ import Json.Decode
 import List
 import List.Extra
 import Maybe.Extra
+import Prices exposing (Price)
 import Task
 import Time
 import TokenValue exposing (TokenValue)
@@ -159,18 +159,18 @@ daiValue tv =
         ]
 
 
-fiatValue : FiatValue -> Element msg
-fiatValue fv =
+price : Price -> Element msg
+price p =
     let
         currencyElement =
-            case Dict.get fv.fiatType FiatValue.currencyTypes of
+            case Dict.get p.symbol Prices.charsAndImages of
                 Nothing ->
                     Element.none
 
-                Just ( typeChar, image ) ->
+                Just ( _, maybeImage ) ->
                     Images.toElement
                         [ Element.height <| Element.px 26 ]
-                        image
+                        (maybeImage |> Maybe.withDefault Images.none)
     in
     Element.row [ Element.spacing 4 ]
         [ currencyElement
@@ -179,8 +179,8 @@ fiatValue fv =
             , Element.Font.medium
             , Element.width <| Element.px 50
             ]
-            (Element.text fv.fiatType)
-        , Element.text <| FiatValue.renderToString fv
+            (Element.text p.symbol)
+        , Element.text <| Prices.toString p
         ]
 
 
@@ -375,14 +375,17 @@ bigTimeUnitElement numDigits color labelString num =
         (Element.text <| numStr ++ labelString)
 
 
-fiatTypeToSymbolElement : String -> Element msg
-fiatTypeToSymbolElement fiatType =
-    case Dict.get fiatType FiatValue.currencyTypes of
+priceSymbolToImageElement : Prices.Symbol -> Element msg
+priceSymbolToImageElement symbol =
+    case Dict.get symbol Prices.charsAndImages of
         Nothing ->
             Element.text "*"
 
-        Just ( _, image ) ->
-            Images.toElement [ Element.height <| Element.px 26 ] image
+        Just ( _, maybeImage ) ->
+            Images.toElement [ Element.height <| Element.px 26 ]
+                (maybeImage
+                    |> Maybe.withDefault Images.none
+                )
 
 
 
@@ -543,10 +546,10 @@ textInputWithElement attributes inputAttributes addedElement labelStr value plac
 
 
 currencySelector : Bool -> String -> msg -> (String -> msg) -> msg -> Element msg
-currencySelector showDropdown typeStringInput openCurrencySelectorMsg typeStringChangedMsgConstructor flagClickedMsg =
+currencySelector showDropdown symbolInput openCurrencySelectorMsg typeStringChangedMsgConstructor flagClickedMsg =
     let
-        gotCurrency =
-            Dict.get typeStringInput FiatValue.currencyTypes
+        maybeCharAndImage =
+            Dict.get symbolInput Prices.charsAndImages
 
         inputElement =
             Element.Input.text
@@ -558,13 +561,13 @@ currencySelector showDropdown typeStringInput openCurrencySelectorMsg typeString
                 , onClickNoPropagation openCurrencySelectorMsg
                 ]
                 { onChange = String.toUpper >> typeStringChangedMsgConstructor
-                , text = typeStringInput
+                , text = symbolInput
                 , placeholder = Nothing
                 , label = Element.Input.labelHidden "currency type"
                 }
 
         dropdownEl =
-            case ( showDropdown, gotCurrency ) of
+            case ( showDropdown, maybeCharAndImage ) of
                 ( False, _ ) ->
                     Element.none
 
@@ -580,22 +583,22 @@ currencySelector showDropdown typeStringInput openCurrencySelectorMsg typeString
                         , Element.padding 10
                         , Element.centerX
                         ]
-                        (FiatValue.searchTypes typeStringInput
+                        (Prices.searchPriceTypes symbolInput
                             |> Dict.toList
                             |> List.map
-                                (\( typeString, ( _, image ) ) ->
+                                (\( symbol, ( _, maybeImage ) ) ->
                                     Element.row
                                         [ Element.width <| Element.px 80
                                         , Element.spacing 9
                                         , Element.paddingXY 0 5
-                                        , onClickNoPropagation <| typeStringChangedMsgConstructor typeString
+                                        , onClickNoPropagation <| typeStringChangedMsgConstructor symbol
                                         , Element.mouseOver [ Element.Background.color <| Element.rgb 0.8 0.8 1 ]
                                         ]
                                         [ Images.toElement
                                             [ Element.height <| Element.px 26
                                             ]
-                                            image
-                                        , Element.el [ Element.Font.size 16, Element.Font.semiBold ] <| textWithoutTextCursor typeString
+                                            (maybeImage |> Maybe.withDefault Images.none)
+                                        , Element.el [ Element.Font.size 16, Element.Font.semiBold ] <| textWithoutTextCursor symbol
                                         ]
                                 )
                         )
@@ -604,7 +607,8 @@ currencySelector showDropdown typeStringInput openCurrencySelectorMsg typeString
         [ Element.spacing 4
         , Element.below dropdownEl
         ]
-        [ Element.el [ Element.Events.onClick flagClickedMsg ] <| FiatValue.typeStringToSymbol typeStringInput
+        [ Element.el [ Element.Events.onClick flagClickedMsg ]
+            (Prices.getIcon symbolInput |> Maybe.withDefault Element.none)
         , inputElement
         ]
 
@@ -1059,9 +1063,10 @@ coolCurrencyHbreak reversed length =
     Element.el
         [ Element.width Element.fill
         , Element.inFront
-            (FiatValue.currencyTypes
+            (Prices.charsAndImages
                 |> Dict.toList
                 |> List.map (Tuple.second >> Tuple.first)
+                |> Maybe.Extra.values
                 |> List.Extra.unique
                 |> (if reversed then
                         List.reverse

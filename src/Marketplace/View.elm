@@ -11,7 +11,6 @@ import Element.Border
 import Element.Events
 import Element.Font
 import Element.Input
-import FiatValue exposing (FiatValue)
 import Filters.Types as Filters
 import Filters.View as Filters
 import Helpers.Element as EH
@@ -23,6 +22,7 @@ import Margin
 import Marketplace.Types exposing (..)
 import Maybe.Extra
 import PaymentMethods exposing (PaymentMethod)
+import Prices exposing (Price)
 import Time
 import TradeCache.State as TradeCache
 import TradeCache.Types as TradeCache exposing (TradeCache)
@@ -239,7 +239,7 @@ maybeResultsElement time onlyOpenTrades tcDoneLoading tradeCaches model =
               else
                 TradeTable.Phase
             , TradeTable.Offer
-            , TradeTable.FiatPrice
+            , TradeTable.Price
             , TradeTable.Margin
             , TradeTable.PaymentWindow
             , TradeTable.BurnWindow
@@ -297,11 +297,12 @@ daiRangeInput minDai maxDai errors =
         |> withInputHeader "Dai Range"
 
 
-fiatInput : Bool -> String -> Errors -> Element Msg
-fiatInput showTypeDropdown fiatType errors =
+fiatInput : Bool -> Prices.Symbol -> Errors -> Element Msg
+fiatInput showTypeDropdown symbol errors =
     let
         fiatLabelElement =
-            EH.fiatTypeToSymbolElement fiatType
+            Prices.getIcon symbol
+                |> Maybe.withDefault Element.none
 
         minElement =
             Element.row [ Element.spacing 8, Element.centerY, Element.width <| Element.px 60 ]
@@ -320,7 +321,7 @@ fiatInput showTypeDropdown fiatType errors =
     in
     Element.el
         [ Element.alignTop, Element.width <| Element.px 120 ]
-        (EH.currencySelector showTypeDropdown fiatType (ShowCurrencyDropdown True) FiatTypeInputChanged flagClickedMsg
+        (EH.currencySelector showTypeDropdown symbol (ShowCurrencyDropdown True) FiatTypeInputChanged flagClickedMsg
             |> withInputHeader "Fiat Type"
         )
 

@@ -13,7 +13,7 @@ import Contracts.Wrappers
 import Eth
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
-import FiatValue exposing (FiatValue)
+import Prices exposing (Price)
 import Filters.State as Filters
 import Filters.Types as Filter
 import Flip exposing (flip)

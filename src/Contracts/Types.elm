@@ -9,7 +9,7 @@ import Contracts.Generated.DAIHardTrade as DHT
 import Eth.Decode
 import Eth.Types exposing (Address)
 import Eth.Utils
-import FiatValue exposing (FiatValue)
+import Prices exposing (Price)
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
 import Images exposing (Image)
@@ -63,7 +63,7 @@ type alias DerivedValues =
 
 
 type alias Terms =
-    { price : FiatValue
+    { price : Price
     , paymentMethods : List PaymentMethod
     }
 
@@ -71,7 +71,7 @@ type alias Terms =
 type alias UserParameters =
     { initiatorRole : BuyerOrSeller
     , tradeAmount : TokenValue
-    , price : FiatValue
+    , price : Price
     , paymentMethods : List PaymentMethod
     , autorecallInterval : Time.Posix
     , autoabortInterval : Time.Posix
@@ -95,7 +95,7 @@ type alias TradeParameters =
 type alias CreateParameters =
     { initiatorRole : BuyerOrSeller
     , tradeAmount : TokenValue
-    , price : FiatValue
+    , price : Price
     , buyerDeposit : TokenValue
     , abortPunishment : TokenValue
     , autorecallInterval : Time.Posix
@@ -784,7 +784,7 @@ encodeTerms terms =
                 terms.paymentMethods
 
         encodedPrice =
-            FiatValue.encode terms.price
+            Prices.encode terms.price
     in
     Json.Encode.object
         [ ( "paymentmethods", encodedPaymentMethods )
@@ -799,7 +799,7 @@ decodeTerms encodedTerms =
         decoder =
             Json.Decode.map2
                 Terms
-                (Json.Decode.field "price" FiatValue.decoder)
+                (Json.Decode.field "price" Prices.decoder)
                 (Json.Decode.field "paymentmethods"
                     (Json.Decode.list PaymentMethods.decoder)
                 )

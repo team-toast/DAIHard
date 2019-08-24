@@ -1,21 +1,17 @@
 module Margin exposing (margin, marginFromFloats, marginToString, stringToMarginFloat)
 
-import FiatValue exposing (FiatValue)
+import Prices exposing (Price)
 import TokenValue exposing (TokenValue)
 
 
-margin : TokenValue -> FiatValue -> Maybe Float
-margin dai fiat =
-    let
-        daiFloat =
-            TokenValue.getFloatValueWithWarning dai
-
-        fiatFloat =
-            FiatValue.getFloatValueWithWarning fiat
-    in
-    case fiat.fiatType of
+margin : TokenValue -> Price -> Maybe Float
+margin dai price =
+    case price.symbol of
         "USD" ->
-            Just <| marginFromFloats daiFloat fiatFloat
+            Just <|
+                marginFromFloats
+                    (TokenValue.getFloatValueWithWarning dai)
+                    price.amount
 
         _ ->
             Nothing

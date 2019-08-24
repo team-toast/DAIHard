@@ -7,12 +7,12 @@ import Element.Background
 import Element.Border
 import Element.Events
 import Element.Font
-import FiatValue exposing (FiatValue)
 import Flip exposing (flip)
 import Helpers.Element as EH
 import Helpers.Time as TimeHelpers
 import Images exposing (Image)
 import PaymentMethods exposing (PaymentMethod)
+import Prices
 import Time
 import TokenValue exposing (TokenValue)
 import TradeTable.Types exposing (..)
@@ -66,7 +66,7 @@ colTypePortion colType =
         Offer ->
             1
 
-        FiatPrice ->
+        Price ->
             2
 
         Margin ->
@@ -121,7 +121,7 @@ colTitleEl colType =
                 Offer ->
                     "Offer"
 
-                FiatPrice ->
+                Price ->
                     "For Fiat"
 
                 Margin ->
@@ -270,8 +270,8 @@ viewTradeCell time colType trade =
                         )
                     ]
 
-            FiatPrice ->
-                EH.fiatValue trade.terms.price
+            Price ->
+                EH.price trade.terms.price
 
             Margin ->
                 let
@@ -364,8 +364,8 @@ sortByFunc ( sortCol, ordering ) =
         Offer ->
             \a b -> TokenValue.compare a.parameters.tradeAmount b.parameters.tradeAmount
 
-        FiatPrice ->
-            \a b -> FiatValue.compare a.terms.price b.terms.price
+        Price ->
+            \a b -> Prices.compare a.terms.price b.terms.price
 
         Margin ->
             \a b ->

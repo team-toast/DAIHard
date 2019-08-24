@@ -13,7 +13,6 @@ import Element.Border
 import Element.Events
 import Element.Font
 import Element.Input
-import FiatValue
 import Helpers.Element as EH
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
@@ -22,6 +21,7 @@ import Images exposing (Image)
 import List.Extra
 import Maybe.Extra
 import PaymentMethods exposing (PaymentMethod)
+import Prices
 import Time
 import TokenValue exposing (TokenValue)
 import Wallet
@@ -176,16 +176,21 @@ fiatElement model =
             )
 
 
-fiatInputElement : String -> String -> Bool -> Maybe String -> Maybe String -> Element Msg
-fiatInputElement typeString amountString showFiatTypeDropdown maybeAmountError maybeTypeError =
+fiatInputElement : Prices.Symbol -> String -> Bool -> Maybe String -> Maybe String -> Element Msg
+fiatInputElement symbol amountString showFiatTypeDropdown maybeAmountError maybeTypeError =
     let
         fiatCharElement =
-            Element.el
-                [ Element.Events.onClick <|
-                    AppCmd <|
-                        AppCmd.gTag "click" "misclick" "currency symbol" 0
-                ]
-                (Element.text <| FiatValue.typeStringToCharStringDefaultEmpty typeString)
+            case Prices.char symbol of
+                Just char ->
+                    Element.el
+                        [ Element.Events.onClick <|
+                            AppCmd <|
+                                AppCmd.gTag "click" "misclick" "currency symbol" 0
+                        ]
+                        (Element.text <| char)
+
+                Nothing ->
+                    Element.none
 
         flagClickedMsg =
             AppCmd <| AppCmd.gTag "click" "misclick" "currency flag" 0
@@ -199,7 +204,7 @@ fiatInputElement typeString amountString showFiatTypeDropdown maybeAmountError m
                         ]
                         maybeTypeError
                 ]
-                (EH.currencySelector showFiatTypeDropdown typeString (ShowCurrencyDropdown True) FiatTypeChanged flagClickedMsg)
+                (EH.currencySelector showFiatTypeDropdown symbol (ShowCurrencyDropdown True) FiatTypeChanged flagClickedMsg)
     in
     EH.fancyInput
         [ Element.width <| Element.px 250

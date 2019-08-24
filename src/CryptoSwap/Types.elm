@@ -1,4 +1,4 @@
-module CryptoSwap.Types exposing (Errors, Model, Msg(..), PriceInfo, TxChainStatus(..), UpdateResult, exampleAddressForForeignCrypto, foreignCryptoPriceInfo, foreignCryptoToFiatValue, justModelUpdate, maybeUserParameters, noErrors)
+module CryptoSwap.Types exposing (Errors, Model, Msg(..), PriceInfo, TxChainStatus(..), UpdateResult, exampleAddressForForeignCrypto, foreignCryptoPriceInfo, justModelUpdate, maybeUserParameters, noErrors)
 
 import AppCmd exposing (AppCmd)
 import BigInt exposing (BigInt)
@@ -7,10 +7,10 @@ import CommonTypes exposing (..)
 import Contracts.Types as CTypes
 import Dict exposing (Dict)
 import Eth.Types exposing (Address, TxHash, TxReceipt)
-import FiatValue exposing (FiatValue)
 import Http
 import PaymentMethods exposing (PaymentMethod)
 import PriceFetch
+import Prices exposing (Price)
 import Time
 import TokenValue exposing (TokenValue)
 import Wallet
@@ -20,17 +20,16 @@ type alias Model =
     { wallet : Wallet.State
     , initiatorRole : BuyerOrSeller
     , amountInInput : String
-    , amountIn : Maybe TokenValue
+    , amountIn : Maybe Float
     , dhToken : FactoryType
     , foreignCrypto : ForeignCrypto
     , marginInput : String
     , margin : Maybe Float
-    , amountOut : Maybe TokenValue
+    , amountOut : Maybe Float
     , receiveAddressInput : String
     , receiveAddress : Maybe String
     , showDhTokenDropdown : Bool
     , showForeignCryptoDropdown : Bool
-    , showAdditionalSettings : Bool
     , errors : Errors
     , txChainStatus : Maybe TxChainStatus
     , depositAmount : Maybe BigInt
@@ -70,7 +69,6 @@ type Msg
     | ApproveSigned TokenFactoryType CTypes.CreateParameters (Result String TxHash)
     | CreateSigned FactoryType (Result String TxHash)
     | CreateMined FactoryType (Result String TxReceipt)
-    | ToggleAdditionalSettings
     | AppCmd (AppCmd Msg)
     | NoOp
 
@@ -124,8 +122,8 @@ maybeUserParameters model =
             Maybe.map3
                 (\amountIn margin amountOut ->
                     { initiatorRole = model.initiatorRole
-                    , tradeAmount = amountOut
-                    , price = foreignCryptoToFiatValue model.foreignCrypto amountIn
+                    , tradeAmount = TokenValue.fromFloatWithWarning amountOut
+                    , price = Prices.fromForeignCrypto model.foreignCrypto amountIn
                     , paymentMethods =
                         [ PaymentMethod
                             PaymentMethods.Custom
@@ -147,8 +145,8 @@ maybeUserParameters model =
             Maybe.map4
                 (\amountIn margin receiveAddress amountOut ->
                     { initiatorRole = model.initiatorRole
-                    , tradeAmount = amountIn
-                    , price = foreignCryptoToFiatValue model.foreignCrypto amountOut
+                    , tradeAmount = TokenValue.fromFloatWithWarning amountIn
+                    , price = Prices.fromForeignCrypto model.foreignCrypto amountOut
                     , paymentMethods =
                         [ PaymentMethod
                             PaymentMethods.Custom
@@ -163,13 +161,6 @@ maybeUserParameters model =
                 model.margin
                 model.receiveAddress
                 model.amountOut
-
-
-foreignCryptoToFiatValue : ForeignCrypto -> TokenValue -> FiatValue
-foreignCryptoToFiatValue cryptoType amount =
-    FiatValue
-        (foreignCryptoName cryptoType)
-        (TokenValue.getEvmValue amount)
 
 
 foreignCryptoPriceInfo : Model -> ForeignCrypto -> Maybe PriceInfo

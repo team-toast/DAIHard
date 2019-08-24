@@ -39,7 +39,6 @@ init wallet =
     , receiveAddress = Nothing
     , showDhTokenDropdown = False
     , showForeignCryptoDropdown = False
-    , showAdditionalSettings = False
     , errors = noErrors
     , txChainStatus = Nothing
     , depositAmount = Nothing
@@ -331,13 +330,6 @@ update msg prevModel =
                             UN.unexpectedError "Error getting the ID of the created offer. Check the \"My Trades\" page for your open offer." txReceipt
                         ]
 
-        ToggleAdditionalSettings ->
-            justModelUpdate
-                { prevModel
-                    | showAdditionalSettings =
-                        not prevModel.showAdditionalSettings
-                }
-
         AppCmd appCmd ->
             UpdateResult
                 prevModel
@@ -393,28 +385,22 @@ applyInputs prevModel =
                         Buyer ->
                             let
                                 equivalentDai =
-                                    TokenValue.mulFloatWithWarning amountIn priceInfo.price
+                                    amountIn * priceInfo.price
 
                                 equivalentDaiMinusMargin =
-                                    TokenValue.sub
-                                        equivalentDai
-                                        (TokenValue.mulFloatWithWarning equivalentDai margin)
+                                    equivalentDai - (equivalentDai * margin)
                             in
                             equivalentDaiMinusMargin
 
                         Seller ->
                             let
                                 tradeAmountAfterDevFee =
-                                    TokenValue.sub
-                                        amountIn
-                                        (TokenValue.div amountIn 101)
+                                    amountIn - (amountIn / 101)
 
                                 equivalentForeignCrypto =
-                                    TokenValue.divFloatWithWarning tradeAmountAfterDevFee priceInfo.price
+                                    tradeAmountAfterDevFee / priceInfo.price
                             in
-                            TokenValue.sub
-                                equivalentForeignCrypto
-                                (TokenValue.mulFloatWithWarning equivalentForeignCrypto margin)
+                            equivalentForeignCrypto - (equivalentForeignCrypto * margin)
                 )
                 maybeAmountIn
                 maybeMargin
@@ -433,13 +419,13 @@ applyInputs prevModel =
     }
 
 
-interpretAmountIn : String -> Result String (Maybe TokenValue)
+interpretAmountIn : String -> Result String (Maybe Float)
 interpretAmountIn input =
     if input == "" then
         Ok Nothing
 
     else
-        case TokenValue.fromString input of
+        case String.toFloat input of
             Just value ->
                 Ok (Just value)
 
