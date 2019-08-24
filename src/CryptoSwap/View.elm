@@ -12,6 +12,7 @@ import Element.Font
 import Element.Input
 import Helpers.Element as EH
 import Helpers.Eth as EthHelpers
+import Html.Attributes
 import Images exposing (Image)
 import Routing exposing (Route)
 import TokenValue exposing (TokenValue)
@@ -193,10 +194,10 @@ fromInputBox model =
         tokenSelector =
             case model.initiatorRole of
                 Buyer ->
-                    foreignCryptoTypeElement model.foreignCrypto
+                    foreignCryptoTypeElement model.foreignCrypto model.showForeignCryptoDropdown
 
                 Seller ->
-                    dhTokenTypeElement model.dhToken
+                    dhTokenTypeElement model.dhToken model.showDhTokenDropdown
     in
     Element.row
         (inputBoxStyles
@@ -216,10 +217,10 @@ toInputBox model =
         tokenSelector =
             case model.initiatorRole of
                 Buyer ->
-                    dhTokenTypeElement model.dhToken
+                    dhTokenTypeElement model.dhToken model.showDhTokenDropdown
 
                 Seller ->
-                    foreignCryptoTypeElement model.foreignCrypto
+                    foreignCryptoTypeElement model.foreignCrypto model.showForeignCryptoDropdown
     in
     Element.row
         (inputBoxStyles
@@ -233,13 +234,34 @@ toInputBox model =
         ]
 
 
-dhTokenTypeElement : FactoryType -> Element Msg
-dhTokenTypeElement currentToken =
+dhTokenTypeElement : FactoryType -> Bool -> Element Msg
+dhTokenTypeElement currentToken showDropdown =
     Element.row
         [ Element.spacing 8
         , Element.pointer
-        , Element.Events.onClick TokenTypeClicked
+        , EH.onClickNoPropagation TokenTypeClicked
         , Element.centerY
+        , Element.inFront <|
+            if showDropdown then
+                Element.el
+                    [ Element.moveUp 15
+                    , Element.moveLeft 10
+                    , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
+                    , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
+                    ]
+                <|
+                    EH.dropdownSelector
+                        ([ Token EthDai, Native XDai ]
+                            |> List.map
+                                (\token ->
+                                    ( Element.text (tokenUnitName token)
+                                    , ChangeTokenType token
+                                    )
+                                )
+                        )
+
+            else
+                Element.none
         ]
         [ Element.text <| tokenUnitName currentToken
         , Images.toElement
@@ -248,13 +270,34 @@ dhTokenTypeElement currentToken =
         ]
 
 
-foreignCryptoTypeElement : ForeignCrypto -> Element Msg
-foreignCryptoTypeElement currentCrypto =
+foreignCryptoTypeElement : ForeignCrypto -> Bool -> Element Msg
+foreignCryptoTypeElement currentCrypto showDropdown =
     Element.row
         [ Element.spacing 8
         , Element.pointer
-        , Element.Events.onClick ForeignCryptoTypeClicked
+        , EH.onClickNoPropagation ForeignCryptoTypeClicked
         , Element.centerY
+        , Element.inFront <|
+            if showDropdown then
+                Element.el
+                    [ Element.moveUp 15
+                    , Element.moveLeft 10
+                    , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
+                    , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
+                    ]
+                <|
+                    EH.dropdownSelector
+                        (foreignCryptoList
+                            |> List.map
+                                (\crypto ->
+                                    ( Element.text (foreignCryptoName crypto)
+                                    , ChangeForeignCrypto crypto
+                                    )
+                                )
+                        )
+
+            else
+                Element.none
         ]
         [ Element.text <| foreignCryptoName currentCrypto
         , Images.toElement

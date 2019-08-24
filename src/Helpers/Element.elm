@@ -1,4 +1,4 @@
-module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredMargin, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, headerBackgroundColor, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, marginFloatToConciseUnsignedString, marginSymbol, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, pokeButton, price, red, redButton, releasedIconColor, roundBottomCorners, roundTopCorners, scrollbarYEl, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredMargin, white, withHeader, yellow)
+module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredMargin, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, headerBackgroundColor, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, marginFloatToConciseUnsignedString, marginSymbol, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, pokeButton, price, red, redButton, releasedIconColor, roundBottomCorners, roundTopCorners, scrollbarYEl, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredMargin, white, withHeader, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -543,6 +543,36 @@ textInputWithElement attributes inputAttributes addedElement labelStr value plac
             , label = Element.Input.labelHidden labelStr
             }
         ]
+
+
+dropdownSelector : List ( Element msg, msg ) -> Element msg
+dropdownSelector itemsAndMsgs =
+    Element.column
+        [ Element.Border.color <| Element.rgba 0 0 0 0.2
+        , Element.Border.width 1
+        , Element.Border.rounded 5
+        , Element.Background.color white
+        , Element.padding 10
+        , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
+        , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
+        , Element.Border.shadow
+            { offset = ( 2, 2 )
+            , size = 0
+            , blur = 10
+            , color = Element.rgba 0 0 0 0.1
+            }
+        ]
+        (itemsAndMsgs
+            |> List.map
+                (\( el, msg ) ->
+                    Element.el
+                        [ Element.paddingXY 0 5
+                        , onClickNoPropagation msg
+                        , Element.mouseOver [ Element.Background.color <| Element.rgb 0.8 0.8 1 ]
+                        ]
+                        el
+                )
+        )
 
 
 currencySelector : Bool -> String -> msg -> (String -> msg) -> msg -> Element msg

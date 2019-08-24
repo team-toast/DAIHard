@@ -1,8 +1,8 @@
 module CryptoSwap.Types exposing (Errors, Model, Msg(..), PriceInfo, TxChainStatus(..), UpdateResult, exampleAddressForForeignCrypto, foreignCryptoPriceInfo, justModelUpdate, maybeUserParameters, noErrors)
 
-import CmdUp exposing (CmdUp)
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
+import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
 import Dict exposing (Dict)
@@ -60,7 +60,9 @@ type Msg
     | AmountInChanged String
     | MarginChanged String
     | TokenTypeClicked
+    | ChangeTokenType FactoryType
     | ForeignCryptoTypeClicked
+    | ChangeForeignCrypto ForeignCrypto
     | ReceiveAddressChanged String
     | PlaceOrderClicked FactoryType UserInfo CTypes.UserParameters
     | AbortCreate

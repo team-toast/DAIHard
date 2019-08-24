@@ -142,11 +142,29 @@ update msg prevModel =
                     |> applyInputs
                 )
 
+        ChangeTokenType factory ->
+            justModelUpdate
+                ({ prevModel
+                    | dhToken = factory
+                    , showDhTokenDropdown = False
+                 }
+                    |> applyInputs
+                )
+
         ForeignCryptoTypeClicked ->
             justModelUpdate
                 ({ prevModel
                     | showForeignCryptoDropdown =
                         not prevModel.showForeignCryptoDropdown
+                 }
+                    |> applyInputs
+                )
+
+        ChangeForeignCrypto crypto ->
+            justModelUpdate
+                ({ prevModel
+                    | foreignCrypto = crypto
+                    , showForeignCryptoDropdown = False
                  }
                     |> applyInputs
                 )

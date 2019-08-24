@@ -121,6 +121,7 @@ type ForeignCrypto
     | BTC
 
 
+foreignCryptoList : List ForeignCrypto
 foreignCryptoList =
     [ ZEC
     , XMR
