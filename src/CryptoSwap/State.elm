@@ -133,6 +133,20 @@ update msg prevModel =
                     |> applyInputs
                 )
 
+        SwapClicked ->
+            justModelUpdate
+                ({ prevModel
+                    | initiatorRole =
+                        case prevModel.initiatorRole of
+                            Buyer ->
+                                Seller
+
+                            Seller ->
+                                Buyer
+                 }
+                    |> applyInputs
+                )
+
         TokenTypeClicked ->
             justModelUpdate
                 ({ prevModel
@@ -398,17 +412,6 @@ applyInputs prevModel =
                 Err errStr ->
                     ( Nothing, Just errStr )
 
-        ( maybeReceiveAddress, receiveAddressError ) =
-            case interpretReceiveAddress prevModel.foreignCrypto prevModel.receiveAddressInput of
-                Ok (Just address) ->
-                    ( Just address, Nothing )
-
-                Ok Nothing ->
-                    ( Nothing, Nothing )
-
-                Err errStr ->
-                    ( Nothing, Just errStr )
-
         maybeAmountOut =
             Maybe.map3
                 (\amountIn margin priceInfo ->
@@ -440,12 +443,10 @@ applyInputs prevModel =
     { prevModel
         | amountIn = maybeAmountIn
         , margin = maybeMargin
-        , receiveAddress = maybeReceiveAddress
         , amountOut = maybeAmountOut
         , errors =
             { amountIn = amountInError
             , margin = marginError
-            , receiveAddress = receiveAddressError
             }
     }
 
@@ -476,37 +477,33 @@ interpretMargin input =
             |> Result.map Just
 
 
-interpretReceiveAddress : ForeignCrypto -> String -> Result String (Maybe String)
-interpretReceiveAddress crypto input =
-    if input == "" then
-        Ok Nothing
 
-    else
-        let
-            b58Validate s =
-                case Base58.decode s of
-                    Ok _ ->
-                        Ok (Just input)
-
-                    Err _ ->
-                        Err "Invalid address (b58 decode failed)"
-        in
-        case crypto of
-            ZEC ->
-                b58Validate input
-
-            XMR ->
-                if
-                    (String.length input == 106 || String.length input == 95)
-                        && (String.startsWith "4" input || String.startsWith "8" input)
-                then
-                    Ok (Just input)
-
-                else
-                    Err "Invalid address"
-
-            BTC ->
-                b58Validate input
+-- interpretReceiveAddress : ForeignCrypto -> String -> Result String (Maybe String)
+-- interpretReceiveAddress crypto input =
+--     if input == "" then
+--         Ok Nothing
+--     else
+--         let
+--             b58Validate s =
+--                 case Base58.decode s of
+--                     Ok _ ->
+--                         Ok (Just input)
+--                     Err _ ->
+--                         Err "Invalid address (b58 decode failed)"
+--         in
+--         case crypto of
+--             ZEC ->
+--                 b58Validate input
+--             XMR ->
+--                 if
+--                     (String.length input == 106 || String.length input == 95)
+--                         && (String.startsWith "4" input || String.startsWith "8" input)
+--                 then
+--                     Ok (Just input)
+--                 else
+--                     Err "Invalid address"
+--             BTC ->
+--                 b58Validate input
 
 
 initiateCreateCall : FactoryType -> CTypes.CreateParameters -> ( Maybe TxChainStatus, ChainCmd Msg )

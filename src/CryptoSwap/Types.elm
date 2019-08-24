@@ -26,8 +26,7 @@ type alias Model =
     , marginInput : String
     , margin : Maybe Float
     , amountOut : Maybe Float
-    , receiveAddressInput : String
-    , receiveAddress : Maybe String
+    , receiveAddress : String
     , showDhTokenDropdown : Bool
     , showForeignCryptoDropdown : Bool
     , errors : Errors
@@ -59,6 +58,7 @@ type Msg
     | PricesFetched (Result Http.Error (List ( ForeignCrypto, PriceFetch.PriceAndTimestamp )))
     | AmountInChanged String
     | MarginChanged String
+    | SwapClicked
     | TokenTypeClicked
     | ChangeTokenType FactoryType
     | ForeignCryptoTypeClicked
@@ -95,13 +95,12 @@ justModelUpdate model =
 type alias Errors =
     { amountIn : Maybe String
     , margin : Maybe String
-    , receiveAddress : Maybe String
     }
 
 
 noErrors : Errors
 noErrors =
-    Errors Nothing Nothing Nothing
+    Errors Nothing Nothing
 
 
 exampleAddressForForeignCrypto : ForeignCrypto -> String
@@ -161,7 +160,12 @@ maybeUserParameters model =
                 )
                 model.amountIn
                 model.margin
-                model.receiveAddress
+                (if model.receiveAddress == "" then
+                    Nothing
+
+                 else
+                    Just model.receiveAddress
+                )
                 model.amountOut
 
 

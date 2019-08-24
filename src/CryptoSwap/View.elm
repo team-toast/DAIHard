@@ -143,36 +143,79 @@ inputHeader title =
 
 fromToElement : Model -> Element Msg
 fromToElement model =
-    Element.row
-        [ Element.spacing 10
-        , Element.width Element.fill
+    Element.column
+        [ Element.width Element.fill
+        , Element.spacing 10
         ]
-        [ Element.column
-            [ Element.spacing 5
-            , Element.alignBottom
+        [ Element.row
+            [ Element.spacing 10
             , Element.width Element.fill
             ]
-            [ inputHeader "From:"
-            , fromInputBox model
+            [ Element.column
+                [ Element.spacing 5
+                , Element.alignBottom
+                , Element.width Element.fill
+                ]
+                [ inputHeader "From:"
+                , fromInputBox model
+                ]
+            , Images.toElement
+                [ Element.alignBottom
+                , Element.width <| Element.px 24
+                , Element.pointer
+                , Element.Events.onClick SwapClicked
+                , Element.paddingEach
+                    { bottom = 18
+                    , top = 0
+                    , right = 0
+                    , left = 0
+                    }
+                ]
+                Images.swapArrows
+            , Element.column
+                [ Element.spacing 5
+                , Element.alignBottom
+                , Element.width Element.fill
+                ]
+                [ inputHeader "To:"
+                , toInputBox model
+                ]
             ]
-        , Images.toElement
-            [ Element.alignBottom
-            , Element.width <| Element.px 24
-            , Element.paddingEach
-                { bottom = 18
-                , top = 0
-                , right = 0
-                , left = 0
-                }
+        , Element.row
+            [ Element.width Element.fill
+            , Element.spacing 10
             ]
-            Images.swapArrows
-        , Element.column
-            [ Element.spacing 5
-            , Element.alignBottom
-            , Element.width Element.fill
-            ]
-            [ inputHeader "To:"
-            , toInputBox model
+            [ Element.el
+                [ Element.width Element.fill ]
+                (case model.errors.amountIn of
+                    Just errStr ->
+                        Element.el
+                            [ Element.Font.color EH.red
+                            , Element.Font.size 14
+                            , Element.centerX
+                            ]
+                            (Element.text errStr)
+
+                    Nothing ->
+                        Element.none
+                )
+            , Element.el
+                [ Element.width <| Element.px 24 ]
+                Element.none
+            , Element.el
+                [ Element.width Element.fill ]
+                (case model.errors.margin of
+                    Just errStr ->
+                        Element.el
+                            [ Element.Font.color EH.red
+                            , Element.Font.size 14
+                            , Element.centerX
+                            ]
+                            (Element.text errStr)
+
+                    Nothing ->
+                        Element.none
+                )
             ]
         ]
 
