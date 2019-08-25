@@ -106,7 +106,6 @@ update msg prevModel =
                                             (TimeHelpers.sub
                                                 prevModel.now
                                                 priceAndTimestamp.timestamp
-                                                |> Debug.log "diff"
                                             )
                                             (Time.millisToPosix <| 1000 * 60 * 10)
                                             == GT
