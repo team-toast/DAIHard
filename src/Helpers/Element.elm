@@ -105,7 +105,7 @@ pageBackgroundColor =
 
 
 headerBackgroundColor =
-    Element.rgb255 10 33 108
+    Element.rgb255 255 144 0
 
 
 disabledTextColor =

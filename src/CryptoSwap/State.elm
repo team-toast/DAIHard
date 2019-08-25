@@ -93,21 +93,36 @@ update msg prevModel =
                                 |> List.map
                                     (Tuple.mapSecond
                                         (\priceAndTimestamp ->
-                                            PriceInfo
-                                                priceAndTimestamp.price
-                                                (TimeHelpers.compare
-                                                    (TimeHelpers.sub
-                                                        prevModel.now
-                                                        priceAndTimestamp.timestamp
-                                                    )
-                                                    (Time.millisToPosix <| 1000 * 60 * 6)
-                                                    == GT
-                                                )
+                                            priceAndTimestamp.price
                                         )
                                     )
+
+                        anyPricesOutdated : Bool
+                        anyPricesOutdated =
+                            pricesAndTimestamps
+                                |> List.any
+                                    (\( _, priceAndTimestamp ) ->
+                                        TimeHelpers.compare
+                                            (TimeHelpers.sub
+                                                prevModel.now
+                                                priceAndTimestamp.timestamp
+                                            )
+                                            (Time.millisToPosix <| 1000 * 60 * 6)
+                                            == GT
+                                    )
+
+                        appCmds =
+                            if anyPricesOutdated then
+                                [ CmdUp.UserNotice UN.oldPriceDataWarning ]
+
+                            else
+                                []
                     in
-                    justModelUpdate
+                    UpdateResult
                         { prevModel | prices = newPrices }
+                        Cmd.none
+                        ChainCmd.none
+                        appCmds
 
                 Err httpErr ->
                     UpdateResult
@@ -413,12 +428,12 @@ applyInputs prevModel =
 
         maybeAmountOut =
             Maybe.map3
-                (\amountIn margin priceInfo ->
+                (\amountIn margin price ->
                     case prevModel.initiatorRole of
                         Buyer ->
                             let
                                 equivalentDai =
-                                    amountIn * priceInfo.price
+                                    amountIn * price
 
                                 equivalentDaiMinusMargin =
                                     equivalentDai - (equivalentDai * margin)
@@ -431,13 +446,13 @@ applyInputs prevModel =
                                     amountIn - (amountIn / 101)
 
                                 equivalentForeignCrypto =
-                                    tradeAmountAfterDevFee / priceInfo.price
+                                    tradeAmountAfterDevFee / price
                             in
                             equivalentForeignCrypto - (equivalentForeignCrypto * margin)
                 )
                 maybeAmountIn
                 maybeMargin
-                (foreignCryptoPriceInfo prevModel prevModel.foreignCrypto)
+                (foreignCryptoPrice prevModel prevModel.foreignCrypto)
     in
     { prevModel
         | amountIn = maybeAmountIn
