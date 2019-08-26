@@ -980,27 +980,28 @@ closeableModal extraAttributes innerEl closeMsg =
 txProcessModal : List (Element msg) -> Element msg
 txProcessModal textLines =
     (modal <| Element.rgba 0 0 0.3 0.6)
-        (textLines
-            |> List.map
-                (\line ->
-                    Element.paragraph
-                        [ Element.centerX
-                        , Element.centerY
-                        , Element.Font.size 20
-                        , Element.Font.semiBold
-                        , Element.Font.color white
-                        , Element.Font.center
-                        ]
-                        [ line ]
-                )
-            |> Element.column
-                [ Element.spacing 10
-                , Element.centerX
-                , Element.centerY
-                , Element.Background.color <| Element.rgba 0 0 0 0.5
-                , Element.Border.rounded 8
-                , Element.padding 20
-                ]
+        (Element.column
+            [ Element.spacing 10
+            , Element.centerX
+            , Element.centerY
+            , Element.Background.color <| Element.rgba 0 0 0 0.5
+            , Element.Border.rounded 8
+            , Element.padding 20
+            ]
+            (textLines
+                |> List.map
+                    (\line ->
+                        Element.paragraph
+                            [ Element.centerX
+                            , Element.centerY
+                            , Element.Font.size 20
+                            , Element.Font.semiBold
+                            , Element.Font.color white
+                            , Element.Font.center
+                            ]
+                            [ line ]
+                    )
+            )
         )
 
 

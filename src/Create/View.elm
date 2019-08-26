@@ -601,7 +601,9 @@ txChainStatusModal txChainStatus model =
 
         ApproveNeedsSig tokenType ->
             Element.el
-                [ Element.Events.onClick <|
+                [ Element.centerX
+                , Element.centerY
+                , Element.Events.onClick <|
                     CmdUp <|
                         CmdUp.gTag "txChainModal clicked" "misclick" "ApproveNeedsSig" 0
                 ]
@@ -614,7 +616,9 @@ txChainStatusModal txChainStatus model =
 
         ApproveMining tokenType createParameters txHash ->
             Element.el
-                [ Element.Events.onClick <|
+                [ Element.centerX
+                , Element.centerY
+                , Element.Events.onClick <|
                     CmdUp <|
                         CmdUp.gTag "txChainModal clicked" "misclick" "ApproveMining" 0
                 ]
@@ -630,7 +634,9 @@ txChainStatusModal txChainStatus model =
 
         CreateNeedsSig _ ->
             Element.el
-                [ Element.Events.onClick <|
+                [ Element.centerX
+                , Element.centerY
+                , Element.Events.onClick <|
                     CmdUp <|
                         CmdUp.gTag "txChainModal clicked" "misclick" "CreateNeedsSig" 0
                 ]
@@ -642,7 +648,9 @@ txChainStatusModal txChainStatus model =
 
         CreateMining factoryType txHash ->
             Element.el
-                [ Element.Events.onClick <|
+                [ Element.centerX
+                , Element.centerY
+                , Element.Events.onClick <|
                     CmdUp <|
                         CmdUp.gTag "txChainModal clicked" "misclick" "CreateMining" 0
                 ]
