@@ -547,10 +547,10 @@ gotoRoute oldModel route =
             , Cmd.none
             )
 
-        Routing.Create ->
+        Routing.Create maybeCreateParameters ->
             let
                 updateResult =
-                    Create.State.init oldModel.wallet
+                    Create.State.init oldModel.wallet maybeCreateParameters
 
                 ( newTxSentry, chainCmd, userNotices ) =
                     ChainCmd.execute oldModel.txSentry (ChainCmd.map CreateMsg updateResult.chainCmd)

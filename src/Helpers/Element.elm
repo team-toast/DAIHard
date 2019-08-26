@@ -97,7 +97,7 @@ activePhaseBackgroundColor =
 
 
 permanentTextColor =
-    Element.rgba255 1 31 52 0.64
+    Element.rgba255 1 31 52 0.8
 
 
 pageBackgroundColor =
@@ -962,7 +962,7 @@ closeableModal extraAttributes innerEl closeMsg =
         Element.el
             ([ Element.centerX
              , Element.centerY
-             , Element.width (Element.shrink |> Element.maximum 500)
+             , Element.width (Element.fill |> Element.maximum 700)
              , Element.Background.color white
              , Element.Border.rounded 8
              , Element.inFront <|

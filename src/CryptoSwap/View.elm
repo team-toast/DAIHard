@@ -14,6 +14,7 @@ import Helpers.Element as EH
 import Helpers.Eth as EthHelpers
 import Html.Attributes
 import Images exposing (Image)
+import Prices
 import Routing exposing (Route)
 import TokenValue exposing (TokenValue)
 import Wallet
@@ -61,8 +62,6 @@ root model =
                 , blur = 3
                 , color = Element.rgba 0 0 0 0.2
                 }
-            , Element.inFront <|
-                getModalOrNone model
             ]
             [ titleElement model
             , Element.column
@@ -81,7 +80,7 @@ root model =
                 ]
             ]
         ]
-    , []
+    , [ getModalOrNone model ]
     )
 
 
@@ -109,8 +108,12 @@ titleElement model =
                 NoOp
             , headerTab
                 False
-                "CUSTOM"
-                (CmdUp <| CmdUp.GotoRoute Routing.Create)
+                "CUSTOM TRADE"
+                (CmdUp <|
+                    CmdUp.GotoRoute <|
+                        Routing.Create <|
+                            maybeUserParameters model
+                )
             ]
 
 
@@ -506,21 +509,94 @@ getModalOrNone model =
 txChainStatusModal : TxChainStatus -> Model -> Element Msg
 txChainStatusModal txChainStatus model =
     case txChainStatus of
-        Confirm factoryType createParameters ->
+        Confirm factoryType createParameters receiveAddress ->
             let
-                ( depositAmountEl, confirmButton ) =
+                ( depositAmountEl, totalBurnableEl, confirmButton ) =
                     case model.depositAmount of
                         Just depositAmount ->
-                            ( TokenValue.tokenValue depositAmount
-                                |> TokenValue.toConciseString
-                                |> Element.text
-                            , EH.redButton "Yes, I definitely want to open this trade." (ConfirmCreate factoryType createParameters depositAmount)
+                            let
+                                depositAmountText =
+                                    (TokenValue.toConciseString <| TokenValue.tokenValue depositAmount)
+                                        ++ " "
+                                        ++ tokenUnitName factoryType
+
+                                totalBurnableText =
+                                    TokenValue.toConciseString
+                                        (TokenValue.add
+                                            (TokenValue.tokenValue depositAmount)
+                                            (CTypes.getResponderDeposit createParameters)
+                                            |> TokenValue.add (CTypes.calculateDHFee createParameters)
+                                        )
+                                        ++ " "
+                                        ++ tokenUnitName factoryType
+                            in
+                            ( blueText depositAmountText
+                            , blueText totalBurnableText
+                            , EH.redButton
+                                ("Yes. Deposit "
+                                    ++ depositAmountText
+                                    ++ " and open this trade."
+                                )
+                                (ConfirmCreate factoryType createParameters depositAmount)
                             )
 
                         Nothing ->
-                            ( Element.text "??"
+                            ( blueText "??"
+                            , blueText "??"
                             , EH.disabledButton "(loading exact fees...)" Nothing
                             )
+
+                feeAmountEl =
+                    blueText <|
+                        TokenValue.toConciseString (CTypes.calculateDHFee createParameters)
+                            ++ " "
+                            ++ tokenUnitName factoryType
+
+                tradeAmountEl =
+                    blueText <|
+                        TokenValue.toConciseString createParameters.tradeAmount
+                            ++ " "
+                            ++ tokenUnitName factoryType
+
+                customizeButton =
+                    EH.blueButton
+                        "Customize Contract Terms"
+                        (CmdUp <| CmdUp.GotoRoute <| Routing.Create (Just <| CTypes.createParametersToUserParameters createParameters))
+
+                notYetButton =
+                    EH.blueButton
+                        "Not yet. Go back."
+                        AbortCreate
+
+                buyerDepositEl =
+                    blueText <|
+                        TokenValue.toConciseString createParameters.buyerDeposit
+                            ++ " "
+                            ++ tokenUnitName factoryType
+
+                totalReleaseableEl =
+                    blueText
+                        (TokenValue.toConciseString (TokenValue.add createParameters.tradeAmount createParameters.buyerDeposit)
+                            ++ " "
+                            ++ tokenUnitName factoryType
+                        )
+
+                priceEl =
+                    blueText <| Prices.toString createParameters.price
+
+                emphasizedText =
+                    Element.el
+                        [ Element.Font.bold
+                        , Element.Font.color EH.black
+                        ]
+                        << Element.text
+
+                blueText =
+                    Element.el
+                        [ Element.Font.semiBold
+                        , Element.Font.color EH.blue
+                        ]
+                        << Element.text
             in
             EH.closeableModal
                 []
@@ -529,6 +605,7 @@ txChainStatusModal txChainStatus model =
                     , Element.padding 20
                     , Element.centerX
                     , Element.height Element.fill
+                    , Element.width Element.fill
                     , Element.Font.center
                     ]
                     [ Element.el
@@ -537,7 +614,13 @@ txChainStatusModal txChainStatus model =
                         , Element.centerX
                         , Element.centerY
                         ]
-                        (Element.text "Just to Confirm...")
+                        (case createParameters.initiatorRole of
+                            Buyer ->
+                                Element.text "Opening a DAIHard Buy Offer"
+
+                            Seller ->
+                                Element.text "Opening a DAIHard Sell Offer"
+                        )
                     , Element.column
                         [ Element.spacing 20
                         , Element.centerX
@@ -551,25 +634,110 @@ txChainStatusModal txChainStatus model =
                                 , Element.Font.color EH.permanentTextColor
                                 ]
                             )
-                            ([ [ Element.text <| "You will deposit "
-                               , depositAmountEl
-                               , Element.text <| " " ++ tokenUnitName factoryType ++ " to open this trade."
-                               ]
-                             ]
-                                ++ (case factoryType of
-                                        Token _ ->
-                                            [ [ Element.text <| "This ususally requires two Metamask signatures. Your " ++ tokenUnitName factoryType ++ " will not be deposited until the final transaction has been mined." ] ]
+                            (case createParameters.initiatorRole of
+                                Buyer ->
+                                    [ [ Element.text "To open this offer, you must deposit "
+                                      , depositAmountEl
+                                      , Element.text ". Your offer to buy "
+                                      , tradeAmountEl
+                                      , Element.text " for "
+                                      , priceEl
+                                      , Element.text " will then be listed on the marketplace."
+                                      ]
+                                    , [ Element.text "You can abort the offer any time before a Seller commits for a full refund. If no Seller commits within "
+                                      , emphasizedText "24 hours"
+                                      , Element.text " your offer will automatically expire."
+                                      ]
+                                    , [ Element.text "A Seller can commit to the trade by depositing the full "
+                                      , tradeAmountEl
+                                      , Element.text " into the contract, and is expected to immediately post his "
+                                      , blueText <| createParameters.price.symbol
+                                      , Element.text " address in the DAIHard chat."
+                                      ]
+                                    , [ Element.text "You will then have "
+                                      , emphasizedText "24 hours"
+                                      , Element.text " to send "
+                                      , priceEl
+                                      , Element.text " to that address and click \"Confirm Payment\"."
+                                      ]
+                                    , [ Element.text "Once you've confirmed payment, for "
+                                      , emphasizedText "24 hours"
+                                      , Element.text ", the Seller has the option of burning the trade's full balance of "
+                                      , totalBurnableEl
+                                      , Element.text ". He is expected to do this if and only if you failed to send the "
+                                      , priceEl
+                                      , Element.text " to the address he posted."
+                                      ]
+                                    , [ Element.text "If the Seller has not burned the "
+                                      , Element.text <| tokenUnitName factoryType
+                                      , Element.text " within 24 hours, "
+                                      , totalReleaseableEl
+                                      , Element.text " is yours to claim and we take a 1% fee ("
+                                      , feeAmountEl
+                                      , Element.text ")."
+                                      ]
+                                    , [ Element.text <| "Are you ready?" ]
+                                    ]
+                                        ++ (case factoryType of
+                                                Token _ ->
+                                                    [ [ Element.text <| "(Trade creation ususally requires two Metamask signatures. Your " ++ tokenUnitName factoryType ++ " will not be deposited until the final transaction has been mined.)" ] ]
 
-                                        Native _ ->
-                                            []
-                                   )
+                                                Native _ ->
+                                                    []
+                                           )
+
+                                Seller ->
+                                    [ [ Element.text "Your "
+                                      , tradeAmountEl
+                                      , Element.text " will be listed as selling for "
+                                      , priceEl
+                                      , Element.text "."
+                                      ]
+                                    , [ Element.text "You can abort the offer at any time before a Buyer commits for a full refund. If no Buyer commits within "
+                                      , emphasizedText "24 hours"
+                                      , Element.text " your offer will automatically expire."
+                                      ]
+                                    , [ Element.text "A Buyer must deposit "
+                                      , buyerDepositEl
+                                      , Element.text <| " into this contract to commit. He is then expected to send the "
+                                      , priceEl
+                                      , Element.text <| " to your receive address "
+                                      , blueText receiveAddress
+                                      , Element.text ", and mark the payment as complete, all within "
+                                      , emphasizedText "1 hour."
+                                      ]
+                                    , [ emphasizedText "Make sure the above address is correct! DAIHard does not do refunds!" ]
+                                    , [ Element.text <| "When the Buyer marks the payment complete, for "
+                                      , emphasizedText "24 hours"
+                                      , Element.text " you will have the option to burn the trade's balance of "
+                                      , totalBurnableEl
+                                      , Element.text <| ", which you are expected to do if and only if the Buyer has not sent the payment."
+                                      ]
+                                    , [ Element.text "If the trade has resolved successfully, we take a 1% fee of "
+                                      , feeAmountEl
+                                      , Element.text "."
+                                      ]
+                                    , [ Element.text <| "Are you ready?" ]
+                                    ]
+                                        ++ (case factoryType of
+                                                Token _ ->
+                                                    [ [ Element.text <| "(Trade creation ususally requires two Metamask signatures. Your " ++ tokenUnitName factoryType ++ " will not be deposited until the final transaction has been mined.)" ] ]
+
+                                                Native _ ->
+                                                    []
+                                           )
                             )
                         )
-                    , Element.el
-                        [ Element.alignBottom
-                        , Element.centerX
+                    , Element.column
+                        [ Element.centerX
+                        , Element.spacing 15
                         ]
-                        confirmButton
+                        ([ confirmButton
+                         , notYetButton
+                         , customizeButton
+                         ]
+                            |> List.map (Element.el [ Element.centerX ])
+                        )
                     ]
                 )
                 AbortCreate

@@ -213,7 +213,7 @@ update msg prevModel =
             in
             justModelUpdate
                 { prevModel
-                    | txChainStatus = Just <| Confirm factoryType createParameters
+                    | txChainStatus = Just <| Confirm factoryType createParameters prevModel.receiveAddress
                     , depositAmount =
                         Just <|
                             (CTypes.calculateFullInitialDeposit createParameters

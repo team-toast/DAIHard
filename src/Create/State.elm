@@ -31,12 +31,16 @@ import UserNotice as UN
 import Wallet
 
 
-init : Wallet.State -> UpdateResult
-init wallet =
+init : Wallet.State -> Maybe CTypes.UserParameters -> UpdateResult
+init wallet maybeUserParameters =
     let
         model =
             { wallet = wallet
-            , inputs = initialInputs
+            , inputs =
+                Maybe.map
+                    userParametersToInputs
+                    maybeUserParameters
+                    |> Maybe.withDefault initialInputs
             , errors = noErrors
             , showFiatTypeDropdown = False
             , createParameters = Nothing
@@ -46,7 +50,7 @@ init wallet =
             }
     in
     UpdateResult
-        (model |> updateInputs initialInputs)
+        (model |> updateInputs model.inputs)
         Cmd.none
         ChainCmd.none
         []
@@ -539,6 +543,25 @@ validateInputs inputs =
             ( inputs.autorecallInterval, inputs.autoabortInterval, inputs.autoreleaseInterval )
             |> extractTuple3Result
         )
+
+
+userParametersToInputs : CTypes.UserParameters -> Inputs
+userParametersToInputs parameters =
+    { userRole = parameters.initiatorRole
+    , daiAmount =
+        TokenValue.toFloatString Nothing parameters.tradeAmount
+    , fiatType = parameters.price.symbol
+    , fiatAmount =
+        String.fromFloat parameters.price.amount
+    , paymentMethod =
+        parameters.paymentMethods
+            |> List.head
+            |> Maybe.map .info
+            |> Maybe.withDefault ""
+    , autorecallInterval = parameters.autorecallInterval
+    , autoabortInterval = parameters.autoabortInterval
+    , autoreleaseInterval = parameters.autoreleaseInterval
+    }
 
 
 interpretDaiAmount : String -> Result String TokenValue

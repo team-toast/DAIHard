@@ -39,7 +39,7 @@ type alias Model =
 
 
 type TxChainStatus
-    = Confirm FactoryType CTypes.CreateParameters
+    = Confirm FactoryType CTypes.CreateParameters String
     | ApproveNeedsSig TokenFactoryType
     | ApproveMining TokenFactoryType CTypes.CreateParameters TxHash
     | CreateNeedsSig FactoryType
@@ -127,7 +127,7 @@ maybeUserParameters model =
                                 ++ " address immediately upon commitment, via chat."
                             )
                         ]
-                    , autorecallInterval = Time.millisToPosix (1000 * 60 * 60 * 48)
+                    , autorecallInterval = Time.millisToPosix (1000 * 60 * 60 * 24)
                     , autoabortInterval = Time.millisToPosix (1000 * 60 * 60 * 24)
                     , autoreleaseInterval = Time.millisToPosix (1000 * 60 * 60 * 24)
                     }
@@ -147,8 +147,8 @@ maybeUserParameters model =
                             PaymentMethods.Custom
                             ("Pay to " ++ receiveAddress ++ " immediately upon commitment.")
                         ]
-                    , autorecallInterval = Time.millisToPosix (1000 * 60 * 60 * 48)
-                    , autoabortInterval = Time.millisToPosix (1000 * 60 * 60 * 24)
+                    , autorecallInterval = Time.millisToPosix (1000 * 60 * 60 * 24)
+                    , autoabortInterval = Time.millisToPosix (1000 * 60 * 60 * 1)
                     , autoreleaseInterval = Time.millisToPosix (1000 * 60 * 60 * 24)
                     }
                 )

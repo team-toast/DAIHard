@@ -112,7 +112,7 @@ headerContent model =
             )
         , headerLink
             "Create a New Offer"
-            (GotoRoute Routing.Create)
+            (GotoRoute <| Routing.Create Nothing)
             (case model.submodel of
                 CreateModel _ ->
                     Active
