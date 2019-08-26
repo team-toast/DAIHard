@@ -101,20 +101,30 @@ headerContent model =
         , Element.paddingXY 30 17
         ]
         [ headerLink
-            "Browse Offers"
-            (GotoRoute Routing.Marketplace)
+            "Crypto Swap"
+            (GotoRoute <| Routing.CryptoSwap)
             (case model.submodel of
-                MarketplaceModel marketplaceModel ->
+                CryptoSwapModel _ ->
                     Active
 
                 _ ->
                     Normal
             )
         , headerLink
-            "Create a New Offer"
+            "Custom Trade"
             (GotoRoute <| Routing.Create Nothing)
             (case model.submodel of
                 CreateModel _ ->
+                    Active
+
+                _ ->
+                    Normal
+            )
+        , headerLink
+            "Marketplace"
+            (GotoRoute Routing.Marketplace)
+            (case model.submodel of
+                MarketplaceModel marketplaceModel ->
                     Active
 
                 _ ->

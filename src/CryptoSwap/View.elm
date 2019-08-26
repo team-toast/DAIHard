@@ -98,23 +98,11 @@ titleElement model =
             }
         ]
     <|
-        Element.row
-            [ Element.spacing 40
-            , Element.centerX
-            ]
-            [ headerTab
+        Element.el [ Element.centerX ] <|
+            headerTab
                 True
-                "QUICKSWAP"
+                "CRYPTO SWAP"
                 NoOp
-            , headerTab
-                False
-                "CUSTOM TRADE"
-                (CmdUp <|
-                    CmdUp.GotoRoute <|
-                        Routing.Create <|
-                            maybeUserParameters model
-                )
-            ]
 
 
 headerTab : Bool -> String -> Msg -> Element Msg
