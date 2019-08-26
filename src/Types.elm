@@ -35,6 +35,7 @@ type alias Flags =
 
 type alias Model =
     { key : Browser.Navigation.Key
+    , currentRoute : Routing.Route
     , userAddress : Maybe Address -- `wallet` will store this but only after commPubkey has been generated
     , wallet : Wallet.State
     , time : Time.Posix

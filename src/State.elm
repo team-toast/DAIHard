@@ -116,6 +116,7 @@ init flags url key =
             , txSentry = txSentry
             , tradeCaches = tradeCaches
             , submodel = BetaLandingPage
+            , currentRoute = Routing.Home
             , userNotices = []
             , screenWidth = flags.width
             }
@@ -148,9 +149,8 @@ update msg model =
                         |> update ConnectToWeb3
 
                 CmdUp.GotoRoute newRoute ->
-                    ( model
-                    , beginRouteChange model.key newRoute
-                    )
+                    model
+                        |> update (GotoRoute newRoute)
 
                 CmdUp.GTag gtag ->
                     ( model
@@ -202,18 +202,22 @@ update msg model =
             model |> updateFromUrl url
 
         GotoRoute route ->
-            ( model
-            , Cmd.batch
-                [ gTagOut <|
-                    encodeGTag <|
-                        GTagData
-                            "GotoRoute"
-                            "navigation"
-                            (Routing.routeToString route)
-                            0
-                , beginRouteChange model.key route
-                ]
-            )
+            model
+                |> gotoRoute route
+                |> Tuple.mapSecond
+                    (\cmd ->
+                        Cmd.batch
+                            [ cmd
+                            , gTagOut <|
+                                encodeGTag <|
+                                    GTagData
+                                        "GotoRoute"
+                                        "navigation"
+                                        (Routing.routeToString route)
+                                        0
+                            , Browser.Navigation.pushUrl model.key (Routing.routeToString route)
+                            ]
+                    )
 
         Tick newTime ->
             ( { model | time = newTime }, Cmd.none )
@@ -523,23 +527,20 @@ encodeGenPrivkeyArgs address signMsg =
         ]
 
 
-beginRouteChange : Browser.Navigation.Key -> Routing.Route -> Cmd Msg
-beginRouteChange key route =
-    Browser.Navigation.pushUrl key (Routing.routeToString route)
-
-
 updateFromUrl : Url -> Model -> ( Model, Cmd Msg )
 updateFromUrl url model =
-    gotoRoute model (Routing.urlToRoute url)
+    if Routing.routeToString model.currentRoute == url.path then
+        ( model
+        , Cmd.none
+        )
+
+    else
+        gotoRoute (Routing.urlToRoute url) model
 
 
-gotoRoute : Model -> Routing.Route -> ( Model, Cmd Msg )
-gotoRoute oldModel route =
-    let
-        newUrlString =
-            Routing.routeToString route
-    in
-    case route of
+gotoRoute : Routing.Route -> Model -> ( Model, Cmd Msg )
+gotoRoute route oldModel =
+    (case route of
         Routing.Home ->
             ( { oldModel
                 | submodel = BetaLandingPage
@@ -648,6 +649,9 @@ gotoRoute oldModel route =
             ( oldModel |> addUserNotice UN.invalidUrl
             , Cmd.none
             )
+    )
+        |> Tuple.mapFirst
+            (\model -> { model | currentRoute = route })
 
 
 getTradeFromCaches : FactoryType -> Int -> List TradeCache -> Maybe CTypes.Trade
