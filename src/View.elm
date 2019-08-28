@@ -394,9 +394,10 @@ submodelElementAndModal screenWidth model =
                             (List.map (Element.map TradeMsg))
 
                 MarketplaceModel marketplaceModel ->
-                    ( Element.map MarketplaceMsg (Marketplace.View.root model.time model.tradeCaches marketplaceModel)
-                    , []
-                    )
+                    Marketplace.View.root model.time model.tradeCaches marketplaceModel
+                        |> Tuple.mapBoth
+                            (Element.map MarketplaceMsg)
+                            (List.map (Element.map MarketplaceMsg))
 
                 AgentHistoryModel agentHistoryModel ->
                     ( Element.map AgentHistoryMsg (AgentHistory.View.root model.time model.tradeCaches agentHistoryModel)

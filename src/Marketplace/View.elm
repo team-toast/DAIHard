@@ -30,7 +30,7 @@ import TradeTable.Types as TradeTable
 import TradeTable.View as TradeTable
 
 
-root : Time.Posix -> List TradeCache -> Model -> Element Msg
+root : Time.Posix -> List TradeCache -> Model -> ( Element Msg, List (Element Msg) )
 root time tradeCaches model =
     let
         onlyOpenPhaseChecked =
@@ -55,26 +55,31 @@ root time tradeCaches model =
                 (TradeCache.loadingStatus >> (==) TradeCache.AllFetched)
                 tradeCaches
     in
-    Element.column
-        [ Element.Border.rounded 5
-        , Element.Background.color EH.white
-        , Element.width Element.fill
-        , Element.height Element.fill
-        , Element.padding 30
-        ]
-        [ Element.row
+    ( EH.submodelContainer
+        1800
+        "Browse Offers. Local or Worldwide, Cash or Crypto."
+        "MARKETPLACE"
+        (Element.column
             [ Element.width Element.fill
-            , Element.spacing 10
+            , Element.height Element.fill
+            , Element.padding 30
             ]
-            [ statusFiltersAndSearchElement tradeCaches model.filters model.inputs model.errors model.showCurrencyDropdown
+            [ Element.row
+                [ Element.width Element.fill
+                , Element.spacing 10
+                ]
+                [ statusFiltersAndSearchElement tradeCaches model.filters model.inputs model.errors model.showCurrencyDropdown
+                ]
+            , maybeResultsElement
+                time
+                onlyOpenPhaseChecked
+                tcDoneLoading
+                tradeCaches
+                model
             ]
-        , maybeResultsElement
-            time
-            onlyOpenPhaseChecked
-            tcDoneLoading
-            tradeCaches
-            model
-        ]
+        )
+    , []
+    )
 
 
 statusFiltersAndSearchElement : List TradeCache -> Filters.Model -> SearchInputs -> Errors -> Bool -> Element Msg

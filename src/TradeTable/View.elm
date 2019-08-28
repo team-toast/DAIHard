@@ -156,7 +156,7 @@ viewTradeRow time colTypes trade =
     Element.column
         [ Element.width Element.fill
         , Element.spacing 1
-        , Element.Background.color EH.lightGray
+        , Element.Background.color EH.white
         , Element.pointer
         , Element.Events.onClick (TradeClicked trade.factory trade.id)
         ]
@@ -336,7 +336,6 @@ cellMaker portion cellElement =
         [ Element.width <| Element.fillPortion portion
         , Element.height <| Element.px 60
         , Element.clip
-        , Element.Background.color EH.white
         ]
     <|
         Element.el
