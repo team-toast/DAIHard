@@ -24,7 +24,7 @@ root : Model -> ( Element Msg, List (Element Msg) )
 root model =
     ( EH.submodelContainer
         1000
-        "Trade Dai/xDai for ZEC, XMR, or BTC"
+        (Just "Trade Dai/xDai for ZEC, XMR, or BTC")
         "CRYPTO SWAP"
         (Element.column
             [ Element.spacing 20

@@ -1,4 +1,4 @@
-module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredMargin, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, marginFloatToConciseUnsignedString, marginSymbol, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, pokeButton, price, red, redButton, releasedIconColor, roundBottomCorners, roundTopCorners, scrollbarYEl, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredMargin, white, withHeader, yellow)
+module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredMargin, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, marginFloatToConciseUnsignedString, marginSymbol, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, pokeButton, price, priceSymbolToImageElement, red, redButton, releasedIconColor, roundBottomCorners, roundTopCorners, scrollbarYEl, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredMargin, white, withHeader, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -98,6 +98,10 @@ activePhaseBackgroundColor =
 
 permanentTextColor =
     Element.rgba255 1 31 52 0.8
+
+
+submodelBackgroundColor =
+    Element.rgb 0.95 0.98 1
 
 
 pageBackgroundColor =
@@ -1151,8 +1155,8 @@ scrollbarYEl attrs body =
             body
 
 
-submodelContainer : Int -> String -> String -> Element msg -> Element msg
-submodelContainer maxWidth bigTitleText smallTitleText el =
+submodelContainer : Int -> Maybe String -> String -> Element msg -> Element msg
+submodelContainer maxWidth maybeBigTitleText smallTitleText el =
     Element.column
         [ Element.paddingEach
             { top = 60
@@ -1163,14 +1167,18 @@ submodelContainer maxWidth bigTitleText smallTitleText el =
         , Element.spacing 60
         , Element.width Element.fill
         ]
-        [ Element.el
-            [ Element.Font.color white
-            , Element.Font.size 38
-            , Element.centerX
-            ]
-            (Element.text bigTitleText)
+        [ Maybe.map
+            (Element.el
+                [ Element.Font.color white
+                , Element.Font.size 38
+                , Element.centerX
+                ]
+                << Element.text
+            )
+            maybeBigTitleText
+            |> Maybe.withDefault Element.none
         , Element.column
-            [ Element.Background.color <| Element.rgb 0.95 0.98 1
+            [ Element.Background.color <| submodelBackgroundColor
             , Element.spacing 20
             , Element.Border.rounded 8
             , Element.clip

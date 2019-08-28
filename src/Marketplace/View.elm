@@ -57,7 +57,7 @@ root time tradeCaches model =
     in
     ( EH.submodelContainer
         1800
-        "Browse Offers. Local or Worldwide, Cash or Crypto."
+        (Just "Browse Offers. Local or Worldwide, Cash or Crypto.")
         "MARKETPLACE"
         (Element.column
             [ Element.width Element.fill

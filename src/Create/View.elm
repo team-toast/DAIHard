@@ -31,7 +31,7 @@ root : Model -> ( Element Msg, List (Element Msg) )
 root model =
     ( EH.submodelContainer
         1000
-        "Trade Dai/xDai for any asset! No bank account or KYC required."
+        (Just "Trade Dai/xDai for any asset! No bank account or KYC required.")
         "CUSTOM TRADE"
         (Element.column
             [ Element.width Element.fill
@@ -136,6 +136,7 @@ daiInputElement factoryType amountString maybeError =
         [ Element.width <| Element.px 150
         , Element.Font.medium
         , Element.Font.size 24
+        , Element.Background.color EH.submodelBackgroundColor
         , Element.below <|
             EH.maybeErrorElement
                 [ inputErrorTag
@@ -206,6 +207,7 @@ fiatInputElement symbol amountString showFiatTypeDropdown maybeAmountError maybe
         [ Element.width <| Element.px 250
         , Element.Font.medium
         , Element.Font.size 24
+        , Element.Background.color EH.submodelBackgroundColor
         , Element.below <|
             EH.maybeErrorElement
                 [ inputErrorTag

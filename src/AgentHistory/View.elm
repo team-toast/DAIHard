@@ -11,6 +11,7 @@ import Element.Events
 import Element.Font
 import Element.Input
 import Eth.Types exposing (Address)
+import Eth.Utils
 import Filters.Types as Filters
 import Filters.View as Filters
 import Helpers.Element as EH
@@ -32,56 +33,34 @@ import Wallet
 
 root : Time.Posix -> List TradeCache -> Model -> Element Msg
 root time tradeCaches model =
-    Element.column
-        [ Element.Border.rounded 5
-        , Element.Background.color EH.white
-        , Element.width Element.fill
-        , Element.height Element.fill
-        , Element.paddingXY 30 20
-        ]
-        [ pageTitleElement model
-        , statusAndFiltersElement tradeCaches model
-        , let
-            tcDoneLoading =
-                List.all
-                    (TradeCache.loadingStatus >> (==) TradeCache.AllFetched)
-                    tradeCaches
-          in
-          maybeResultsElement time tcDoneLoading tradeCaches model
-        ]
+    EH.submodelContainer
+        1800
+        Nothing
+        (case Wallet.userInfo model.wallet of
+            Nothing ->
+                "TRADE HISTORY FOR " ++ Eth.Utils.addressToString model.agentAddress
 
+            Just userInfo ->
+                if userInfo.address == model.agentAddress then
+                    "YOUR TRADES"
 
-pageTitleElement : Model -> Element Msg
-pageTitleElement model =
-    let
-        viewingOwnHistory =
-            case Wallet.userInfo model.wallet of
-                Nothing ->
-                    False
-
-                Just userInfo ->
-                    userInfo.address == model.agentAddress
-    in
-    if viewingOwnHistory then
-        Element.none
-
-    else
-        Element.row
-            [ Element.spacing 10
-            , Element.paddingEach
-                { top = 10
-                , left = 20
-                , right = 20
-                , bottom = 20
-                }
+                else
+                    "TRADE HISTORY FOR " ++ Eth.Utils.addressToString model.agentAddress
+        )
+        (Element.column
+            [ Element.width Element.fill
+            , Element.padding 30
             ]
-            [ Element.el
-                [ Element.Font.size 24
-                , Element.Font.semiBold
-                ]
-                (Element.text "Trade History for User")
-            , EH.ethAddress 18 model.agentAddress
+            [ statusAndFiltersElement tradeCaches model
+            , let
+                tcDoneLoading =
+                    List.all
+                        (TradeCache.loadingStatus >> (==) TradeCache.AllFetched)
+                        tradeCaches
+              in
+              maybeResultsElement time tcDoneLoading tradeCaches model
             ]
+        )
 
 
 statusAndFiltersElement : List TradeCache -> Model -> Element Msg
