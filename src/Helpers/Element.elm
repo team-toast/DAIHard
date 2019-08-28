@@ -1,4 +1,4 @@
-module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredMargin, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, headerBackgroundColor, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, marginFloatToConciseUnsignedString, marginSymbol, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, pokeButton, price, red, redButton, releasedIconColor, roundBottomCorners, roundTopCorners, scrollbarYEl, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredMargin, white, withHeader, yellow)
+module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredMargin, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, marginFloatToConciseUnsignedString, marginSymbol, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, pokeButton, price, red, redButton, releasedIconColor, roundBottomCorners, roundTopCorners, scrollbarYEl, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredMargin, white, withHeader, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -102,10 +102,6 @@ permanentTextColor =
 
 pageBackgroundColor =
     Element.rgb255 242 243 247
-
-
-headerBackgroundColor =
-    Element.rgb255 255 144 0
 
 
 disabledTextColor =
@@ -1153,3 +1149,60 @@ scrollbarYEl attrs body =
                 ++ attrs
             )
             body
+
+
+submodelContainer : Int -> String -> String -> Element msg -> Element msg
+submodelContainer maxWidth bigTitleText smallTitleText el =
+    Element.column
+        [ Element.paddingEach
+            { top = 60
+            , bottom = 40
+            , right = 0
+            , left = 0
+            }
+        , Element.spacing 60
+        , Element.width Element.fill
+        ]
+        [ Element.el
+            [ Element.Font.color white
+            , Element.Font.size 38
+            , Element.centerX
+            ]
+            (Element.text bigTitleText)
+        , Element.column
+            [ Element.Background.color <| Element.rgb 0.95 0.98 1
+            , Element.spacing 20
+            , Element.Border.rounded 8
+            , Element.clip
+            , Element.centerX
+            , Element.width (Element.fill |> Element.maximum maxWidth)
+            , Element.Border.shadow
+                { offset = ( 0, 0 )
+                , size = 1
+                , blur = 3
+                , color = Element.rgba 0 0 0 0.2
+                }
+            ]
+            [ Element.el
+                [ Element.width Element.fill
+                , Element.padding 15
+                , Element.Background.color white
+                , Element.Border.shadow
+                    { offset = ( 0, 0 )
+                    , size = 0
+                    , blur = 30
+                    , color = Element.rgba 0 0 0 0.15
+                    }
+                ]
+              <|
+                Element.el
+                    [ Element.Font.size 16
+                    , Element.Font.color red
+                    , Element.Font.bold
+                    , Element.pointer
+                    , Element.centerX
+                    ]
+                    (Element.text smallTitleText)
+            , el
+            ]
+        ]

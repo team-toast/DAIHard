@@ -85,10 +85,33 @@ pageElementAndModal screenWidth model =
 
 headerBackground : Element Msg
 headerBackground =
+    let
+        bottomBackgroundColor =
+            Element.rgb255 255 144 0
+    in
     Element.el
         [ Element.width Element.fill
         , Element.height <| Element.px 400
-        , Element.Background.color EH.headerBackgroundColor
+        , Element.Background.color bottomBackgroundColor
+        , Element.Border.shadow
+            { offset = ( 0, 0 )
+            , size = 30
+            , blur = 30
+            , color = bottomBackgroundColor
+            }
+        , Element.inFront <|
+            Element.el
+                [ Element.width Element.fill
+                , Element.height <| Element.px 80
+                , Element.Background.color <| Element.rgb255 10 33 108
+                , Element.Border.shadow
+                    { offset = ( 0, 0 )
+                    , size = 8
+                    , blur = 20
+                    , color = Element.rgba 0 0 0 0.4
+                    }
+                ]
+                Element.none
         ]
         Element.none
 
@@ -353,9 +376,10 @@ submodelElementAndModal screenWidth model =
                     )
 
                 CreateModel createModel ->
-                    ( Element.map CreateMsg (Create.View.root createModel)
-                    , []
-                    )
+                    Create.View.root createModel
+                        |> Tuple.mapBoth
+                            (Element.map CreateMsg)
+                            (List.map (Element.map CreateMsg))
 
                 CryptoSwapModel cryptoSwapModel ->
                     CryptoSwap.View.root cryptoSwapModel

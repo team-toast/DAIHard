@@ -27,25 +27,24 @@ import TokenValue exposing (TokenValue)
 import Wallet
 
 
-root : Model -> Element Msg
+root : Model -> ( Element Msg, List (Element Msg) )
 root model =
-    Element.column
-        [ Element.width (Element.fill |> Element.maximum 1000)
-        , Element.centerX
-        , Element.spacing 20
-        , Element.paddingEach
-            { top = 0
-            , right = 40
-            , left = 40
-            , bottom = 30
-            }
-        , Element.inFront <|
-            getModalOrNone model
-        ]
-        [ mainInputElement model
-        , phasesElement model
-        , openButtonElement model.wallet
-        ]
+    ( EH.submodelContainer
+        1000
+        "Trade Dai/xDai for any asset! No bank account or KYC required."
+        "CUSTOM TRADE"
+        (Element.column
+            [ Element.width Element.fill
+            , Element.spacing 20
+            , Element.padding 20
+            ]
+            [ mainInputElement model
+            , phasesElement model
+            , openButtonElement model.wallet
+            ]
+        )
+    , viewModals model
+    )
 
 
 mainInputElement : Model -> Element Msg
@@ -57,10 +56,8 @@ mainInputElement model =
     Element.column
         [ Element.width Element.fill
         , Element.spacing 20
-        , Element.Background.color EH.white
         , Element.Border.rounded 5
-        , Element.padding 20
-        , EH.subtleShadow
+        , Element.paddingXY 20 0
         ]
         [ Element.row
             [ Element.width Element.fill
@@ -285,31 +282,43 @@ phasesElement : Model -> Element Msg
 phasesElement model =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing 20
+        , Element.spacing 15
         ]
-        [ openPhaseElement
+        [ phaseHorizontalSpacer
+        , openPhaseElement
             model.inputs.autorecallInterval
             model.errors.autorecallInterval
             model.inputs.userRole
+        , phaseHorizontalSpacer
         , committedPhaseElement
             model.inputs.paymentMethod
             model.errors.paymentMethod
             model.inputs.autoabortInterval
             model.errors.autoabortInterval
             model.inputs.userRole
+        , phaseHorizontalSpacer
         , judgmentPhaseElement
             model.inputs.autoreleaseInterval
             model.errors.autoreleaseInterval
             model.inputs.userRole
+        , phaseHorizontalSpacer
         ]
+
+
+phaseHorizontalSpacer : Element Msg
+phaseHorizontalSpacer =
+    Element.el
+        [ Element.width Element.fill
+        , Element.height <| Element.px 2
+        , Element.Background.color EH.black
+        ]
+        Element.none
 
 
 openPhaseElement : Time.Posix -> Maybe String -> BuyerOrSeller -> Element Msg
 openPhaseElement interval maybeError userRole =
     Element.el
-        [ Element.Border.rounded 8
-        , Element.Background.color EH.white
-        , Element.clipX
+        [ Element.clipX
         , Element.clipY
         ]
     <|
@@ -327,9 +336,6 @@ committedPhaseElement paymentMethodText maybeTextError interval maybeIntervalErr
     Element.column
         [ Element.spacing 15
         , Element.Border.rounded 8
-        , Element.clipX
-        , Element.clipY
-        , Element.Background.color EH.white
         ]
         [ phaseElement
             Images.fiatBag
@@ -345,10 +351,8 @@ committedPhaseElement paymentMethodText maybeTextError interval maybeIntervalErr
 judgmentPhaseElement : Time.Posix -> Maybe String -> BuyerOrSeller -> Element Msg
 judgmentPhaseElement interval maybeError userRole =
     Element.el
-        [ Element.Border.rounded 8
-        , Element.clipX
+        [ Element.clipX
         , Element.clipY
-        , Element.Background.color EH.white
         ]
     <|
         phaseElement
@@ -493,14 +497,11 @@ phaseElement icon title summary interval maybeError newIntervalMsg =
     in
     Element.column
         [ Element.width Element.fill
-        , Element.Border.rounded 10
-        , Element.Background.color <| Element.rgb255 237 237 237
         , Element.spacing 2
         ]
         (List.map
             (Element.el
-                [ Element.Background.color EH.white
-                , Element.paddingXY 45 18
+                [ Element.paddingXY 45 18
                 , Element.width Element.fill
                 ]
             )
@@ -508,7 +509,6 @@ phaseElement icon title summary interval maybeError newIntervalMsg =
             , Element.row
                 [ Element.width Element.fill
                 , Element.spacing 25
-                , Element.Background.color EH.white
                 ]
                 [ intervalElement
                 , descriptionElement
@@ -517,14 +517,15 @@ phaseElement icon title summary interval maybeError newIntervalMsg =
         )
 
 
-getModalOrNone : Model -> Element Msg
-getModalOrNone model =
-    case model.txChainStatus of
-        Nothing ->
-            Element.none
-
-        Just txChainStatus ->
-            txChainStatusModal txChainStatus model
+viewModals : Model -> List (Element Msg)
+viewModals model =
+    model.txChainStatus
+        |> Maybe.map
+            (\txChainStatus ->
+                txChainStatusModal txChainStatus model
+            )
+        |> List.singleton
+        |> Maybe.Extra.values
 
 
 txChainStatusModal : TxChainStatus -> Model -> Element Msg

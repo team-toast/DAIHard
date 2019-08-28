@@ -22,109 +22,27 @@ import Wallet
 
 root : Model -> ( Element Msg, List (Element Msg) )
 root model =
-    ( Element.column
-        [ Element.paddingEach
-            { top = 40
-            , bottom = 0
-            , right = 0
-            , left = 0
-            }
-        , Element.spacing 60
-        , Element.width Element.fill
-        ]
-        [ Element.column
+    ( EH.submodelContainer
+        1000
+        "Trade Dai/xDai for ZEC, XMR, or BTC"
+        "CRYPTO SWAP"
+        (Element.column
             [ Element.spacing 20
-            , Element.Font.color EH.white
+            , Element.padding 15
             , Element.width Element.fill
             ]
-            [ Element.el
-                [ Element.Font.size 34
-                , Element.Font.semiBold
-                , Element.centerX
+            [ fromToElement model
+            , Element.row
+                [ Element.width Element.fill ]
+                [ Element.el [ Element.width (Element.fillPortion 1) ] Element.none
+                , Element.el [ Element.width (Element.fillPortion 2) ] <| maybeAddressInput model
+                , Element.el [ Element.width (Element.fillPortion 1) ] Element.none
                 ]
-                (Element.text "Dai is boring. Get that sexy sexy zCash instead!")
-            , Element.el
-                [ Element.Font.size 18
-                , Element.centerX
-                ]
-                (Element.text "Use this 100% visually unique interface to get started.")
+            , Element.el [ Element.centerX ] (placeOrderButton model)
             ]
-        , Element.column
-            [ Element.Background.color <| Element.rgb 0.95 0.98 1
-            , Element.spacing 20
-            , Element.Border.rounded 8
-            , Element.clip
-            , Element.centerX
-            , Element.width (Element.fill |> Element.maximum 1000)
-            , Element.Border.shadow
-                { offset = ( 0, 0 )
-                , size = 1
-                , blur = 3
-                , color = Element.rgba 0 0 0 0.2
-                }
-            ]
-            [ titleElement model
-            , Element.column
-                [ Element.spacing 20
-                , Element.padding 15
-                , Element.width Element.fill
-                ]
-                [ fromToElement model
-                , Element.row
-                    [ Element.width Element.fill ]
-                    [ Element.el [ Element.width (Element.fillPortion 1) ] Element.none
-                    , Element.el [ Element.width (Element.fillPortion 2) ] <| maybeAddressInput model
-                    , Element.el [ Element.width (Element.fillPortion 1) ] Element.none
-                    ]
-                , Element.el [ Element.centerX ] (placeOrderButton model)
-                ]
-            ]
-        ]
+        )
     , [ getModalOrNone model ]
     )
-
-
-titleElement : Model -> Element Msg
-titleElement model =
-    Element.el
-        [ Element.width Element.fill
-        , Element.padding 15
-        , Element.Background.color EH.white
-        , Element.Border.shadow
-            { offset = ( 0, 0 )
-            , size = 0
-            , blur = 30
-            , color = Element.rgba 0 0 0 0.15
-            }
-        ]
-    <|
-        Element.el [ Element.centerX ] <|
-            headerTab
-                True
-                "CRYPTO SWAP"
-                NoOp
-
-
-headerTab : Bool -> String -> Msg -> Element Msg
-headerTab selected title onClickMsg =
-    Element.el
-        ([ Element.Font.size 16
-         , Element.Events.onClick onClickMsg
-         , Element.pointer
-         , Element.centerY
-         ]
-            ++ (if selected then
-                    [ Element.Font.bold
-                    , Element.Font.color EH.red
-                    ]
-
-                else
-                    [ Element.Font.regular
-                    , Element.Font.color <| Element.rgb 0.2 0.2 0.2
-                    ]
-               )
-        )
-        (Element.text title)
 
 
 inputHeader : String -> Element Msg
