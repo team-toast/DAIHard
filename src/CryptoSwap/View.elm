@@ -22,25 +22,49 @@ import Wallet
 
 root : Model -> ( Element Msg, List (Element Msg) )
 root model =
-    ( EH.submodelContainer
-        1000
-        (Just "Trade Dai/xDai for ZEC, XMR, or BTC")
-        "CRYPTO SWAP"
-        (Element.column
-            [ Element.spacing 20
-            , Element.padding 15
-            , Element.width Element.fill
-            ]
-            [ fromToElement model
-            , Element.row
-                [ Element.width Element.fill ]
-                [ Element.el [ Element.width (Element.fillPortion 1) ] Element.none
-                , Element.el [ Element.width (Element.fillPortion 2) ] <| maybeAddressInput model
-                , Element.el [ Element.width (Element.fillPortion 1) ] Element.none
+    ( Element.column
+        [ Element.spacing 30
+        , Element.width Element.fill
+        ]
+        [ EH.submodelContainer
+            1000
+            (Just "Trade Dai/xDai for ZEC, XMR, or BTC")
+            "CRYPTO SWAP"
+            (Element.column
+                [ Element.spacing 20
+                , Element.padding 15
+                , Element.width Element.fill
                 ]
-            , Element.el [ Element.centerX ] (placeOrderButton model)
+                [ fromToElement model
+                , Element.row
+                    [ Element.width Element.fill ]
+                    [ Element.el [ Element.width (Element.fillPortion 1) ] Element.none
+                    , Element.el [ Element.width (Element.fillPortion 2) ] <| maybeAddressInput model
+                    , Element.el [ Element.width (Element.fillPortion 1) ] Element.none
+                    ]
+                , Element.el [ Element.centerX ] (placeOrderButton model)
+                ]
+            )
+        , Element.link
+            [ Element.Border.rounded 4
+            , Element.width Element.fill
+            , Element.pointer
+            , Element.paddingXY 22 15
+            , Element.Background.color EH.blue
+            , Element.Font.color EH.white
+            , Element.Font.semiBold
+            , Element.Font.size 20
+            , Element.centerX
+            , Element.width Element.shrink
+            , Element.height Element.shrink
             ]
-        )
+            { url = "https://t.me/daihardexchange_group"
+            , label =
+                Element.paragraph
+                    [ Element.Font.center ]
+                    [ Element.text "Join the Telegram Group" ]
+            }
+        ]
     , [ getModalOrNone model ]
     )
 
@@ -188,7 +212,7 @@ toInputBox model =
         )
         [ tokenSelector
         , marginInput model.marginInput
-        , tradeOutputElement model
+        , amountOutInputElement model
         ]
 
 
@@ -331,27 +355,24 @@ maybeAddressInput model =
                 ]
 
 
-tradeOutputElement : Model -> Element Msg
-tradeOutputElement model =
-    case model.amountOut of
-        Just amount ->
-            Element.row
-                [ Element.spacing 10
-                , Element.Font.color <| Element.rgb 0.2 0.2 0.2
-                ]
-                [ Element.text "="
-                , Element.text <| String.fromFloat amount
-                , Element.text <|
-                    case model.initiatorRole of
-                        Buyer ->
-                            tokenUnitName model.dhToken
-
-                        Seller ->
-                            foreignCryptoName model.foreignCrypto
-                ]
-
-        Nothing ->
-            Element.none
+amountOutInputElement : Model -> Element Msg
+amountOutInputElement model =
+    Element.Input.text
+        [ Element.Border.width 0
+        , Element.width Element.fill
+        , Element.Font.alignRight
+        ]
+        { onChange = AmountOutChanged
+        , text = model.amountOutInput
+        , placeholder =
+            Just <|
+                Element.Input.placeholder
+                    [ Element.Font.color EH.lightGray
+                    , Element.Font.alignRight
+                    ]
+                    (Element.text "0")
+        , label = Element.Input.labelHidden "amount out"
+        }
 
 
 addressInputElement : String -> ForeignCrypto -> Element Msg

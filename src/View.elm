@@ -16,7 +16,6 @@ import Element.Font
 import Element.Input
 import Helpers.Element as EH
 import Helpers.Tuple exposing (mapTuple2)
-import Landing.View
 import Marketplace.Types
 import Marketplace.View
 import Prices
@@ -230,7 +229,7 @@ logoElement =
         , Element.Font.bold
         , Element.centerX
         , Element.pointer
-        , Element.Events.onClick <| GotoRoute Routing.Home
+        , Element.Events.onClick <| GotoRoute Routing.CryptoSwap
         ]
         (Element.paragraph []
             [ Element.text "DAI"
@@ -370,11 +369,6 @@ submodelElementAndModal screenWidth model =
     let
         ( submodelEl, modalEls ) =
             case model.submodel of
-                BetaLandingPage ->
-                    ( Landing.View.root
-                    , []
-                    )
-
                 CreateModel createModel ->
                     Create.View.root createModel
                         |> Tuple.mapBoth

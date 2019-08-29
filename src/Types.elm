@@ -48,8 +48,7 @@ type alias Model =
 
 
 type Submodel
-    = BetaLandingPage
-    | CreateModel Create.Types.Model
+    = CreateModel Create.Types.Model
     | CryptoSwapModel CryptoSwap.Types.Model
     | TradeModel Trade.Types.Model
     | MarketplaceModel Marketplace.Types.Model

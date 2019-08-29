@@ -25,6 +25,7 @@ type alias Model =
     , foreignCrypto : ForeignCrypto
     , marginInput : String
     , margin : Maybe Float
+    , amountOutInput : String
     , amountOut : Maybe Float
     , receiveAddress : String
     , showDhTokenDropdown : Bool
@@ -51,6 +52,7 @@ type Msg
     | Refresh
     | PricesFetched (Result Http.Error (List ( ForeignCrypto, PriceFetch.PriceAndTimestamp )))
     | AmountInChanged String
+    | AmountOutChanged String
     | MarginChanged String
     | SwapClicked
     | TokenTypeClicked
@@ -88,13 +90,14 @@ justModelUpdate model =
 
 type alias Errors =
     { amountIn : Maybe String
+    , amountOut : Maybe String
     , margin : Maybe String
     }
 
 
 noErrors : Errors
 noErrors =
-    Errors Nothing Nothing
+    Errors Nothing Nothing Nothing
 
 
 exampleAddressForForeignCrypto : ForeignCrypto -> String

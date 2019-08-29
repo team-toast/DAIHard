@@ -11,8 +11,7 @@ import Url.Parser exposing ((</>), (<?>), Parser)
 
 
 type Route
-    = Home
-    | CryptoSwap
+    = CryptoSwap
     | Create (Maybe CTypes.UserParameters)
     | Trade FactoryType Int
     | Marketplace
@@ -24,7 +23,7 @@ routeParser : Parser (Route -> a) a
 routeParser =
     Url.Parser.s "DAIHard"
         </> Url.Parser.oneOf
-                [ Url.Parser.map Home Url.Parser.top
+                [ Url.Parser.map CryptoSwap Url.Parser.top
                 , Url.Parser.map CryptoSwap (Url.Parser.s "cryptoswap")
                 , Url.Parser.map (Create Nothing) (Url.Parser.s "create")
                 , Url.Parser.map Trade (Url.Parser.s "trade" </> factoryParser </> Url.Parser.int)
@@ -121,9 +120,6 @@ urlToRoute url =
 routeToString : Route -> String
 routeToString route =
     case route of
-        Home ->
-            Url.Builder.absolute [ "DAIHard" ] []
-
         CryptoSwap ->
             Url.Builder.absolute [ "DAIHard", "cryptoswap" ] []
 
