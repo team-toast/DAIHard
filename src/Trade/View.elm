@@ -336,7 +336,7 @@ statsElement trade tradeCaches showModal =
                 [ Element.width Element.fill
                 , Element.spacing 20
                 , Element.pointer
-                , Element.Events.onClick ToggleStatsModal
+                , EH.onClickNoPropagation ToggleStatsModal
                 ]
                 (List.map
                     (Element.row [ Element.spacing 5 ])
@@ -1308,7 +1308,7 @@ chatHistoryButton =
     Element.el
         [ Element.Border.rounded 4
         , Element.pointer
-        , Element.Events.onClick ToggleChat
+        , EH.onClickNoPropagation ToggleChat
         , Element.padding 5
         , Element.Background.color <| Element.rgb255 22 0 255
         ]
@@ -1340,6 +1340,7 @@ chatOverlayElement model =
                 , Element.width Element.fill
                 ]
                 (Element.map ChatHistoryMsg chatWindow)
+                NoOp
                 ToggleChat
 
     else
@@ -1438,6 +1439,7 @@ getModalOrNone model =
                                 (EH.redButton "Yes, I definitely want to commit to this trade." (ConfirmCommit trade userInfo deposit))
                             ]
                         )
+                        NoOp
                         AbortAction
 
                 ApproveNeedsSig ->
@@ -1446,6 +1448,8 @@ getModalOrNone model =
                         , Element.text "(check Metamask!)"
                         , Element.text "Note that there will be a second transaction to sign after this."
                         ]
+                        NoOp
+                        NoOp
 
                 ApproveMining txHash ->
                     EH.txProcessModal
@@ -1456,6 +1460,8 @@ getModalOrNone model =
                             }
                         , Element.text "Funds will not leave your wallet until you sign the next transaction."
                         ]
+                        NoOp
+                        NoOp
 
                 CommitNeedsSig ->
                     EH.txProcessModal
@@ -1463,6 +1469,8 @@ getModalOrNone model =
                         , Element.text "(check Metamask!)"
                         , Element.text "This will make the deposit and commit you to the trade."
                         ]
+                        NoOp
+                        NoOp
 
                 CommitMining txHash ->
                     EH.txProcessModal
@@ -1472,6 +1480,8 @@ getModalOrNone model =
                             , label = Element.text "See the transaction"
                             }
                         ]
+                        NoOp
+                        NoOp
 
                 ConfirmingAction action ->
                     EH.closeableModal []
@@ -1549,6 +1559,7 @@ getModalOrNone model =
                                 )
                             ]
                         )
+                        NoOp
                         AbortAction
 
                 ActionNeedsSig action ->
@@ -1556,6 +1567,8 @@ getModalOrNone model =
                         [ Element.text <| "Waiting for user signature for the " ++ actionName action ++ " call."
                         , Element.text "(check Metamask!)"
                         ]
+                        NoOp
+                        NoOp
 
                 ActionMining action txHash ->
                     Element.none

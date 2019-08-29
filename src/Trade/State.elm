@@ -911,6 +911,9 @@ update msg prevModel =
                 ChainCmd.none
                 [ CmdUp.Web3Connect ]
 
+        NoOp ->
+            justModelUpdate prevModel
+
 
 initiateCommitCall : CTypes.FullTradeInfo -> Address -> String -> ( Maybe TxChainStatus, ChainCmd Msg )
 initiateCommitCall trade userAddress commPubkey =

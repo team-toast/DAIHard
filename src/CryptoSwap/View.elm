@@ -646,6 +646,7 @@ txChainStatusModal txChainStatus model =
                         )
                     ]
                 )
+                NoOp
                 AbortCreate
 
         ApproveNeedsSig tokenType ->
@@ -662,6 +663,8 @@ txChainStatusModal txChainStatus model =
                     , Element.text "(check Metamask!)"
                     , Element.text "Note that there will be a second transaction to sign after this."
                     ]
+                    NoOp
+                    NoOp
 
         ApproveMining tokenType createParameters txHash ->
             Element.el
@@ -680,6 +683,8 @@ txChainStatusModal txChainStatus model =
                         }
                     , Element.text "Funds will not leave your wallet until you sign the next transaction."
                     ]
+                    NoOp
+                    NoOp
 
         CreateNeedsSig _ ->
             Element.el
@@ -694,6 +699,8 @@ txChainStatusModal txChainStatus model =
                     [ Element.text "Waiting for user signature for the create call."
                     , Element.text "(check Metamask!)"
                     ]
+                    NoOp
+                    NoOp
 
         CreateMining factoryType txHash ->
             Element.el
@@ -712,3 +719,5 @@ txChainStatusModal txChainStatus model =
                         }
                     , Element.text "You will be redirected when it's mined."
                     ]
+                    NoOp
+                    NoOp

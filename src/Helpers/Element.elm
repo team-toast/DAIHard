@@ -612,6 +612,8 @@ currencySelector showDropdown symbolInput openCurrencySelectorMsg typeStringChan
                         , Element.Background.color white
                         , Element.padding 10
                         , Element.centerX
+                        , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
+                        , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
                         ]
                         (Prices.searchPriceTypes symbolInput
                             |> Dict.toList
@@ -936,8 +938,8 @@ marginFloatToConciseUnsignedString f =
     preDecimalString ++ decimalString ++ "%"
 
 
-modal : Element.Color -> Element msg -> Element msg
-modal overlayColor el =
+modal : Element.Color -> msg -> msg -> Element msg -> Element msg
+modal overlayColor clickInsideMsg clickOutsideMsg el =
     Element.el
         [ Element.behindContent <|
             Element.el
@@ -948,17 +950,19 @@ modal overlayColor el =
                 , Element.htmlAttribute <| Html.Attributes.style "left" "0"
                 , Element.htmlAttribute <| Html.Attributes.style "width" "100%"
                 , Element.htmlAttribute <| Html.Attributes.style "height" "100%"
+                , Element.Events.onClick clickOutsideMsg
                 ]
                 Element.none
         , Element.width Element.fill
         , Element.height Element.fill
+        , onClickNoPropagation clickOutsideMsg
         ]
         el
 
 
-closeableModal : List (Attribute msg) -> Element msg -> msg -> Element msg
-closeableModal extraAttributes innerEl closeMsg =
-    (modal <| Element.rgba 0 0 0.3 0.6) <|
+closeableModal : List (Attribute msg) -> Element msg -> msg -> msg -> Element msg
+closeableModal extraAttributes innerEl clickInsideMsg closeMsg =
+    modal (Element.rgba 0 0 0.3 0.6) clickInsideMsg closeMsg <|
         Element.el
             ([ Element.centerX
              , Element.centerY
@@ -977,10 +981,10 @@ closeableModal extraAttributes innerEl closeMsg =
             innerEl
 
 
-txProcessModal : List (Element msg) -> Element msg
-txProcessModal textLines =
-    (modal <| Element.rgba 0 0 0.3 0.6)
-        (Element.column
+txProcessModal : List (Element msg) -> msg -> msg -> Element msg
+txProcessModal textLines clickInsideMsg closeMsg =
+    modal (Element.rgba 0 0 0.3 0.6) clickInsideMsg closeMsg <|
+        Element.column
             [ Element.spacing 10
             , Element.centerX
             , Element.centerY
@@ -1002,7 +1006,6 @@ txProcessModal textLines =
                             [ line ]
                     )
             )
-        )
 
 
 comingSoonMsg : List (Attribute msg) -> String -> Element msg
