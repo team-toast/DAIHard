@@ -33,37 +33,55 @@ import Wallet
 
 root : Int -> Time.Posix -> List TradeCache -> Model -> ( Element Msg, List (Element Msg) )
 root screenWidth time tradeCaches model =
-    ( case model.trade of
-        CTypes.LoadedTrade tradeInfo ->
-            Element.column
-                [ Element.width Element.fill
-                , Element.height Element.fill
-                , Element.spacing 40
-                ]
-                [ header time tradeInfo model.wallet tradeCaches model.showStatsModal
-                , Element.el
-                    [ Element.width Element.fill
-                    , Element.paddingXY 40 0
-                    , Element.spacing 40
-                    ]
-                    (phasesElement tradeInfo model.expandedPhase model.wallet time)
-                ]
+    ( EH.submodelContainer
+        1800
+        Nothing
+        ("Trade at "
+            ++ (case CTypes.getCreationInfo model.trade of
+                    Just creationInfo ->
+                        Eth.Utils.addressToString creationInfo.address
 
-        CTypes.PartiallyLoadedTrade partialTradeInfo ->
-            Element.el
-                [ Element.centerX
-                , Element.centerY
-                , Element.Font.size 30
-                ]
-                (Element.text "Loading trade info...")
+                    _ ->
+                        "..."
+               )
+        )
+        (Element.el
+            [ Element.padding 30
+            , Element.width Element.fill
+            ]
+            (case model.trade of
+                CTypes.LoadedTrade tradeInfo ->
+                    Element.column
+                        [ Element.width Element.fill
+                        , Element.height Element.fill
+                        , Element.spacing 40
+                        ]
+                        [ header time tradeInfo model.wallet tradeCaches model.showStatsModal
+                        , Element.el
+                            [ Element.width Element.fill
+                            , Element.paddingXY 40 0
+                            , Element.spacing 40
+                            ]
+                            (phasesElement tradeInfo model.expandedPhase model.wallet time)
+                        ]
 
-        CTypes.Invalid ->
-            Element.el
-                [ Element.centerX
-                , Element.centerY
-                , Element.Font.size 30
-                ]
-                (Element.text "Invalid trade")
+                CTypes.PartiallyLoadedTrade partialTradeInfo ->
+                    Element.el
+                        [ Element.centerX
+                        , Element.centerY
+                        , Element.Font.size 30
+                        ]
+                        (Element.text "Loading trade info...")
+
+                CTypes.Invalid ->
+                    Element.el
+                        [ Element.centerX
+                        , Element.centerY
+                        , Element.Font.size 30
+                        ]
+                        (Element.text "Invalid trade")
+            )
+        )
     , [ chatOverlayElement model
       , getModalOrNone model
       ]
@@ -72,7 +90,10 @@ root screenWidth time tradeCaches model =
 
 header : Time.Posix -> FullTradeInfo -> Wallet.State -> List TradeCache -> Bool -> Element Msg
 header currentTime trade wallet tradeCaches showStatsModal =
-    EH.niceFloatingRow
+    Element.row
+        [ Element.width Element.fill
+        , Element.spaceEvenly
+        ]
         [ tradeStatusElement trade
         , daiAmountElement trade wallet
         , fiatElement trade
@@ -458,7 +479,6 @@ phasesElement trade expandedPhase wallet currentTime =
             Element.row
                 [ Element.centerX
                 , Element.Border.rounded 12
-                , Element.padding 30
                 , Element.spacing 10
                 , Element.Background.color EH.activePhaseBackgroundColor
                 , Element.Font.size 24
@@ -479,9 +499,9 @@ phasesElement trade expandedPhase wallet currentTime =
                     , Element.height Element.shrink
                     , Element.spacing 20
                     ]
-                    [ phaseAndPaymentMethodElement CTypes.Open trade wallet (expandedPhase == CTypes.Open) currentTime
-                    , phaseAndPaymentMethodElement CTypes.Committed trade wallet (expandedPhase == CTypes.Committed) currentTime
-                    , phaseAndPaymentMethodElement CTypes.Judgment trade wallet (expandedPhase == CTypes.Judgment) currentTime
+                    [ phaseElement CTypes.Open trade wallet (expandedPhase == CTypes.Open) currentTime
+                    , phaseElement CTypes.Committed trade wallet (expandedPhase == CTypes.Committed) currentTime
+                    , phaseElement CTypes.Judgment trade wallet (expandedPhase == CTypes.Judgment) currentTime
                     ]
                 , paymentMethodElement trade.terms.paymentMethods
                 ]
@@ -516,13 +536,19 @@ phaseState trade phase =
         Finished
 
 
-phaseAndPaymentMethodElement : CTypes.Phase -> FullTradeInfo -> Wallet.State -> Bool -> Time.Posix -> Element Msg
-phaseAndPaymentMethodElement viewPhase trade wallet expanded currentTime =
+phaseElement : CTypes.Phase -> FullTradeInfo -> Wallet.State -> Bool -> Time.Posix -> Element Msg
+phaseElement viewPhase trade wallet expanded currentTime =
     let
         commonPhaseAttributes =
             [ Element.Border.rounded 12
             , Element.alignTop
             , Element.height (Element.shrink |> Element.minimum 380)
+            , Element.Border.shadow
+                { offset = ( 0, 0 )
+                , size = 0
+                , blur = 8
+                , color = Element.rgba 0 0 0 0.2
+                }
             ]
 
         viewPhaseState =
@@ -619,11 +645,13 @@ paymentMethodElement paymentMethods =
         , Element.Background.color <| EH.lightGray
         , Element.padding 15
         , Element.spacing 15
+        , Element.centerX
         ]
         [ Element.el
             [ Element.Font.size 24
             , Element.Font.semiBold
             , Element.Font.italic
+            , Element.centerX
             ]
             (Element.text "Fiat Payment Method")
         , Element.paragraph
