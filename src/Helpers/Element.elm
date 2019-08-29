@@ -1207,7 +1207,6 @@ submodelContainer maxWidth maybeBigTitleText smallTitleText el =
                     [ Element.Font.size 16
                     , Element.Font.color red
                     , Element.Font.bold
-                    , Element.pointer
                     , Element.centerX
                     ]
                     (Element.text smallTitleText)
