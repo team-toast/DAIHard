@@ -1,6 +1,6 @@
 module Create.Types exposing (Errors, Inputs, Model, Msg(..), TxChainStatus(..), UpdateResult, justModelUpdate, noErrors)
 
-import AppCmd exposing (AppCmd)
+import CmdUp exposing (CmdUp)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
@@ -49,7 +49,7 @@ type Msg
     | CreateMined FactoryType (Result String TxReceipt)
     | Web3Connect
     | NoOp
-    | AppCmd (AppCmd Msg)
+    | CmdUp (CmdUp Msg)
 
 
 type TxChainStatus
@@ -91,7 +91,7 @@ type alias UpdateResult =
     { model : Model
     , cmd : Cmd Msg
     , chainCmd : ChainCmd Msg
-    , appCmds : List (AppCmd Msg)
+    , cmdUps : List (CmdUp Msg)
     }
 
 
@@ -100,5 +100,5 @@ justModelUpdate model =
     { model = model
     , cmd = Cmd.none
     , chainCmd = ChainCmd.none
-    , appCmds = []
+    , cmdUps = []
     }

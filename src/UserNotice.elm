@@ -1,4 +1,4 @@
-module UserNotice exposing (Alignment(..), NoticeType(..), UserNotice, cantConnectNoWeb3, cantFindTradeWillRetry, fromBadFetchResultMaybe, inputError, invalidUrl, map, noWeb3Provider, placeholderNotice, screenToSmall, tradeParametersNotDefault, unexpectedError, walletError, web3FetchError, web3MiningError, web3SigError, wrongWeb3Network)
+module UserNotice exposing (Alignment(..), NoticeType(..), UserNotice, cantConnectNoWeb3, cantFetchPrices, cantFindTradeWillRetry, fromBadFetchResultMaybe, inputError, invalidUrl, map, noWeb3Provider, oldPriceDataWarning, placeholderNotice, screenToSmall, tradeParametersNotDefault, unexpectedError, walletError, web3FetchError, web3MiningError, web3SigError, wrongWeb3Network)
 
 import Element exposing (Attribute, Element)
 import Element.Font
@@ -60,6 +60,16 @@ invalidUrl =
         [ [ Element.text "I don't understand that URL..." ]
         , [ Element.text "I'll just set you down here. Maybe check the URL and try again?" ]
         ]
+    , align = BottomRight
+    }
+
+
+cantFetchPrices : UserNotice msg
+cantFetchPrices =
+    { label = "cantFetchPrices"
+    , noticeType = Caution
+    , mainParagraphs =
+        [ [ Element.text "Error encountered fetching crypto prices." ] ]
     , align = BottomRight
     }
 
@@ -213,5 +223,15 @@ tradeParametersNotDefault =
     , noticeType = Error
     , mainParagraphs =
         [ [ Element.text "Sorry, I'm not yet able to deal with this kind of trade. This must have been created by some other DAIHard interface." ] ]
+    , align = BottomRight
+    }
+
+
+oldPriceDataWarning : UserNotice msg
+oldPriceDataWarning =
+    { label = "oldPriceDataWarning"
+    , noticeType = Caution
+    , mainParagraphs =
+        [ [ Element.text "Uh oh, it looks like our price data might be out of date. You might want to double check the math..." ] ]
     , align = BottomRight
     }

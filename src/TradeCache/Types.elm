@@ -1,6 +1,6 @@
 module TradeCache.Types exposing (DataState, LoadingStatus(..), Msg(..), TradeCache, UpdateResult, justModelUpdate, loadingStatus)
 
-import AppCmd exposing (AppCmd)
+import CmdUp exposing (CmdUp)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -55,7 +55,7 @@ type Msg
 type alias UpdateResult =
     { tradeCache : TradeCache
     , cmd : Cmd Msg
-    , appCmds : List (AppCmd Msg)
+    , cmdUps : List (CmdUp Msg)
     }
 
 

@@ -1,35 +1,4 @@
-module Images exposing
-    ( Image
-    , aborted
-    , addButton
-    , backButton
-    , burned
-    , chatIcon
-    , closeIcon
-    , committedPhase
-    , daiSymbol
-    , downArrow
-    , fiatBag
-    , flame
-    , image
-    , judgmentPhase
-    , loadingArrows
-    , marginSymbol
-    , none
-    , numberOnCircleEl
-    , openPhase
-    , openWindowIcon
-    , pmBank
-    , pmCash
-    , pmCustom
-    , qmarkCircle
-    , release
-    , releaseWindowIcon
-    , released
-    , stopWhite
-    , toElement
-    , upArrow
-    )
+module Images exposing (Image, aborted, addButton, backButton, burned, chatIcon, closeIcon, committedPhase, daiSymbol, downArrow, fiatBag, flame, image, judgmentPhase, loadingArrows, marginSymbol, none, numberOnCircleEl, openPhase, openWindowIcon, pmBank, pmCash, pmCustom, qmarkCircle, release, releaseWindowIcon, released, stopWhite, swapArrows, toElement, upArrow)
 
 import Element exposing (Attribute, Element)
 import Time
@@ -287,4 +256,12 @@ numberOnCircleEl number =
                 ++ String.fromInt number
                 ++ ".svg"
         , description = String.fromInt number
+        }
+
+
+swapArrows : Image
+swapArrows =
+    JustImage
+        { src = "/DAIHard/static/img/swap-arrows.svg"
+        , description = "switch order type"
         }

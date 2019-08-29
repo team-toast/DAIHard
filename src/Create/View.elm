@@ -1,7 +1,7 @@
 module Create.View exposing (root)
 
-import AppCmd exposing (AppCmd)
 import BigInt exposing (BigInt)
+import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Config
 import Contracts.Types as CTypes
@@ -13,7 +13,6 @@ import Element.Border
 import Element.Events
 import Element.Font
 import Element.Input
-import FiatValue
 import Helpers.Element as EH
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
@@ -22,31 +21,30 @@ import Images exposing (Image)
 import List.Extra
 import Maybe.Extra
 import PaymentMethods exposing (PaymentMethod)
+import Prices
 import Time
 import TokenValue exposing (TokenValue)
 import Wallet
 
 
-root : Model -> Element Msg
+root : Model -> ( Element Msg, List (Element Msg) )
 root model =
-    Element.column
-        [ Element.width (Element.fill |> Element.maximum 1000)
-        , Element.centerX
-        , Element.spacing 20
-        , Element.paddingEach
-            { top = 0
-            , right = 40
-            , left = 40
-            , bottom = 30
-            }
-        , Element.Events.onClick <| ShowCurrencyDropdown False
-        , Element.inFront <|
-            getModalOrNone model
-        ]
-        [ mainInputElement model
-        , phasesElement model
-        , openButtonElement model.wallet
-        ]
+    ( EH.submodelContainer
+        1000
+        (Just "Trade Dai/xDai for any asset! No bank account or KYC required.")
+        "CUSTOM TRADE"
+        (Element.column
+            [ Element.width Element.fill
+            , Element.spacing 20
+            , Element.padding 20
+            ]
+            [ mainInputElement model
+            , phasesElement model
+            , openButtonElement model.wallet
+            ]
+        )
+    , viewModals model
+    )
 
 
 mainInputElement : Model -> Element Msg
@@ -58,10 +56,8 @@ mainInputElement model =
     Element.column
         [ Element.width Element.fill
         , Element.spacing 20
-        , Element.Background.color EH.white
         , Element.Border.rounded 5
-        , Element.padding 20
-        , EH.subtleShadow
+        , Element.paddingXY 20 0
         ]
         [ Element.row
             [ Element.width Element.fill
@@ -140,6 +136,7 @@ daiInputElement factoryType amountString maybeError =
         [ Element.width <| Element.px 150
         , Element.Font.medium
         , Element.Font.size 24
+        , Element.Background.color EH.submodelBackgroundColor
         , Element.below <|
             EH.maybeErrorElement
                 [ inputErrorTag
@@ -151,8 +148,8 @@ daiInputElement factoryType amountString maybeError =
         , Just <|
             Element.el
                 [ Element.Events.onClick <|
-                    AppCmd <|
-                        AppCmd.gTag "click" "misclick" "dai symbol in dai input" 0
+                    CmdUp <|
+                        CmdUp.gTag "click" "misclick" "dai symbol in dai input" 0
                 ]
                 (EH.daiSymbolAndLabel factoryType)
         )
@@ -176,19 +173,24 @@ fiatElement model =
             )
 
 
-fiatInputElement : String -> String -> Bool -> Maybe String -> Maybe String -> Element Msg
-fiatInputElement typeString amountString showFiatTypeDropdown maybeAmountError maybeTypeError =
+fiatInputElement : Prices.Symbol -> String -> Bool -> Maybe String -> Maybe String -> Element Msg
+fiatInputElement symbol amountString showFiatTypeDropdown maybeAmountError maybeTypeError =
     let
         fiatCharElement =
-            Element.el
-                [ Element.Events.onClick <|
-                    AppCmd <|
-                        AppCmd.gTag "click" "misclick" "currency symbol" 0
-                ]
-                (Element.text <| FiatValue.typeStringToCharStringDefaultEmpty typeString)
+            case Prices.char symbol of
+                Just char ->
+                    Element.el
+                        [ Element.Events.onClick <|
+                            CmdUp <|
+                                CmdUp.gTag "click" "misclick" "currency symbol" 0
+                        ]
+                        (Element.text <| char)
+
+                Nothing ->
+                    Element.none
 
         flagClickedMsg =
-            AppCmd <| AppCmd.gTag "click" "misclick" "currency flag" 0
+            CmdUp <| CmdUp.gTag "click" "misclick" "currency flag" 0
 
         currencySelector =
             Element.el
@@ -199,12 +201,13 @@ fiatInputElement typeString amountString showFiatTypeDropdown maybeAmountError m
                         ]
                         maybeTypeError
                 ]
-                (EH.currencySelector showFiatTypeDropdown typeString (ShowCurrencyDropdown True) FiatTypeChanged flagClickedMsg)
+                (EH.currencySelector showFiatTypeDropdown symbol (ShowCurrencyDropdown True) FiatTypeChanged flagClickedMsg)
     in
     EH.fancyInput
         [ Element.width <| Element.px 250
         , Element.Font.medium
         , Element.Font.size 24
+        , Element.Background.color EH.submodelBackgroundColor
         , Element.below <|
             EH.maybeErrorElement
                 [ inputErrorTag
@@ -259,8 +262,8 @@ feeNotifyElement model =
         , Element.Border.rounded 8
         , Element.spacing 5
         , Element.Events.onClick <|
-            AppCmd <|
-                AppCmd.gTag "click" "misclick" "fee notify element" 0
+            CmdUp <|
+                CmdUp.gTag "click" "misclick" "fee notify element" 0
         ]
         [ Element.el
             [ Element.Font.size 18
@@ -281,31 +284,43 @@ phasesElement : Model -> Element Msg
 phasesElement model =
     Element.column
         [ Element.width Element.fill
-        , Element.spacing 20
+        , Element.spacing 15
         ]
-        [ openPhaseElement
+        [ phaseHorizontalSpacer
+        , openPhaseElement
             model.inputs.autorecallInterval
             model.errors.autorecallInterval
             model.inputs.userRole
+        , phaseHorizontalSpacer
         , committedPhaseElement
             model.inputs.paymentMethod
             model.errors.paymentMethod
             model.inputs.autoabortInterval
             model.errors.autoabortInterval
             model.inputs.userRole
+        , phaseHorizontalSpacer
         , judgmentPhaseElement
             model.inputs.autoreleaseInterval
             model.errors.autoreleaseInterval
             model.inputs.userRole
+        , phaseHorizontalSpacer
         ]
+
+
+phaseHorizontalSpacer : Element Msg
+phaseHorizontalSpacer =
+    Element.el
+        [ Element.width Element.fill
+        , Element.height <| Element.px 2
+        , Element.Background.color EH.black
+        ]
+        Element.none
 
 
 openPhaseElement : Time.Posix -> Maybe String -> BuyerOrSeller -> Element Msg
 openPhaseElement interval maybeError userRole =
     Element.el
-        [ Element.Border.rounded 8
-        , Element.Background.color EH.white
-        , Element.clipX
+        [ Element.clipX
         , Element.clipY
         ]
     <|
@@ -323,9 +338,6 @@ committedPhaseElement paymentMethodText maybeTextError interval maybeIntervalErr
     Element.column
         [ Element.spacing 15
         , Element.Border.rounded 8
-        , Element.clipX
-        , Element.clipY
-        , Element.Background.color EH.white
         ]
         [ phaseElement
             Images.fiatBag
@@ -341,10 +353,8 @@ committedPhaseElement paymentMethodText maybeTextError interval maybeIntervalErr
 judgmentPhaseElement : Time.Posix -> Maybe String -> BuyerOrSeller -> Element Msg
 judgmentPhaseElement interval maybeError userRole =
     Element.el
-        [ Element.Border.rounded 8
-        , Element.clipX
+        [ Element.clipX
         , Element.clipY
-        , Element.Background.color EH.white
         ]
     <|
         phaseElement
@@ -456,8 +466,8 @@ phaseElement icon title summary interval maybeError newIntervalMsg =
                 [ Images.toElement
                     [ Element.height <| Element.px 40
                     , Element.Events.onClick <|
-                        AppCmd <|
-                            AppCmd.gTag "click" "misclick" ("symbol for " ++ title) 0
+                        CmdUp <|
+                            CmdUp.gTag "click" "misclick" ("symbol for " ++ title) 0
                     ]
                     icon
                 , Element.el
@@ -489,14 +499,11 @@ phaseElement icon title summary interval maybeError newIntervalMsg =
     in
     Element.column
         [ Element.width Element.fill
-        , Element.Border.rounded 10
-        , Element.Background.color <| Element.rgb255 237 237 237
         , Element.spacing 2
         ]
         (List.map
             (Element.el
-                [ Element.Background.color EH.white
-                , Element.paddingXY 45 18
+                [ Element.paddingXY 45 18
                 , Element.width Element.fill
                 ]
             )
@@ -504,7 +511,6 @@ phaseElement icon title summary interval maybeError newIntervalMsg =
             , Element.row
                 [ Element.width Element.fill
                 , Element.spacing 25
-                , Element.Background.color EH.white
                 ]
                 [ intervalElement
                 , descriptionElement
@@ -513,14 +519,15 @@ phaseElement icon title summary interval maybeError newIntervalMsg =
         )
 
 
-getModalOrNone : Model -> Element Msg
-getModalOrNone model =
-    case model.txChainStatus of
-        Nothing ->
-            Element.none
-
-        Just txChainStatus ->
-            txChainStatusModal txChainStatus model
+viewModals : Model -> List (Element Msg)
+viewModals model =
+    model.txChainStatus
+        |> Maybe.map
+            (\txChainStatus ->
+                txChainStatusModal txChainStatus model
+            )
+        |> List.singleton
+        |> Maybe.Extra.values
 
 
 txChainStatusModal : TxChainStatus -> Model -> Element Msg
@@ -574,7 +581,7 @@ txChainStatusModal txChainStatus model =
                             (getWarningParagraphs createParameters
                                 ++ [ [ Element.text <| "You will deposit "
                                      , depositAmountEl
-                                     , Element.text <| " " ++ tokenUnitName factoryType ++ " (including the 1% dev fee) to open this trade."
+                                     , Element.text <| " " ++ tokenUnitName factoryType ++ " (this includes the 1% dev fee) to open this trade."
                                      ]
                                    ]
                                 ++ (case factoryType of
@@ -597,9 +604,11 @@ txChainStatusModal txChainStatus model =
 
         ApproveNeedsSig tokenType ->
             Element.el
-                [ Element.Events.onClick <|
-                    AppCmd <|
-                        AppCmd.gTag "txChainModal clicked" "misclick" "ApproveNeedsSig" 0
+                [ Element.centerX
+                , Element.centerY
+                , Element.Events.onClick <|
+                    CmdUp <|
+                        CmdUp.gTag "txChainModal clicked" "misclick" "ApproveNeedsSig" 0
                 ]
             <|
                 EH.txProcessModal
@@ -610,9 +619,11 @@ txChainStatusModal txChainStatus model =
 
         ApproveMining tokenType createParameters txHash ->
             Element.el
-                [ Element.Events.onClick <|
-                    AppCmd <|
-                        AppCmd.gTag "txChainModal clicked" "misclick" "ApproveMining" 0
+                [ Element.centerX
+                , Element.centerY
+                , Element.Events.onClick <|
+                    CmdUp <|
+                        CmdUp.gTag "txChainModal clicked" "misclick" "ApproveMining" 0
                 ]
             <|
                 EH.txProcessModal
@@ -626,9 +637,11 @@ txChainStatusModal txChainStatus model =
 
         CreateNeedsSig _ ->
             Element.el
-                [ Element.Events.onClick <|
-                    AppCmd <|
-                        AppCmd.gTag "txChainModal clicked" "misclick" "CreateNeedsSig" 0
+                [ Element.centerX
+                , Element.centerY
+                , Element.Events.onClick <|
+                    CmdUp <|
+                        CmdUp.gTag "txChainModal clicked" "misclick" "CreateNeedsSig" 0
                 ]
             <|
                 EH.txProcessModal
@@ -638,9 +651,11 @@ txChainStatusModal txChainStatus model =
 
         CreateMining factoryType txHash ->
             Element.el
-                [ Element.Events.onClick <|
-                    AppCmd <|
-                        AppCmd.gTag "txChainModal clicked" "misclick" "CreateMining" 0
+                [ Element.centerX
+                , Element.centerY
+                , Element.Events.onClick <|
+                    CmdUp <|
+                        CmdUp.gTag "txChainModal clicked" "misclick" "CreateMining" 0
                 ]
             <|
                 EH.txProcessModal

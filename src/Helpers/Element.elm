@@ -1,4 +1,4 @@
-module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredMargin, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, fiatTypeToSymbolElement, fiatValue, green, headerBackgroundColor, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, marginFloatToConciseUnsignedString, marginSymbol, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, pokeButton, red, redButton, releasedIconColor, roundBottomCorners, roundTopCorners, scrollbarYEl, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredMargin, white, withHeader, yellow)
+module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredMargin, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, marginFloatToConciseUnsignedString, marginSymbol, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, pokeButton, price, priceSymbolToImageElement, red, redButton, releasedIconColor, roundBottomCorners, roundTopCorners, scrollbarYEl, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredMargin, white, withHeader, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -16,7 +16,6 @@ import Element.Font
 import Element.Input
 import Eth.Types exposing (Address)
 import Eth.Utils
-import FiatValue exposing (FiatValue)
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
 import Html.Attributes
@@ -27,6 +26,7 @@ import Json.Decode
 import List
 import List.Extra
 import Maybe.Extra
+import Prices exposing (Price)
 import Task
 import Time
 import TokenValue exposing (TokenValue)
@@ -97,15 +97,15 @@ activePhaseBackgroundColor =
 
 
 permanentTextColor =
-    Element.rgba255 1 31 52 0.64
+    Element.rgba255 1 31 52 0.8
+
+
+submodelBackgroundColor =
+    Element.rgb 0.95 0.98 1
 
 
 pageBackgroundColor =
     Element.rgb255 242 243 247
-
-
-headerBackgroundColor =
-    Element.rgb255 10 33 108
 
 
 disabledTextColor =
@@ -159,18 +159,18 @@ daiValue tv =
         ]
 
 
-fiatValue : FiatValue -> Element msg
-fiatValue fv =
+price : Price -> Element msg
+price p =
     let
         currencyElement =
-            case Dict.get fv.fiatType FiatValue.currencyTypes of
+            case Dict.get p.symbol Prices.charsAndImages of
                 Nothing ->
                     Element.none
 
-                Just ( typeChar, image ) ->
+                Just ( _, maybeImage ) ->
                     Images.toElement
                         [ Element.height <| Element.px 26 ]
-                        image
+                        (maybeImage |> Maybe.withDefault Images.none)
     in
     Element.row [ Element.spacing 4 ]
         [ currencyElement
@@ -179,8 +179,8 @@ fiatValue fv =
             , Element.Font.medium
             , Element.width <| Element.px 50
             ]
-            (Element.text fv.fiatType)
-        , Element.text <| FiatValue.renderToString fv
+            (Element.text p.symbol)
+        , Element.text <| Prices.toString p
         ]
 
 
@@ -375,14 +375,17 @@ bigTimeUnitElement numDigits color labelString num =
         (Element.text <| numStr ++ labelString)
 
 
-fiatTypeToSymbolElement : String -> Element msg
-fiatTypeToSymbolElement fiatType =
-    case Dict.get fiatType FiatValue.currencyTypes of
+priceSymbolToImageElement : Prices.Symbol -> Element msg
+priceSymbolToImageElement symbol =
+    case Dict.get symbol Prices.charsAndImages of
         Nothing ->
             Element.text "*"
 
-        Just ( _, image ) ->
-            Images.toElement [ Element.height <| Element.px 26 ] image
+        Just ( _, maybeImage ) ->
+            Images.toElement [ Element.height <| Element.px 26 ]
+                (maybeImage
+                    |> Maybe.withDefault Images.none
+                )
 
 
 
@@ -542,11 +545,41 @@ textInputWithElement attributes inputAttributes addedElement labelStr value plac
         ]
 
 
+dropdownSelector : List ( Element msg, msg ) -> Element msg
+dropdownSelector itemsAndMsgs =
+    Element.column
+        [ Element.Border.color <| Element.rgba 0 0 0 0.2
+        , Element.Border.width 1
+        , Element.Border.rounded 5
+        , Element.Background.color white
+        , Element.padding 10
+        , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
+        , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
+        , Element.Border.shadow
+            { offset = ( 2, 2 )
+            , size = 0
+            , blur = 10
+            , color = Element.rgba 0 0 0 0.1
+            }
+        ]
+        (itemsAndMsgs
+            |> List.map
+                (\( el, msg ) ->
+                    Element.el
+                        [ Element.paddingXY 0 5
+                        , onClickNoPropagation msg
+                        , Element.mouseOver [ Element.Background.color <| Element.rgb 0.8 0.8 1 ]
+                        ]
+                        el
+                )
+        )
+
+
 currencySelector : Bool -> String -> msg -> (String -> msg) -> msg -> Element msg
-currencySelector showDropdown typeStringInput openCurrencySelectorMsg typeStringChangedMsgConstructor flagClickedMsg =
+currencySelector showDropdown symbolInput openCurrencySelectorMsg typeStringChangedMsgConstructor flagClickedMsg =
     let
-        gotCurrency =
-            Dict.get typeStringInput FiatValue.currencyTypes
+        maybeCharAndImage =
+            Dict.get symbolInput Prices.charsAndImages
 
         inputElement =
             Element.Input.text
@@ -558,13 +591,13 @@ currencySelector showDropdown typeStringInput openCurrencySelectorMsg typeString
                 , onClickNoPropagation openCurrencySelectorMsg
                 ]
                 { onChange = String.toUpper >> typeStringChangedMsgConstructor
-                , text = typeStringInput
+                , text = symbolInput
                 , placeholder = Nothing
                 , label = Element.Input.labelHidden "currency type"
                 }
 
         dropdownEl =
-            case ( showDropdown, gotCurrency ) of
+            case ( showDropdown, maybeCharAndImage ) of
                 ( False, _ ) ->
                     Element.none
 
@@ -580,22 +613,22 @@ currencySelector showDropdown typeStringInput openCurrencySelectorMsg typeString
                         , Element.padding 10
                         , Element.centerX
                         ]
-                        (FiatValue.searchTypes typeStringInput
+                        (Prices.searchPriceTypes symbolInput
                             |> Dict.toList
                             |> List.map
-                                (\( typeString, ( _, image ) ) ->
+                                (\( symbol, ( _, maybeImage ) ) ->
                                     Element.row
                                         [ Element.width <| Element.px 80
                                         , Element.spacing 9
                                         , Element.paddingXY 0 5
-                                        , onClickNoPropagation <| typeStringChangedMsgConstructor typeString
+                                        , onClickNoPropagation <| typeStringChangedMsgConstructor symbol
                                         , Element.mouseOver [ Element.Background.color <| Element.rgb 0.8 0.8 1 ]
                                         ]
                                         [ Images.toElement
                                             [ Element.height <| Element.px 26
                                             ]
-                                            image
-                                        , Element.el [ Element.Font.size 16, Element.Font.semiBold ] <| textWithoutTextCursor typeString
+                                            (maybeImage |> Maybe.withDefault Images.none)
+                                        , Element.el [ Element.Font.size 16, Element.Font.semiBold ] <| textWithoutTextCursor symbol
                                         ]
                                 )
                         )
@@ -604,7 +637,8 @@ currencySelector showDropdown typeStringInput openCurrencySelectorMsg typeString
         [ Element.spacing 4
         , Element.below dropdownEl
         ]
-        [ Element.el [ Element.Events.onClick flagClickedMsg ] <| FiatValue.typeStringToSymbol typeStringInput
+        [ Element.el [ Element.Events.onClick flagClickedMsg ]
+            (Prices.getIcon symbolInput |> Maybe.withDefault Element.none)
         , inputElement
         ]
 
@@ -928,7 +962,7 @@ closeableModal extraAttributes innerEl closeMsg =
         Element.el
             ([ Element.centerX
              , Element.centerY
-             , Element.width (Element.shrink |> Element.maximum 500)
+             , Element.width (Element.fill |> Element.maximum 700)
              , Element.Background.color white
              , Element.Border.rounded 8
              , Element.inFront <|
@@ -946,27 +980,28 @@ closeableModal extraAttributes innerEl closeMsg =
 txProcessModal : List (Element msg) -> Element msg
 txProcessModal textLines =
     (modal <| Element.rgba 0 0 0.3 0.6)
-        (textLines
-            |> List.map
-                (\line ->
-                    Element.paragraph
-                        [ Element.centerX
-                        , Element.centerY
-                        , Element.Font.size 20
-                        , Element.Font.semiBold
-                        , Element.Font.color white
-                        , Element.Font.center
-                        ]
-                        [ line ]
-                )
-            |> Element.column
-                [ Element.spacing 10
-                , Element.centerX
-                , Element.centerY
-                , Element.Background.color <| Element.rgba 0 0 0 0.5
-                , Element.Border.rounded 8
-                , Element.padding 20
-                ]
+        (Element.column
+            [ Element.spacing 10
+            , Element.centerX
+            , Element.centerY
+            , Element.Background.color <| Element.rgba 0 0 0 0.5
+            , Element.Border.rounded 8
+            , Element.padding 20
+            ]
+            (textLines
+                |> List.map
+                    (\line ->
+                        Element.paragraph
+                            [ Element.centerX
+                            , Element.centerY
+                            , Element.Font.size 20
+                            , Element.Font.semiBold
+                            , Element.Font.color white
+                            , Element.Font.center
+                            ]
+                            [ line ]
+                    )
+            )
         )
 
 
@@ -1059,9 +1094,10 @@ coolCurrencyHbreak reversed length =
     Element.el
         [ Element.width Element.fill
         , Element.inFront
-            (FiatValue.currencyTypes
+            (Prices.charsAndImages
                 |> Dict.toList
                 |> List.map (Tuple.second >> Tuple.first)
+                |> Maybe.Extra.values
                 |> List.Extra.unique
                 |> (if reversed then
                         List.reverse
@@ -1117,3 +1153,63 @@ scrollbarYEl attrs body =
                 ++ attrs
             )
             body
+
+
+submodelContainer : Int -> Maybe String -> String -> Element msg -> Element msg
+submodelContainer maxWidth maybeBigTitleText smallTitleText el =
+    Element.column
+        [ Element.paddingEach
+            { top = 60
+            , bottom = 40
+            , right = 0
+            , left = 0
+            }
+        , Element.spacing 60
+        , Element.width Element.fill
+        ]
+        [ Maybe.map
+            (Element.el
+                [ Element.Font.color white
+                , Element.Font.size 38
+                , Element.centerX
+                ]
+                << Element.text
+            )
+            maybeBigTitleText
+            |> Maybe.withDefault Element.none
+        , Element.column
+            [ Element.Background.color <| submodelBackgroundColor
+            , Element.spacing 20
+            , Element.Border.rounded 8
+            , Element.clip
+            , Element.centerX
+            , Element.width (Element.fill |> Element.maximum maxWidth)
+            , Element.Border.shadow
+                { offset = ( 0, 0 )
+                , size = 1
+                , blur = 3
+                , color = Element.rgba 0 0 0 0.2
+                }
+            ]
+            [ Element.el
+                [ Element.width Element.fill
+                , Element.padding 15
+                , Element.Background.color white
+                , Element.Border.shadow
+                    { offset = ( 0, 0 )
+                    , size = 0
+                    , blur = 30
+                    , color = Element.rgba 0 0 0 0.15
+                    }
+                ]
+              <|
+                Element.el
+                    [ Element.Font.size 16
+                    , Element.Font.color red
+                    , Element.Font.bold
+                    , Element.centerX
+                    ]
+                    (Element.text smallTitleText)
+            , el
+            ]
+        ]

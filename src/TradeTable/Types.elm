@@ -1,6 +1,6 @@
 module TradeTable.Types exposing (ColType(..), Model, Msg(..), Ordering(..), UpdateResult, flipOrdering, justModelUpdate)
 
-import AppCmd exposing (AppCmd)
+import CmdUp exposing (CmdUp)
 import ChainCmd exposing (ChainCmd)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
@@ -21,7 +21,7 @@ type alias UpdateResult =
     { model : Model
     , cmd : Cmd Msg
     , chainCmd : ChainCmd Msg
-    , appCmds : List (AppCmd Msg)
+    , cmdUps : List (CmdUp Msg)
     }
 
 
@@ -29,7 +29,7 @@ type ColType
     = Phase
     | Expires
     | Offer
-    | FiatPrice
+    | Price
     | Margin
     | PaymentWindow
     | BurnWindow

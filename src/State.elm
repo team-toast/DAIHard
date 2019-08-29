@@ -1,19 +1,22 @@
 port module State exposing (init, subscriptions, update)
 
--- import QuickCreate.State
+-- import CryptoSwap.State
 
 import AgentHistory.State
-import AppCmd
 import Array exposing (Array)
 import BigInt
 import Browser
 import Browser.Dom
 import Browser.Navigation
 import ChainCmd exposing (ChainCmd)
+import CmdDown
+import CmdUp
 import CommonTypes exposing (..)
 import Config
 import Contracts.Types as CTypes
 import Create.State
+import CryptoSwap.State
+import CryptoSwap.Types as CryptoSwap
 import Element
 import Eth.Net
 import Eth.Sentry.Tx as TxSentry
@@ -83,17 +86,17 @@ init flags url key =
             Config.activeFactories
                 |> List.map TradeCache.initAndStartCaching
 
-        ( tradeCaches, tcCmds, tcAppCmdLists ) =
+        ( tradeCaches, tcCmds, tcCmdUpLists ) =
             ( List.map Helpers.Tuple.tuple3First tcInitResults
             , List.map Helpers.Tuple.tuple3Second tcInitResults
             , List.map Helpers.Tuple.tuple3Third tcInitResults
             )
 
-        appCmds =
-            tcAppCmdLists
+        cmdUps =
+            tcCmdUpLists
                 |> List.indexedMap
-                    (\tcId tcAppCmds ->
-                        AppCmd.mapList (TradeCacheMsg tcId) tcAppCmds
+                    (\tcId tcCmdUps ->
+                        CmdUp.mapList (TradeCacheMsg tcId) tcCmdUps
                     )
                 |> List.concat
 
@@ -113,11 +116,12 @@ init flags url key =
             , txSentry = txSentry
             , tradeCaches = tradeCaches
             , submodel = BetaLandingPage
+            , currentRoute = Routing.Home
             , userNotices = []
             , screenWidth = flags.width
             }
                 |> updateFromUrl url
-                |> runAppCmds appCmds
+                |> runCmdUps cmdUps
     in
     ( model |> addUserNotices userNotices
     , Cmd.batch
@@ -138,23 +142,22 @@ type alias EncryptedMessage =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        AppCmd appCmd ->
-            case appCmd of
-                AppCmd.Web3Connect ->
+        CmdUp cmdUp ->
+            case cmdUp of
+                CmdUp.Web3Connect ->
                     model
                         |> update ConnectToWeb3
 
-                AppCmd.GotoRoute newRoute ->
-                    ( model
-                    , beginRouteChange model.key newRoute
-                    )
+                CmdUp.GotoRoute newRoute ->
+                    model
+                        |> update (GotoRoute newRoute)
 
-                AppCmd.GTag gtag ->
+                CmdUp.GTag gtag ->
                     ( model
                     , gTagOut (encodeGTag gtag)
                     )
 
-                AppCmd.UserNotice userNotice ->
+                CmdUp.UserNotice userNotice ->
                     ( model |> addUserNotice userNotice
                     , gTagOut <|
                         encodeGTag <|
@@ -165,12 +168,12 @@ update msg model =
                                 0
                     )
 
-                AppCmd.BrowserNotification title maybeBody maybeImg ->
+                CmdUp.BrowserNotification title maybeBody maybeImg ->
                     ( model
                     , Notifications.createNotification notifyPort title maybeBody maybeImg
                     )
 
-                AppCmd.RequestBrowserNotificationPermission ->
+                CmdUp.RequestBrowserNotificationPermission ->
                     ( model
                     , requestNotifyPermissionPort ()
                     )
@@ -199,18 +202,22 @@ update msg model =
             model |> updateFromUrl url
 
         GotoRoute route ->
-            ( model
-            , Cmd.batch
-                [ gTagOut <|
-                    encodeGTag <|
-                        GTagData
-                            "GotoRoute"
-                            "navigation"
-                            (Routing.routeToString route)
-                            0
-                , beginRouteChange model.key route
-                ]
-            )
+            model
+                |> gotoRoute route
+                |> Tuple.mapSecond
+                    (\cmd ->
+                        Cmd.batch
+                            [ cmd
+                            , gTagOut <|
+                                encodeGTag <|
+                                    GTagData
+                                        "GotoRoute"
+                                        "navigation"
+                                        (Routing.routeToString route)
+                                        0
+                            , Browser.Navigation.pushUrl model.key (Routing.routeToString route)
+                            ]
+                    )
 
         Tick newTime ->
             ( { model | time = newTime }, Cmd.none )
@@ -259,16 +266,9 @@ update msg model =
                                             network
                                             userAddress
                                             commPubkey
-
-                                ( submodel, cmd ) =
-                                    model.submodel |> updateSubmodelWalletState wallet
                             in
-                            ( { model
-                                | wallet = wallet
-                                , submodel = submodel
-                              }
-                            , cmd
-                            )
+                            { model | wallet = wallet }
+                                |> runCmdDown (CmdDown.UpdateWallet wallet)
 
                         ( Nothing, _ ) ->
                             ( model
@@ -314,38 +314,41 @@ update msg model =
                         , chainCmd
                         ]
                     )
-                        |> runAppCmds
-                            (AppCmd.mapList CreateMsg updateResult.appCmds
-                                ++ List.map AppCmd.UserNotice userNotices
+                        |> runCmdUps
+                            (CmdUp.mapList CreateMsg updateResult.cmdUps
+                                ++ List.map CmdUp.UserNotice userNotices
                             )
 
                 _ ->
                     ( model, Cmd.none )
 
-        -- QuickCreateMsg quickCreateMsg ->
-        --     case model.submodel of
-        --         QuickCreateModel quickCreateModel ->
-        --             let
-        --                 updateResult =
-        --                     QuickCreate.State.update quickCreateMsg quickCreateModel
-        --                 ( newTxSentry, chainCmd, userNotices ) =
-        --                     ChainCmd.execute model.txSentry (ChainCmd.map QuickCreateMsg updateResult.chainCmd)
-        --             in
-        --             ( { model
-        --                 | submodel = QuickCreateModel updateResult.model
-        --                 , txSentry = newTxSentry
-        --               }
-        --             , Cmd.batch
-        --                 [ Cmd.map QuickCreateMsg updateResult.cmd
-        --                 , chainCmd
-        --                 ]
-        --             )
-        --                 |> runAppCmds
-        --                     (AppCmd.mapList QuickCreateMsg updateResult.appCmds
-        --                         ++ List.map AppCmd.UserNotice userNotices
-        --                     )
-        --         _ ->
-        --             ( model, Cmd.none )
+        CryptoSwapMsg cryptoSwapMsg ->
+            case model.submodel of
+                CryptoSwapModel cryptoSwapModel ->
+                    let
+                        updateResult =
+                            CryptoSwap.State.update cryptoSwapMsg cryptoSwapModel
+
+                        ( newTxSentry, chainCmd, userNotices ) =
+                            ChainCmd.execute model.txSentry (ChainCmd.map CryptoSwapMsg updateResult.chainCmd)
+                    in
+                    ( { model
+                        | submodel = CryptoSwapModel updateResult.model
+                        , txSentry = newTxSentry
+                      }
+                    , Cmd.batch
+                        [ Cmd.map CryptoSwapMsg updateResult.cmd
+                        , chainCmd
+                        ]
+                    )
+                        |> runCmdUps
+                            (CmdUp.mapList CryptoSwapMsg updateResult.cmdUps
+                                ++ List.map CmdUp.UserNotice userNotices
+                            )
+
+                _ ->
+                    ( model, Cmd.none )
+
         TradeMsg tradeMsg ->
             case model.submodel of
                 TradeModel tradeModel ->
@@ -365,9 +368,9 @@ update msg model =
                         , chainCmd
                         ]
                     )
-                        |> runAppCmds
-                            (AppCmd.mapList TradeMsg updateResult.appCmds
-                                ++ List.map AppCmd.UserNotice userNotices
+                        |> runCmdUps
+                            (CmdUp.mapList TradeMsg updateResult.cmdUps
+                                ++ List.map CmdUp.UserNotice userNotices
                             )
 
                 _ ->
@@ -383,8 +386,8 @@ update msg model =
                     ( { model | submodel = MarketplaceModel updateResult.model }
                     , Cmd.map MarketplaceMsg updateResult.cmd
                     )
-                        |> runAppCmds
-                            (AppCmd.mapList MarketplaceMsg updateResult.appCmds)
+                        |> runCmdUps
+                            (CmdUp.mapList MarketplaceMsg updateResult.cmdUps)
 
                 _ ->
                     ( model, Cmd.none )
@@ -408,9 +411,9 @@ update msg model =
                         , chainCmd
                         ]
                     )
-                        |> runAppCmds
-                            (AppCmd.mapList AgentHistoryMsg updateResult.appCmds
-                                ++ List.map AppCmd.UserNotice userNotices
+                        |> runCmdUps
+                            (CmdUp.mapList AgentHistoryMsg updateResult.cmdUps
+                                ++ List.map CmdUp.UserNotice userNotices
                             )
 
                 _ ->
@@ -433,7 +436,7 @@ update msg model =
             case List.Extra.getAt tcId model.tradeCaches of
                 Nothing ->
                     ( model, Cmd.none )
-                        |> runAppCmd (AppCmd.UserNotice <| UN.unexpectedError "Encountered an out-of-range error when trying to route a TradeCacheMsg" Nothing)
+                        |> runCmdUp (CmdUp.UserNotice <| UN.unexpectedError "Encountered an out-of-range error when trying to route a TradeCacheMsg" Nothing)
 
                 Just tradeCache ->
                     let
@@ -450,6 +453,9 @@ update msg model =
                     , updateResult.cmd |> Cmd.map (TradeCacheMsg tcId)
                     )
 
+        ClickHappened ->
+            model |> runCmdDown CmdDown.CloseAnyDropdownsOrModals
+
         NoOp ->
             ( model, Cmd.none )
 
@@ -461,20 +467,20 @@ update msg model =
             ( model, Cmd.none )
 
 
-runAppCmds : List (AppCmd.AppCmd Msg) -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
-runAppCmds appCmds ( model, prevCmd ) =
+runCmdUps : List (CmdUp.CmdUp Msg) -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+runCmdUps cmdUps ( model, prevCmd ) =
     List.foldl
-        runAppCmd
+        runCmdUp
         ( model, prevCmd )
-        appCmds
+        cmdUps
 
 
-runAppCmd : AppCmd.AppCmd Msg -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
-runAppCmd appCmd ( model, prevCmd ) =
+runCmdUp : CmdUp.CmdUp Msg -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+runCmdUp cmdUp ( model, prevCmd ) =
     let
         ( newModel, newCmd ) =
             update
-                (AppCmd appCmd)
+                (CmdUp cmdUp)
                 model
     in
     ( newModel
@@ -521,23 +527,20 @@ encodeGenPrivkeyArgs address signMsg =
         ]
 
 
-beginRouteChange : Browser.Navigation.Key -> Routing.Route -> Cmd Msg
-beginRouteChange key route =
-    Browser.Navigation.pushUrl key (Routing.routeToString route)
-
-
 updateFromUrl : Url -> Model -> ( Model, Cmd Msg )
 updateFromUrl url model =
-    gotoRoute model (Routing.urlToRoute url)
+    if Routing.routeToString model.currentRoute == url.path then
+        ( model
+        , Cmd.none
+        )
+
+    else
+        gotoRoute (Routing.urlToRoute url) model
 
 
-gotoRoute : Model -> Routing.Route -> ( Model, Cmd Msg )
-gotoRoute oldModel route =
-    let
-        newUrlString =
-            Routing.routeToString route
-    in
-    case route of
+gotoRoute : Routing.Route -> Model -> ( Model, Cmd Msg )
+gotoRoute route oldModel =
+    (case route of
         Routing.Home ->
             ( { oldModel
                 | submodel = BetaLandingPage
@@ -545,10 +548,10 @@ gotoRoute oldModel route =
             , Cmd.none
             )
 
-        Routing.Create ->
+        Routing.Create maybeCreateParameters ->
             let
                 updateResult =
-                    Create.State.init oldModel.wallet
+                    Create.State.init oldModel.wallet maybeCreateParameters
 
                 ( newTxSentry, chainCmd, userNotices ) =
                     ChainCmd.execute oldModel.txSentry (ChainCmd.map CreateMsg updateResult.chainCmd)
@@ -562,31 +565,33 @@ gotoRoute oldModel route =
                 , chainCmd
                 ]
             )
-                |> runAppCmds
-                    (AppCmd.mapList CreateMsg updateResult.appCmds
-                        ++ List.map AppCmd.UserNotice userNotices
+                |> runCmdUps
+                    (CmdUp.mapList CreateMsg updateResult.cmdUps
+                        ++ List.map CmdUp.UserNotice userNotices
                     )
 
-        -- Routing.QuickCreate ->
-        --     let
-        --         updateResult =
-        --             QuickCreate.State.init oldModel.wallet
-        --         ( newTxSentry, chainCmd, userNotices ) =
-        --             ChainCmd.execute oldModel.txSentry (ChainCmd.map QuickCreateMsg updateResult.chainCmd)
-        --     in
-        --     ( { oldModel
-        --         | submodel = QuickCreateModel updateResult.model
-        --         , txSentry = newTxSentry
-        --       }
-        --     , Cmd.batch
-        --         [ Cmd.map QuickCreateMsg updateResult.cmd
-        --         , chainCmd
-        --         ]
-        --     )
-        --         |> runAppCmds
-        --             (AppCmd.mapList QuickCreateMsg updateResult.appCmds
-        --                 ++ List.map AppCmd.UserNotice userNotices
-        --             )
+        Routing.CryptoSwap ->
+            let
+                updateResult =
+                    CryptoSwap.State.init oldModel.wallet
+
+                ( newTxSentry, chainCmd, userNotices ) =
+                    ChainCmd.execute oldModel.txSentry (ChainCmd.map CryptoSwapMsg updateResult.chainCmd)
+            in
+            ( { oldModel
+                | submodel = CryptoSwapModel updateResult.model
+                , txSentry = newTxSentry
+              }
+            , Cmd.batch
+                [ Cmd.map CryptoSwapMsg updateResult.cmd
+                , chainCmd
+                ]
+            )
+                |> runCmdUps
+                    (CmdUp.mapList CryptoSwapMsg updateResult.cmdUps
+                        ++ List.map CmdUp.UserNotice userNotices
+                    )
+
         Routing.Trade factory id ->
             let
                 updateResult =
@@ -609,9 +614,9 @@ gotoRoute oldModel route =
                 , chainCmd
                 ]
             )
-                |> runAppCmds
-                    (AppCmd.mapList TradeMsg updateResult.appCmds
-                        ++ List.map AppCmd.UserNotice userNotices
+                |> runCmdUps
+                    (CmdUp.mapList TradeMsg updateResult.cmdUps
+                        ++ List.map CmdUp.UserNotice userNotices
                     )
 
         Routing.Marketplace ->
@@ -644,6 +649,9 @@ gotoRoute oldModel route =
             ( oldModel |> addUserNotice UN.invalidUrl
             , Cmd.none
             )
+    )
+        |> Tuple.mapFirst
+            (\model -> { model | currentRoute = route })
 
 
 getTradeFromCaches : FactoryType -> Int -> List TradeCache -> Maybe CTypes.Trade
@@ -654,49 +662,165 @@ getTradeFromCaches factory id tradeCaches =
         |> Maybe.andThen (Array.get id)
 
 
-updateSubmodelWalletState : Wallet.State -> Submodel -> ( Submodel, Cmd Msg )
-updateSubmodelWalletState wallet submodel =
-    case submodel of
+runCmdDown : CmdDown.CmdDown -> Model -> ( Model, Cmd Msg )
+runCmdDown cmdDown oldModel =
+    case oldModel.submodel of
         BetaLandingPage ->
-            ( submodel
+            ( oldModel
             , Cmd.none
             )
 
         CreateModel createModel ->
             let
-                ( newCreateModel, createCmd ) =
-                    createModel |> Create.State.updateWalletState wallet
-            in
-            ( CreateModel newCreateModel
-            , Cmd.map CreateMsg createCmd
-            )
+                updateResult =
+                    createModel |> Create.State.runCmdDown cmdDown
 
-        -- QuickCreateModel quickCreateModel ->
-        --     let
-        --         ( newQuickCreateModel, quickCreateCmd ) =
-        --             quickCreateModel |> QuickCreate.State.updateWalletState wallet
-        --     in
-        --     ( QuickCreateModel newQuickCreateModel
-        --     , Cmd.map QuickCreateMsg quickCreateCmd
-        --     )
+                ( newTxSentry, chainCmd, userNotices ) =
+                    ChainCmd.execute oldModel.txSentry (ChainCmd.map CreateMsg updateResult.chainCmd)
+            in
+            ( { oldModel
+                | submodel = CreateModel updateResult.model
+                , txSentry = newTxSentry
+              }
+            , Cmd.batch
+                [ Cmd.map CreateMsg updateResult.cmd
+                , chainCmd
+                ]
+            )
+                |> runCmdUps
+                    (CmdUp.mapList CreateMsg updateResult.cmdUps
+                        ++ List.map CmdUp.UserNotice userNotices
+                    )
+
+        CryptoSwapModel cryptoSwapModel ->
+            let
+                updateResult =
+                    cryptoSwapModel |> CryptoSwap.State.runCmdDown cmdDown
+
+                ( newTxSentry, chainCmd, userNotices ) =
+                    ChainCmd.execute oldModel.txSentry (ChainCmd.map CryptoSwapMsg updateResult.chainCmd)
+            in
+            ( { oldModel
+                | submodel = CryptoSwapModel updateResult.model
+                , txSentry = newTxSentry
+              }
+            , Cmd.batch
+                [ Cmd.map CryptoSwapMsg updateResult.cmd
+                , chainCmd
+                ]
+            )
+                |> runCmdUps
+                    (CmdUp.mapList CryptoSwapMsg updateResult.cmdUps
+                        ++ List.map CmdUp.UserNotice userNotices
+                    )
+
         TradeModel tradeModel ->
             let
-                ( newTradeModel, tradeCmd ) =
-                    tradeModel |> Trade.State.updateWalletState wallet
+                updateResult =
+                    tradeModel |> Trade.State.runCmdDown cmdDown
+
+                ( newTxSentry, chainCmd, userNotices ) =
+                    ChainCmd.execute oldModel.txSentry (ChainCmd.map TradeMsg updateResult.chainCmd)
             in
-            ( TradeModel newTradeModel
-            , Cmd.map TradeMsg tradeCmd
+            ( { oldModel
+                | submodel = TradeModel updateResult.model
+                , txSentry = newTxSentry
+              }
+            , Cmd.batch
+                [ Cmd.map TradeMsg updateResult.cmd
+                , chainCmd
+                ]
             )
+                |> runCmdUps
+                    (CmdUp.mapList TradeMsg updateResult.cmdUps
+                        ++ List.map CmdUp.UserNotice userNotices
+                    )
 
         MarketplaceModel marketplaceModel ->
-            ( MarketplaceModel (marketplaceModel |> Marketplace.State.updateWalletState wallet)
-            , Cmd.none
+            let
+                updateResult =
+                    marketplaceModel |> Marketplace.State.runCmdDown cmdDown
+
+                ( newTxSentry, chainCmd, userNotices ) =
+                    ChainCmd.execute oldModel.txSentry (ChainCmd.map MarketplaceMsg updateResult.chainCmd)
+            in
+            ( { oldModel
+                | submodel = MarketplaceModel updateResult.model
+                , txSentry = newTxSentry
+              }
+            , Cmd.batch
+                [ Cmd.map MarketplaceMsg updateResult.cmd
+                , chainCmd
+                ]
             )
+                |> runCmdUps
+                    (CmdUp.mapList MarketplaceMsg updateResult.cmdUps
+                        ++ List.map CmdUp.UserNotice userNotices
+                    )
 
         AgentHistoryModel agentHistoryModel ->
-            ( AgentHistoryModel (agentHistoryModel |> AgentHistory.State.updateWalletState wallet)
-            , Cmd.none
+            let
+                updateResult =
+                    agentHistoryModel |> AgentHistory.State.runCmdDown cmdDown
+
+                ( newTxSentry, chainCmd, userNotices ) =
+                    ChainCmd.execute oldModel.txSentry (ChainCmd.map AgentHistoryMsg updateResult.chainCmd)
+            in
+            ( { oldModel
+                | submodel = AgentHistoryModel updateResult.model
+                , txSentry = newTxSentry
+              }
+            , Cmd.batch
+                [ Cmd.map AgentHistoryMsg updateResult.cmd
+                , chainCmd
+                ]
             )
+                |> runCmdUps
+                    (CmdUp.mapList AgentHistoryMsg updateResult.cmdUps
+                        ++ List.map CmdUp.UserNotice userNotices
+                    )
+
+
+
+-- updateSubmodelWalletState : Wallet.State -> Submodel -> ( Submodel, Cmd Msg )
+-- updateSubmodelWalletState wallet submodel =
+--     case submodel of
+--         BetaLandingPage ->
+--             ( submodel
+--             , Cmd.none
+--             )
+--         CreateModel createModel ->
+--             let
+--                 ( newCreateModel, createCmd ) =
+--                     createModel |> Create.State.updateWalletState wallet
+--             in
+--             ( CreateModel newCreateModel
+--             , Cmd.map CreateMsg createCmd
+--             )
+--         CryptoSwapModel cryptoSwapModel ->
+--             let
+--                 ( newCryptoSwapModel, cryptoSwapCmd ) =
+--                     cryptoSwapModel |> CryptoSwap.State.updateWalletState wallet
+--             in
+--             ( CryptoSwapModel newCryptoSwapModel
+--             , Cmd.map CryptoSwapMsg cryptoSwapCmd
+--             )
+--         TradeModel tradeModel ->
+--             let
+--                 ( newTradeModel, tradeCmd ) =
+--                     tradeModel |> Trade.State.updateWalletState wallet
+--             in
+--             ( TradeModel newTradeModel
+--             , Cmd.map TradeMsg tradeCmd
+--             )
+--         MarketplaceModel marketplaceModel ->
+--             ( MarketplaceModel (marketplaceModel |> Marketplace.State.updateWalletState wallet)
+--             , Cmd.none
+--             )
+--         AgentHistoryModel agentHistoryModel ->
+--             ( AgentHistoryModel (agentHistoryModel |> AgentHistory.State.updateWalletState wallet)
+--             , Cmd.none
+--             )
 
 
 subscriptions : Model -> Sub Msg
@@ -704,7 +828,7 @@ subscriptions model =
     let
         failedWalletDecodeToMsg : String -> Msg
         failedWalletDecodeToMsg =
-            UN.walletError >> AppCmd.UserNotice >> AppCmd
+            UN.walletError >> CmdUp.UserNotice >> CmdUp
     in
     Sub.batch
         ([ Time.every 1000 Tick
@@ -731,8 +855,9 @@ submodelSubscriptions model =
         CreateModel createModel ->
             Sub.map CreateMsg <| Create.State.subscriptions createModel
 
-        -- QuickCreateModel quickCreateModel ->
-        --     Sub.map QuickCreateMsg <| QuickCreate.State.subscriptions quickCreateModel
+        CryptoSwapModel cryptoSwapModel ->
+            Sub.map CryptoSwapMsg <| CryptoSwap.State.subscriptions cryptoSwapModel
+
         TradeModel tradeModel ->
             Sub.map TradeMsg <| Trade.State.subscriptions tradeModel
 

@@ -1,6 +1,6 @@
 module TradeCache.State exposing (init, initAndStartCaching, loadedValidTrades, startCaching, subscriptions, update)
 
-import AppCmd exposing (AppCmd)
+import CmdUp exposing (CmdUp)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -18,7 +18,7 @@ import TradeCache.Types exposing (..)
 import UserNotice as UN exposing (UserNotice)
 
 
-init : FactoryType -> ( TradeCache, Cmd Msg, List (AppCmd Msg) )
+init : FactoryType -> ( TradeCache, Cmd Msg, List (CmdUp Msg) )
 init factoryType =
     let
         ( sentry, sentryCmd ) =
@@ -33,7 +33,7 @@ init factoryType =
             DataState Nothing 0 0
       }
     , sentryCmd
-    , [ AppCmd.gTag "tradeCache init" "processing" (factoryName factoryType) 0 ]
+    , [ CmdUp.gTag "tradeCache init" "processing" (factoryName factoryType) 0 ]
     )
 
 
@@ -42,10 +42,10 @@ startCaching tradeCache =
     Contracts.Wrappers.getNumTradesCmd tradeCache.factory InitialNumTradesFetched
 
 
-initAndStartCaching : FactoryType -> ( TradeCache, Cmd Msg, List (AppCmd Msg) )
+initAndStartCaching : FactoryType -> ( TradeCache, Cmd Msg, List (CmdUp Msg) )
 initAndStartCaching factoryType =
     let
-        ( tc, cmd1, appCmds ) =
+        ( tc, cmd1, cmdUps ) =
             init factoryType
     in
     ( tc
@@ -53,7 +53,7 @@ initAndStartCaching factoryType =
         [ cmd1
         , startCaching tc
         ]
-    , appCmds
+    , cmdUps
     )
 
 
@@ -110,7 +110,7 @@ update msg prevModel =
                     UpdateResult
                         prevModel
                         Cmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.web3FetchError "Factory numTrades" errstr
                         ]
 
@@ -153,7 +153,7 @@ update msg prevModel =
                             prevModel
                                 |> updateTradePhase id newPhase
 
-                        ( cmd, appCmds ) =
+                        ( cmd, cmdUps ) =
                             case ( newPhase, Array.get id prevModel.trades ) of
                                 ( CTypes.Committed, Just trade ) ->
                                     case CTypes.getCreationInfo trade of
@@ -168,14 +168,14 @@ update msg prevModel =
 
                                         Nothing ->
                                             ( Cmd.none
-                                            , [ AppCmd.UserNotice <|
+                                            , [ CmdUp.UserNotice <|
                                                     UN.unexpectedError "Phase fetched for a trade that has no creationInfo" trade
                                               ]
                                             )
 
                                 ( _, Nothing ) ->
                                     ( Cmd.none
-                                    , [ AppCmd.UserNotice <|
+                                    , [ CmdUp.UserNotice <|
                                             UN.unexpectedError "Phase fetched for a trade, but then ran into an out-of-range error" Nothing
                                       ]
                                     )
@@ -193,15 +193,15 @@ update msg prevModel =
                             ]
                         )
                         (List.append
-                            intermediateUpdateResult.appCmds
-                            appCmds
+                            intermediateUpdateResult.cmdUps
+                            cmdUps
                         )
 
                 badFetchResult ->
                     UpdateResult
                         prevModel
                         Cmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.fromBadFetchResultMaybe "phase" fetchResult
                         ]
 
@@ -246,7 +246,7 @@ update msg prevModel =
                     UpdateResult
                         prevModel
                         Cmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.web3FetchError "Factory numTrades" errstr
                         ]
 
@@ -254,7 +254,7 @@ update msg prevModel =
                     UpdateResult
                         prevModel
                         Cmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.unexpectedError "Trying to fetch additional trades, but there is an unexpected Nothing in the existing numTrades." ""
                         ]
 
@@ -285,13 +285,13 @@ update msg prevModel =
                             |> updateStatus
                         )
                         cmd
-                        (notices |> List.map AppCmd.UserNotice)
+                        (notices |> List.map CmdUp.UserNotice)
 
                 Err errstr ->
                     UpdateResult
                         prevModel
                         Cmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.web3FetchError "creationInfo" errstr
                         ]
 
@@ -305,7 +305,7 @@ update msg prevModel =
                     UpdateResult
                         prevModel
                         Cmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.web3FetchError "parameters" httpErr
                         ]
 
@@ -313,7 +313,7 @@ update msg prevModel =
                     UpdateResult
                         prevModel
                         Cmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.unexpectedError "Can't decode fetched trade parameters" s
                         ]
 
@@ -327,7 +327,7 @@ update msg prevModel =
                     UpdateResult
                         prevModel
                         Cmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.fromBadFetchResultMaybe "state" fetchResult
                         ]
 
@@ -341,7 +341,7 @@ update msg prevModel =
                     UpdateResult
                         prevModel
                         Cmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.fromBadFetchResultMaybe "phaseStartInfo" fetchResult
                         ]
 
@@ -361,7 +361,7 @@ update msg prevModel =
                     UpdateResult
                         prevModel
                         Cmd.none
-                        [ AppCmd.UserNotice <|
+                        [ CmdUp.UserNotice <|
                             UN.unexpectedError "Error decoding initiated event" e
                         ]
 
@@ -471,7 +471,7 @@ markTradeInvalid id tradeCache =
             UpdateResult
                 tradeCache
                 Cmd.none
-                [ AppCmd.UserNotice <|
+                [ CmdUp.UserNotice <|
                     UN.unexpectedError "markTradeInvalid ran into an out-of-range error" ( id, tradeCache.trades )
                 ]
 
@@ -524,7 +524,7 @@ updateTradeParameters id parameters tradeCache =
             UpdateResult
                 tradeCache
                 Cmd.none
-                [ AppCmd.UserNotice <|
+                [ CmdUp.UserNotice <|
                     UN.unexpectedError "updateTradeParameters ran into an out-of-range error" ( id, tradeCache.trades )
                 ]
 
@@ -559,7 +559,7 @@ updateTradePhase id newPhase tradeCache =
             UpdateResult
                 tradeCache
                 Cmd.none
-                [ AppCmd.UserNotice <|
+                [ CmdUp.UserNotice <|
                     UN.unexpectedError "updateTradePhase is trying to update a partially loaded trade" ( id, tradeCache.trades )
                 ]
 
@@ -567,7 +567,7 @@ updateTradePhase id newPhase tradeCache =
             UpdateResult
                 tradeCache
                 Cmd.none
-                [ AppCmd.UserNotice <|
+                [ CmdUp.UserNotice <|
                     UN.unexpectedError "updateTradePhase ran into an out-of-range error" ( id, tradeCache.trades )
                 ]
 
@@ -596,7 +596,7 @@ updateTradeState id state tradeCache =
             UpdateResult
                 tradeCache
                 Cmd.none
-                [ AppCmd.UserNotice <|
+                [ CmdUp.UserNotice <|
                     UN.unexpectedError "updateTradeState ran into an out-of-range error" ( id, tradeCache.trades )
                 ]
 
@@ -625,7 +625,7 @@ updateTradePhaseStartInfo id phaseStartInfo tradeCache =
             UpdateResult
                 tradeCache
                 Cmd.none
-                [ AppCmd.UserNotice <|
+                [ CmdUp.UserNotice <|
                     UN.unexpectedError "updateTradePhaseTimeInfo ran into an out-of-range error" ( id, tradeCache.trades )
                 ]
 
@@ -654,7 +654,7 @@ updateTradeTerms id terms tradeCache =
             UpdateResult
                 tradeCache
                 Cmd.none
-                [ AppCmd.UserNotice <|
+                [ CmdUp.UserNotice <|
                     UN.unexpectedError "updateTTPaymentMethods ran into an out-of-range error" ( id, tradeCache.trades )
                 ]
 

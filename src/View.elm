@@ -1,13 +1,12 @@
 module View exposing (root)
 
--- import QuickCreate.View
-
 import AgentHistory.View
 import Browser
 import CommonTypes exposing (..)
 import Config
 import Contracts.Types as CTypes
 import Create.View
+import CryptoSwap.View
 import Dict
 import Element exposing (Attribute, Element)
 import Element.Background
@@ -15,12 +14,12 @@ import Element.Border
 import Element.Events
 import Element.Font
 import Element.Input
-import FiatValue
 import Helpers.Element as EH
 import Helpers.Tuple exposing (mapTuple2)
 import Landing.View
 import Marketplace.Types
 import Marketplace.View
+import Prices
 import Routing
 import Trade.View
 import Types exposing (..)
@@ -39,6 +38,7 @@ root model =
             mainElementAttributes =
                 [ Element.width Element.fill
                 , Element.height Element.fill
+                , Element.Events.onClick ClickHappened
                 , Element.Font.family
                     [ Element.Font.typeface "Soleil"
                     , Element.Font.sansSerif
@@ -46,7 +46,15 @@ root model =
                 ]
                     ++ List.map Element.inFront modalEls
           in
-          Element.layout
+          Element.layoutWith
+            { options =
+                [ Element.focusStyle
+                    { borderColor = Nothing
+                    , backgroundColor = Nothing
+                    , shadow = Nothing
+                    }
+                ]
+            }
             mainElementAttributes
             pageEl
         ]
@@ -77,10 +85,33 @@ pageElementAndModal screenWidth model =
 
 headerBackground : Element Msg
 headerBackground =
+    let
+        bottomBackgroundColor =
+            Element.rgb255 255 144 0
+    in
     Element.el
         [ Element.width Element.fill
-        , Element.height <| Element.px 150
-        , Element.Background.color EH.headerBackgroundColor
+        , Element.height <| Element.px 400
+        , Element.Background.color bottomBackgroundColor
+        , Element.Border.shadow
+            { offset = ( 0, 0 )
+            , size = 30
+            , blur = 30
+            , color = bottomBackgroundColor
+            }
+        , Element.inFront <|
+            Element.el
+                [ Element.width Element.fill
+                , Element.height <| Element.px 80
+                , Element.Background.color <| Element.rgb255 10 33 108
+                , Element.Border.shadow
+                    { offset = ( 0, 0 )
+                    , size = 8
+                    , blur = 20
+                    , color = Element.rgba 0 0 0 0.4
+                    }
+                ]
+                Element.none
         ]
         Element.none
 
@@ -93,20 +124,30 @@ headerContent model =
         , Element.paddingXY 30 17
         ]
         [ headerLink
-            "Browse Offers"
-            (GotoRoute Routing.Marketplace)
+            "Crypto Swap"
+            (GotoRoute <| Routing.CryptoSwap)
             (case model.submodel of
-                MarketplaceModel marketplaceModel ->
+                CryptoSwapModel _ ->
                     Active
 
                 _ ->
                     Normal
             )
         , headerLink
-            "Create a New Offer"
-            (GotoRoute Routing.Create)
+            "Custom Trade"
+            (GotoRoute <| Routing.Create Nothing)
             (case model.submodel of
                 CreateModel _ ->
+                    Active
+
+                _ ->
+                    Normal
+            )
+        , headerLink
+            "Marketplace"
+            (GotoRoute Routing.Marketplace)
+            (case model.submodel of
+                MarketplaceModel marketplaceModel ->
                     Active
 
                 _ ->
@@ -335,14 +376,17 @@ submodelElementAndModal screenWidth model =
                     )
 
                 CreateModel createModel ->
-                    ( Element.map CreateMsg (Create.View.root createModel)
-                    , []
-                    )
+                    Create.View.root createModel
+                        |> Tuple.mapBoth
+                            (Element.map CreateMsg)
+                            (List.map (Element.map CreateMsg))
 
-                -- QuickCreateModel quickCreateModel ->
-                --     QuickCreate.View.root quickCreateModel
-                --             (Element.map QuickCreateMsg)
-                --             (List.map (Element.map QuickCreateMsg))
+                CryptoSwapModel cryptoSwapModel ->
+                    CryptoSwap.View.root cryptoSwapModel
+                        |> Tuple.mapBoth
+                            (Element.map CryptoSwapMsg)
+                            (List.map (Element.map CryptoSwapMsg))
+
                 TradeModel tradeModel ->
                     Trade.View.root screenWidth model.time model.tradeCaches tradeModel
                         |> Tuple.mapBoth
@@ -350,9 +394,10 @@ submodelElementAndModal screenWidth model =
                             (List.map (Element.map TradeMsg))
 
                 MarketplaceModel marketplaceModel ->
-                    ( Element.map MarketplaceMsg (Marketplace.View.root model.time model.tradeCaches marketplaceModel)
-                    , []
-                    )
+                    Marketplace.View.root model.time model.tradeCaches marketplaceModel
+                        |> Tuple.mapBoth
+                            (Element.map MarketplaceMsg)
+                            (List.map (Element.map MarketplaceMsg))
 
                 AgentHistoryModel agentHistoryModel ->
                     ( Element.map AgentHistoryMsg (AgentHistory.View.root model.time model.tradeCaches agentHistoryModel)

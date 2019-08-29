@@ -1,7 +1,7 @@
 module Marketplace.View exposing (root)
 
-import AppCmd exposing (AppCmd)
 import Array exposing (Array)
+import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Config
 import Contracts.Types as CTypes
@@ -11,7 +11,6 @@ import Element.Border
 import Element.Events
 import Element.Font
 import Element.Input
-import FiatValue exposing (FiatValue)
 import Filters.Types as Filters
 import Filters.View as Filters
 import Helpers.Element as EH
@@ -23,6 +22,7 @@ import Margin
 import Marketplace.Types exposing (..)
 import Maybe.Extra
 import PaymentMethods exposing (PaymentMethod)
+import Prices exposing (Price)
 import Time
 import TradeCache.State as TradeCache
 import TradeCache.Types as TradeCache exposing (TradeCache)
@@ -30,7 +30,7 @@ import TradeTable.Types as TradeTable
 import TradeTable.View as TradeTable
 
 
-root : Time.Posix -> List TradeCache -> Model -> Element Msg
+root : Time.Posix -> List TradeCache -> Model -> ( Element Msg, List (Element Msg) )
 root time tradeCaches model =
     let
         onlyOpenPhaseChecked =
@@ -55,27 +55,31 @@ root time tradeCaches model =
                 (TradeCache.loadingStatus >> (==) TradeCache.AllFetched)
                 tradeCaches
     in
-    Element.column
-        [ Element.Border.rounded 5
-        , Element.Background.color EH.white
-        , Element.width Element.fill
-        , Element.height Element.fill
-        , Element.Events.onClick (ShowCurrencyDropdown False)
-        , Element.padding 30
-        ]
-        [ Element.row
+    ( EH.submodelContainer
+        1800
+        (Just "Browse Offers. Local or Worldwide, Cash or Crypto.")
+        "MARKETPLACE"
+        (Element.column
             [ Element.width Element.fill
-            , Element.spacing 10
+            , Element.height Element.fill
+            , Element.padding 30
             ]
-            [ statusFiltersAndSearchElement tradeCaches model.filters model.inputs model.errors model.showCurrencyDropdown
+            [ Element.row
+                [ Element.width Element.fill
+                , Element.spacing 10
+                ]
+                [ statusFiltersAndSearchElement tradeCaches model.filters model.inputs model.errors model.showCurrencyDropdown
+                ]
+            , maybeResultsElement
+                time
+                onlyOpenPhaseChecked
+                tcDoneLoading
+                tradeCaches
+                model
             ]
-        , maybeResultsElement
-            time
-            onlyOpenPhaseChecked
-            tcDoneLoading
-            tradeCaches
-            model
-        ]
+        )
+    , []
+    )
 
 
 statusFiltersAndSearchElement : List TradeCache -> Filters.Model -> SearchInputs -> Errors -> Bool -> Element Msg
@@ -239,7 +243,7 @@ maybeResultsElement time onlyOpenTrades tcDoneLoading tradeCaches model =
               else
                 TradeTable.Phase
             , TradeTable.Offer
-            , TradeTable.FiatPrice
+            , TradeTable.Price
             , TradeTable.Margin
             , TradeTable.PaymentWindow
             , TradeTable.BurnWindow
@@ -297,11 +301,12 @@ daiRangeInput minDai maxDai errors =
         |> withInputHeader "Dai Range"
 
 
-fiatInput : Bool -> String -> Errors -> Element Msg
-fiatInput showTypeDropdown fiatType errors =
+fiatInput : Bool -> Prices.Symbol -> Errors -> Element Msg
+fiatInput showTypeDropdown symbol errors =
     let
         fiatLabelElement =
-            EH.fiatTypeToSymbolElement fiatType
+            Prices.getIcon symbol
+                |> Maybe.withDefault Element.none
 
         minElement =
             Element.row [ Element.spacing 8, Element.centerY, Element.width <| Element.px 60 ]
@@ -316,11 +321,11 @@ fiatInput showTypeDropdown fiatType errors =
                 ]
 
         flagClickedMsg =
-            AppCmd <| AppCmd.gTag "click" "misclick" "currency flag" 0
+            CmdUp <| CmdUp.gTag "click" "misclick" "currency flag" 0
     in
     Element.el
         [ Element.alignTop, Element.width <| Element.px 120 ]
-        (EH.currencySelector showTypeDropdown fiatType (ShowCurrencyDropdown True) FiatTypeInputChanged flagClickedMsg
+        (EH.currencySelector showTypeDropdown symbol (ShowCurrencyDropdown True) FiatTypeInputChanged flagClickedMsg
             |> withInputHeader "Fiat Type"
         )
 

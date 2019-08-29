@@ -1,6 +1,6 @@
 module AgentHistory.Types exposing (Model, Msg(..), UpdateResult, justModelUpdate)
 
-import AppCmd exposing (AppCmd)
+import CmdUp exposing (CmdUp)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -10,12 +10,12 @@ import Dict exposing (Dict)
 import Eth.Net
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
-import FiatValue exposing (FiatValue)
 import Filters.Types as Filters
 import Helpers.Eth as EthHelpers
 import Http
 import Json.Decode
 import PaymentMethods exposing (PaymentMethod)
+import Prices exposing (Price)
 import Routing
 import String.Extra
 import Time
@@ -45,7 +45,7 @@ type alias UpdateResult =
     { model : Model
     , cmd : Cmd Msg
     , chainCmd : ChainCmd Msg
-    , appCmds : List (AppCmd Msg)
+    , cmdUps : List (CmdUp Msg)
     }
 
 

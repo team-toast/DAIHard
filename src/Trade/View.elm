@@ -17,12 +17,12 @@ import Element.Input
 import Eth.Net
 import Eth.Types exposing (Address)
 import Eth.Utils
-import FiatValue exposing (FiatValue)
 import Helpers.Element as EH
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
 import Images exposing (Image)
 import PaymentMethods exposing (PaymentMethod)
+import Prices exposing (Price)
 import Time
 import TokenValue exposing (TokenValue)
 import Trade.ChatHistory.View as ChatHistory
@@ -33,37 +33,55 @@ import Wallet
 
 root : Int -> Time.Posix -> List TradeCache -> Model -> ( Element Msg, List (Element Msg) )
 root screenWidth time tradeCaches model =
-    ( case model.trade of
-        CTypes.LoadedTrade tradeInfo ->
-            Element.column
-                [ Element.width Element.fill
-                , Element.height Element.fill
-                , Element.spacing 40
-                ]
-                [ header time tradeInfo model.wallet tradeCaches model.showStatsModal
-                , Element.el
-                    [ Element.width Element.fill
-                    , Element.paddingXY 40 0
-                    , Element.spacing 40
-                    ]
-                    (phasesElement tradeInfo model.expandedPhase model.wallet time)
-                ]
+    ( EH.submodelContainer
+        1800
+        Nothing
+        ("Trade at "
+            ++ (case CTypes.getCreationInfo model.trade of
+                    Just creationInfo ->
+                        Eth.Utils.addressToString creationInfo.address
 
-        CTypes.PartiallyLoadedTrade partialTradeInfo ->
-            Element.el
-                [ Element.centerX
-                , Element.centerY
-                , Element.Font.size 30
-                ]
-                (Element.text "Loading trade info...")
+                    _ ->
+                        "..."
+               )
+        )
+        (Element.el
+            [ Element.padding 30
+            , Element.width Element.fill
+            ]
+            (case model.trade of
+                CTypes.LoadedTrade tradeInfo ->
+                    Element.column
+                        [ Element.width Element.fill
+                        , Element.height Element.fill
+                        , Element.spacing 40
+                        ]
+                        [ header time tradeInfo model.wallet tradeCaches model.showStatsModal
+                        , Element.el
+                            [ Element.width Element.fill
+                            , Element.paddingXY 40 0
+                            , Element.spacing 40
+                            ]
+                            (phasesElement tradeInfo model.expandedPhase model.wallet time)
+                        ]
 
-        CTypes.Invalid ->
-            Element.el
-                [ Element.centerX
-                , Element.centerY
-                , Element.Font.size 30
-                ]
-                (Element.text "Invalid trade")
+                CTypes.PartiallyLoadedTrade partialTradeInfo ->
+                    Element.el
+                        [ Element.centerX
+                        , Element.centerY
+                        , Element.Font.size 30
+                        ]
+                        (Element.text "Loading trade info...")
+
+                CTypes.Invalid ->
+                    Element.el
+                        [ Element.centerX
+                        , Element.centerY
+                        , Element.Font.size 30
+                        ]
+                        (Element.text "Invalid trade")
+            )
+        )
     , [ chatOverlayElement model
       , getModalOrNone model
       ]
@@ -72,7 +90,10 @@ root screenWidth time tradeCaches model =
 
 header : Time.Posix -> FullTradeInfo -> Wallet.State -> List TradeCache -> Bool -> Element Msg
 header currentTime trade wallet tradeCaches showStatsModal =
-    EH.niceFloatingRow
+    Element.row
+        [ Element.width Element.fill
+        , Element.spaceEvenly
+        ]
         [ tradeStatusElement trade
         , daiAmountElement trade wallet
         , fiatElement trade
@@ -161,19 +182,20 @@ fiatElement : FullTradeInfo -> Element Msg
 fiatElement trade =
     EH.withHeader
         "For Fiat"
-        (renderFiatAmount trade.terms.price)
+        (renderPrice trade.terms.price)
 
 
-renderFiatAmount : FiatValue -> Element Msg
-renderFiatAmount fiatValue =
+renderPrice : Price -> Element Msg
+renderPrice price =
     Element.row
         [ Element.spacing 5 ]
-        [ FiatValue.typeStringToSymbol fiatValue.fiatType
+        [ Prices.getIcon price.symbol
+            |> Maybe.withDefault Element.none
         , Element.el
             [ Element.Font.size 24
             , Element.Font.medium
             ]
-            (Element.text <| FiatValue.renderToStringFull fiatValue)
+            (Element.text <| Prices.toString price)
         ]
 
 
@@ -457,7 +479,6 @@ phasesElement trade expandedPhase wallet currentTime =
             Element.row
                 [ Element.centerX
                 , Element.Border.rounded 12
-                , Element.padding 30
                 , Element.spacing 10
                 , Element.Background.color EH.activePhaseBackgroundColor
                 , Element.Font.size 24
@@ -478,9 +499,9 @@ phasesElement trade expandedPhase wallet currentTime =
                     , Element.height Element.shrink
                     , Element.spacing 20
                     ]
-                    [ phaseAndPaymentMethodElement CTypes.Open trade wallet (expandedPhase == CTypes.Open) currentTime
-                    , phaseAndPaymentMethodElement CTypes.Committed trade wallet (expandedPhase == CTypes.Committed) currentTime
-                    , phaseAndPaymentMethodElement CTypes.Judgment trade wallet (expandedPhase == CTypes.Judgment) currentTime
+                    [ phaseElement CTypes.Open trade wallet (expandedPhase == CTypes.Open) currentTime
+                    , phaseElement CTypes.Committed trade wallet (expandedPhase == CTypes.Committed) currentTime
+                    , phaseElement CTypes.Judgment trade wallet (expandedPhase == CTypes.Judgment) currentTime
                     ]
                 , paymentMethodElement trade.terms.paymentMethods
                 ]
@@ -515,13 +536,19 @@ phaseState trade phase =
         Finished
 
 
-phaseAndPaymentMethodElement : CTypes.Phase -> FullTradeInfo -> Wallet.State -> Bool -> Time.Posix -> Element Msg
-phaseAndPaymentMethodElement viewPhase trade wallet expanded currentTime =
+phaseElement : CTypes.Phase -> FullTradeInfo -> Wallet.State -> Bool -> Time.Posix -> Element Msg
+phaseElement viewPhase trade wallet expanded currentTime =
     let
         commonPhaseAttributes =
             [ Element.Border.rounded 12
             , Element.alignTop
             , Element.height (Element.shrink |> Element.minimum 380)
+            , Element.Border.shadow
+                { offset = ( 0, 0 )
+                , size = 0
+                , blur = 8
+                , color = Element.rgba 0 0 0 0.2
+                }
             ]
 
         viewPhaseState =
@@ -618,11 +645,13 @@ paymentMethodElement paymentMethods =
         , Element.Background.color <| EH.lightGray
         , Element.padding 15
         , Element.spacing 15
+        , Element.centerX
         ]
         [ Element.el
             [ Element.Font.size 24
             , Element.Font.semiBold
             , Element.Font.italic
+            , Element.centerX
             ]
             (Element.text "Fiat Payment Method")
         , Element.paragraph
@@ -858,8 +887,8 @@ phaseBodyElement viewPhase currentTime trade wallet =
         tradeAmountString =
             TokenValue.toConciseString trade.parameters.tradeAmount ++ " " ++ tokenUnitName trade.factory
 
-        fiatAmountString =
-            FiatValue.renderToStringFull trade.terms.price
+        priceString =
+            Prices.toString trade.terms.price
 
         buyerDepositString =
             TokenValue.toConciseString trade.parameters.buyerDeposit ++ " " ++ tokenUnitName trade.factory
@@ -914,7 +943,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
                                 [ [ Element.text "The Seller has deposited "
                                   , emphasizedText tradeAmountString
                                   , Element.text " into this contract, and offers to sell it for "
-                                  , emphasizedText fiatAmountString
+                                  , emphasizedText priceString
                                   , Element.text ". To become the Buyer, you must deposit 1/3 of the trade amount "
                                   , emphasizedText <| "(" ++ buyerDepositString ++ ")"
                                   , Element.text " into this contract by clicking "
@@ -929,7 +958,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
                                   , Element.text " for both parties (see Payment Window for more on this)."
                                   ]
                                 , [ Element.text "Don't commit unless you can fulfil one of the seller’s accepted payment methods below for "
-                                  , emphasizedText fiatAmountString
+                                  , emphasizedText priceString
                                   , Element.text " within the payment window."
                                   ]
                                 ]
@@ -939,7 +968,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
                                 [ [ Element.text "The Buyer is offering to buy "
                                   , emphasizedText tradeAmountString
                                   , Element.text " for "
-                                  , emphasizedText fiatAmountString
+                                  , emphasizedText priceString
                                   , Element.text ", and has deposited "
                                   , emphasizedText buyerDepositString
                                   , Element.text " into this contract as a "
@@ -951,7 +980,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
                                   , Element.text "."
                                   ]
                                 , [ Element.text "When you receive the "
-                                  , emphasizedText fiatAmountString
+                                  , emphasizedText priceString
                                   , Element.text <| " from the Buyer, the combined " ++ tokenUnitName trade.factory ++ " balance "
                                   , emphasizedText <| "(" ++ tradePlusDepositString ++ ")"
                                   , Element.text " will be released to the Buyer. If anything goes wrong, there are "
@@ -960,7 +989,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
                                   , Element.text " for both parties (see Payment Window for more on this)."
                                   ]
                                 , [ Element.text "Don't commit unless you can receive "
-                                  , emphasizedText fiatAmountString
+                                  , emphasizedText priceString
                                   , Element.text " via one of the Buyer's payment methods below, within the payment window."
                                   ]
                                 ]
@@ -978,7 +1007,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
                                   , Element.text " is now held in this contract, and your offer to buy "
                                   , emphasizedText tradeAmountString
                                   , Element.text " for "
-                                  , emphasizedText fiatAmountString
+                                  , emphasizedText priceString
                                   , Element.text " is now listed in the marketplace."
                                   ]
                                 , [ Element.text "If another user likes your offer, they can become the Seller by depositing the full "
@@ -996,7 +1025,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
                                 [ [ Element.text "Your offer to sell the "
                                   , emphasizedText tradeAmountString
                                   , Element.text " held in this contract for "
-                                  , emphasizedText fiatAmountString
+                                  , emphasizedText priceString
                                   , Element.text " is now listed in the marketplace."
                                   ]
                                 , [ Element.text "If another user likes your offer, they can become the Buyer by depositing a "
@@ -1016,7 +1045,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
                     ( "Time to Pay Up"
                     , List.map makeParagraph
                         [ [ Element.text "You must now pay the Seller "
-                          , emphasizedText fiatAmountString
+                          , emphasizedText priceString
                           , Element.text " via the Fiat Payment Method, "
                           , Element.el [ Element.Font.semiBold ] <| Element.text "and then click "
                           , scaryText "Confirm Payment"
@@ -1035,7 +1064,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
                           , Element.text " to you)."
                           ]
                         , [ Element.text "This may be your last chance to clear up any ambiguity before Judgement. Do not confirm unless you're sure the "
-                          , emphasizedText fiatAmountString
+                          , emphasizedText priceString
                           , Element.text " has been unmistakably transferred."
                           ]
                         ]
@@ -1045,7 +1074,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
                     ( "Time to Get Paid"
                     , List.map makeParagraph
                         [ [ Element.text "Work and communicate with the Buyer to receive "
-                          , emphasizedText fiatAmountString
+                          , emphasizedText priceString
                           , Element.text " as described in Fiat Payment Method. Then, the Buyer should confirm the payment, moving the trade to the final phase."
                           ]
                         , [ Element.text "If the Buyer aborts the trade, or doesn't confirm payment before this time is up, "
@@ -1067,7 +1096,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
                     ( "Making the Payment"
                     , List.map makeParagraph
                         [ [ Element.text "During this phase, the Buyer is expected to transfer "
-                          , emphasizedText fiatAmountString
+                          , emphasizedText priceString
                           , Element.text " to the Seller, as described in Fiat Payment Method, "
                           , Element.el [ Element.Font.semiBold ] <| Element.text "and "
                           , scaryText "Confirm the Payment "
@@ -1114,7 +1143,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
                         [ [ Element.text "By pushing the contract to the final stage, the Buyer has indicated that the transfer has taken place, and awaits your judgement."
                           ]
                         , [ Element.text "So, have you recieved the "
-                          , emphasizedText fiatAmountString
+                          , emphasizedText priceString
                           , Element.text "? If so, you can click "
                           , emphasizedText "Release Everything"
                           , Element.text "."
@@ -1134,7 +1163,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
                         [ [ Element.text "The Buyer has indicated that the transfer has taken place, and awaits the Seller's judgement on the fact of the matter."
                           ]
                         , [ Element.text "If the Seller can verify he has received the "
-                          , emphasizedText fiatAmountString
+                          , emphasizedText priceString
                           , Element.text ", he will probably release the total balance of "
                           , emphasizedText tradeAmountString
                           , Element.text " to the Buyer. If he cannot verify payment, he will probably instead "
@@ -1328,8 +1357,8 @@ getModalOrNone model =
                             TokenValue.tokenValue deposit
                                 |> TokenValue.toConciseString
 
-                        fiatPriceString =
-                            FiatValue.renderToStringFull trade.terms.price
+                        priceString =
+                            Prices.toString trade.terms.price
 
                         daiAmountString =
                             TokenValue.toConciseString trade.parameters.tradeAmount ++ " " ++ tokenUnitName trade.factory
@@ -1339,7 +1368,7 @@ getModalOrNone model =
                                 Buyer ->
                                     ( Element.el [ Element.Font.medium, Element.Font.color EH.black ] <| Element.text "buyer"
                                     , [ Element.text "pay the seller "
-                                      , Element.el [ Element.Font.color EH.blue ] <| Element.text fiatPriceString
+                                      , Element.el [ Element.Font.color EH.blue ] <| Element.text priceString
                                       , Element.text " in exchange for the "
                                       , Element.el [ Element.Font.color EH.blue ] <| Element.text daiAmountString
                                       , Element.text " held in this contract."
@@ -1349,7 +1378,7 @@ getModalOrNone model =
                                 Seller ->
                                     ( Element.el [ Element.Font.medium, Element.Font.color EH.black ] <| Element.text "seller"
                                     , [ Element.text "accept "
-                                      , Element.el [ Element.Font.color EH.blue ] <| Element.text fiatPriceString
+                                      , Element.el [ Element.Font.color EH.blue ] <| Element.text priceString
                                       , Element.text " from the buyer in exchange for the "
                                       , Element.el [ Element.Font.color EH.blue ] <| Element.text daiAmountString
                                       , Element.text " held in this contract."

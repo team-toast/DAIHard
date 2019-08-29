@@ -1,6 +1,6 @@
 module TradeTable.State exposing (init, update)
 
-import AppCmd exposing (AppCmd)
+import CmdUp exposing (CmdUp)
 import ChainCmd exposing (ChainCmd)
 import Routing
 import TradeTable.Types exposing (..)
@@ -19,7 +19,7 @@ update msg prevModel =
                 prevModel
                 Cmd.none
                 ChainCmd.none
-                [ AppCmd.GotoRoute <| Routing.Trade factory id ]
+                [ CmdUp.GotoRoute <| Routing.Trade factory id ]
 
         ChangeSort newOrderCol ->
             let

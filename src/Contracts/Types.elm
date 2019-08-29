@@ -1,4 +1,4 @@
-module Contracts.Types exposing (ClosedReason(..), CreateParameters, DAIHardEvent(..), FullTradeInfo, PartialTradeInfo, Phase(..), PhaseStartInfo, State, Terms, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, calculateFullInitialDeposit, decodeParameters, decodePhaseStartInfo, decodeState, decodeTerms, defaultAbortPunishment, defaultBuyerDeposit, encodeTerms, eventDecoder, getBuyerOrSeller, getCreationInfo, getCurrentPhaseTimeoutInfo, getDevFee, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderRole, initiatorOrResponderToBuyerOrSeller, partialTradeInfo, phaseIcon, phaseToInt, phaseToString, responderDeposit, tradeAddress, tradeFactory, tradeHasDefaultParameters, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePhaseStartInfo, updateState, updateTerms)
+module Contracts.Types exposing (ClosedReason(..), CreateParameters, DAIHardEvent(..), FullTradeInfo, PartialTradeInfo, Phase(..), PhaseStartInfo, State, Terms, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, calculateDHFee, calculateFullInitialDeposit, createParametersToUserParameters, decodeParameters, decodePhaseStartInfo, decodeState, decodeTerms, defaultAbortPunishment, defaultBuyerDeposit, encodeTerms, eventDecoder, getBuyerOrSeller, getCreationInfo, getCurrentPhaseTimeoutInfo, getDevFee, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderDeposit, getResponderRole, initiatorOrResponderToBuyerOrSeller, partialTradeInfo, phaseIcon, phaseToInt, phaseToString, responderDeposit, tradeAddress, tradeFactory, tradeHasDefaultParameters, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePhaseStartInfo, updateState, updateTerms)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
@@ -9,7 +9,6 @@ import Contracts.Generated.DAIHardTrade as DHT
 import Eth.Decode
 import Eth.Types exposing (Address)
 import Eth.Utils
-import FiatValue exposing (FiatValue)
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
 import Images exposing (Image)
@@ -17,6 +16,7 @@ import Json.Decode
 import Json.Encode
 import Margin
 import PaymentMethods exposing (PaymentMethod)
+import Prices exposing (Price)
 import Time
 import TokenValue exposing (TokenValue)
 
@@ -63,7 +63,7 @@ type alias DerivedValues =
 
 
 type alias Terms =
-    { price : FiatValue
+    { price : Price
     , paymentMethods : List PaymentMethod
     }
 
@@ -71,7 +71,7 @@ type alias Terms =
 type alias UserParameters =
     { initiatorRole : BuyerOrSeller
     , tradeAmount : TokenValue
-    , price : FiatValue
+    , price : Price
     , paymentMethods : List PaymentMethod
     , autorecallInterval : Time.Posix
     , autoabortInterval : Time.Posix
@@ -95,7 +95,7 @@ type alias TradeParameters =
 type alias CreateParameters =
     { initiatorRole : BuyerOrSeller
     , tradeAmount : TokenValue
-    , price : FiatValue
+    , price : Price
     , buyerDeposit : TokenValue
     , abortPunishment : TokenValue
     , autorecallInterval : Time.Posix
@@ -154,6 +154,32 @@ type alias PhaseStartInfo =
     , committedTime : Time.Posix
     , claimedTime : Time.Posix
     , closedTime : Time.Posix
+    }
+
+
+createParametersToUserParameters : CreateParameters -> UserParameters
+createParametersToUserParameters cParams =
+    { initiatorRole = cParams.initiatorRole
+    , tradeAmount = cParams.tradeAmount
+    , price = cParams.price
+    , paymentMethods = cParams.paymentMethods
+    , autorecallInterval = cParams.autorecallInterval
+    , autoabortInterval = cParams.autoabortInterval
+    , autoreleaseInterval = cParams.autoreleaseInterval
+    }
+
+
+createParametersToTradeParameters : CreateParameters -> TradeParameters
+createParametersToTradeParameters cParams =
+    { initiatorRole = cParams.initiatorRole
+    , tradeAmount = cParams.tradeAmount
+    , buyerDeposit = cParams.buyerDeposit
+    , abortPunishment = cParams.abortPunishment
+    , autorecallInterval = cParams.autorecallInterval
+    , autoabortInterval = cParams.autoabortInterval
+    , autoreleaseInterval = cParams.autoreleaseInterval
+    , initiatorAddress = cParams.initiatorAddress
+    , pokeReward = cParams.pokeReward
     }
 
 
@@ -363,7 +389,7 @@ deriveValues parameters state terms =
     { phaseEndTime =
         case state.phase of
             Closed ->
-                Time.millisToPosix  (2 ^ 53 - 1)
+                Time.millisToPosix (2 ^ 53 - 1)
 
             _ ->
                 TimeHelpers.add
@@ -409,6 +435,12 @@ getBuyerOrSeller tradeInfo userAddress =
                     ( Responder, Buyer ) ->
                         Seller
             )
+
+
+calculateDHFee : CreateParameters -> TokenValue
+calculateDHFee createParameters =
+    TokenValue.div createParameters.tradeAmount 200
+        |> TokenValue.add (getDevFee createParameters.tradeAmount)
 
 
 calculateFullInitialDeposit : CreateParameters -> TokenValue
@@ -784,7 +816,7 @@ encodeTerms terms =
                 terms.paymentMethods
 
         encodedPrice =
-            FiatValue.encode terms.price
+            Prices.encode terms.price
     in
     Json.Encode.object
         [ ( "paymentmethods", encodedPaymentMethods )
@@ -799,9 +831,19 @@ decodeTerms encodedTerms =
         decoder =
             Json.Decode.map2
                 Terms
-                (Json.Decode.field "price" FiatValue.decoder)
+                (Json.Decode.field "price" Prices.decoder)
                 (Json.Decode.field "paymentmethods"
                     (Json.Decode.list PaymentMethods.decoder)
                 )
     in
     Json.Decode.decodeString decoder encodedTerms
+
+
+getResponderDeposit : CreateParameters -> TokenValue
+getResponderDeposit parameters =
+    case getResponderRole (createParametersToTradeParameters parameters) of
+        Buyer ->
+            parameters.buyerDeposit
+
+        Seller ->
+            parameters.tradeAmount
