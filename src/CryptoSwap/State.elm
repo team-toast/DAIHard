@@ -36,7 +36,7 @@ init wallet =
             |> Maybe.withDefault (Native XDai)
     , foreignCrypto = ZEC
     , marginInput = "2"
-    , margin = Nothing
+    , margin = Just 0.02
     , amountOut = Nothing
     , receiveAddress = ""
     , showDhTokenDropdown = False
@@ -120,7 +120,9 @@ update msg prevModel =
                                 []
                     in
                     UpdateResult
-                        { prevModel | prices = newPrices }
+                        ({ prevModel | prices = newPrices }
+                            |> tryUpdateAmountOut
+                        )
                         Cmd.none
                         ChainCmd.none
                         appCmds
@@ -225,6 +227,10 @@ update msg prevModel =
 
                             Seller ->
                                 Buyer
+                    , amountInInput = prevModel.amountOutInput
+                    , amountIn = prevModel.amountOut
+                    , amountOutInput = prevModel.amountInInput
+                    , amountOut = prevModel.amountIn
                  }
                     |> tryUpdateDaiAmount
                 )
@@ -516,14 +522,14 @@ tryUpdateAmountIn prevModel =
                         Buyer ->
                             let
                                 amountOutPlusMargin =
-                                    amountOut + (amountOut * margin)
+                                    amountOut / (1 - margin)
                             in
                             amountOutPlusMargin / price
 
                         Seller ->
                             let
                                 amountOutPlusMargin =
-                                    amountOut + (amountOut * margin)
+                                    amountOut / (1 - margin)
 
                                 equivalentDai =
                                     amountOutPlusMargin * price
