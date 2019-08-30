@@ -11,22 +11,24 @@ import Flip exposing (flip)
 import Helpers.Element as EH
 import Helpers.Time as TimeHelpers
 import Images exposing (Image)
+import Margin
 import PaymentMethods exposing (PaymentMethod)
+import PriceFetch
 import Prices
 import Time
 import TokenValue exposing (TokenValue)
 import TradeTable.Types exposing (..)
 
 
-view : Time.Posix -> Model -> List ColType -> List CTypes.FullTradeInfo -> Element Msg
-view time model colTypes trades =
+view : Time.Posix -> Model -> List ( ForeignCrypto, PriceFetch.PriceData ) -> List ColType -> List CTypes.FullTradeInfo -> Element Msg
+view time model prices colTypes trades =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
         , Element.spacing 5
         ]
         [ viewColHeaders model.orderBy colTypes
-        , viewTradeRows time model colTypes trades
+        , viewTradeRows time model prices colTypes trades
         ]
 
 
@@ -134,8 +136,8 @@ colTitleEl colType =
                     "Burn Window"
 
 
-viewTradeRows : Time.Posix -> Model -> List ColType -> List CTypes.FullTradeInfo -> Element Msg
-viewTradeRows time model colTypes trades =
+viewTradeRows : Time.Posix -> Model -> List ( ForeignCrypto, PriceFetch.PriceData ) -> List ColType -> List CTypes.FullTradeInfo -> Element Msg
+viewTradeRows time model prices colTypes trades =
     Element.column
         [ Element.width Element.fill
         , Element.Border.width 2
@@ -147,12 +149,12 @@ viewTradeRows time model colTypes trades =
         ]
         (trades
             |> List.sortWith (sortByFunc model.orderBy)
-            |> List.map (viewTradeRow time colTypes)
+            |> List.map (viewTradeRow time prices colTypes)
         )
 
 
-viewTradeRow : Time.Posix -> List ColType -> CTypes.FullTradeInfo -> Element Msg
-viewTradeRow time colTypes trade =
+viewTradeRow : Time.Posix -> List ( ForeignCrypto, PriceFetch.PriceData ) -> List ColType -> CTypes.FullTradeInfo -> Element Msg
+viewTradeRow time prices colTypes trade =
     Element.column
         [ Element.width Element.fill
         , Element.spacing 1
@@ -167,7 +169,7 @@ viewTradeRow time colTypes trade =
             (colTypes
                 |> List.map
                     (\colType ->
-                        viewTradeCell time colType trade
+                        viewTradeCell time prices colType trade
                     )
             )
         , cellMaker 1 <| viewPaymentMethods trade.terms.paymentMethods
@@ -182,8 +184,8 @@ viewPaymentMethods paymentMethods =
         |> Maybe.withDefault Element.none
 
 
-viewTradeCell : Time.Posix -> ColType -> CTypes.FullTradeInfo -> Element Msg
-viewTradeCell time colType trade =
+viewTradeCell : Time.Posix -> List ( ForeignCrypto, PriceFetch.PriceData ) -> ColType -> CTypes.FullTradeInfo -> Element Msg
+viewTradeCell time prices colType trade =
     cellMaker
         (colTypePortion colType)
         (case colType of
@@ -277,8 +279,36 @@ viewTradeCell time colType trade =
                 let
                     upIsGreen =
                         trade.parameters.initiatorRole == Buyer
+
+                    margin =
+                        case trade.derived.margin of
+                            Just _ ->
+                                trade.derived.margin
+
+                            Nothing ->
+                                let
+                                    maybeForeignCryptoPrice =
+                                        trade.terms.price.symbol
+                                            |> foreignCryptoFromName
+                                            |> Maybe.andThen
+                                                (\crypto ->
+                                                    PriceFetch.getPriceData crypto prices
+                                                )
+                                            |> Maybe.andThen PriceFetch.priceDataToMaybe
+                                in
+                                Maybe.map
+                                    (\fcPrice ->
+                                        let
+                                            tradeAmountFloat =
+                                                TokenValue.getFloatValueWithWarning trade.parameters.tradeAmount
+                                        in
+                                        Margin.marginFromFloats
+                                            tradeAmountFloat
+                                            (tradeAmountFloat * fcPrice)
+                                    )
+                                    maybeForeignCryptoPrice
                 in
-                trade.derived.margin
+                margin
                     |> Maybe.map (EH.coloredMargin upIsGreen)
                     |> Maybe.withDefault Element.none
 

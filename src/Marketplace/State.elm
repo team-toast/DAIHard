@@ -19,6 +19,7 @@ import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
 import Marketplace.Types exposing (..)
 import PaymentMethods exposing (PaymentMethod)
+import PriceFetch
 import Prices exposing (Price)
 import Routing
 import String.Extra
@@ -28,6 +29,7 @@ import TradeCache.State as TradeCache
 import TradeCache.Types as TradeCache exposing (TradeCache)
 import TradeTable.State as TradeTable
 import TradeTable.Types as TradeTable
+import UserNotice as UN
 import Wallet
 
 
@@ -46,9 +48,11 @@ init wallet =
                 , Filters.phases True False False False
                 ]
       , filterFunc = baseFilterFunc
+      , now = Time.millisToPosix 0
+      , prices = []
       }
         |> applyInputs
-    , Cmd.none
+    , PriceFetch.fetch PricesFetched
     )
 
 
@@ -65,6 +69,35 @@ initialInputs =
 update : Msg -> Model -> UpdateResult
 update msg prevModel =
     case msg of
+        UpdateNow time ->
+            justModelUpdate
+                { prevModel | now = time }
+
+        Refresh ->
+            UpdateResult
+                prevModel
+                (PriceFetch.fetch PricesFetched)
+                ChainCmd.none
+                []
+
+        PricesFetched fetchResult ->
+            case fetchResult of
+                Ok pricesAndTimestamps ->
+                    let
+                        newPrices =
+                            pricesAndTimestamps
+                                |> List.map (Tuple.mapSecond (PriceFetch.checkAgainstTime prevModel.now))
+                    in
+                    justModelUpdate
+                        { prevModel | prices = newPrices }
+
+                Err httpErr ->
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        ChainCmd.none
+                        [ CmdUp.UserNotice UN.cantFetchPrices ]
+
         MinDaiChanged input ->
             justModelUpdate
                 { prevModel | inputs = prevModel.inputs |> updateMinDaiInput input }
@@ -343,4 +376,7 @@ testTextMatch terms paymentMethods =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    Sub.batch
+        [ Time.every 500 UpdateNow
+        , Time.every 5000 (always Refresh)
+        ]

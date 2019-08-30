@@ -237,6 +237,7 @@ maybeResultsElement time onlyOpenTrades tcDoneLoading tradeCaches model =
         TradeTable.view
             time
             model.tradeTable
+            model.prices
             [ if onlyOpenTrades then
                 TradeTable.Expires
 

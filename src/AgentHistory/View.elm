@@ -152,6 +152,7 @@ maybeResultsElement time tcDoneLoading tradeCaches model =
         TradeTable.view
             time
             model.tradeTable
+            model.prices
             [ TradeTable.Phase
             , TradeTable.Offer
             , TradeTable.Price

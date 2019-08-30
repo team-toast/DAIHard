@@ -1,9 +1,9 @@
 module Marketplace.Types exposing (Errors, Model, Msg(..), Query, SearchInputs, TokenRange, UpdateResult, justModelUpdate, noErrors, updateFiatTypeInput, updateMaxDaiInput, updateMinDaiInput, updatePaymentMethodInput, updatePaymentMethodTerms)
 
-import CmdUp exposing (CmdUp)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
+import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
 import Dict exposing (Dict)
@@ -15,6 +15,7 @@ import Helpers.Eth as EthHelpers
 import Http
 import Json.Decode
 import PaymentMethods exposing (PaymentMethod)
+import PriceFetch
 import Prices exposing (Price)
 import String.Extra
 import Time
@@ -32,11 +33,16 @@ type alias Model =
     , tradeTable : TradeTable.Model
     , filters : Filters.Model
     , filterFunc : Time.Posix -> CTypes.FullTradeInfo -> Bool
+    , prices : List ( ForeignCrypto, PriceFetch.PriceData )
+    , now : Time.Posix
     }
 
 
 type Msg
-    = MinDaiChanged String
+    = UpdateNow Time.Posix
+    | Refresh
+    | PricesFetched (Result Http.Error (List ( ForeignCrypto, PriceFetch.PriceAndTimestamp )))
+    | MinDaiChanged String
     | MaxDaiChanged String
     | FiatTypeInputChanged String
     | PaymentMethodInputChanged String

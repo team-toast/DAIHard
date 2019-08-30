@@ -21,6 +21,7 @@ import Helpers.BigInt as BigIntHelpers
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
 import PaymentMethods exposing (PaymentMethod)
+import PriceFetch
 import Prices exposing (Price)
 import Routing
 import String.Extra
@@ -30,6 +31,7 @@ import TradeCache.State as TradeCache
 import TradeCache.Types as TradeCache exposing (TradeCache)
 import TradeTable.State as TradeTable
 import TradeTable.Types as TradeTable
+import UserNotice as UN
 import Wallet
 
 
@@ -46,6 +48,8 @@ init wallet agentAddress =
       , tradeTable =
             TradeTable.init
                 ( TradeTable.Phase, TradeTable.Ascending )
+      , now = Time.millisToPosix 0
+      , prices = []
       }
     , Cmd.none
     )
@@ -106,6 +110,35 @@ update msg prevModel =
                 (ChainCmd.map TradeTableMsg ttUpdateResult.chainCmd)
                 (List.map (CmdUp.map TradeTableMsg) ttUpdateResult.cmdUps)
 
+        UpdateNow time ->
+            justModelUpdate
+                { prevModel | now = time }
+
+        PricesFetched fetchResult ->
+            case fetchResult of
+                Ok pricesAndTimestamps ->
+                    let
+                        newPrices =
+                            pricesAndTimestamps
+                                |> List.map (Tuple.mapSecond (PriceFetch.checkAgainstTime prevModel.now))
+                    in
+                    justModelUpdate
+                        { prevModel | prices = newPrices }
+
+                Err httpErr ->
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        ChainCmd.none
+                        [ CmdUp.UserNotice UN.cantFetchPrices ]
+
+        Refresh ->
+            UpdateResult
+                prevModel
+                (PriceFetch.fetch PricesFetched)
+                ChainCmd.none
+                []
+
         NoOp ->
             justModelUpdate prevModel
 
@@ -122,5 +155,7 @@ runCmdDown cmdDown prevModel =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    -- Time.every 5000 Refresh
-    Sub.none
+    Sub.batch
+        [ Time.every 500 UpdateNow
+        , Time.every 5000 (always Refresh)
+        ]

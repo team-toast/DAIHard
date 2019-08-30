@@ -1,4 +1,4 @@
-module CryptoSwap.Types exposing (Errors, Model, Msg(..), TxChainStatus(..), UpdateResult, exampleAddressForForeignCrypto, foreignCryptoPrice, justModelUpdate, maybeUserParameters, noErrors)
+module CryptoSwap.Types exposing (Errors, Model, Msg(..), TxChainStatus(..), UpdateResult, exampleAddressForForeignCrypto, justModelUpdate, maybeUserParameters, noErrors)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -34,7 +34,7 @@ type alias Model =
     , txChainStatus : Maybe TxChainStatus
     , depositAmount : Maybe BigInt
     , allowance : Maybe BigInt
-    , prices : List ( ForeignCrypto, Float )
+    , prices : List ( ForeignCrypto, PriceFetch.PriceData )
     , now : Time.Posix
     }
 
@@ -164,11 +164,3 @@ maybeUserParameters model =
                     Just model.receiveAddress
                 )
                 model.amountOut
-
-
-foreignCryptoPrice : Model -> ForeignCrypto -> Maybe Float
-foreignCryptoPrice model crypto =
-    model.prices
-        |> List.filter (Tuple.first >> (==) crypto)
-        |> List.head
-        |> Maybe.map Tuple.second

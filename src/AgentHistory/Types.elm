@@ -1,9 +1,9 @@
 module AgentHistory.Types exposing (Model, Msg(..), UpdateResult, justModelUpdate)
 
-import CmdUp exposing (CmdUp)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
+import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
 import Dict exposing (Dict)
@@ -15,6 +15,7 @@ import Helpers.Eth as EthHelpers
 import Http
 import Json.Decode
 import PaymentMethods exposing (PaymentMethod)
+import PriceFetch
 import Prices exposing (Price)
 import Routing
 import String.Extra
@@ -30,6 +31,8 @@ type alias Model =
     , agentAddress : Address
     , filters : Filters.Model
     , tradeTable : TradeTable.Model
+    , prices : List ( ForeignCrypto, PriceFetch.PriceData )
+    , now : Time.Posix
     }
 
 
@@ -38,6 +41,9 @@ type Msg
     | TradeClicked FactoryType Int
     | FiltersMsg Filters.Msg
     | TradeTableMsg TradeTable.Msg
+    | UpdateNow Time.Posix
+    | Refresh
+    | PricesFetched (Result Http.Error (List ( ForeignCrypto, PriceFetch.PriceAndTimestamp )))
     | NoOp
 
 
