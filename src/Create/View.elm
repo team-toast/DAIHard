@@ -319,26 +319,19 @@ phaseHorizontalSpacer =
 
 openPhaseElement : Time.Posix -> Maybe String -> BuyerOrSeller -> Element Msg
 openPhaseElement interval maybeError userRole =
-    Element.el
-        [ Element.clipX
-        , Element.clipY
-        ]
-    <|
-        phaseElement
-            Images.openWindowIcon
-            "Open Window"
-            (openWindowSummary userRole)
-            interval
-            maybeError
-            AutorecallIntervalChanged
+    phaseElement
+        Images.openWindowIcon
+        "Open Window"
+        (openWindowSummary userRole)
+        interval
+        maybeError
+        AutorecallIntervalChanged
 
 
 committedPhaseElement : String -> Maybe String -> Time.Posix -> Maybe String -> BuyerOrSeller -> Element Msg
 committedPhaseElement paymentMethodText maybeTextError interval maybeIntervalError userRole =
     Element.column
-        [ Element.spacing 15
-        , Element.Border.rounded 8
-        ]
+        [ Element.spacing 15 ]
         [ phaseElement
             Images.fiatBag
             "Payment Window"
@@ -352,18 +345,13 @@ committedPhaseElement paymentMethodText maybeTextError interval maybeIntervalErr
 
 judgmentPhaseElement : Time.Posix -> Maybe String -> BuyerOrSeller -> Element Msg
 judgmentPhaseElement interval maybeError userRole =
-    Element.el
-        [ Element.clipX
-        , Element.clipY
-        ]
-    <|
-        phaseElement
-            Images.releaseWindowIcon
-            "Burn/Release Window"
-            (releaseWindowSummary userRole)
-            interval
-            maybeError
-            AutoreleaseIntervalChanged
+    phaseElement
+        Images.releaseWindowIcon
+        "Burn/Release Window"
+        (releaseWindowSummary userRole)
+        interval
+        maybeError
+        AutoreleaseIntervalChanged
 
 
 openWindowSummary : BuyerOrSeller -> String
