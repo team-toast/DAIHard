@@ -69,16 +69,6 @@ root model =
     )
 
 
-inputHeader : String -> Element Msg
-inputHeader title =
-    Element.el
-        [ Element.Font.size 20
-        , Element.paddingXY 20 0
-        , Element.Font.color EH.red
-        ]
-        (Element.text title)
-
-
 fromToElement : Model -> Element Msg
 fromToElement model =
     Element.column
@@ -89,14 +79,12 @@ fromToElement model =
             [ Element.spacing 10
             , Element.width Element.fill
             ]
-            [ Element.column
-                [ Element.spacing 5
-                , Element.alignBottom
+            [ EH.withInputHeader
+                [ Element.alignBottom
                 , Element.width Element.fill
                 ]
-                [ inputHeader "From:"
-                , fromInputBox model
-                ]
+                "From:"
+                (fromInputBox model)
             , Images.toElement
                 [ Element.alignBottom
                 , Element.width <| Element.px 24
@@ -110,14 +98,12 @@ fromToElement model =
                     }
                 ]
                 Images.swapArrows
-            , Element.column
-                [ Element.spacing 5
-                , Element.alignBottom
+            , EH.withInputHeader
+                [ Element.alignBottom
                 , Element.width Element.fill
                 ]
-                [ inputHeader "To:"
-                , toInputBox model
-                ]
+                "To:"
+                (toInputBox model)
             ]
         , Element.row
             [ Element.width Element.fill
@@ -158,17 +144,6 @@ fromToElement model =
         ]
 
 
-inputBoxStyles : List (Element.Attribute Msg)
-inputBoxStyles =
-    [ Element.Border.rounded 20
-    , Element.paddingXY 20 0
-    , Element.Border.width 1
-    , Element.Background.color EH.white
-    , Element.Border.color <| Element.rgba 0 0 0 0.1
-    , Element.height <| Element.px 60
-    ]
-
-
 fromInputBox : Model -> Element Msg
 fromInputBox model =
     let
@@ -180,16 +155,24 @@ fromInputBox model =
                 Seller ->
                     dhTokenTypeElement model.dhToken model.showDhTokenDropdown
     in
-    Element.row
-        (inputBoxStyles
-            ++ [ Element.spacing 15
-               , Element.width Element.fill
-               , Element.centerY
-               ]
-        )
-        [ tokenSelector
-        , amountInInputElement model.amountInInput
+    EH.roundedComplexInputBox
+        [ Element.spacing 15
+        , Element.width Element.fill
+        , Element.centerY
         ]
+        [ tokenSelector ]
+        { onChange = AmountInChanged
+        , text = model.amountInInput
+        , placeholder =
+            Just <|
+                Element.Input.placeholder
+                    [ Element.Font.color EH.placeholderTextColor
+                    , Element.Font.alignRight
+                    ]
+                    (Element.text "0")
+        , label = Element.Input.labelHidden "amount in"
+        }
+        []
 
 
 toInputBox : Model -> Element Msg
@@ -203,17 +186,26 @@ toInputBox model =
                 Seller ->
                     foreignCryptoTypeElement model.foreignCrypto model.showForeignCryptoDropdown
     in
-    Element.row
-        (inputBoxStyles
-            ++ [ Element.spacing 15
-               , Element.width Element.fill
-               , Element.centerY
-               ]
-        )
+    EH.roundedComplexInputBox
+        [ Element.spacing 15
+        , Element.width Element.fill
+        , Element.centerY
+        ]
         [ tokenSelector
         , marginInput model.marginInput
-        , amountOutInputElement model
         ]
+        { onChange = AmountOutChanged
+        , text = model.amountOutInput
+        , placeholder =
+            Just <|
+                Element.Input.placeholder
+                    [ Element.Font.color EH.placeholderTextColor
+                    , Element.Font.alignRight
+                    ]
+                    (Element.text "0")
+        , label = Element.Input.labelHidden "amount out"
+        }
+        []
 
 
 dhTokenTypeElement : FactoryType -> Bool -> Element Msg
@@ -288,26 +280,6 @@ foreignCryptoTypeElement currentCrypto showDropdown =
         ]
 
 
-amountInInputElement : String -> Element Msg
-amountInInputElement input =
-    Element.Input.text
-        [ Element.Border.width 0
-        , Element.width Element.fill
-        , Element.Font.alignRight
-        ]
-        { onChange = AmountInChanged
-        , text = input
-        , placeholder =
-            Just <|
-                Element.Input.placeholder
-                    [ Element.Font.color EH.lightGray
-                    , Element.Font.alignRight
-                    ]
-                    (Element.text "0")
-        , label = Element.Input.labelHidden "amount in"
-        }
-
-
 marginInput : String -> Element Msg
 marginInput input =
     Element.row
@@ -341,63 +313,34 @@ maybeAddressInput model =
             Element.none
 
         Seller ->
-            Element.column
-                [ Element.spacing 5
-                , Element.alignBottom
+            EH.withInputHeader
+                [ Element.alignBottom
                 , Element.width Element.fill
-                , Element.clipX
                 ]
-                [ inputHeader <|
-                    "Send "
-                        ++ foreignCryptoName model.foreignCrypto
-                        ++ " To:"
-                , addressInputElement model.receiveAddress model.foreignCrypto
-                ]
-
-
-amountOutInputElement : Model -> Element Msg
-amountOutInputElement model =
-    Element.Input.text
-        [ Element.Border.width 0
-        , Element.width Element.fill
-        , Element.Font.alignRight
-        ]
-        { onChange = AmountOutChanged
-        , text = model.amountOutInput
-        , placeholder =
-            Just <|
-                Element.Input.placeholder
-                    [ Element.Font.color EH.lightGray
-                    , Element.Font.alignRight
-                    ]
-                    (Element.text "0")
-        , label = Element.Input.labelHidden "amount out"
-        }
+                ("Send "
+                    ++ foreignCryptoName model.foreignCrypto
+                    ++ " To:"
+                )
+                (addressInputElement model.receiveAddress model.foreignCrypto)
 
 
 addressInputElement : String -> ForeignCrypto -> Element Msg
 addressInputElement input foreignCrypto =
-    Element.el
-        (inputBoxStyles
-            ++ [ Element.width Element.fill
-               , Element.paddingXY 10 0
-               ]
-        )
-    <|
-        Element.Input.text
-            [ Element.centerY
-            , Element.width Element.fill
-            , Element.Border.width 0
-            ]
-            { onChange = ReceiveAddressChanged
-            , text = input
-            , placeholder =
-                Just <|
-                    Element.Input.placeholder
-                        [ Element.Font.color EH.lightGray ]
-                        (Element.text <| exampleAddressForForeignCrypto foreignCrypto)
-            , label = Element.Input.labelHidden "receive address"
-            }
+    EH.roundedComplexInputBox
+        [ Element.width Element.fill
+        , Element.paddingXY 10 0
+        ]
+        []
+        { onChange = ReceiveAddressChanged
+        , text = input
+        , placeholder =
+            Just <|
+                Element.Input.placeholder
+                    [ Element.Font.color EH.placeholderTextColor ]
+                    (Element.text <| exampleAddressForForeignCrypto foreignCrypto)
+        , label = Element.Input.labelHidden "receive address"
+        }
+        []
 
 
 placeOrderButton : Model -> Element Msg

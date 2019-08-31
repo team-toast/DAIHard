@@ -1,4 +1,4 @@
-module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredMargin, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, marginFloatToConciseUnsignedString, marginSymbol, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, pokeButton, price, priceSymbolToImageElement, red, redButton, releasedIconColor, roundBottomCorners, roundTopCorners, scrollbarYEl, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredMargin, white, withHeader, yellow)
+module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredMargin, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, marginFloatToConciseUnsignedString, marginSymbol, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, priceSymbolToImageElement, red, redButton, releasedIconColor, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredMargin, white, withHeader, withInputHeader, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -82,6 +82,10 @@ darkYellow =
 
 lightGray =
     Element.rgb255 233 237 242
+
+
+placeholderTextColor =
+    Element.rgb255 213 217 222
 
 
 mediumGray =
@@ -390,6 +394,40 @@ priceSymbolToImageElement symbol =
 
 
 -- INPUTS
+
+
+roundedComplexInputBox :
+    List (Attribute msg)
+    -> List (Element msg)
+    ->
+        { onChange : String.String -> msg
+        , text : String.String
+        , placeholder : Maybe.Maybe (Element.Input.Placeholder msg)
+        , label : Element.Input.Label msg
+        }
+    -> List (Element msg)
+    -> Element msg
+roundedComplexInputBox extraAttributes leftItems inputConfig rightItems =
+    Element.row
+        (extraAttributes
+            ++ [ Element.Border.rounded 20
+               , Element.paddingXY 20 0
+               , Element.Border.width 1
+               , Element.Background.color white
+               , Element.Border.color <| Element.rgba 0 0 0 0.1
+               , Element.height <| Element.px 60
+               ]
+        )
+        (leftItems
+            ++ [ Element.Input.text
+                    [ Element.Border.width 0
+                    , Element.width Element.fill
+                    , Element.Font.alignRight
+                    ]
+                    inputConfig
+               ]
+            ++ rightItems
+        )
 
 
 intervalInput : Element.Color -> Time.Posix -> (Time.Posix -> msg) -> Element msg
@@ -1215,4 +1253,21 @@ submodelContainer maxWidth maybeBigTitleText smallTitleText el =
                     (Element.text smallTitleText)
             , el
             ]
+        ]
+
+
+withInputHeader : List (Attribute msg) -> String -> Element msg -> Element msg
+withInputHeader attributes titleStr el =
+    Element.column
+        (attributes
+            ++ [ Element.spacing 5
+               ]
+        )
+        [ Element.el
+            [ Element.Font.size 20
+            , Element.paddingXY 20 0
+            , Element.Font.color red
+            ]
+            (Element.text titleStr)
+        , el
         ]
