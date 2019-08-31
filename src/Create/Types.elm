@@ -1,12 +1,12 @@
 module Create.Types exposing (Errors, Inputs, Model, Msg(..), TxChainStatus(..), UpdateResult, justModelUpdate, noErrors)
 
-import CmdUp exposing (CmdUp)
 import BigInt exposing (BigInt)
+import ChainCmd exposing (ChainCmd)
+import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
 import Create.PMWizard.Types as PMWizard
 import Eth.Types exposing (Address, TxHash, TxReceipt)
-import ChainCmd exposing (ChainCmd)
 import Helpers.Eth as EthHelpers
 import Http
 import PaymentMethods exposing (PaymentMethod)
@@ -20,6 +20,7 @@ type alias Model =
     { wallet : Wallet.State
     , inputs : Inputs
     , errors : Errors
+    , showDhTypeDropdown : Bool
     , showFiatTypeDropdown : Bool
     , createParameters : Maybe CTypes.CreateParameters
     , depositAmount : Maybe BigInt
@@ -35,6 +36,8 @@ type Msg
     | FiatTypeChanged String
     | FiatAmountChanged String
     | FiatTypeLostFocus
+    | DhDropdownClicked
+    | DhTypeChanged FactoryType
     | ShowCurrencyDropdown Bool
     | AutorecallIntervalChanged Time.Posix
     | AutoabortIntervalChanged Time.Posix
@@ -62,6 +65,7 @@ type TxChainStatus
 
 type alias Inputs =
     { userRole : BuyerOrSeller
+    , dhToken : FactoryType
     , daiAmount : String
     , fiatType : String
     , fiatAmount : String
@@ -73,7 +77,8 @@ type alias Inputs =
 
 
 type alias Errors =
-    { daiAmount : Maybe String
+    { dhToken : Maybe String
+    , daiAmount : Maybe String
     , fiatAmount : Maybe String
     , fiatType : Maybe String
     , paymentMethod : Maybe String
@@ -83,8 +88,9 @@ type alias Errors =
     }
 
 
+noErrors : Errors
 noErrors =
-    Errors Nothing Nothing Nothing Nothing Nothing Nothing Nothing
+    Errors Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
 
 
 type alias UpdateResult =

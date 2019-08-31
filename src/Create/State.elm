@@ -34,19 +34,24 @@ import Wallet
 init : Wallet.State -> Maybe CTypes.UserParameters -> UpdateResult
 init wallet maybeUserParameters =
     let
+        dhToken =
+            Wallet.factory wallet
+                |> Maybe.withDefault (Native XDai)
+
         model =
             { wallet = wallet
             , inputs =
                 Maybe.map
-                    userParametersToInputs
+                    (userParametersToInputs dhToken)
                     maybeUserParameters
-                    |> Maybe.withDefault initialInputs
+                    |> Maybe.withDefault (initialInputs dhToken)
             , errors = noErrors
             , showFiatTypeDropdown = False
             , createParameters = Nothing
             , txChainStatus = Nothing
             , depositAmount = Nothing
             , allowance = Nothing
+            , showDhTypeDropdown = False
             }
     in
     UpdateResult
@@ -56,8 +61,10 @@ init wallet maybeUserParameters =
         []
 
 
-initialInputs =
+initialInputs : FactoryType -> Inputs
+initialInputs dhToken =
     { userRole = Seller
+    , dhToken = dhToken
     , daiAmount = ""
     , fiatType = "USD"
     , fiatAmount = ""
@@ -107,6 +114,28 @@ update msg prevModel =
                     Seller ->
                         CmdUp.gTag "create offer type changed" "input" "buy dai" 0
                 ]
+
+        DhDropdownClicked ->
+            justModelUpdate
+                { prevModel
+                    | showDhTypeDropdown =
+                        if prevModel.showDhTypeDropdown then
+                            False
+
+                        else
+                            True
+                }
+
+        DhTypeChanged newDhToken ->
+            let
+                oldInputs =
+                    prevModel.inputs
+            in
+            justModelUpdate
+                { prevModel
+                    | showDhTypeDropdown = False
+                    , inputs = { oldInputs | dhToken = newDhToken }
+                }
 
         TradeAmountChanged newAmountStr ->
             let
@@ -545,9 +574,10 @@ validateInputs inputs =
         )
 
 
-userParametersToInputs : CTypes.UserParameters -> Inputs
-userParametersToInputs parameters =
+userParametersToInputs : FactoryType -> CTypes.UserParameters -> Inputs
+userParametersToInputs dhToken parameters =
     { userRole = parameters.initiatorRole
+    , dhToken = dhToken
     , daiAmount =
         TokenValue.toFloatString Nothing parameters.tradeAmount
     , fiatType = parameters.price.symbol

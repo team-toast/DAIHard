@@ -150,14 +150,13 @@ fromInputBox model =
         tokenSelector =
             case model.initiatorRole of
                 Buyer ->
-                    foreignCryptoTypeElement model.foreignCrypto model.showForeignCryptoDropdown
+                    EH.foreignCryptoTypeSelector model.foreignCrypto model.showForeignCryptoDropdown ForeignCryptoTypeClicked ChangeForeignCrypto
 
                 Seller ->
-                    dhTokenTypeElement model.dhToken model.showDhTokenDropdown
+                    EH.dhTokenTypeSelector model.dhToken model.showDhTokenDropdown TokenTypeClicked ChangeTokenType
     in
     EH.roundedComplexInputBox
-        [ Element.spacing 15
-        , Element.width Element.fill
+        [ Element.width Element.fill
         , Element.centerY
         ]
         [ tokenSelector ]
@@ -167,7 +166,6 @@ fromInputBox model =
             Just <|
                 Element.Input.placeholder
                     [ Element.Font.color EH.placeholderTextColor
-                    , Element.Font.alignRight
                     ]
                     (Element.text "0")
         , label = Element.Input.labelHidden "amount in"
@@ -181,10 +179,10 @@ toInputBox model =
         tokenSelector =
             case model.initiatorRole of
                 Buyer ->
-                    dhTokenTypeElement model.dhToken model.showDhTokenDropdown
+                    EH.dhTokenTypeSelector model.dhToken model.showDhTokenDropdown TokenTypeClicked ChangeTokenType
 
                 Seller ->
-                    foreignCryptoTypeElement model.foreignCrypto model.showForeignCryptoDropdown
+                    EH.foreignCryptoTypeSelector model.foreignCrypto model.showForeignCryptoDropdown ForeignCryptoTypeClicked ChangeForeignCrypto
     in
     EH.roundedComplexInputBox
         [ Element.spacing 15
@@ -200,84 +198,11 @@ toInputBox model =
             Just <|
                 Element.Input.placeholder
                     [ Element.Font.color EH.placeholderTextColor
-                    , Element.Font.alignRight
                     ]
                     (Element.text "0")
         , label = Element.Input.labelHidden "amount out"
         }
         []
-
-
-dhTokenTypeElement : FactoryType -> Bool -> Element Msg
-dhTokenTypeElement currentToken showDropdown =
-    Element.row
-        [ Element.spacing 8
-        , Element.pointer
-        , EH.onClickNoPropagation TokenTypeClicked
-        , Element.centerY
-        , Element.inFront <|
-            if showDropdown then
-                Element.el
-                    [ Element.moveUp 15
-                    , Element.moveLeft 10
-                    , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
-                    , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
-                    ]
-                <|
-                    EH.dropdownSelector
-                        ([ Token EthDai, Native XDai ]
-                            |> List.map
-                                (\token ->
-                                    ( Element.text (tokenUnitName token)
-                                    , ChangeTokenType token
-                                    )
-                                )
-                        )
-
-            else
-                Element.none
-        ]
-        [ Element.text <| tokenUnitName currentToken
-        , Images.toElement
-            [ Element.width <| Element.px 12 ]
-            Images.downArrow
-        ]
-
-
-foreignCryptoTypeElement : ForeignCrypto -> Bool -> Element Msg
-foreignCryptoTypeElement currentCrypto showDropdown =
-    Element.row
-        [ Element.spacing 8
-        , Element.pointer
-        , EH.onClickNoPropagation ForeignCryptoTypeClicked
-        , Element.centerY
-        , Element.inFront <|
-            if showDropdown then
-                Element.el
-                    [ Element.moveUp 15
-                    , Element.moveLeft 10
-                    , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
-                    , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
-                    ]
-                <|
-                    EH.dropdownSelector
-                        (foreignCryptoList
-                            |> List.map
-                                (\crypto ->
-                                    ( Element.text (foreignCryptoName crypto)
-                                    , ChangeForeignCrypto crypto
-                                    )
-                                )
-                        )
-
-            else
-                Element.none
-        ]
-        [ Element.text <| foreignCryptoName currentCrypto
-        , Images.toElement
-            [ Element.width <| Element.px 12 ]
-            Images.downArrow
-        ]
 
 
 marginInput : String -> Element Msg

@@ -1,4 +1,4 @@
-module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredMargin, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, marginFloatToConciseUnsignedString, marginSymbol, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, priceSymbolToImageElement, red, redButton, releasedIconColor, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredMargin, white, withHeader, withInputHeader, yellow)
+module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredMargin, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, dhTokenTypeSelector, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, foreignCryptoTypeSelector, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, marginFloatToConciseUnsignedString, marginSymbol, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, priceSymbolToImageElement, red, redButton, releasedIconColor, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredMargin, white, withHeader, withInputHeader, withSelectedUnderline, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -580,6 +580,78 @@ textInputWithElement attributes inputAttributes addedElement labelStr value plac
             , placeholder = placeholder
             , label = Element.Input.labelHidden labelStr
             }
+        ]
+
+
+dhTokenTypeSelector : FactoryType -> Bool -> msg -> (FactoryType -> msg) -> Element msg
+dhTokenTypeSelector currentToken showDropdown onClickMsg onSelectMsg =
+    Element.row
+        [ Element.spacing 8
+        , Element.pointer
+        , onClickNoPropagation onClickMsg
+        , Element.centerY
+        , Element.inFront <|
+            if showDropdown then
+                Element.el
+                    [ Element.moveUp 15
+                    , Element.moveLeft 10
+                    , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
+                    , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
+                    ]
+                <|
+                    dropdownSelector
+                        ([ Token EthDai, Native XDai ]
+                            |> List.map
+                                (\token ->
+                                    ( Element.text (tokenUnitName token)
+                                    , onSelectMsg token
+                                    )
+                                )
+                        )
+
+            else
+                Element.none
+        ]
+        [ Element.text <| tokenUnitName currentToken
+        , Images.toElement
+            [ Element.width <| Element.px 12 ]
+            Images.downArrow
+        ]
+
+
+foreignCryptoTypeSelector : ForeignCrypto -> Bool -> msg -> (ForeignCrypto -> msg) -> Element msg
+foreignCryptoTypeSelector currentCrypto showDropdown onClickMsg onSelectMsg =
+    Element.row
+        [ Element.spacing 8
+        , Element.pointer
+        , onClickNoPropagation onClickMsg
+        , Element.centerY
+        , Element.inFront <|
+            if showDropdown then
+                Element.el
+                    [ Element.moveUp 15
+                    , Element.moveLeft 10
+                    , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
+                    , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
+                    ]
+                <|
+                    dropdownSelector
+                        (foreignCryptoList
+                            |> List.map
+                                (\crypto ->
+                                    ( Element.text (foreignCryptoName crypto)
+                                    , onSelectMsg crypto
+                                    )
+                                )
+                        )
+
+            else
+                Element.none
+        ]
+        [ Element.text <| foreignCryptoName currentCrypto
+        , Images.toElement
+            [ Element.width <| Element.px 12 ]
+            Images.downArrow
         ]
 
 
@@ -1271,3 +1343,31 @@ withInputHeader attributes titleStr el =
             (Element.text titleStr)
         , el
         ]
+
+
+withSelectedUnderline : List (Attribute msg) -> Bool -> Element msg -> Element msg
+withSelectedUnderline attributes selected el =
+    Element.el
+        (attributes
+            ++ [ Element.Border.widthEach
+                    { bottom = 2
+                    , top = 0
+                    , right = 0
+                    , left = 0
+                    }
+               , Element.paddingEach
+                    { bottom = 2
+                    , top = 0
+                    , right = 0
+                    , left = 0
+                    }
+               , Element.Border.color
+                    (if selected then
+                        blue
+
+                     else
+                        Element.rgba 0 0 0 0
+                    )
+               ]
+        )
+        el

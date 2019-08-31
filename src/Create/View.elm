@@ -40,7 +40,7 @@ root model =
             ]
             [ mainInputElement model
             , phasesElement model
-            , openButtonElement model.wallet
+            , openButtonElement model.inputs.dhToken model.wallet
             ]
         )
     , viewModals model
@@ -73,7 +73,8 @@ mainInputElement model =
 
 tradeTypeElement : FactoryType -> Model -> Element Msg
 tradeTypeElement factory model =
-    EH.withHeader
+    EH.withInputHeader
+        [ Element.alignTop ]
         "Trade Type"
         (roleToggleElement
             (tokenUnitName factory)
@@ -90,87 +91,113 @@ roleToggleElement tokenName userRole =
             , Element.pointer
             ]
 
-        ( buyDaiStyles, sellDaiStyles ) =
-            case userRole of
-                Buyer ->
-                    ( baseStyles
-                    , baseStyles ++ [ Element.Font.color EH.disabledTextColor ]
-                    )
-
-                Seller ->
-                    ( baseStyles ++ [ Element.Font.color EH.disabledTextColor ]
-                    , baseStyles
-                    )
+        ( buyDaiEl, sellDaiEl ) =
+            ( EH.withSelectedUnderline [] (userRole == Buyer) <|
+                Element.el
+                    ([ Element.Events.onClick <| ChangeRole Buyer ] ++ baseStyles)
+                    (Element.text <| "Buy " ++ tokenName)
+            , EH.withSelectedUnderline [] (userRole == Seller) <|
+                Element.el
+                    ([ Element.Events.onClick <| ChangeRole Seller ] ++ baseStyles)
+                    (Element.text <| "Sell " ++ tokenName)
+            )
     in
-    Element.row [ Element.spacing 20 ]
-        [ Element.el
-            ([ Element.Events.onClick <| ChangeRole Seller ] ++ sellDaiStyles)
-            (Element.text <| "Sell " ++ tokenName)
-        , Element.el
-            ([ Element.Events.onClick <| ChangeRole Buyer ] ++ buyDaiStyles)
-            (Element.text <| "Buy " ++ tokenName)
+    Element.row
+        [ Element.spacing 20
+        , Element.paddingEach
+            { top = 10
+            , bottom = 0
+            , right = 0
+            , left = 0
+            }
+        ]
+        [ sellDaiEl
+        , buyDaiEl
         ]
 
 
 daiElement : FactoryType -> Model -> Element Msg
 daiElement factory model =
-    EH.niceBottomBorderEl <|
-        EH.withHeader
-            (case model.inputs.userRole of
-                Buyer ->
-                    "You're buying"
+    EH.withInputHeader
+        [ Element.alignTop ]
+        (case model.inputs.userRole of
+            Buyer ->
+                "You're buying"
 
-                Seller ->
-                    "You're selling"
-            )
-            (daiInputElement
-                factory
-                model.inputs.daiAmount
-                model.errors.daiAmount
-            )
-
-
-daiInputElement : FactoryType -> String -> Maybe String -> Element Msg
-daiInputElement factoryType amountString maybeError =
-    EH.fancyInput
-        [ Element.width <| Element.px 150
-        , Element.Font.medium
-        , Element.Font.size 24
-        , Element.Background.color EH.submodelBackgroundColor
-        , Element.below <|
-            EH.maybeErrorElement
-                [ inputErrorTag
-                , Element.moveDown 5
-                ]
-                maybeError
-        ]
-        ( Nothing
-        , Just <|
-            Element.el
-                [ Element.Events.onClick <|
-                    CmdUp <|
-                        CmdUp.gTag "click" "misclick" "dai symbol in dai input" 0
-                ]
-                (EH.daiSymbolAndLabel factoryType)
+            Seller ->
+                "You're selling"
         )
-        "dai input"
-        Nothing
-        amountString
-        TradeAmountChanged
+        (EH.roundedComplexInputBox
+            [ Element.width <| Element.px 200
+            , Element.below <|
+                EH.maybeErrorElement
+                    [ inputErrorTag
+                    , Element.moveDown 5
+                    ]
+                    model.errors.daiAmount
+            ]
+            [ EH.dhTokenTypeSelector model.inputs.dhToken model.showDhTypeDropdown DhDropdownClicked DhTypeChanged ]
+            { onChange = TradeAmountChanged
+            , text = model.inputs.daiAmount
+            , placeholder = Nothing
+            , label = Element.Input.labelHidden "dai input"
+            }
+            []
+        )
 
 
 fiatElement : Model -> Element Msg
 fiatElement model =
-    EH.niceBottomBorderEl <|
-        EH.withHeader
-            "For fiat"
-            (fiatInputElement
-                model.inputs.fiatType
-                model.inputs.fiatAmount
+    let
+        fiatCharElement =
+            case Prices.char model.inputs.fiatType of
+                Just char ->
+                    Element.el
+                        [ Element.Events.onClick <|
+                            CmdUp <|
+                                CmdUp.gTag "click" "misclick" "currency symbol" 0
+                        ]
+                        (Element.text <| char)
+
+                Nothing ->
+                    Element.none
+    in
+    EH.withInputHeader
+        [ Element.alignTop ]
+        "For:"
+        (EH.roundedComplexInputBox
+            [ Element.width <| Element.px 250
+            , Element.padding 8
+            , Element.below <|
+                EH.maybeErrorElement
+                    [ inputErrorTag
+                    , Element.moveDown 5
+                    ]
+                    (Maybe.Extra.or
+                        model.errors.fiatAmount
+                        model.errors.fiatType
+                    )
+            ]
+            [ EH.currencySelector
                 model.showFiatTypeDropdown
-                model.errors.fiatAmount
-                model.errors.fiatType
-            )
+                model.inputs.fiatType
+                (ShowCurrencyDropdown True)
+                FiatTypeChanged
+                (CmdUp <| CmdUp.gTag "click" "misclick" "currency flag" 0)
+            , fiatCharElement
+            ]
+            { onChange = FiatAmountChanged
+            , text = model.inputs.fiatAmount
+            , placeholder =
+                Just <|
+                    Element.Input.placeholder
+                        [ Element.Font.color EH.placeholderTextColor
+                        ]
+                        (Element.text "0")
+            , label = Element.Input.labelHidden "fiat input"
+            }
+            []
+        )
 
 
 fiatInputElement : Prices.Symbol -> String -> Bool -> Maybe String -> Maybe String -> Element Msg
@@ -222,12 +249,22 @@ fiatInputElement symbol amountString showFiatTypeDropdown maybeAmountError maybe
         FiatAmountChanged
 
 
-openButtonElement : Wallet.State -> Element Msg
-openButtonElement wallet =
+openButtonElement : FactoryType -> Wallet.State -> Element Msg
+openButtonElement dhTypeInput wallet =
     Element.el [ Element.centerX ] <|
         case ( Wallet.userInfo wallet, Wallet.factory wallet ) of
             ( Just userInfo, Just factory ) ->
-                EH.redButton "Open Trade" (CreateClicked factory userInfo)
+                if factory == dhTypeInput then
+                    EH.redButton "Open Trade" (CreateClicked factory userInfo)
+
+                else
+                    EH.disabledButton "Open Trade"
+                        (Just <|
+                            "You must switch your wallet to the "
+                                ++ networkNameForFactory dhTypeInput
+                                ++ " network to create a trade with "
+                                ++ tokenUnitName dhTypeInput
+                        )
 
             ( Nothing, _ ) ->
                 EH.redButton "Connect to Wallet" Web3Connect
