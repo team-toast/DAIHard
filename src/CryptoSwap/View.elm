@@ -614,7 +614,11 @@ txChainStatusModal txChainStatus model =
                                            )
 
                                 Seller ->
-                                    [ [ Element.text "Your "
+                                    [ [ Element.text "Of your "
+                                      , depositAmountEl
+                                      , Element.text ", 1% ("
+                                      , feeAmountEl
+                                      , Element.text ") will be set aside, and "
                                       , tradeAmountEl
                                       , Element.text " will be listed as selling for "
                                       , priceEl
@@ -622,7 +626,9 @@ txChainStatusModal txChainStatus model =
                                       ]
                                     , [ Element.text "You can abort the offer at any time before a Buyer commits for a full refund. If no Buyer commits within "
                                       , emphasizedText "24 hours"
-                                      , Element.text " your offer will automatically expire."
+                                      , Element.text " your offer will automatically expire. In both these cases, the full "
+                                      , depositAmountEl
+                                      , Element.text " is returned to you."
                                       ]
                                     , [ Element.text "A Buyer must deposit "
                                       , buyerDepositEl
@@ -640,9 +646,9 @@ txChainStatusModal txChainStatus model =
                                       , totalBurnableEl
                                       , Element.text <| ", which you are expected to do if and only if the Buyer has not sent the payment."
                                       ]
-                                    , [ Element.text "If the trade has resolved successfully, we take a 1% fee of "
+                                    , [ Element.text "If the trade has resolved successfully, DAIHard takes the 1% fee of "
                                       , feeAmountEl
-                                      , Element.text "."
+                                      , Element.text " set aside earlier."
                                       ]
                                     , [ Element.text <| "Are you ready?" ]
                                     ]

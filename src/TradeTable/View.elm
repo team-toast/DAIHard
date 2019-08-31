@@ -304,7 +304,7 @@ viewTradeCell time prices colType trade =
                                         in
                                         Margin.marginFromFloats
                                             tradeAmountFloat
-                                            (tradeAmountFloat * fcPrice)
+                                            (trade.terms.price.amount * fcPrice)
                                     )
                                     maybeForeignCryptoPrice
                 in

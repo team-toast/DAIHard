@@ -143,7 +143,9 @@ maybeUserParameters model =
             Maybe.map4
                 (\amountIn margin receiveAddress amountOut ->
                     { initiatorRole = model.initiatorRole
-                    , tradeAmount = TokenValue.fromFloatWithWarning amountIn
+                    , tradeAmount =
+                        (amountIn - (amountIn / 101))
+                            |> TokenValue.fromFloatWithWarning
                     , price = Prices.fromForeignCrypto model.foreignCrypto amountOut
                     , paymentMethods =
                         [ PaymentMethod
