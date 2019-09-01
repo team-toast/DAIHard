@@ -480,6 +480,7 @@ phasesElement trade expandedPhase wallet currentTime =
                 [ Element.centerX
                 , Element.Border.rounded 12
                 , Element.spacing 10
+                , Element.padding 10
                 , Element.Background.color EH.activePhaseBackgroundColor
                 , Element.Font.size 24
                 , Element.Font.semiBold
