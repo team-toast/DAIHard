@@ -492,7 +492,7 @@ tryUpdateAmountOut prevModel =
                                         equivalentDai =
                                             amountIn * price
                                     in
-                                    equivalentDai - (equivalentDai * margin)
+                                    equivalentDai / (1 + margin)
 
                                 Seller ->
                                     let
@@ -545,10 +545,10 @@ tryUpdateAmountIn prevModel =
                             case prevModel.initiatorRole of
                                 Buyer ->
                                     let
-                                        amountOutPlusMargin =
-                                            amountOut / (1 - margin)
+                                        equivalentCrypto =
+                                            amountOut / price
                                     in
-                                    amountOutPlusMargin / price
+                                    equivalentCrypto * (1 + margin)
 
                                 Seller ->
                                     let
