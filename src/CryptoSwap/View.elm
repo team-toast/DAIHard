@@ -441,7 +441,9 @@ txChainStatusModal txChainStatus model =
                                       ]
                                     , [ Element.text "You can abort the offer any time before a Seller commits for a full refund. If no Seller commits within "
                                       , emphasizedText "24 hours"
-                                      , Element.text " your offer will automatically expire."
+                                      , Element.text " your offer will automatically expire. In both these cases, the full "
+                                      , depositAmountEl
+                                      , Element.text " is returned to you."
                                       ]
                                     , [ Element.text "A Seller can commit to the trade by depositing the full "
                                       , tradeAmountEl
