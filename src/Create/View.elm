@@ -194,7 +194,7 @@ fiatElement model =
                         [ Element.Font.color EH.placeholderTextColor
                         ]
                         (Element.text "0")
-            , label = Element.Input.labelHidden "fiat input"
+            , label = Element.Input.labelHidden "price input"
             }
             []
         )
@@ -243,7 +243,7 @@ fiatInputElement symbol amountString showFiatTypeDropdown maybeAmountError maybe
                 maybeAmountError
         ]
         ( Just fiatCharElement, Just currencySelector )
-        "fiat input"
+        "price input"
         Nothing
         amountString
         FiatAmountChanged
@@ -413,10 +413,10 @@ paymentWindowSummary : BuyerOrSeller -> String
 paymentWindowSummary userRole =
     case userRole of
         Buyer ->
-            "After committing, you and the Seller have this long to complete the fiat payment, using one of your payment methods indicated below. If you fail to confirm payment within this window, 1/4 of your deposit is burned from both parties and the rest is refunded."
+            "After committing, you and the Seller have this long to complete the external payment, using one of your payment methods indicated below. If you fail to confirm payment within this window, 1/4 of your deposit is burned from both parties and the rest is refunded."
 
         Seller ->
-            "After committing, you and the Buyer have this long to complete the fiat payment, using one of your payment methods indicated below. If the Buyer aborts or fails to confirm within this window, 1/12 of the trade amount is burned from both parties and the rest is refunded."
+            "After committing, you and the Buyer have this long to complete the external payment, using one of your payment methods indicated below. If the Buyer aborts or fails to confirm within this window, 1/12 of the trade amount is burned from both parties and the rest is refunded."
 
 
 releaseWindowSummary : BuyerOrSeller -> String

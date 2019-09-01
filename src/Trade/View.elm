@@ -181,7 +181,7 @@ renderDaiAmount daiAmount =
 fiatElement : FullTradeInfo -> Element Msg
 fiatElement trade =
     EH.withHeader
-        "For Fiat"
+        "For"
         (renderPrice trade.terms.price)
 
 
@@ -653,7 +653,7 @@ paymentMethodElement paymentMethods =
             , Element.Font.italic
             , Element.centerX
             ]
-            (Element.text "Fiat Payment Method")
+            (Element.text "External Payment Method")
         , Element.paragraph
             [ Element.Font.size 18
             , Element.height Element.shrink
@@ -1046,7 +1046,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
                     , List.map makeParagraph
                         [ [ Element.text "You must now pay the Seller "
                           , emphasizedText priceString
-                          , Element.text " via the Fiat Payment Method, "
+                          , Element.text " via the External Payment Method, "
                           , Element.el [ Element.Font.semiBold ] <| Element.text "and then click "
                           , scaryText "Confirm Payment"
                           , Element.text " before the payment window runs out. Use the chat to coordinate."
@@ -1075,7 +1075,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
                     , List.map makeParagraph
                         [ [ Element.text "Work and communicate with the Buyer to receive "
                           , emphasizedText priceString
-                          , Element.text " as described in Fiat Payment Method. Then, the Buyer should confirm the payment, moving the trade to the final phase."
+                          , Element.text " as described in External Payment Method. Then, the Buyer should confirm the payment, moving the trade to the final phase."
                           ]
                         , [ Element.text "If the Buyer aborts the trade, or doesn't confirm payment before this time is up, "
                           , emphasizedText abortPunishmentString
@@ -1097,7 +1097,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
                     , List.map makeParagraph
                         [ [ Element.text "During this phase, the Buyer is expected to transfer "
                           , emphasizedText priceString
-                          , Element.text " to the Seller, as described in Fiat Payment Method, "
+                          , Element.text " to the Seller, as described in External Payment Method, "
                           , Element.el [ Element.Font.semiBold ] <| Element.text "and "
                           , scaryText "Confirm the Payment "
                           , Element.text " before the payment window runs out. This would move the trade to the final phase."

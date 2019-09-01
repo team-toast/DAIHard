@@ -173,7 +173,7 @@ renderEvent factoryType userRole event =
                             Just ( Element.rgb 1 0 0, EH.white, "Buyer aborted the trade" )
 
                         Claimed ->
-                            Just ( Element.rgb 0 1 0, EH.white, "Buyer marked the fiat transfer complete" )
+                            Just ( Element.rgb 0 1 0, EH.white, "Buyer marked the external payment complete" )
 
                         Released ->
                             Just ( Element.rgb 0 0 1, EH.white, "Seller released the " ++ tokenUnitName factoryType ++ " and closed the contract" )

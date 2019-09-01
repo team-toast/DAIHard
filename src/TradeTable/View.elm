@@ -124,7 +124,7 @@ colTitleEl colType =
                     "Offer"
 
                 Price ->
-                    "For Fiat"
+                    "For"
 
                 ResponderProfit ->
                     "Margin"

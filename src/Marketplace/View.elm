@@ -326,7 +326,7 @@ fiatInput showTypeDropdown symbol errors =
     Element.el
         [ Element.alignTop, Element.width <| Element.px 120 ]
         (EH.currencySelector showTypeDropdown symbol (ShowCurrencyDropdown True) FiatTypeInputChanged flagClickedMsg
-            |> withInputHeader "Fiat Type"
+            |> withInputHeader "Currency Type"
         )
 
 
