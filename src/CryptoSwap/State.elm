@@ -35,8 +35,8 @@ init wallet =
         Wallet.factory wallet
             |> Maybe.withDefault (Native XDai)
     , foreignCrypto = ZEC
-    , marginInput = "2"
-    , margin = Just 0.02
+    , responderProfitInput = "2"
+    , responderProfit = Just 0.02
     , amountOut = Nothing
     , receiveAddress = ""
     , showDhTokenDropdown = False
@@ -176,12 +176,12 @@ update msg prevModel =
                 ChainCmd.none
                 appCmds
 
-        MarginChanged input ->
+        ResponderProfitChanged input ->
             let
-                ( newMaybeMargin, newErrors ) =
-                    case interpretMargin input of
-                        Ok maybeMargin ->
-                            ( maybeMargin
+                ( newMaybeResponderProfit, newErrors ) =
+                    case interpretResponderProfit input of
+                        Ok maybeResponderProfit ->
+                            ( maybeResponderProfit
                             , prevModel.errors
                             )
 
@@ -191,13 +191,13 @@ update msg prevModel =
                                     prevModel.errors
                             in
                             ( Nothing
-                            , { prevErrors | margin = Just errStr }
+                            , { prevErrors | responderProfit = Just errStr }
                             )
 
                 ( newModel, appCmds ) =
                     { prevModel
-                        | marginInput = input
-                        , margin = newMaybeMargin
+                        | responderProfitInput = input
+                        , responderProfit = newMaybeResponderProfit
                         , errors = newErrors
                     }
                         |> tryUpdateAmountOut
@@ -485,27 +485,23 @@ tryUpdateAmountOut prevModel =
             let
                 newAmountOut =
                     Maybe.map2
-                        (\amountIn margin ->
+                        (\amountIn responderProfit ->
                             case prevModel.initiatorRole of
                                 Buyer ->
-                                    let
-                                        equivalentDai =
-                                            amountIn * price
-                                    in
-                                    equivalentDai / (1 + margin)
+                                    (amountIn * price) / (responderProfit + 1)
 
                                 Seller ->
                                     let
                                         tradeAmountAfterDevFee =
-                                            amountIn - (amountIn / 101)
+                                            amountIn / 1.01
 
                                         equivalentForeignCrypto =
                                             tradeAmountAfterDevFee / price
                                     in
-                                    equivalentForeignCrypto - (equivalentForeignCrypto * margin)
+                                    equivalentForeignCrypto / (responderProfit + 1)
                         )
                         prevModel.amountIn
-                        prevModel.margin
+                        prevModel.responderProfit
             in
             ( { prevModel
                 | amountOut =
@@ -541,27 +537,23 @@ tryUpdateAmountIn prevModel =
             let
                 newAmountIn =
                     Maybe.map2
-                        (\amountOut margin ->
+                        (\amountOut responderProfit ->
                             case prevModel.initiatorRole of
                                 Buyer ->
-                                    let
-                                        equivalentCrypto =
-                                            amountOut / price
-                                    in
-                                    equivalentCrypto * (1 + margin)
+                                    (amountOut * (responderProfit + 1)) / price
 
                                 Seller ->
                                     let
-                                        amountOutPlusMargin =
-                                            amountOut / (1 - margin)
+                                        amountOutPlusResponderProfit =
+                                            amountOut * (responderProfit + 1)
 
                                         equivalentDai =
-                                            amountOutPlusMargin * price
+                                            amountOutPlusResponderProfit * price
                                     in
-                                    equivalentDai + (equivalentDai / 100)
+                                    equivalentDai * 1.01
                         )
                         prevModel.amountOut
-                        prevModel.margin
+                        prevModel.responderProfit
             in
             ( { prevModel
                 | amountIn =
@@ -624,14 +616,14 @@ interpretAmount input =
                 Err "Invalid amount"
 
 
-interpretMargin : String -> Result String (Maybe Float)
-interpretMargin input =
+interpretResponderProfit : String -> Result String (Maybe Float)
+interpretResponderProfit input =
     if input == "" then
         Ok Nothing
 
     else
         String.toFloat input
-            |> Result.fromMaybe "Invalid margin"
+            |> Result.fromMaybe "Invalid responderProfit"
             |> Result.map (\percent -> percent / 100.0)
             |> Result.map Just
 

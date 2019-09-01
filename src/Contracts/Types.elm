@@ -14,7 +14,6 @@ import Helpers.Time as TimeHelpers
 import Images exposing (Image)
 import Json.Decode
 import Json.Encode
-import Margin
 import PaymentMethods exposing (PaymentMethod)
 import Prices exposing (Price)
 import Time
@@ -58,7 +57,6 @@ type alias TradeCreationInfo =
 
 type alias DerivedValues =
     { phaseEndTime : Time.Posix
-    , margin : Maybe Float
     }
 
 
@@ -395,8 +393,6 @@ deriveValues parameters state terms =
                 TimeHelpers.add
                     state.phaseStartTime
                     currentPhaseInterval
-    , margin =
-        Margin.margin parameters.tradeAmount terms.price
     }
 
 

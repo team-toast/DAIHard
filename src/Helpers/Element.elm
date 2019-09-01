@@ -209,11 +209,8 @@ coloredMargin upIsGreen marginFloat =
                     else
                         red
             in
-            Element.row [ Element.spacing 4 ]
-                [ marginSymbol [] isUp (Just isGreen)
-                , Element.el [ Element.Font.color textColor, Element.Font.size 16 ]
-                    (Element.text unsignedPercentString)
-                ]
+            Element.el [ Element.Font.color textColor, Element.Font.size 16 ]
+                (Element.text unsignedPercentString)
 
 
 uncoloredMargin : Float -> Element msg

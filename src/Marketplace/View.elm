@@ -18,7 +18,6 @@ import Helpers.Time as TimeHelpers
 import Html.Events.Extra
 import Images exposing (Image)
 import List.Extra
-import Margin
 import Marketplace.Types exposing (..)
 import Maybe.Extra
 import PaymentMethods exposing (PaymentMethod)
@@ -245,7 +244,7 @@ maybeResultsElement time onlyOpenTrades tcDoneLoading tradeCaches model =
                 TradeTable.Phase
             , TradeTable.Offer
             , TradeTable.Price
-            , TradeTable.Margin
+            , TradeTable.ResponderProfit
             , TradeTable.PaymentWindow
             , TradeTable.BurnWindow
             ]

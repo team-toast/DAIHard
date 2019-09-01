@@ -128,7 +128,7 @@ fromToElement model =
                 Element.none
             , Element.el
                 [ Element.width Element.fill ]
-                (case model.errors.margin of
+                (case model.errors.responderProfit of
                     Just errStr ->
                         Element.el
                             [ Element.Font.color EH.red
@@ -190,7 +190,7 @@ toInputBox model =
         , Element.centerY
         ]
         [ tokenSelector
-        , marginInput model.marginInput
+        , responderProfitInput model.responderProfitInput
         ]
         { onChange = AmountOutChanged
         , text = model.amountOutInput
@@ -205,8 +205,8 @@ toInputBox model =
         []
 
 
-marginInput : String -> Element Msg
-marginInput input =
+responderProfitInput : String -> Element Msg
+responderProfitInput input =
     Element.row
         [ Element.centerY
         , Element.spacing 0
@@ -221,11 +221,11 @@ marginInput input =
             , Element.width <|
                 (Element.px (10 * String.length input) |> Element.minimum 10)
             ]
-            { onChange = MarginChanged
+            { onChange = ResponderProfitChanged
             , text = input
             , placeholder =
                 Nothing
-            , label = Element.Input.labelHidden "margin"
+            , label = Element.Input.labelHidden "responderProfit"
             }
         , Element.text "%)"
         ]

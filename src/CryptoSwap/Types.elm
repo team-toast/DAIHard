@@ -23,8 +23,8 @@ type alias Model =
     , amountIn : Maybe Float
     , dhToken : FactoryType
     , foreignCrypto : ForeignCrypto
-    , marginInput : String
-    , margin : Maybe Float
+    , responderProfitInput : String
+    , responderProfit : Maybe Float
     , amountOutInput : String
     , amountOut : Maybe Float
     , receiveAddress : String
@@ -53,7 +53,7 @@ type Msg
     | PricesFetched (Result Http.Error (List ( ForeignCrypto, PriceFetch.PriceAndTimestamp )))
     | AmountInChanged String
     | AmountOutChanged String
-    | MarginChanged String
+    | ResponderProfitChanged String
     | SwapClicked
     | TokenTypeClicked
     | ChangeTokenType FactoryType
@@ -91,7 +91,7 @@ justModelUpdate model =
 type alias Errors =
     { amountIn : Maybe String
     , amountOut : Maybe String
-    , margin : Maybe String
+    , responderProfit : Maybe String
     }
 
 
@@ -118,7 +118,7 @@ maybeUserParameters model =
     case model.initiatorRole of
         Buyer ->
             Maybe.map3
-                (\amountIn margin amountOut ->
+                (\amountIn responderProfit amountOut ->
                     { initiatorRole = model.initiatorRole
                     , tradeAmount = TokenValue.fromFloatWithWarning amountOut
                     , price = Prices.fromForeignCrypto model.foreignCrypto amountIn
@@ -136,12 +136,12 @@ maybeUserParameters model =
                     }
                 )
                 model.amountIn
-                model.margin
+                model.responderProfit
                 model.amountOut
 
         Seller ->
             Maybe.map4
-                (\amountIn margin receiveAddress amountOut ->
+                (\amountIn responderProfit receiveAddress amountOut ->
                     { initiatorRole = model.initiatorRole
                     , tradeAmount =
                         (amountIn - (amountIn / 101))
@@ -158,7 +158,7 @@ maybeUserParameters model =
                     }
                 )
                 model.amountIn
-                model.margin
+                model.responderProfit
                 (if model.receiveAddress == "" then
                     Nothing
 

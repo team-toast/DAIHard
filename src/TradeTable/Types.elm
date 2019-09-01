@@ -1,7 +1,7 @@
 module TradeTable.Types exposing (ColType(..), Model, Msg(..), Ordering(..), UpdateResult, flipOrdering, justModelUpdate)
 
-import CmdUp exposing (CmdUp)
 import ChainCmd exposing (ChainCmd)
+import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
 
@@ -30,7 +30,7 @@ type ColType
     | Expires
     | Offer
     | Price
-    | Margin
+    | ResponderProfit
     | PaymentWindow
     | BurnWindow
 
