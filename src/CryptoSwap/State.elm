@@ -113,17 +113,17 @@ update msg prevModel =
         AmountInChanged input ->
             let
                 ( newMaybeAmountIn, newErrors ) =
+                    let
+                        prevErrors =
+                            prevModel.errors
+                    in
                     case interpretAmount input of
                         Ok maybeAmount ->
                             ( maybeAmount
-                            , prevModel.errors
+                            , { prevErrors | amountIn = Nothing }
                             )
 
                         Err errStr ->
-                            let
-                                prevErrors =
-                                    prevModel.errors
-                            in
                             ( Nothing
                             , { prevErrors | amountIn = Just errStr }
                             )
@@ -145,21 +145,19 @@ update msg prevModel =
         AmountOutChanged input ->
             let
                 ( newMaybeAmountOut, newErrors ) =
+                    let
+                        prevErrors =
+                            prevModel.errors
+                    in
                     case interpretAmount input of
                         Ok maybeAmount ->
                             ( maybeAmount
-                            , prevModel.errors
+                            , { prevErrors | amountOut = Nothing }
                             )
 
                         Err errStr ->
-                            let
-                                prevErrors =
-                                    prevModel.errors
-                            in
                             ( Nothing
-                            , { prevErrors
-                                | amountOut = Just errStr
-                              }
+                            , { prevErrors | amountOut = Just errStr }
                             )
 
                 ( newModel, appCmds ) =
@@ -179,17 +177,17 @@ update msg prevModel =
         ResponderProfitChanged input ->
             let
                 ( newMaybeResponderProfit, newErrors ) =
+                    let
+                        prevErrors =
+                            prevModel.errors
+                    in
                     case interpretResponderProfit input of
                         Ok maybeResponderProfit ->
                             ( maybeResponderProfit
-                            , prevModel.errors
+                            , { prevErrors | responderProfit = Nothing }
                             )
 
                         Err errStr ->
-                            let
-                                prevErrors =
-                                    prevModel.errors
-                            in
                             ( Nothing
                             , { prevErrors | responderProfit = Just errStr }
                             )
