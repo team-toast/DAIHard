@@ -1,4 +1,4 @@
-module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredMargin, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, dhTokenTypeSelector, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, foreignCryptoTypeSelector, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, marginFloatToConciseUnsignedString, marginSymbol, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, priceSymbolToImageElement, red, redButton, releasedIconColor, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredMargin, white, withHeader, withInputHeader, withSelectedUnderline, yellow)
+module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredResponderProfit, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, dhTokenTypeSelector, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, foreignCryptoTypeSelector, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, priceSymbolToImageElement, red, redButton, releasedIconColor, responderProfitFloatToConciseString, responderProfitSymbol, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredResponderProfit, white, withHeader, withInputHeader, withSelectedUnderline, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -188,16 +188,16 @@ price p =
         ]
 
 
-coloredMargin : Bool -> Float -> Element msg
-coloredMargin upIsGreen marginFloat =
-    case marginFloatToConciseUnsignedString marginFloat of
+coloredResponderProfit : Bool -> Float -> Element msg
+coloredResponderProfit upIsGreen responderProfitFloat =
+    case responderProfitFloatToConciseString responderProfitFloat of
         "0%" ->
             Element.el [ Element.Font.size 16 ] (Element.text "0%")
 
         unsignedPercentString ->
             let
                 isUp =
-                    marginFloat >= 0
+                    responderProfitFloat >= 0
 
                 isGreen =
                     not <| xor isUp upIsGreen
@@ -213,16 +213,16 @@ coloredMargin upIsGreen marginFloat =
                 (Element.text unsignedPercentString)
 
 
-uncoloredMargin : Float -> Element msg
-uncoloredMargin marginFloat =
-    case marginFloatToConciseUnsignedString marginFloat of
+uncoloredResponderProfit : Float -> Element msg
+uncoloredResponderProfit responderProfitFloat =
+    case responderProfitFloatToConciseString responderProfitFloat of
         "0%" ->
             Element.el [ Element.Font.size 16 ] (Element.text "0%")
 
         unsignedPercentString ->
             let
                 isUp =
-                    marginFloat >= 0
+                    responderProfitFloat >= 0
             in
             Element.row [ Element.spacing 4 ]
                 [ Element.el [ Element.Font.size 18 ]
@@ -994,8 +994,8 @@ daiSymbolAndLabel factoryType =
         ]
 
 
-marginSymbol : List (Attribute msg) -> Bool -> Maybe Bool -> Element msg
-marginSymbol attributes isUp maybeIsGreen =
+responderProfitSymbol : List (Attribute msg) -> Bool -> Maybe Bool -> Element msg
+responderProfitSymbol attributes isUp maybeIsGreen =
     Images.toElement
         ((Element.height <| Element.px 34) :: attributes)
         (Images.marginSymbol isUp maybeIsGreen)
@@ -1016,33 +1016,30 @@ testBorderStyles =
 -- ETC
 
 
-marginFloatToConciseUnsignedString : Float -> String
-marginFloatToConciseUnsignedString f =
-    let
-        absPercentNumber =
-            abs <| f * 100.0
+responderProfitFloatToConciseString : Float -> String
+responderProfitFloatToConciseString f =
+    (if f > 0 then
+        "+"
 
-        preDecimalString =
-            floor absPercentNumber
-                |> String.fromInt
+     else
+        ""
+    )
+        ++ (if f < 0.1 then
+                f
+                    |> (*) 1000
+                    |> round
+                    |> toFloat
+                    |> (\f_ -> f_ / 10)
+                    |> String.fromFloat
+                    |> (\s -> s ++ "%")
 
-        decimalRemainder =
-            absPercentNumber - toFloat (floor absPercentNumber)
-
-        extraDigitsNeeded =
-            max 0 (3 - String.length preDecimalString)
-
-        decimalString =
-            case extraDigitsNeeded of
-                0 ->
-                    ""
-
-                n ->
-                    String.fromFloat decimalRemainder
-                        |> String.dropLeft 1
-                        |> String.left (extraDigitsNeeded + 1)
-    in
-    preDecimalString ++ decimalString ++ "%"
+            else
+                f
+                    |> (*) 100
+                    |> round
+                    |> String.fromInt
+                    |> (\s -> s ++ "%")
+           )
 
 
 modal : Element.Color -> msg -> msg -> Element msg -> Element msg

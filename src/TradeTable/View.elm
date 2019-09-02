@@ -127,7 +127,7 @@ colTitleEl colType =
                     "For"
 
                 ResponderProfit ->
-                    "Margin"
+                    "Responder Profit"
 
                 PaymentWindow ->
                     "Payment Window"
@@ -277,7 +277,7 @@ viewTradeCell time prices colType trade =
 
             ResponderProfit ->
                 ResponderProfit.calculate prices trade
-                    |> Maybe.map (EH.coloredMargin True)
+                    |> Maybe.map (EH.coloredResponderProfit True)
                     |> Maybe.withDefault Element.none
 
             PaymentWindow ->
