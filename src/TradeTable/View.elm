@@ -12,21 +12,23 @@ import Helpers.Element as EH
 import Helpers.Time as TimeHelpers
 import Images exposing (Image)
 import PaymentMethods exposing (PaymentMethod)
+import PriceFetch
 import Prices
+import ResponderProfit
 import Time
 import TokenValue exposing (TokenValue)
 import TradeTable.Types exposing (..)
 
 
-view : Time.Posix -> Model -> List ColType -> List CTypes.FullTradeInfo -> Element Msg
-view time model colTypes trades =
+view : Time.Posix -> Model -> List ( ForeignCrypto, PriceFetch.PriceData ) -> List ColType -> List CTypes.FullTradeInfo -> Element Msg
+view time model prices colTypes trades =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
         , Element.spacing 5
         ]
         [ viewColHeaders model.orderBy colTypes
-        , viewTradeRows time model colTypes trades
+        , viewTradeRows time model prices colTypes trades
         ]
 
 
@@ -69,7 +71,7 @@ colTypePortion colType =
         Price ->
             2
 
-        Margin ->
+        ResponderProfit ->
             1
 
         PaymentWindow ->
@@ -122,10 +124,10 @@ colTitleEl colType =
                     "Offer"
 
                 Price ->
-                    "For Fiat"
+                    "For"
 
-                Margin ->
-                    "Margin"
+                ResponderProfit ->
+                    "Responder Profit"
 
                 PaymentWindow ->
                     "Payment Window"
@@ -134,8 +136,8 @@ colTitleEl colType =
                     "Burn Window"
 
 
-viewTradeRows : Time.Posix -> Model -> List ColType -> List CTypes.FullTradeInfo -> Element Msg
-viewTradeRows time model colTypes trades =
+viewTradeRows : Time.Posix -> Model -> List ( ForeignCrypto, PriceFetch.PriceData ) -> List ColType -> List CTypes.FullTradeInfo -> Element Msg
+viewTradeRows time model prices colTypes trades =
     Element.column
         [ Element.width Element.fill
         , Element.Border.width 2
@@ -146,13 +148,13 @@ viewTradeRows time model colTypes trades =
         , Element.clip
         ]
         (trades
-            |> List.sortWith (sortByFunc model.orderBy)
-            |> List.map (viewTradeRow time colTypes)
+            |> List.sortWith (sortByFunc prices model.orderBy)
+            |> List.map (viewTradeRow time prices colTypes)
         )
 
 
-viewTradeRow : Time.Posix -> List ColType -> CTypes.FullTradeInfo -> Element Msg
-viewTradeRow time colTypes trade =
+viewTradeRow : Time.Posix -> List ( ForeignCrypto, PriceFetch.PriceData ) -> List ColType -> CTypes.FullTradeInfo -> Element Msg
+viewTradeRow time prices colTypes trade =
     Element.column
         [ Element.width Element.fill
         , Element.spacing 1
@@ -167,7 +169,7 @@ viewTradeRow time colTypes trade =
             (colTypes
                 |> List.map
                     (\colType ->
-                        viewTradeCell time colType trade
+                        viewTradeCell time prices colType trade
                     )
             )
         , cellMaker 1 <| viewPaymentMethods trade.terms.paymentMethods
@@ -182,8 +184,8 @@ viewPaymentMethods paymentMethods =
         |> Maybe.withDefault Element.none
 
 
-viewTradeCell : Time.Posix -> ColType -> CTypes.FullTradeInfo -> Element Msg
-viewTradeCell time colType trade =
+viewTradeCell : Time.Posix -> List ( ForeignCrypto, PriceFetch.PriceData ) -> ColType -> CTypes.FullTradeInfo -> Element Msg
+viewTradeCell time prices colType trade =
     cellMaker
         (colTypePortion colType)
         (case colType of
@@ -273,13 +275,9 @@ viewTradeCell time colType trade =
             Price ->
                 EH.price trade.terms.price
 
-            Margin ->
-                let
-                    upIsGreen =
-                        trade.parameters.initiatorRole == Buyer
-                in
-                trade.derived.margin
-                    |> Maybe.map (EH.coloredMargin upIsGreen)
+            ResponderProfit ->
+                ResponderProfit.calculate prices trade
+                    |> Maybe.map (EH.coloredResponderProfit True)
                     |> Maybe.withDefault Element.none
 
             PaymentWindow ->
@@ -346,13 +344,13 @@ cellMaker portion cellElement =
             cellElement
 
 
-sortByFunc : ( ColType, Ordering ) -> (CTypes.FullTradeInfo -> CTypes.FullTradeInfo -> Order)
-sortByFunc ( sortCol, ordering ) =
+sortByFunc : List ( ForeignCrypto, PriceFetch.PriceData ) -> ( ColType, Ordering ) -> (CTypes.FullTradeInfo -> CTypes.FullTradeInfo -> Order)
+sortByFunc prices ( sortCol, ordering ) =
     (case sortCol of
         Phase ->
             \a b ->
                 if a.state.phase == b.state.phase then
-                    sortByFunc ( Expires, Descending ) a b
+                    sortByFunc prices ( Expires, Descending ) a b
 
                 else
                     compare (CTypes.phaseToInt a.state.phase) (CTypes.phaseToInt b.state.phase)
@@ -366,12 +364,12 @@ sortByFunc ( sortCol, ordering ) =
         Price ->
             \a b -> Prices.compare a.terms.price b.terms.price
 
-        Margin ->
+        ResponderProfit ->
             \a b ->
                 Maybe.map2
-                    (\marginA marginB -> compare marginA marginB)
-                    a.derived.margin
-                    b.derived.margin
+                    compare
+                    (ResponderProfit.calculate prices a)
+                    (ResponderProfit.calculate prices b)
                     |> Maybe.withDefault EQ
 
         PaymentWindow ->

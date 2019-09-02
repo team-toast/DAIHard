@@ -91,17 +91,7 @@ toConciseString tv =
 
     else
         let
-            s =
-                evmValueToUserFloatString (getEvmValue tv)
-        in
-        case String.indexes "." s of
-            [] ->
-                s
-
-            [ 0 ] ->
-                "0" ++ String.left 3 s
-
-            [ 1 ] ->
+            hackyRoundFloatString s =
                 String.toFloat s
                     |> Maybe.map ((*) 100.0)
                     |> Maybe.map round
@@ -111,11 +101,26 @@ toConciseString tv =
                     |> Maybe.withDefault s
                     |> String.left 4
 
+            floatStr =
+                evmValueToUserFloatString (getEvmValue tv)
+        in
+        case String.indexes "." floatStr of
+            [] ->
+                floatStr
+
+            [ 0 ] ->
+                "0"
+                    ++ floatStr
+                    |> hackyRoundFloatString
+
+            [ 1 ] ->
+                hackyRoundFloatString floatStr
+
             [ i ] ->
-                String.toFloat s
+                String.toFloat floatStr
                     |> Maybe.map round
                     |> Maybe.map String.fromInt
-                    |> Maybe.withDefault (String.left i s)
+                    |> Maybe.withDefault (String.left i floatStr)
 
             _ ->
                 let

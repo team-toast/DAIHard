@@ -18,7 +18,6 @@ import Helpers.Time as TimeHelpers
 import Html.Events.Extra
 import Images exposing (Image)
 import List.Extra
-import Margin
 import Marketplace.Types exposing (..)
 import Maybe.Extra
 import PaymentMethods exposing (PaymentMethod)
@@ -237,6 +236,7 @@ maybeResultsElement time onlyOpenTrades tcDoneLoading tradeCaches model =
         TradeTable.view
             time
             model.tradeTable
+            model.prices
             [ if onlyOpenTrades then
                 TradeTable.Expires
 
@@ -244,7 +244,7 @@ maybeResultsElement time onlyOpenTrades tcDoneLoading tradeCaches model =
                 TradeTable.Phase
             , TradeTable.Offer
             , TradeTable.Price
-            , TradeTable.Margin
+            , TradeTable.ResponderProfit
             , TradeTable.PaymentWindow
             , TradeTable.BurnWindow
             ]
@@ -326,7 +326,7 @@ fiatInput showTypeDropdown symbol errors =
     Element.el
         [ Element.alignTop, Element.width <| Element.px 120 ]
         (EH.currencySelector showTypeDropdown symbol (ShowCurrencyDropdown True) FiatTypeInputChanged flagClickedMsg
-            |> withInputHeader "Fiat Type"
+            |> withInputHeader "Currency Type"
         )
 
 

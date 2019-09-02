@@ -15,6 +15,7 @@ import Dict
 import Eth
 import Helpers.BigInt as BigIntHelpers
 import Helpers.Time as TimeHelpers
+import Maybe.Extra
 import PriceFetch
 import Routing
 import Time
@@ -29,12 +30,13 @@ init wallet =
     , initiatorRole = Seller
     , amountInInput = ""
     , amountIn = Nothing
+    , amountOutInput = ""
     , dhToken =
         Wallet.factory wallet
             |> Maybe.withDefault (Native XDai)
     , foreignCrypto = ZEC
-    , marginInput = "2"
-    , margin = Nothing
+    , responderProfitInput = "2"
+    , responderProfit = Just 0.02
     , amountOut = Nothing
     , receiveAddress = ""
     , showDhTokenDropdown = False
@@ -46,7 +48,6 @@ init wallet =
     , prices = []
     , now = Time.millisToPosix 0
     }
-        |> applyInputs
         |> update Refresh
 
 
@@ -90,36 +91,14 @@ update msg prevModel =
                     let
                         newPrices =
                             pricesAndTimestamps
-                                |> List.map
-                                    (Tuple.mapSecond
-                                        (\priceAndTimestamp ->
-                                            priceAndTimestamp.price
-                                        )
-                                    )
+                                |> List.map (Tuple.mapSecond (PriceFetch.checkAgainstTime prevModel.now))
 
-                        anyPricesOutdated : Bool
-                        anyPricesOutdated =
-                            pricesAndTimestamps
-                                |> List.any
-                                    (\( _, priceAndTimestamp ) ->
-                                        TimeHelpers.compare
-                                            (TimeHelpers.sub
-                                                prevModel.now
-                                                priceAndTimestamp.timestamp
-                                            )
-                                            (Time.millisToPosix <| 1000 * 60 * 10)
-                                            == GT
-                                    )
-
-                        appCmds =
-                            if anyPricesOutdated then
-                                [ CmdUp.UserNotice UN.oldPriceDataWarning ]
-
-                            else
-                                []
+                        ( newModel, appCmds ) =
+                            { prevModel | prices = newPrices }
+                                |> tryUpdateAmountOut
                     in
                     UpdateResult
-                        { prevModel | prices = newPrices }
+                        newModel
                         Cmd.none
                         ChainCmd.none
                         appCmds
@@ -132,79 +111,175 @@ update msg prevModel =
                         [ CmdUp.UserNotice UN.cantFetchPrices ]
 
         AmountInChanged input ->
-            justModelUpdate
-                ({ prevModel
-                    | amountInInput = input
-                 }
-                    |> applyInputs
-                )
+            let
+                ( newMaybeAmountIn, newErrors ) =
+                    let
+                        prevErrors =
+                            prevModel.errors
+                    in
+                    case interpretAmount input of
+                        Ok maybeAmount ->
+                            ( maybeAmount
+                            , { prevErrors | amountIn = Nothing }
+                            )
 
-        MarginChanged input ->
-            justModelUpdate
-                ({ prevModel
-                    | marginInput = input
-                 }
-                    |> applyInputs
-                )
+                        Err errStr ->
+                            ( Nothing
+                            , { prevErrors | amountIn = Just errStr }
+                            )
+
+                ( newModel, appCmds ) =
+                    { prevModel
+                        | amountInInput = input
+                        , amountIn = newMaybeAmountIn
+                        , errors = newErrors
+                    }
+                        |> tryUpdateAmountOut
+            in
+            UpdateResult
+                newModel
+                Cmd.none
+                ChainCmd.none
+                appCmds
+
+        AmountOutChanged input ->
+            let
+                ( newMaybeAmountOut, newErrors ) =
+                    let
+                        prevErrors =
+                            prevModel.errors
+                    in
+                    case interpretAmount input of
+                        Ok maybeAmount ->
+                            ( maybeAmount
+                            , { prevErrors | amountOut = Nothing }
+                            )
+
+                        Err errStr ->
+                            ( Nothing
+                            , { prevErrors | amountOut = Just errStr }
+                            )
+
+                ( newModel, appCmds ) =
+                    { prevModel
+                        | amountOutInput = input
+                        , amountOut = newMaybeAmountOut
+                        , errors = newErrors
+                    }
+                        |> tryUpdateAmountIn
+            in
+            UpdateResult
+                newModel
+                Cmd.none
+                ChainCmd.none
+                appCmds
+
+        ResponderProfitChanged input ->
+            let
+                ( newMaybeResponderProfit, newErrors ) =
+                    let
+                        prevErrors =
+                            prevModel.errors
+                    in
+                    case interpretResponderProfit input of
+                        Ok maybeResponderProfit ->
+                            ( maybeResponderProfit
+                            , { prevErrors | responderProfit = Nothing }
+                            )
+
+                        Err errStr ->
+                            ( Nothing
+                            , { prevErrors | responderProfit = Just errStr }
+                            )
+
+                ( newModel, appCmds ) =
+                    { prevModel
+                        | responderProfitInput = input
+                        , responderProfit = newMaybeResponderProfit
+                        , errors = newErrors
+                    }
+                        |> tryUpdateAmountOut
+            in
+            UpdateResult
+                newModel
+                Cmd.none
+                ChainCmd.none
+                appCmds
 
         SwapClicked ->
-            justModelUpdate
-                ({ prevModel
-                    | initiatorRole =
-                        case prevModel.initiatorRole of
-                            Buyer ->
-                                Seller
+            let
+                ( newModel, appCmds ) =
+                    { prevModel
+                        | initiatorRole =
+                            case prevModel.initiatorRole of
+                                Buyer ->
+                                    Seller
 
-                            Seller ->
-                                Buyer
-                 }
-                    |> applyInputs
-                )
+                                Seller ->
+                                    Buyer
+                        , amountInInput = prevModel.amountOutInput
+                        , amountIn = prevModel.amountOut
+                        , amountOutInput = prevModel.amountInInput
+                        , amountOut = prevModel.amountIn
+                    }
+                        |> tryUpdateDaiAmount
+            in
+            UpdateResult
+                newModel
+                Cmd.none
+                ChainCmd.none
+                appCmds
 
         TokenTypeClicked ->
             justModelUpdate
-                ({ prevModel
+                { prevModel
                     | showDhTokenDropdown =
                         not prevModel.showDhTokenDropdown
-                 }
-                    |> applyInputs
-                )
+                }
 
         ChangeTokenType factory ->
-            justModelUpdate
-                ({ prevModel
-                    | dhToken = factory
-                    , showDhTokenDropdown = False
-                 }
-                    |> applyInputs
-                )
+            let
+                ( newModel, appCmds ) =
+                    { prevModel
+                        | dhToken = factory
+                        , showDhTokenDropdown = False
+                    }
+                        |> tryUpdateDaiAmount
+            in
+            UpdateResult
+                newModel
+                Cmd.none
+                ChainCmd.none
+                appCmds
 
         ForeignCryptoTypeClicked ->
             justModelUpdate
-                ({ prevModel
+                { prevModel
                     | showForeignCryptoDropdown =
                         not prevModel.showForeignCryptoDropdown
-                 }
-                    |> applyInputs
-                )
+                }
 
         ChangeForeignCrypto crypto ->
-            justModelUpdate
-                ({ prevModel
-                    | foreignCrypto = crypto
-                    , showForeignCryptoDropdown = False
-                 }
-                    |> applyInputs
-                )
+            let
+                ( newModel, appCmds ) =
+                    { prevModel
+                        | foreignCrypto = crypto
+                        , showForeignCryptoDropdown = False
+                    }
+                        |> tryUpdateForeignCryptoAmount
+            in
+            UpdateResult
+                newModel
+                Cmd.none
+                ChainCmd.none
+                appCmds
 
         ReceiveAddressChanged input ->
             justModelUpdate
-                ({ prevModel
+                { prevModel
                     | receiveAddress =
                         input
-                 }
-                    |> applyInputs
-                )
+                }
 
         PlaceOrderClicked factoryType userInfo userParameters ->
             let
@@ -401,72 +476,132 @@ runCmdDown cmdDown prevModel =
                 }
 
 
-applyInputs : Model -> Model
-applyInputs prevModel =
-    let
-        ( maybeAmountIn, amountInError ) =
-            case interpretAmountIn prevModel.amountInInput of
-                Ok (Just amountIn_) ->
-                    ( Just amountIn_, Nothing )
+tryUpdateAmountOut : Model -> ( Model, List (CmdUp Msg) )
+tryUpdateAmountOut prevModel =
+    case PriceFetch.getPriceData prevModel.foreignCrypto prevModel.prices of
+        Just (PriceFetch.Ok price) ->
+            let
+                newAmountOut =
+                    Maybe.map2
+                        (\amountIn responderProfit ->
+                            case prevModel.initiatorRole of
+                                Buyer ->
+                                    (amountIn * price) / (responderProfit + 1)
 
-                Ok Nothing ->
-                    ( Nothing, Nothing )
+                                Seller ->
+                                    let
+                                        tradeAmountAfterDevFee =
+                                            amountIn / 1.01
 
-                Err errStr ->
-                    ( Nothing, Just errStr )
+                                        equivalentForeignCrypto =
+                                            tradeAmountAfterDevFee / price
+                                    in
+                                    equivalentForeignCrypto / (responderProfit + 1)
+                        )
+                        prevModel.amountIn
+                        prevModel.responderProfit
+            in
+            ( { prevModel
+                | amountOut =
+                    case newAmountOut of
+                        Just _ ->
+                            newAmountOut
 
-        ( maybeMargin, marginError ) =
-            case interpretMargin prevModel.marginInput of
-                Ok (Just margin_) ->
-                    ( Just margin_, Nothing )
+                        Nothing ->
+                            prevModel.amountOut
+                , amountOutInput =
+                    newAmountOut
+                        |> Maybe.map String.fromFloat
+                        |> Maybe.withDefault prevModel.amountOutInput
+              }
+            , []
+            )
 
-                Ok Nothing ->
-                    ( Nothing, Nothing )
+        Just PriceFetch.Outdated ->
+            ( prevModel
+            , [ CmdUp.UserNotice UN.oldPriceDataWarning ]
+            )
 
-                Err errStr ->
-                    ( Nothing, Just errStr )
-
-        maybeAmountOut =
-            Maybe.map3
-                (\amountIn margin price ->
-                    case prevModel.initiatorRole of
-                        Buyer ->
-                            let
-                                equivalentDai =
-                                    amountIn * price
-
-                                equivalentDaiMinusMargin =
-                                    equivalentDai - (equivalentDai * margin)
-                            in
-                            equivalentDaiMinusMargin
-
-                        Seller ->
-                            let
-                                tradeAmountAfterDevFee =
-                                    amountIn - (amountIn / 101)
-
-                                equivalentForeignCrypto =
-                                    tradeAmountAfterDevFee / price
-                            in
-                            equivalentForeignCrypto - (equivalentForeignCrypto * margin)
-                )
-                maybeAmountIn
-                maybeMargin
-                (foreignCryptoPrice prevModel prevModel.foreignCrypto)
-    in
-    { prevModel
-        | amountIn = maybeAmountIn
-        , margin = maybeMargin
-        , amountOut = maybeAmountOut
-        , errors =
-            { amountIn = amountInError
-            , margin = marginError
-            }
-    }
+        Nothing ->
+            ( prevModel
+            , []
+            )
 
 
-interpretAmountIn : String -> Result String (Maybe Float)
-interpretAmountIn input =
+tryUpdateAmountIn : Model -> ( Model, List (CmdUp Msg) )
+tryUpdateAmountIn prevModel =
+    case PriceFetch.getPriceData prevModel.foreignCrypto prevModel.prices of
+        Just (PriceFetch.Ok price) ->
+            let
+                newAmountIn =
+                    Maybe.map2
+                        (\amountOut responderProfit ->
+                            case prevModel.initiatorRole of
+                                Buyer ->
+                                    (amountOut * (responderProfit + 1)) / price
+
+                                Seller ->
+                                    let
+                                        amountOutPlusResponderProfit =
+                                            amountOut * (responderProfit + 1)
+
+                                        equivalentDai =
+                                            amountOutPlusResponderProfit * price
+                                    in
+                                    equivalentDai * 1.01
+                        )
+                        prevModel.amountOut
+                        prevModel.responderProfit
+            in
+            ( { prevModel
+                | amountIn =
+                    case newAmountIn of
+                        Just _ ->
+                            newAmountIn
+
+                        Nothing ->
+                            prevModel.amountIn
+                , amountInInput =
+                    newAmountIn
+                        |> Maybe.map String.fromFloat
+                        |> Maybe.withDefault prevModel.amountInInput
+              }
+            , []
+            )
+
+        Just PriceFetch.Outdated ->
+            ( prevModel
+            , [ CmdUp.UserNotice UN.oldPriceDataWarning ]
+            )
+
+        Nothing ->
+            ( prevModel
+            , []
+            )
+
+
+tryUpdateDaiAmount : Model -> ( Model, List (CmdUp Msg) )
+tryUpdateDaiAmount prevModel =
+    case prevModel.initiatorRole of
+        Buyer ->
+            tryUpdateAmountOut prevModel
+
+        Seller ->
+            tryUpdateAmountIn prevModel
+
+
+tryUpdateForeignCryptoAmount : Model -> ( Model, List (CmdUp Msg) )
+tryUpdateForeignCryptoAmount prevModel =
+    case prevModel.initiatorRole of
+        Buyer ->
+            tryUpdateAmountIn prevModel
+
+        Seller ->
+            tryUpdateAmountOut prevModel
+
+
+interpretAmount : String -> Result String (Maybe Float)
+interpretAmount input =
     if input == "" then
         Ok Nothing
 
@@ -479,14 +614,14 @@ interpretAmountIn input =
                 Err "Invalid amount"
 
 
-interpretMargin : String -> Result String (Maybe Float)
-interpretMargin input =
+interpretResponderProfit : String -> Result String (Maybe Float)
+interpretResponderProfit input =
     if input == "" then
         Ok Nothing
 
     else
         String.toFloat input
-            |> Result.fromMaybe "Invalid margin"
+            |> Result.fromMaybe "Invalid responderProfit"
             |> Result.map (\percent -> percent / 100.0)
             |> Result.map Just
 

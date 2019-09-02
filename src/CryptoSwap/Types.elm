@@ -1,4 +1,4 @@
-module CryptoSwap.Types exposing (Errors, Model, Msg(..), TxChainStatus(..), UpdateResult, exampleAddressForForeignCrypto, foreignCryptoPrice, justModelUpdate, maybeUserParameters, noErrors)
+module CryptoSwap.Types exposing (Errors, Model, Msg(..), TxChainStatus(..), UpdateResult, exampleAddressForForeignCrypto, justModelUpdate, maybeUserParameters, noErrors)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -23,8 +23,9 @@ type alias Model =
     , amountIn : Maybe Float
     , dhToken : FactoryType
     , foreignCrypto : ForeignCrypto
-    , marginInput : String
-    , margin : Maybe Float
+    , responderProfitInput : String
+    , responderProfit : Maybe Float
+    , amountOutInput : String
     , amountOut : Maybe Float
     , receiveAddress : String
     , showDhTokenDropdown : Bool
@@ -33,7 +34,7 @@ type alias Model =
     , txChainStatus : Maybe TxChainStatus
     , depositAmount : Maybe BigInt
     , allowance : Maybe BigInt
-    , prices : List ( ForeignCrypto, Float )
+    , prices : List ( ForeignCrypto, PriceFetch.PriceData )
     , now : Time.Posix
     }
 
@@ -51,7 +52,8 @@ type Msg
     | Refresh
     | PricesFetched (Result Http.Error (List ( ForeignCrypto, PriceFetch.PriceAndTimestamp )))
     | AmountInChanged String
-    | MarginChanged String
+    | AmountOutChanged String
+    | ResponderProfitChanged String
     | SwapClicked
     | TokenTypeClicked
     | ChangeTokenType FactoryType
@@ -88,13 +90,14 @@ justModelUpdate model =
 
 type alias Errors =
     { amountIn : Maybe String
-    , margin : Maybe String
+    , amountOut : Maybe String
+    , responderProfit : Maybe String
     }
 
 
 noErrors : Errors
 noErrors =
-    Errors Nothing Nothing
+    Errors Nothing Nothing Nothing
 
 
 exampleAddressForForeignCrypto : ForeignCrypto -> String
@@ -115,7 +118,7 @@ maybeUserParameters model =
     case model.initiatorRole of
         Buyer ->
             Maybe.map3
-                (\amountIn margin amountOut ->
+                (\amountIn responderProfit amountOut ->
                     { initiatorRole = model.initiatorRole
                     , tradeAmount = TokenValue.fromFloatWithWarning amountOut
                     , price = Prices.fromForeignCrypto model.foreignCrypto amountIn
@@ -133,14 +136,16 @@ maybeUserParameters model =
                     }
                 )
                 model.amountIn
-                model.margin
+                model.responderProfit
                 model.amountOut
 
         Seller ->
             Maybe.map4
-                (\amountIn margin receiveAddress amountOut ->
+                (\amountIn responderProfit receiveAddress amountOut ->
                     { initiatorRole = model.initiatorRole
-                    , tradeAmount = TokenValue.fromFloatWithWarning amountIn
+                    , tradeAmount =
+                        (amountIn - (amountIn / 101))
+                            |> TokenValue.fromFloatWithWarning
                     , price = Prices.fromForeignCrypto model.foreignCrypto amountOut
                     , paymentMethods =
                         [ PaymentMethod
@@ -153,7 +158,7 @@ maybeUserParameters model =
                     }
                 )
                 model.amountIn
-                model.margin
+                model.responderProfit
                 (if model.receiveAddress == "" then
                     Nothing
 
@@ -161,11 +166,3 @@ maybeUserParameters model =
                     Just model.receiveAddress
                 )
                 model.amountOut
-
-
-foreignCryptoPrice : Model -> ForeignCrypto -> Maybe Float
-foreignCryptoPrice model crypto =
-    model.prices
-        |> List.filter (Tuple.first >> (==) crypto)
-        |> List.head
-        |> Maybe.map Tuple.second

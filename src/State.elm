@@ -108,27 +108,38 @@ init flags url key =
                     )
                 |> Cmd.batch
 
+        submodelInitResult =
+            CryptoSwap.State.init wallet
+
+        ( newTxSentry, chainCmd, chainCmdUserNotices ) =
+            ChainCmd.execute txSentry (ChainCmd.map CryptoSwapMsg submodelInitResult.chainCmd)
+
         ( model, fromUrlCmd ) =
             { key = key
             , wallet = wallet
             , userAddress = Nothing
             , time = Time.millisToPosix 0
-            , txSentry = txSentry
+            , txSentry = newTxSentry
             , tradeCaches = tradeCaches
-            , submodel = BetaLandingPage
-            , currentRoute = Routing.Home
+            , submodel = CryptoSwapModel submodelInitResult.model
+            , currentRoute = Routing.CryptoSwap
             , userNotices = []
             , screenWidth = flags.width
             }
                 |> updateFromUrl url
                 |> runCmdUps cmdUps
     in
-    ( model |> addUserNotices userNotices
+    ( model
+        |> addUserNotices
+            (userNotices ++ chainCmdUserNotices)
     , Cmd.batch
         [ tcCmd
         , fromUrlCmd
+        , Cmd.map CryptoSwapMsg submodelInitResult.cmd
+        , chainCmd
         ]
     )
+        |> runCmdUps (List.map (CmdUp.map CryptoSwapMsg) submodelInitResult.cmdUps)
 
 
 type alias EncryptedMessage =
@@ -541,13 +552,6 @@ updateFromUrl url model =
 gotoRoute : Routing.Route -> Model -> ( Model, Cmd Msg )
 gotoRoute route oldModel =
     (case route of
-        Routing.Home ->
-            ( { oldModel
-                | submodel = BetaLandingPage
-              }
-            , Cmd.none
-            )
-
         Routing.Create maybeCreateParameters ->
             let
                 updateResult =
@@ -665,11 +669,6 @@ getTradeFromCaches factory id tradeCaches =
 runCmdDown : CmdDown.CmdDown -> Model -> ( Model, Cmd Msg )
 runCmdDown cmdDown oldModel =
     case oldModel.submodel of
-        BetaLandingPage ->
-            ( oldModel
-            , Cmd.none
-            )
-
         CreateModel createModel ->
             let
                 updateResult =
@@ -781,48 +780,6 @@ runCmdDown cmdDown oldModel =
                     )
 
 
-
--- updateSubmodelWalletState : Wallet.State -> Submodel -> ( Submodel, Cmd Msg )
--- updateSubmodelWalletState wallet submodel =
---     case submodel of
---         BetaLandingPage ->
---             ( submodel
---             , Cmd.none
---             )
---         CreateModel createModel ->
---             let
---                 ( newCreateModel, createCmd ) =
---                     createModel |> Create.State.updateWalletState wallet
---             in
---             ( CreateModel newCreateModel
---             , Cmd.map CreateMsg createCmd
---             )
---         CryptoSwapModel cryptoSwapModel ->
---             let
---                 ( newCryptoSwapModel, cryptoSwapCmd ) =
---                     cryptoSwapModel |> CryptoSwap.State.updateWalletState wallet
---             in
---             ( CryptoSwapModel newCryptoSwapModel
---             , Cmd.map CryptoSwapMsg cryptoSwapCmd
---             )
---         TradeModel tradeModel ->
---             let
---                 ( newTradeModel, tradeCmd ) =
---                     tradeModel |> Trade.State.updateWalletState wallet
---             in
---             ( TradeModel newTradeModel
---             , Cmd.map TradeMsg tradeCmd
---             )
---         MarketplaceModel marketplaceModel ->
---             ( MarketplaceModel (marketplaceModel |> Marketplace.State.updateWalletState wallet)
---             , Cmd.none
---             )
---         AgentHistoryModel agentHistoryModel ->
---             ( AgentHistoryModel (agentHistoryModel |> AgentHistory.State.updateWalletState wallet)
---             , Cmd.none
---             )
-
-
 subscriptions : Model -> Sub Msg
 subscriptions model =
     let
@@ -849,9 +806,6 @@ subscriptions model =
 submodelSubscriptions : Model -> Sub Msg
 submodelSubscriptions model =
     case model.submodel of
-        BetaLandingPage ->
-            Sub.none
-
         CreateModel createModel ->
             Sub.map CreateMsg <| Create.State.subscriptions createModel
 

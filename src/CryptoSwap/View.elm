@@ -22,37 +22,51 @@ import Wallet
 
 root : Model -> ( Element Msg, List (Element Msg) )
 root model =
-    ( EH.submodelContainer
-        1000
-        (Just "Trade Dai/xDai for ZEC, XMR, or BTC")
-        "CRYPTO SWAP"
-        (Element.column
-            [ Element.spacing 20
-            , Element.padding 15
-            , Element.width Element.fill
-            ]
-            [ fromToElement model
-            , Element.row
-                [ Element.width Element.fill ]
-                [ Element.el [ Element.width (Element.fillPortion 1) ] Element.none
-                , Element.el [ Element.width (Element.fillPortion 2) ] <| maybeAddressInput model
-                , Element.el [ Element.width (Element.fillPortion 1) ] Element.none
+    ( Element.column
+        [ Element.spacing 30
+        , Element.width Element.fill
+        ]
+        [ EH.submodelContainer
+            1000
+            (Just "Trade Dai/xDai for ZEC, XMR, or BTC")
+            "CRYPTO SWAP"
+            (Element.column
+                [ Element.spacing 20
+                , Element.padding 15
+                , Element.width Element.fill
                 ]
-            , Element.el [ Element.centerX ] (placeOrderButton model)
+                [ fromToElement model
+                , Element.row
+                    [ Element.width Element.fill ]
+                    [ Element.el [ Element.width (Element.fillPortion 1) ] Element.none
+                    , Element.el [ Element.width (Element.fillPortion 2) ] <| maybeAddressInput model
+                    , Element.el [ Element.width (Element.fillPortion 1) ] Element.none
+                    ]
+                , Element.el [ Element.centerX ] (placeOrderButton model)
+                ]
+            )
+        , Element.link
+            [ Element.Border.rounded 4
+            , Element.width Element.fill
+            , Element.pointer
+            , Element.paddingXY 22 15
+            , Element.Background.color EH.blue
+            , Element.Font.color EH.white
+            , Element.Font.semiBold
+            , Element.Font.size 20
+            , Element.centerX
+            , Element.width Element.shrink
+            , Element.height Element.shrink
             ]
-        )
+            { url = "https://t.me/daihardexchange_group"
+            , label =
+                Element.paragraph
+                    [ Element.Font.center ]
+                    [ Element.text "Join the Telegram Group" ]
+            }
+        ]
     , [ getModalOrNone model ]
     )
-
-
-inputHeader : String -> Element Msg
-inputHeader title =
-    Element.el
-        [ Element.Font.size 20
-        , Element.paddingXY 20 0
-        , Element.Font.color EH.red
-        ]
-        (Element.text title)
 
 
 fromToElement : Model -> Element Msg
@@ -65,35 +79,19 @@ fromToElement model =
             [ Element.spacing 10
             , Element.width Element.fill
             ]
-            [ Element.column
-                [ Element.spacing 5
-                , Element.alignBottom
-                , Element.width Element.fill
-                ]
-                [ inputHeader "From:"
-                , fromInputBox model
-                ]
-            , Images.toElement
+            [ EH.withInputHeader
                 [ Element.alignBottom
-                , Element.width <| Element.px 24
-                , Element.pointer
-                , Element.Events.onClick SwapClicked
-                , Element.paddingEach
-                    { bottom = 18
-                    , top = 0
-                    , right = 0
-                    , left = 0
-                    }
-                ]
-                Images.swapArrows
-            , Element.column
-                [ Element.spacing 5
-                , Element.alignBottom
                 , Element.width Element.fill
                 ]
-                [ inputHeader "To:"
-                , toInputBox model
+                "From:"
+                (fromInputBox model)
+            , swapAndResponderProfitElement model
+            , EH.withInputHeader
+                [ Element.alignBottom
+                , Element.width Element.fill
                 ]
+                "To:"
+                (toInputBox model)
             ]
         , Element.row
             [ Element.width Element.fill
@@ -118,7 +116,7 @@ fromToElement model =
                 Element.none
             , Element.el
                 [ Element.width Element.fill ]
-                (case model.errors.margin of
+                (case model.errors.responderProfit of
                     Just errStr ->
                         Element.el
                             [ Element.Font.color EH.red
@@ -134,37 +132,79 @@ fromToElement model =
         ]
 
 
-inputBoxStyles : List (Element.Attribute Msg)
-inputBoxStyles =
-    [ Element.Border.rounded 20
-    , Element.paddingXY 20 0
-    , Element.Border.width 1
-    , Element.Background.color EH.white
-    , Element.Border.color <| Element.rgba 0 0 0 0.1
-    , Element.height <| Element.px 60
-    ]
-
-
 fromInputBox : Model -> Element Msg
 fromInputBox model =
     let
         tokenSelector =
             case model.initiatorRole of
                 Buyer ->
-                    foreignCryptoTypeElement model.foreignCrypto model.showForeignCryptoDropdown
+                    EH.foreignCryptoTypeSelector model.foreignCrypto model.showForeignCryptoDropdown ForeignCryptoTypeClicked ChangeForeignCrypto
 
                 Seller ->
-                    dhTokenTypeElement model.dhToken model.showDhTokenDropdown
+                    EH.dhTokenTypeSelector model.dhToken model.showDhTokenDropdown TokenTypeClicked ChangeTokenType
     in
+    EH.roundedComplexInputBox
+        [ Element.width Element.fill
+        , Element.centerY
+        ]
+        [ tokenSelector ]
+        { onChange = AmountInChanged
+        , text = model.amountInInput
+        , placeholder =
+            Just <|
+                Element.Input.placeholder
+                    [ Element.Font.color EH.placeholderTextColor
+                    ]
+                    (Element.text "0")
+        , label = Element.Input.labelHidden "amount in"
+        }
+        []
+
+
+swapAndResponderProfitElement : Model -> Element Msg
+swapAndResponderProfitElement model =
+    Element.column
+        [ Element.spacing 5
+        , Element.alignBottom
+        ]
+        [ responderProfitElement model
+        , Images.toElement
+            [ Element.centerX
+            , Element.width <| Element.px 24
+            , Element.pointer
+            , Element.Events.onClick SwapClicked
+            , Element.paddingEach
+                { bottom = 6
+                , top = 0
+                , right = 0
+                , left = 0
+                }
+            ]
+            Images.swapArrows
+        ]
+
+
+responderProfitElement : Model -> Element Msg
+responderProfitElement model =
     Element.row
-        (inputBoxStyles
-            ++ [ Element.spacing 15
-               , Element.width Element.fill
-               , Element.centerY
-               ]
-        )
-        [ tokenSelector
-        , amountInInputElement model.amountInInput
+        [ Element.centerX ]
+        [ Element.row
+            [ Element.Font.size 16 ]
+            [ Element.text "-"
+            , Element.Input.text
+                [ Element.Border.width 0
+                , Element.padding 0
+                , Element.height Element.shrink
+                , Element.width <| Element.px 20
+                ]
+                { onChange = ResponderProfitChanged
+                , text = model.responderProfitInput
+                , placeholder =
+                    Nothing
+                , label = Element.Input.labelHidden "responderProfit"
+                }
+            , Element.text "%"
+            ]
         ]
 
 
@@ -174,140 +214,29 @@ toInputBox model =
         tokenSelector =
             case model.initiatorRole of
                 Buyer ->
-                    dhTokenTypeElement model.dhToken model.showDhTokenDropdown
+                    EH.dhTokenTypeSelector model.dhToken model.showDhTokenDropdown TokenTypeClicked ChangeTokenType
 
                 Seller ->
-                    foreignCryptoTypeElement model.foreignCrypto model.showForeignCryptoDropdown
+                    EH.foreignCryptoTypeSelector model.foreignCrypto model.showForeignCryptoDropdown ForeignCryptoTypeClicked ChangeForeignCrypto
     in
-    Element.row
-        (inputBoxStyles
-            ++ [ Element.spacing 15
-               , Element.width Element.fill
-               , Element.centerY
-               ]
-        )
-        [ tokenSelector
-        , marginInput model.marginInput
-        , tradeOutputElement model
-        ]
-
-
-dhTokenTypeElement : FactoryType -> Bool -> Element Msg
-dhTokenTypeElement currentToken showDropdown =
-    Element.row
-        [ Element.spacing 8
-        , Element.pointer
-        , EH.onClickNoPropagation TokenTypeClicked
-        , Element.centerY
-        , Element.inFront <|
-            if showDropdown then
-                Element.el
-                    [ Element.moveUp 15
-                    , Element.moveLeft 10
-                    , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
-                    , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
-                    ]
-                <|
-                    EH.dropdownSelector
-                        ([ Token EthDai, Native XDai ]
-                            |> List.map
-                                (\token ->
-                                    ( Element.text (tokenUnitName token)
-                                    , ChangeTokenType token
-                                    )
-                                )
-                        )
-
-            else
-                Element.none
-        ]
-        [ Element.text <| tokenUnitName currentToken
-        , Images.toElement
-            [ Element.width <| Element.px 12 ]
-            Images.downArrow
-        ]
-
-
-foreignCryptoTypeElement : ForeignCrypto -> Bool -> Element Msg
-foreignCryptoTypeElement currentCrypto showDropdown =
-    Element.row
-        [ Element.spacing 8
-        , Element.pointer
-        , EH.onClickNoPropagation ForeignCryptoTypeClicked
-        , Element.centerY
-        , Element.inFront <|
-            if showDropdown then
-                Element.el
-                    [ Element.moveUp 15
-                    , Element.moveLeft 10
-                    , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
-                    , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
-                    ]
-                <|
-                    EH.dropdownSelector
-                        (foreignCryptoList
-                            |> List.map
-                                (\crypto ->
-                                    ( Element.text (foreignCryptoName crypto)
-                                    , ChangeForeignCrypto crypto
-                                    )
-                                )
-                        )
-
-            else
-                Element.none
-        ]
-        [ Element.text <| foreignCryptoName currentCrypto
-        , Images.toElement
-            [ Element.width <| Element.px 12 ]
-            Images.downArrow
-        ]
-
-
-amountInInputElement : String -> Element Msg
-amountInInputElement input =
-    Element.Input.text
-        [ Element.Border.width 0
+    EH.roundedComplexInputBox
+        [ Element.spacing 15
         , Element.width Element.fill
-        , Element.Font.alignRight
+        , Element.centerY
         ]
-        { onChange = AmountInChanged
-        , text = input
+        [ tokenSelector
+        ]
+        { onChange = AmountOutChanged
+        , text = model.amountOutInput
         , placeholder =
             Just <|
                 Element.Input.placeholder
-                    [ Element.Font.color EH.lightGray
-                    , Element.Font.alignRight
+                    [ Element.Font.color EH.placeholderTextColor
                     ]
                     (Element.text "0")
-        , label = Element.Input.labelHidden "amount in"
+        , label = Element.Input.labelHidden "amount out"
         }
-
-
-marginInput : String -> Element Msg
-marginInput input =
-    Element.row
-        [ Element.centerY
-        , Element.spacing 0
-        , Element.Font.size 18
-        , Element.width Element.shrink
-        ]
-        [ Element.text "( -"
-        , Element.Input.text
-            [ Element.Border.width 0
-            , Element.padding 0
-            , Element.Font.size 18
-            , Element.width <|
-                (Element.px (10 * String.length input) |> Element.minimum 10)
-            ]
-            { onChange = MarginChanged
-            , text = input
-            , placeholder =
-                Nothing
-            , label = Element.Input.labelHidden "margin"
-            }
-        , Element.text "%)"
-        ]
+        []
 
 
 maybeAddressInput : Model -> Element Msg
@@ -317,66 +246,34 @@ maybeAddressInput model =
             Element.none
 
         Seller ->
-            Element.column
-                [ Element.spacing 5
-                , Element.alignBottom
+            EH.withInputHeader
+                [ Element.alignBottom
                 , Element.width Element.fill
-                , Element.clipX
                 ]
-                [ inputHeader <|
-                    "Send "
-                        ++ foreignCryptoName model.foreignCrypto
-                        ++ " To:"
-                , addressInputElement model.receiveAddress model.foreignCrypto
-                ]
-
-
-tradeOutputElement : Model -> Element Msg
-tradeOutputElement model =
-    case model.amountOut of
-        Just amount ->
-            Element.row
-                [ Element.spacing 10
-                , Element.Font.color <| Element.rgb 0.2 0.2 0.2
-                ]
-                [ Element.text "="
-                , Element.text <| String.fromFloat amount
-                , Element.text <|
-                    case model.initiatorRole of
-                        Buyer ->
-                            tokenUnitName model.dhToken
-
-                        Seller ->
-                            foreignCryptoName model.foreignCrypto
-                ]
-
-        Nothing ->
-            Element.none
+                ("Send "
+                    ++ foreignCryptoName model.foreignCrypto
+                    ++ " To:"
+                )
+                (addressInputElement model.receiveAddress model.foreignCrypto)
 
 
 addressInputElement : String -> ForeignCrypto -> Element Msg
 addressInputElement input foreignCrypto =
-    Element.el
-        (inputBoxStyles
-            ++ [ Element.width Element.fill
-               , Element.paddingXY 10 0
-               ]
-        )
-    <|
-        Element.Input.text
-            [ Element.centerY
-            , Element.width Element.fill
-            , Element.Border.width 0
-            ]
-            { onChange = ReceiveAddressChanged
-            , text = input
-            , placeholder =
-                Just <|
-                    Element.Input.placeholder
-                        [ Element.Font.color EH.lightGray ]
-                        (Element.text <| exampleAddressForForeignCrypto foreignCrypto)
-            , label = Element.Input.labelHidden "receive address"
-            }
+    EH.roundedComplexInputBox
+        [ Element.width Element.fill
+        , Element.paddingXY 10 0
+        ]
+        []
+        { onChange = ReceiveAddressChanged
+        , text = input
+        , placeholder =
+            Just <|
+                Element.Input.placeholder
+                    [ Element.Font.color EH.placeholderTextColor ]
+                    (Element.text <| exampleAddressForForeignCrypto foreignCrypto)
+        , label = Element.Input.labelHidden "receive address"
+        }
+        []
 
 
 placeOrderButton : Model -> Element Msg
@@ -552,7 +449,9 @@ txChainStatusModal txChainStatus model =
                                       ]
                                     , [ Element.text "You can abort the offer any time before a Seller commits for a full refund. If no Seller commits within "
                                       , emphasizedText "24 hours"
-                                      , Element.text " your offer will automatically expire."
+                                      , Element.text " your offer will automatically expire. In both these cases, the full "
+                                      , depositAmountEl
+                                      , Element.text " is returned to you."
                                       ]
                                     , [ Element.text "A Seller can commit to the trade by depositing the full "
                                       , tradeAmountEl
@@ -593,7 +492,11 @@ txChainStatusModal txChainStatus model =
                                            )
 
                                 Seller ->
-                                    [ [ Element.text "Your "
+                                    [ [ Element.text "Of your "
+                                      , depositAmountEl
+                                      , Element.text ", 1% ("
+                                      , feeAmountEl
+                                      , Element.text ") will be set aside, and "
                                       , tradeAmountEl
                                       , Element.text " will be listed as selling for "
                                       , priceEl
@@ -601,7 +504,9 @@ txChainStatusModal txChainStatus model =
                                       ]
                                     , [ Element.text "You can abort the offer at any time before a Buyer commits for a full refund. If no Buyer commits within "
                                       , emphasizedText "24 hours"
-                                      , Element.text " your offer will automatically expire."
+                                      , Element.text " your offer will automatically expire. In both these cases, the full "
+                                      , depositAmountEl
+                                      , Element.text " is returned to you."
                                       ]
                                     , [ Element.text "A Buyer must deposit "
                                       , buyerDepositEl
@@ -619,9 +524,9 @@ txChainStatusModal txChainStatus model =
                                       , totalBurnableEl
                                       , Element.text <| ", which you are expected to do if and only if the Buyer has not sent the payment."
                                       ]
-                                    , [ Element.text "If the trade has resolved successfully, we take a 1% fee of "
+                                    , [ Element.text "If the trade has resolved successfully, DAIHard takes the 1% fee of "
                                       , feeAmountEl
-                                      , Element.text "."
+                                      , Element.text " set aside earlier."
                                       ]
                                     , [ Element.text <| "Are you ready?" ]
                                     ]
@@ -646,6 +551,7 @@ txChainStatusModal txChainStatus model =
                         )
                     ]
                 )
+                NoOp
                 AbortCreate
 
         ApproveNeedsSig tokenType ->
@@ -662,6 +568,8 @@ txChainStatusModal txChainStatus model =
                     , Element.text "(check Metamask!)"
                     , Element.text "Note that there will be a second transaction to sign after this."
                     ]
+                    NoOp
+                    NoOp
 
         ApproveMining tokenType createParameters txHash ->
             Element.el
@@ -680,6 +588,8 @@ txChainStatusModal txChainStatus model =
                         }
                     , Element.text "Funds will not leave your wallet until you sign the next transaction."
                     ]
+                    NoOp
+                    NoOp
 
         CreateNeedsSig _ ->
             Element.el
@@ -694,6 +604,8 @@ txChainStatusModal txChainStatus model =
                     [ Element.text "Waiting for user signature for the create call."
                     , Element.text "(check Metamask!)"
                     ]
+                    NoOp
+                    NoOp
 
         CreateMining factoryType txHash ->
             Element.el
@@ -712,3 +624,5 @@ txChainStatusModal txChainStatus model =
                         }
                     , Element.text "You will be redirected when it's mined."
                     ]
+                    NoOp
+                    NoOp

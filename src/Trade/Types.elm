@@ -1,9 +1,9 @@
 module Trade.Types exposing (ContractAction(..), Model, Msg(..), PhaseState(..), TxChainStatus(..), UpdateResult, actionName, justModelUpdate)
 
-import CmdUp exposing (CmdUp)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
+import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Contracts.Generated.DAIHardFactory as DHF
 import Contracts.Generated.DAIHardTrade as DHT
@@ -65,6 +65,7 @@ type Msg
     | MessageSubmitMined (Result String TxReceipt)
     | EncryptionFinished Json.Decode.Value
     | Web3Connect
+    | NoOp
 
 
 type alias UpdateResult =

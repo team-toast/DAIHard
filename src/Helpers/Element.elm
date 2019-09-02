@@ -1,4 +1,4 @@
-module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredMargin, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, marginFloatToConciseUnsignedString, marginSymbol, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, pokeButton, price, priceSymbolToImageElement, red, redButton, releasedIconColor, roundBottomCorners, roundTopCorners, scrollbarYEl, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredMargin, white, withHeader, yellow)
+module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredResponderProfit, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, dhTokenTypeSelector, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, foreignCryptoTypeSelector, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, priceSymbolToImageElement, red, redButton, releasedIconColor, responderProfitFloatToConciseString, responderProfitSymbol, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredResponderProfit, white, withHeader, withInputHeader, withSelectedUnderline, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -82,6 +82,10 @@ darkYellow =
 
 lightGray =
     Element.rgb255 233 237 242
+
+
+placeholderTextColor =
+    Element.rgb255 213 217 222
 
 
 mediumGray =
@@ -184,16 +188,16 @@ price p =
         ]
 
 
-coloredMargin : Bool -> Float -> Element msg
-coloredMargin upIsGreen marginFloat =
-    case marginFloatToConciseUnsignedString marginFloat of
+coloredResponderProfit : Bool -> Float -> Element msg
+coloredResponderProfit upIsGreen responderProfitFloat =
+    case responderProfitFloatToConciseString responderProfitFloat of
         "0%" ->
             Element.el [ Element.Font.size 16 ] (Element.text "0%")
 
         unsignedPercentString ->
             let
                 isUp =
-                    marginFloat >= 0
+                    responderProfitFloat >= 0
 
                 isGreen =
                     not <| xor isUp upIsGreen
@@ -205,23 +209,20 @@ coloredMargin upIsGreen marginFloat =
                     else
                         red
             in
-            Element.row [ Element.spacing 4 ]
-                [ marginSymbol [] isUp (Just isGreen)
-                , Element.el [ Element.Font.color textColor, Element.Font.size 16 ]
-                    (Element.text unsignedPercentString)
-                ]
+            Element.el [ Element.Font.color textColor, Element.Font.size 16 ]
+                (Element.text unsignedPercentString)
 
 
-uncoloredMargin : Float -> Element msg
-uncoloredMargin marginFloat =
-    case marginFloatToConciseUnsignedString marginFloat of
+uncoloredResponderProfit : Float -> Element msg
+uncoloredResponderProfit responderProfitFloat =
+    case responderProfitFloatToConciseString responderProfitFloat of
         "0%" ->
             Element.el [ Element.Font.size 16 ] (Element.text "0%")
 
         unsignedPercentString ->
             let
                 isUp =
-                    marginFloat >= 0
+                    responderProfitFloat >= 0
             in
             Element.row [ Element.spacing 4 ]
                 [ Element.el [ Element.Font.size 18 ]
@@ -392,6 +393,40 @@ priceSymbolToImageElement symbol =
 -- INPUTS
 
 
+roundedComplexInputBox :
+    List (Attribute msg)
+    -> List (Element msg)
+    ->
+        { onChange : String.String -> msg
+        , text : String.String
+        , placeholder : Maybe.Maybe (Element.Input.Placeholder msg)
+        , label : Element.Input.Label msg
+        }
+    -> List (Element msg)
+    -> Element msg
+roundedComplexInputBox extraAttributes leftItems inputConfig rightItems =
+    Element.row
+        (extraAttributes
+            ++ [ Element.Border.rounded 20
+               , Element.paddingXY 20 0
+               , Element.Border.width 1
+               , Element.Background.color white
+               , Element.Border.color <| Element.rgba 0 0 0 0.1
+               , Element.height <| Element.px 60
+               ]
+        )
+        (leftItems
+            ++ [ Element.Input.text
+                    [ Element.Border.width 0
+                    , Element.width Element.fill
+                    , Element.Font.alignRight
+                    ]
+                    inputConfig
+               ]
+            ++ rightItems
+        )
+
+
 intervalInput : Element.Color -> Time.Posix -> (Time.Posix -> msg) -> Element msg
 intervalInput numberColor i newIntervalMsg =
     let
@@ -545,6 +580,78 @@ textInputWithElement attributes inputAttributes addedElement labelStr value plac
         ]
 
 
+dhTokenTypeSelector : FactoryType -> Bool -> msg -> (FactoryType -> msg) -> Element msg
+dhTokenTypeSelector currentToken showDropdown onClickMsg onSelectMsg =
+    Element.row
+        [ Element.spacing 8
+        , Element.pointer
+        , onClickNoPropagation onClickMsg
+        , Element.centerY
+        , Element.inFront <|
+            if showDropdown then
+                Element.el
+                    [ Element.moveUp 15
+                    , Element.moveLeft 10
+                    , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
+                    , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
+                    ]
+                <|
+                    dropdownSelector
+                        ([ Token EthDai, Native XDai ]
+                            |> List.map
+                                (\token ->
+                                    ( Element.text (tokenUnitName token)
+                                    , onSelectMsg token
+                                    )
+                                )
+                        )
+
+            else
+                Element.none
+        ]
+        [ Element.text <| tokenUnitName currentToken
+        , Images.toElement
+            [ Element.width <| Element.px 12 ]
+            Images.downArrow
+        ]
+
+
+foreignCryptoTypeSelector : ForeignCrypto -> Bool -> msg -> (ForeignCrypto -> msg) -> Element msg
+foreignCryptoTypeSelector currentCrypto showDropdown onClickMsg onSelectMsg =
+    Element.row
+        [ Element.spacing 8
+        , Element.pointer
+        , onClickNoPropagation onClickMsg
+        , Element.centerY
+        , Element.inFront <|
+            if showDropdown then
+                Element.el
+                    [ Element.moveUp 15
+                    , Element.moveLeft 10
+                    , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
+                    , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
+                    ]
+                <|
+                    dropdownSelector
+                        (foreignCryptoList
+                            |> List.map
+                                (\crypto ->
+                                    ( Element.text (foreignCryptoName crypto)
+                                    , onSelectMsg crypto
+                                    )
+                                )
+                        )
+
+            else
+                Element.none
+        ]
+        [ Element.text <| foreignCryptoName currentCrypto
+        , Images.toElement
+            [ Element.width <| Element.px 12 ]
+            Images.downArrow
+        ]
+
+
 dropdownSelector : List ( Element msg, msg ) -> Element msg
 dropdownSelector itemsAndMsgs =
     Element.column
@@ -612,6 +719,8 @@ currencySelector showDropdown symbolInput openCurrencySelectorMsg typeStringChan
                         , Element.Background.color white
                         , Element.padding 10
                         , Element.centerX
+                        , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
+                        , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
                         ]
                         (Prices.searchPriceTypes symbolInput
                             |> Dict.toList
@@ -885,8 +994,8 @@ daiSymbolAndLabel factoryType =
         ]
 
 
-marginSymbol : List (Attribute msg) -> Bool -> Maybe Bool -> Element msg
-marginSymbol attributes isUp maybeIsGreen =
+responderProfitSymbol : List (Attribute msg) -> Bool -> Maybe Bool -> Element msg
+responderProfitSymbol attributes isUp maybeIsGreen =
     Images.toElement
         ((Element.height <| Element.px 34) :: attributes)
         (Images.marginSymbol isUp maybeIsGreen)
@@ -907,37 +1016,34 @@ testBorderStyles =
 -- ETC
 
 
-marginFloatToConciseUnsignedString : Float -> String
-marginFloatToConciseUnsignedString f =
-    let
-        absPercentNumber =
-            abs <| f * 100.0
+responderProfitFloatToConciseString : Float -> String
+responderProfitFloatToConciseString f =
+    (if f > 0 then
+        "+"
 
-        preDecimalString =
-            floor absPercentNumber
-                |> String.fromInt
+     else
+        ""
+    )
+        ++ (if f < 0.1 then
+                f
+                    |> (*) 1000
+                    |> round
+                    |> toFloat
+                    |> (\f_ -> f_ / 10)
+                    |> String.fromFloat
+                    |> (\s -> s ++ "%")
 
-        decimalRemainder =
-            absPercentNumber - toFloat (floor absPercentNumber)
-
-        extraDigitsNeeded =
-            max 0 (3 - String.length preDecimalString)
-
-        decimalString =
-            case extraDigitsNeeded of
-                0 ->
-                    ""
-
-                n ->
-                    String.fromFloat decimalRemainder
-                        |> String.dropLeft 1
-                        |> String.left (extraDigitsNeeded + 1)
-    in
-    preDecimalString ++ decimalString ++ "%"
+            else
+                f
+                    |> (*) 100
+                    |> round
+                    |> String.fromInt
+                    |> (\s -> s ++ "%")
+           )
 
 
-modal : Element.Color -> Element msg -> Element msg
-modal overlayColor el =
+modal : Element.Color -> msg -> msg -> Element msg -> Element msg
+modal overlayColor clickInsideMsg clickOutsideMsg el =
     Element.el
         [ Element.behindContent <|
             Element.el
@@ -948,17 +1054,19 @@ modal overlayColor el =
                 , Element.htmlAttribute <| Html.Attributes.style "left" "0"
                 , Element.htmlAttribute <| Html.Attributes.style "width" "100%"
                 , Element.htmlAttribute <| Html.Attributes.style "height" "100%"
+                , Element.Events.onClick clickOutsideMsg
                 ]
                 Element.none
         , Element.width Element.fill
         , Element.height Element.fill
+        , onClickNoPropagation clickInsideMsg
         ]
         el
 
 
-closeableModal : List (Attribute msg) -> Element msg -> msg -> Element msg
-closeableModal extraAttributes innerEl closeMsg =
-    (modal <| Element.rgba 0 0 0.3 0.6) <|
+closeableModal : List (Attribute msg) -> Element msg -> msg -> msg -> Element msg
+closeableModal extraAttributes innerEl clickInsideMsg closeMsg =
+    modal (Element.rgba 0 0 0.3 0.6) clickInsideMsg closeMsg <|
         Element.el
             ([ Element.centerX
              , Element.centerY
@@ -977,10 +1085,10 @@ closeableModal extraAttributes innerEl closeMsg =
             innerEl
 
 
-txProcessModal : List (Element msg) -> Element msg
-txProcessModal textLines =
-    (modal <| Element.rgba 0 0 0.3 0.6)
-        (Element.column
+txProcessModal : List (Element msg) -> msg -> msg -> Element msg
+txProcessModal textLines clickInsideMsg closeMsg =
+    modal (Element.rgba 0 0 0.3 0.6) clickInsideMsg closeMsg <|
+        Element.column
             [ Element.spacing 10
             , Element.centerX
             , Element.centerY
@@ -1002,7 +1110,6 @@ txProcessModal textLines =
                             [ line ]
                     )
             )
-        )
 
 
 comingSoonMsg : List (Attribute msg) -> String -> Element msg
@@ -1213,3 +1320,48 @@ submodelContainer maxWidth maybeBigTitleText smallTitleText el =
             , el
             ]
         ]
+
+
+withInputHeader : List (Attribute msg) -> String -> Element msg -> Element msg
+withInputHeader attributes titleStr el =
+    Element.column
+        (attributes
+            ++ [ Element.spacing 5
+               ]
+        )
+        [ Element.el
+            [ Element.Font.size 20
+            , Element.paddingXY 20 0
+            , Element.Font.color red
+            ]
+            (Element.text titleStr)
+        , el
+        ]
+
+
+withSelectedUnderline : List (Attribute msg) -> Bool -> Element msg -> Element msg
+withSelectedUnderline attributes selected el =
+    Element.el
+        (attributes
+            ++ [ Element.Border.widthEach
+                    { bottom = 2
+                    , top = 0
+                    , right = 0
+                    , left = 0
+                    }
+               , Element.paddingEach
+                    { bottom = 2
+                    , top = 0
+                    , right = 0
+                    , left = 0
+                    }
+               , Element.Border.color
+                    (if selected then
+                        blue
+
+                     else
+                        Element.rgba 0 0 0 0
+                    )
+               ]
+        )
+        el
