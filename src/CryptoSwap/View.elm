@@ -85,19 +85,7 @@ fromToElement model =
                 ]
                 "From:"
                 (fromInputBox model)
-            , Images.toElement
-                [ Element.alignBottom
-                , Element.width <| Element.px 24
-                , Element.pointer
-                , Element.Events.onClick SwapClicked
-                , Element.paddingEach
-                    { bottom = 18
-                    , top = 0
-                    , right = 0
-                    , left = 0
-                    }
-                ]
-                Images.swapArrows
+            , swapAndResponderProfitElement model
             , EH.withInputHeader
                 [ Element.alignBottom
                 , Element.width Element.fill
@@ -173,6 +161,53 @@ fromInputBox model =
         []
 
 
+swapAndResponderProfitElement : Model -> Element Msg
+swapAndResponderProfitElement model =
+    Element.column
+        [ Element.spacing 5
+        , Element.alignBottom
+        ]
+        [ responderProfitElement model
+        , Images.toElement
+            [ Element.centerX
+            , Element.width <| Element.px 24
+            , Element.pointer
+            , Element.Events.onClick SwapClicked
+            , Element.paddingEach
+                { bottom = 6
+                , top = 0
+                , right = 0
+                , left = 0
+                }
+            ]
+            Images.swapArrows
+        ]
+
+
+responderProfitElement : Model -> Element Msg
+responderProfitElement model =
+    Element.row
+        [ Element.centerX ]
+        [ Element.row
+            [ Element.Font.size 16 ]
+            [ Element.text "-"
+            , Element.Input.text
+                [ Element.Border.width 0
+                , Element.padding 0
+                , Element.height Element.shrink
+                , Element.width <| Element.px 20
+                ]
+                { onChange = ResponderProfitChanged
+                , text = model.responderProfitInput
+                , placeholder =
+                    Nothing
+                , label = Element.Input.labelHidden "responderProfit"
+                }
+            , Element.text "%"
+            ]
+        ]
+
+
 toInputBox : Model -> Element Msg
 toInputBox model =
     let
@@ -190,7 +225,6 @@ toInputBox model =
         , Element.centerY
         ]
         [ tokenSelector
-        , responderProfitInput model.responderProfitInput
         ]
         { onChange = AmountOutChanged
         , text = model.amountOutInput
@@ -203,32 +237,6 @@ toInputBox model =
         , label = Element.Input.labelHidden "amount out"
         }
         []
-
-
-responderProfitInput : String -> Element Msg
-responderProfitInput input =
-    Element.row
-        [ Element.centerY
-        , Element.spacing 0
-        , Element.Font.size 18
-        , Element.width Element.shrink
-        ]
-        [ Element.text "( -"
-        , Element.Input.text
-            [ Element.Border.width 0
-            , Element.padding 0
-            , Element.Font.size 18
-            , Element.width <|
-                (Element.px (10 * String.length input) |> Element.minimum 10)
-            ]
-            { onChange = ResponderProfitChanged
-            , text = input
-            , placeholder =
-                Nothing
-            , label = Element.Input.labelHidden "responderProfit"
-            }
-        , Element.text "%)"
-        ]
 
 
 maybeAddressInput : Model -> Element Msg
