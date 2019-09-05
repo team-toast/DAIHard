@@ -6,7 +6,6 @@ import CommonTypes exposing (..)
 import Config
 import Contracts.Types as CTypes
 import Create.View
-import CryptoSwap.View
 import Dict
 import Element exposing (Attribute, Element)
 import Element.Background
@@ -123,26 +122,6 @@ headerContent model =
         , Element.paddingXY 30 17
         ]
         [ headerLink
-            "Crypto Swap"
-            (GotoRoute <| Routing.CryptoSwap)
-            (case model.submodel of
-                CryptoSwapModel _ ->
-                    Active
-
-                _ ->
-                    Normal
-            )
-        , headerLink
-            "Custom Trade"
-            (GotoRoute <| Routing.Create Nothing)
-            (case model.submodel of
-                CreateModel _ ->
-                    Active
-
-                _ ->
-                    Normal
-            )
-        , headerLink
             "Marketplace"
             (GotoRoute Routing.Marketplace)
             (case model.submodel of
@@ -174,6 +153,16 @@ headerContent model =
                     "Connect to Wallet"
                     ConnectToWeb3
                     Important
+        , headerLink
+            "Create New Trade"
+            (GotoRoute <| Routing.CreateFiat)
+            (case model.submodel of
+                CreateModel _ ->
+                    Active
+
+                _ ->
+                    Normal
+            )
         , Element.column
             [ Element.alignRight
             , Element.spacing 0
@@ -229,7 +218,7 @@ logoElement =
         , Element.Font.bold
         , Element.centerX
         , Element.pointer
-        , Element.Events.onClick <| GotoRoute Routing.CryptoSwap
+        , Element.Events.onClick <| GotoRoute Routing.CreateFiat
         ]
         (Element.paragraph []
             [ Element.text "DAI"
@@ -369,17 +358,16 @@ submodelElementAndModal screenWidth model =
     let
         ( submodelEl, modalEls ) =
             case model.submodel of
+                InitialBlank ->
+                    ( Element.none
+                    , []
+                    )
+
                 CreateModel createModel ->
                     Create.View.root createModel
                         |> Tuple.mapBoth
                             (Element.map CreateMsg)
                             (List.map (Element.map CreateMsg))
-
-                CryptoSwapModel cryptoSwapModel ->
-                    CryptoSwap.View.root cryptoSwapModel
-                        |> Tuple.mapBoth
-                            (Element.map CryptoSwapMsg)
-                            (List.map (Element.map CryptoSwapMsg))
 
                 TradeModel tradeModel ->
                     Trade.View.root screenWidth model.time model.tradeCaches tradeModel

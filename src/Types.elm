@@ -9,7 +9,6 @@ import CmdDown
 import CmdUp
 import CommonTypes exposing (..)
 import Create.Types
-import CryptoSwap.Types
 import Eth.Net
 import Eth.Sentry.Tx as TxSentry exposing (TxSentry)
 import Eth.Sentry.Wallet as WalletSentry exposing (WalletSentry)
@@ -48,8 +47,8 @@ type alias Model =
 
 
 type Submodel
-    = CreateModel Create.Types.Model
-    | CryptoSwapModel CryptoSwap.Types.Model
+    = InitialBlank
+    | CreateModel Create.Types.Model
     | TradeModel Trade.Types.Model
     | MarketplaceModel Marketplace.Types.Model
     | AgentHistoryModel AgentHistory.Types.Model
@@ -66,7 +65,6 @@ type Msg
     | TxSentryMsg TxSentry.Msg
     | UserPubkeySet Json.Decode.Value
     | CreateMsg Create.Types.Msg
-    | CryptoSwapMsg CryptoSwap.Types.Msg
     | TradeCacheMsg Int TradeCache.Msg
     | TradeMsg Trade.Types.Msg
     | MarketplaceMsg Marketplace.Types.Msg

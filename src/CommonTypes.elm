@@ -1,4 +1,4 @@
-module CommonTypes exposing (BuyerOrSeller(..), FactoryType(..), ForeignCrypto(..), GTagData, InitiatorOrResponder(..), NativeFactoryType(..), TokenFactoryType(..), UserInfo, buyerOrSellerToString, factoryName, foreignCryptoFromName, foreignCryptoList, foreignCryptoName, networkNameForFactory, tokenUnitName)
+module CommonTypes exposing (BuyerOrSeller(..), FactoryType(..), ForeignCrypto(..), GTagData, InitiatorOrResponder(..), NativeFactoryType(..), TokenFactoryType(..), UserInfo, buyerOrSellerToString, dhTokenList, factoryName, foreignCryptoFromName, foreignCryptoList, foreignCryptoName, networkNameForFactory, tokenUnitName)
 
 import Dict
 import Eth.Net
@@ -113,6 +113,13 @@ networkNameForFactory factoryType =
 
         Native XDai ->
             "xDai"
+
+
+dhTokenList : List FactoryType
+dhTokenList =
+    [ Native XDai
+    , Token EthDai
+    ]
 
 
 type ForeignCrypto

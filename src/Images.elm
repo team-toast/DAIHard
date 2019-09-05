@@ -1,4 +1,4 @@
-module Images exposing (Image, aborted, addButton, backButton, burned, chatIcon, closeIcon, committedPhase, daiSymbol, downArrow, fiatBag, flame, image, judgmentPhase, loadingArrows, marginSymbol, none, numberOnCircleEl, openPhase, openWindowIcon, pmBank, pmCash, pmCustom, qmarkCircle, release, releaseWindowIcon, released, stopWhite, swapArrows, toElement, upArrow)
+module Images exposing (Image(..), aborted, addButton, backButton, burned, chatIcon, closeIcon, committedPhase, currencyIcon, daiSymbol, downArrow, fiatBag, flame, image, judgmentPhase, loadingArrows, marginSymbol, none, numberOnCircleEl, openPhase, openWindowIcon, pmBank, pmCash, pmCustom, qmarkCircle, release, releaseWindowIcon, released, searchIcon, stopWhite, swapArrows, toElement, upArrow)
 
 import Element exposing (Attribute, Element)
 import Time
@@ -265,3 +265,13 @@ swapArrows =
         { src = "/DAIHard/static/img/swap-arrows.svg"
         , description = "switch order type"
         }
+
+
+searchIcon : Image
+searchIcon =
+    Debug.todo ""
+
+
+currencyIcon : String -> Image
+currencyIcon symbol =
+    Debug.todo ""

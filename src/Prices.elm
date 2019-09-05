@@ -1,4 +1,4 @@
-module Prices exposing (Price, Symbol, char, charsAndImages, compare, decoder, encode, fromForeignCrypto, getIcon, searchPriceTypes, toString, usd)
+module Prices exposing (Price, Symbol, char, charsAndImages, compare, decoder, encode, fromForeignCrypto, getIcon, searchPriceTypes, symbolList, toString, usd)
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -75,6 +75,11 @@ charsAndImages =
                 )
             )
         |> Dict.fromList
+
+
+symbolList : List Symbol
+symbolList =
+    Dict.keys charsAndImages
 
 
 searchPriceTypes : String -> Dict Symbol ( Maybe String, Maybe Image )

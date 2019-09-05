@@ -1,4 +1,4 @@
-module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredResponderProfit, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, dhTokenTypeSelector, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, foreignCryptoTypeSelector, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, priceSymbolToImageElement, red, redButton, releasedIconColor, responderProfitFloatToConciseString, responderProfitSymbol, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredResponderProfit, white, withHeader, withInputHeader, withSelectedUnderline, yellow)
+module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, basicOpenDropdown, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredResponderProfit, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, dhTokenTypeSelector, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, foreignCryptoTypeSelector, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, priceSymbolToImageElement, red, redButton, releasedIconColor, responderProfitFloatToConciseString, responderProfitSymbol, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, searchableOpenDropdown, simpleSubmodelContainer, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, thinGrayHRuler, txProcessModal, uncoloredResponderProfit, white, withHeader, withInputHeader, withSelectedUnderline, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -1262,6 +1262,34 @@ scrollbarYEl attrs body =
             body
 
 
+simpleSubmodelContainer : Int -> Element msg -> Element msg
+simpleSubmodelContainer maxWidth el =
+    Element.el
+        [ Element.paddingEach
+            { top = 60
+            , bottom = 40
+            , right = 0
+            , left = 0
+            }
+        , Element.width Element.fill
+        ]
+    <|
+        Element.el
+            [ Element.Background.color white
+            , Element.Border.rounded 8
+            , Element.clip
+            , Element.centerX
+            , Element.width (Element.fill |> Element.maximum maxWidth)
+            , Element.Border.shadow
+                { offset = ( 0, 3 )
+                , size = 0
+                , blur = 20
+                , color = Element.rgba 0 0 0 0.06
+                }
+            ]
+            el
+
+
 submodelContainer : Int -> Maybe String -> String -> Element msg -> Element msg
 submodelContainer maxWidth maybeBigTitleText smallTitleText el =
     Element.column
@@ -1330,9 +1358,10 @@ withInputHeader attributes titleStr el =
                ]
         )
         [ Element.el
-            [ Element.Font.size 20
-            , Element.paddingXY 20 0
-            , Element.Font.color red
+            [ Element.Font.size 18
+            , Element.Font.semiBold
+            , Element.Font.color <| Element.rgb255 1 31 52
+            , Element.alignLeft
             ]
             (Element.text titleStr)
         , el
@@ -1365,3 +1394,104 @@ withSelectedUnderline attributes selected el =
                ]
         )
         el
+
+
+thinGrayHRuler : Element msg
+thinGrayHRuler =
+    Element.el
+        [ Element.height <| Element.px 1
+        , Element.width Element.fill
+        , Element.Background.color <| Element.rgba 0 0 0 0.2
+        ]
+        Element.none
+
+
+basicOpenDropdown : List (Attribute msg) -> Maybe (Element msg) -> List ( Element msg, msg ) -> Element msg
+basicOpenDropdown attributes maybeFirstEl items =
+    Element.el
+        (attributes
+            ++ [ Element.height (Element.shrink |> Element.maximum 340)
+               , Element.Background.color white
+               , Element.Border.rounded 6
+               , Element.clip
+               ]
+        )
+    <|
+        Element.column
+            [ Element.Background.color lightGray
+            , Element.spacing 1
+            , Element.width Element.fill
+            , Element.height Element.fill
+            ]
+            [ maybeFirstEl |> Maybe.withDefault Element.none
+            , Element.column
+                [ Element.scrollbarY
+                , Element.width Element.fill
+                , Element.height Element.fill
+                , Element.Background.color lightGray
+                , Element.spacing 1
+                ]
+                (items
+                    |> List.map
+                        (\( el, onClick ) ->
+                            Element.el
+                                [ Element.padding 25
+                                , Element.width Element.fill
+                                , Element.Events.onClick onClick
+                                , Element.mouseOver
+                                    [ Element.Background.color <| Element.rgba 0 0 1 0.15 ]
+                                ]
+                                el
+                        )
+                )
+            ]
+
+
+searchableOpenDropdown : List (Attribute msg) -> String -> List ( Element msg, List String, msg ) -> String -> (String -> msg) -> Element msg
+searchableOpenDropdown attributes placeholderText items searchInput searchInputChangedMsg =
+    let
+        filteredItems =
+            if searchInput == "" then
+                items
+                    |> List.map (\( a, b, c ) -> ( a, c ))
+
+            else
+                items
+                    |> List.filterMap
+                        (\( el, searchables, onClick ) ->
+                            if List.any (String.contains searchInput) searchables then
+                                Just ( el, onClick )
+
+                            else
+                                Nothing
+                        )
+    in
+    basicOpenDropdown
+        attributes
+        (Just <|
+            Element.row
+                [ Element.width Element.fill
+                , Element.Background.color <| Element.rgba 0 0 0 0.02
+                , Element.padding 13
+                , Element.spacing 13
+                , Element.Border.rounded 4
+                ]
+                [ Images.toElement
+                    [ Element.width <| Element.px 21 ]
+                    Images.searchIcon
+                , Element.Input.text
+                    [ Element.Border.width 0
+                    , Element.width Element.fill
+                    ]
+                    { onChange = searchInputChangedMsg
+                    , text = searchInput
+                    , placeholder =
+                        Just <|
+                            Element.Input.placeholder
+                                [ Element.Font.color placeholderTextColor ]
+                                (Element.text placeholderText)
+                    , label = Element.Input.labelHidden "search"
+                    }
+                ]
+        )
+        filteredItems
