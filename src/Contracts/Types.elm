@@ -6,6 +6,7 @@ import CommonTypes exposing (..)
 import Config
 import Contracts.Generated.DAIHardFactory as DHF
 import Contracts.Generated.DAIHardTrade as DHT
+import Currencies exposing (Price)
 import Eth.Decode
 import Eth.Types exposing (Address)
 import Eth.Utils
@@ -15,7 +16,6 @@ import Images exposing (Image)
 import Json.Decode
 import Json.Encode
 import PaymentMethods exposing (PaymentMethod)
-import Prices exposing (Price)
 import Time
 import TokenValue exposing (TokenValue)
 
@@ -812,7 +812,7 @@ encodeTerms terms =
                 terms.paymentMethods
 
         encodedPrice =
-            Prices.encode terms.price
+            Currencies.encodePrice terms.price
     in
     Json.Encode.object
         [ ( "paymentmethods", encodedPaymentMethods )
@@ -827,7 +827,7 @@ decodeTerms encodedTerms =
         decoder =
             Json.Decode.map2
                 Terms
-                (Json.Decode.field "price" Prices.decoder)
+                (Json.Decode.field "price" Currencies.priceDecoder)
                 (Json.Decode.field "paymentmethods"
                     (Json.Decode.list PaymentMethods.decoder)
                 )

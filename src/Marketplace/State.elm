@@ -9,6 +9,7 @@ import CommonTypes exposing (..)
 import Config
 import Contracts.Types as CTypes
 import Contracts.Wrappers
+import Currencies exposing (Price)
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
 import Filters.State as Filters
@@ -20,7 +21,6 @@ import Helpers.Time as TimeHelpers
 import Marketplace.Types exposing (..)
 import PaymentMethods exposing (PaymentMethod)
 import PriceFetch
-import Prices exposing (Price)
 import Routing
 import String.Extra
 import Time

@@ -7,6 +7,7 @@ import Collage.Render
 import CommonTypes exposing (..)
 import Config
 import Contracts.Types as CTypes exposing (FullTradeInfo)
+import Currencies exposing (Price)
 import DateFormat
 import Element exposing (Attribute, Element)
 import Element.Background
@@ -22,7 +23,6 @@ import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
 import Images exposing (Image)
 import PaymentMethods exposing (PaymentMethod)
-import Prices exposing (Price)
 import Time
 import TokenValue exposing (TokenValue)
 import Trade.ChatHistory.View as ChatHistory
@@ -189,13 +189,13 @@ renderPrice : Price -> Element Msg
 renderPrice price =
     Element.row
         [ Element.spacing 5 ]
-        [ Prices.getIcon price.symbol
+        [ Currencies.icon price.symbol
             |> Maybe.withDefault Element.none
         , Element.el
             [ Element.Font.size 24
             , Element.Font.medium
             ]
-            (Element.text <| Prices.toString price)
+            (Element.text <| Currencies.toString price)
         ]
 
 
@@ -889,7 +889,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
             TokenValue.toConciseString trade.parameters.tradeAmount ++ " " ++ tokenUnitName trade.factory
 
         priceString =
-            Prices.toString trade.terms.price
+            Currencies.toString trade.terms.price
 
         buyerDepositString =
             TokenValue.toConciseString trade.parameters.buyerDeposit ++ " " ++ tokenUnitName trade.factory
@@ -1360,7 +1360,7 @@ getModalOrNone model =
                                 |> TokenValue.toConciseString
 
                         priceString =
-                            Prices.toString trade.terms.price
+                            Currencies.toString trade.terms.price
 
                         daiAmountString =
                             TokenValue.toConciseString trade.parameters.tradeAmount ++ " " ++ tokenUnitName trade.factory

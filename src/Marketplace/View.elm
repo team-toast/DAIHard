@@ -5,6 +5,7 @@ import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Config
 import Contracts.Types as CTypes
+import Currencies exposing (Price)
 import Element exposing (Attribute, Element)
 import Element.Background
 import Element.Border
@@ -21,7 +22,6 @@ import List.Extra
 import Marketplace.Types exposing (..)
 import Maybe.Extra
 import PaymentMethods exposing (PaymentMethod)
-import Prices exposing (Price)
 import Time
 import TradeCache.State as TradeCache
 import TradeCache.Types as TradeCache exposing (TradeCache)
@@ -301,11 +301,11 @@ daiRangeInput minDai maxDai errors =
         |> withInputHeader "Dai Range"
 
 
-fiatInput : Bool -> Prices.Symbol -> Errors -> Element Msg
+fiatInput : Bool -> Currencies.Symbol -> Errors -> Element Msg
 fiatInput showTypeDropdown symbol errors =
     let
         fiatLabelElement =
-            Prices.getIcon symbol
+            Currencies.icon symbol
                 |> Maybe.withDefault Element.none
 
         minElement =
@@ -325,9 +325,13 @@ fiatInput showTypeDropdown symbol errors =
     in
     Element.el
         [ Element.alignTop, Element.width <| Element.px 120 ]
-        (EH.currencySelector showTypeDropdown symbol (ShowCurrencyDropdown True) FiatTypeInputChanged flagClickedMsg
-            |> withInputHeader "Currency Type"
-        )
+        (Debug.todo "replace currency selector")
+
+
+
+-- (EH.currencySelector showTypeDropdown symbol (ShowCurrencyDropdown True) FiatTypeInputChanged flagClickedMsg
+--     |> withInputHeader "Currency Type"
+-- )
 
 
 paymentMethodsInput : String -> Element Msg

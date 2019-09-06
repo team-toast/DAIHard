@@ -1,4 +1,4 @@
-module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, basicOpenDropdown, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredResponderProfit, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, dhTokenTypeSelector, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, foreignCryptoTypeSelector, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, priceSymbolToImageElement, red, redButton, releasedIconColor, responderProfitFloatToConciseString, responderProfitSymbol, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, searchableOpenDropdown, simpleSubmodelContainer, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, thinGrayHRuler, txProcessModal, uncoloredResponderProfit, white, withHeader, withInputHeader, withSelectedUnderline, yellow)
+module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, basicOpenDropdown, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredResponderProfit, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, red, redButton, releasedIconColor, responderProfitFloatToConciseString, responderProfitSymbol, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, searchableOpenDropdown, simpleSubmodelContainer, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, thinGrayHRuler, txProcessModal, uncoloredResponderProfit, white, withHeader, withInputHeader, withSelectedUnderline, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -7,6 +7,7 @@ import Color exposing (Color)
 import CommonTypes exposing (..)
 import Config
 import Css
+import Currencies exposing (Price)
 import Dict
 import Element exposing (Attribute, Element)
 import Element.Background
@@ -26,7 +27,6 @@ import Json.Decode
 import List
 import List.Extra
 import Maybe.Extra
-import Prices exposing (Price)
 import Task
 import Time
 import TokenValue exposing (TokenValue)
@@ -165,26 +165,15 @@ daiValue tv =
 
 price : Price -> Element msg
 price p =
-    let
-        currencyElement =
-            case Dict.get p.symbol Prices.charsAndImages of
-                Nothing ->
-                    Element.none
-
-                Just ( _, maybeImage ) ->
-                    Images.toElement
-                        [ Element.height <| Element.px 26 ]
-                        (maybeImage |> Maybe.withDefault Images.none)
-    in
     Element.row [ Element.spacing 4 ]
-        [ currencyElement
+        [ Currencies.icon p.symbol |> Maybe.withDefault Element.none
         , Element.el
             [ Element.Font.color <| Element.rgba 0 0 0 0.5
             , Element.Font.medium
             , Element.width <| Element.px 50
             ]
             (Element.text p.symbol)
-        , Element.text <| Prices.toString p
+        , Element.text <| Currencies.toString p
         ]
 
 
@@ -376,20 +365,17 @@ bigTimeUnitElement numDigits color labelString num =
         (Element.text <| numStr ++ labelString)
 
 
-priceSymbolToImageElement : Prices.Symbol -> Element msg
-priceSymbolToImageElement symbol =
-    case Dict.get symbol Prices.charsAndImages of
-        Nothing ->
-            Element.text "*"
 
-        Just ( _, maybeImage ) ->
-            Images.toElement [ Element.height <| Element.px 26 ]
-                (maybeImage
-                    |> Maybe.withDefault Images.none
-                )
-
-
-
+-- priceSymbolToImageElement : Currencies.Symbol -> Element msg
+-- priceSymbolToImageElement symbol =
+--     case Dict.get symbol Currencies.charsAndImages of
+--         Nothing ->
+--             Element.text "*"
+--         Just ( _, maybeImage ) ->
+--             Images.toElement [ Element.height <| Element.px 26 ]
+--                 (maybeImage
+--                     |> Maybe.withDefault Images.none
+--                 )
 -- INPUTS
 
 
@@ -580,76 +566,73 @@ textInputWithElement attributes inputAttributes addedElement labelStr value plac
         ]
 
 
-dhTokenTypeSelector : FactoryType -> Bool -> msg -> (FactoryType -> msg) -> Element msg
-dhTokenTypeSelector currentToken showDropdown onClickMsg onSelectMsg =
-    Element.row
-        [ Element.spacing 8
-        , Element.pointer
-        , onClickNoPropagation onClickMsg
-        , Element.centerY
-        , Element.inFront <|
-            if showDropdown then
-                Element.el
-                    [ Element.moveUp 15
-                    , Element.moveLeft 10
-                    , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
-                    , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
-                    ]
-                <|
-                    dropdownSelector
-                        ([ Token EthDai, Native XDai ]
-                            |> List.map
-                                (\token ->
-                                    ( Element.text (tokenUnitName token)
-                                    , onSelectMsg token
-                                    )
-                                )
-                        )
 
-            else
-                Element.none
-        ]
-        [ Element.text <| tokenUnitName currentToken
-        , Images.toElement
-            [ Element.width <| Element.px 12 ]
-            Images.downArrow
-        ]
-
-
-foreignCryptoTypeSelector : ForeignCrypto -> Bool -> msg -> (ForeignCrypto -> msg) -> Element msg
-foreignCryptoTypeSelector currentCrypto showDropdown onClickMsg onSelectMsg =
-    Element.row
-        [ Element.spacing 8
-        , Element.pointer
-        , onClickNoPropagation onClickMsg
-        , Element.centerY
-        , Element.inFront <|
-            if showDropdown then
-                Element.el
-                    [ Element.moveUp 15
-                    , Element.moveLeft 10
-                    , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
-                    , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
-                    ]
-                <|
-                    dropdownSelector
-                        (foreignCryptoList
-                            |> List.map
-                                (\crypto ->
-                                    ( Element.text (foreignCryptoName crypto)
-                                    , onSelectMsg crypto
-                                    )
-                                )
-                        )
-
-            else
-                Element.none
-        ]
-        [ Element.text <| foreignCryptoName currentCrypto
-        , Images.toElement
-            [ Element.width <| Element.px 12 ]
-            Images.downArrow
-        ]
+-- dhTokenTypeSelector : FactoryType -> Bool -> msg -> (FactoryType -> msg) -> Element msg
+-- dhTokenTypeSelector currentToken showDropdown onClickMsg onSelectMsg =
+--     Element.row
+--         [ Element.spacing 8
+--         , Element.pointer
+--         , onClickNoPropagation onClickMsg
+--         , Element.centerY
+--         , Element.inFront <|
+--             if showDropdown then
+--                 Element.el
+--                     [ Element.moveUp 15
+--                     , Element.moveLeft 10
+--                     , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
+--                     , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
+--                     ]
+--                 <|
+--                     dropdownSelector
+--                         ([ Token EthDai, Native XDai ]
+--                             |> List.map
+--                                 (\token ->
+--                                     ( Element.text (tokenUnitName token)
+--                                     , onSelectMsg token
+--                                     )
+--                                 )
+--                         )
+--             else
+--                 Element.none
+--         ]
+--         [ Element.text <| tokenUnitName currentToken
+--         , Images.toElement
+--             [ Element.width <| Element.px 12 ]
+--             Images.downArrow
+--         ]
+-- foreignCryptoTypeSelector : ForeignCrypto -> Bool -> msg -> (ForeignCrypto -> msg) -> Element msg
+-- foreignCryptoTypeSelector currentCrypto showDropdown onClickMsg onSelectMsg =
+--     Element.row
+--         [ Element.spacing 8
+--         , Element.pointer
+--         , onClickNoPropagation onClickMsg
+--         , Element.centerY
+--         , Element.inFront <|
+--             if showDropdown then
+--                 Element.el
+--                     [ Element.moveUp 15
+--                     , Element.moveLeft 10
+--                     , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
+--                     , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
+--                     ]
+--                 <|
+--                     dropdownSelector
+--                         (foreignCryptoList
+--                             |> List.map
+--                                 (\crypto ->
+--                                     ( Element.text (foreignCryptoName crypto)
+--                                     , onSelectMsg crypto
+--                                     )
+--                                 )
+--                         )
+--             else
+--                 Element.none
+--         ]
+--         [ Element.text <| foreignCryptoName currentCrypto
+--         , Images.toElement
+--             [ Element.width <| Element.px 12 ]
+--             Images.downArrow
+--         ]
 
 
 dropdownSelector : List ( Element msg, msg ) -> Element msg
@@ -682,77 +665,71 @@ dropdownSelector itemsAndMsgs =
         )
 
 
-currencySelector : Bool -> String -> msg -> (String -> msg) -> msg -> Element msg
-currencySelector showDropdown symbolInput openCurrencySelectorMsg typeStringChangedMsgConstructor flagClickedMsg =
-    let
-        maybeCharAndImage =
-            Dict.get symbolInput Prices.charsAndImages
 
-        inputElement =
-            Element.Input.text
-                [ Element.width <| Element.px 80
-                , Element.height <| Element.px 40
-                , Element.Font.size 24
-                , Element.Font.medium
-                , Element.Border.color lightGray
-                , onClickNoPropagation openCurrencySelectorMsg
-                ]
-                { onChange = String.toUpper >> typeStringChangedMsgConstructor
-                , text = symbolInput
-                , placeholder = Nothing
-                , label = Element.Input.labelHidden "currency type"
-                }
-
-        dropdownEl =
-            case ( showDropdown, maybeCharAndImage ) of
-                ( False, _ ) ->
-                    Element.none
-
-                ( True, Just _ ) ->
-                    Element.none
-
-                ( True, Nothing ) ->
-                    Element.wrappedRow
-                        [ Element.width <| Element.px 350
-                        , Element.Border.color black
-                        , Element.Border.width 1
-                        , Element.Background.color white
-                        , Element.padding 10
-                        , Element.centerX
-                        , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
-                        , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
-                        ]
-                        (Prices.searchPriceTypes symbolInput
-                            |> Dict.toList
-                            |> List.map
-                                (\( symbol, ( _, maybeImage ) ) ->
-                                    Element.row
-                                        [ Element.width <| Element.px 80
-                                        , Element.spacing 9
-                                        , Element.paddingXY 0 5
-                                        , onClickNoPropagation <| typeStringChangedMsgConstructor symbol
-                                        , Element.mouseOver [ Element.Background.color <| Element.rgb 0.8 0.8 1 ]
-                                        ]
-                                        [ Images.toElement
-                                            [ Element.height <| Element.px 26
-                                            ]
-                                            (maybeImage |> Maybe.withDefault Images.none)
-                                        , Element.el [ Element.Font.size 16, Element.Font.semiBold ] <| textWithoutTextCursor symbol
-                                        ]
-                                )
-                        )
-    in
-    Element.row
-        [ Element.spacing 4
-        , Element.below dropdownEl
-        ]
-        [ Element.el [ Element.Events.onClick flagClickedMsg ]
-            (Prices.getIcon symbolInput |> Maybe.withDefault Element.none)
-        , inputElement
-        ]
-
-
-
+-- currencySelector : Bool -> String -> msg -> (String -> msg) -> msg -> Element msg
+-- currencySelector showDropdown symbolInput openCurrencySelectorMsg typeStringChangedMsgConstructor flagClickedMsg =
+--     let
+--         maybeCharAndImage =
+--             Dict.get symbolInput Currencies.charsAndImages
+--         inputElement =
+--             Element.Input.text
+--                 [ Element.width <| Element.px 80
+--                 , Element.height <| Element.px 40
+--                 , Element.Font.size 24
+--                 , Element.Font.medium
+--                 , Element.Border.color lightGray
+--                 , onClickNoPropagation openCurrencySelectorMsg
+--                 ]
+--                 { onChange = String.toUpper >> typeStringChangedMsgConstructor
+--                 , text = symbolInput
+--                 , placeholder = Nothing
+--                 , label = Element.Input.labelHidden "currency type"
+--                 }
+--         dropdownEl =
+--             case ( showDropdown, maybeCharAndImage ) of
+--                 ( False, _ ) ->
+--                     Element.none
+--                 ( True, Just _ ) ->
+--                     Element.none
+--                 ( True, Nothing ) ->
+--                     Element.wrappedRow
+--                         [ Element.width <| Element.px 350
+--                         , Element.Border.color black
+--                         , Element.Border.width 1
+--                         , Element.Background.color white
+--                         , Element.padding 10
+--                         , Element.centerX
+--                         , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
+--                         , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
+--                         ]
+--                         (Currencies.searchPriceTypes symbolInput
+--                             |> Dict.toList
+--                             |> List.map
+--                                 (\( symbol, ( _, maybeImage ) ) ->
+--                                     Element.row
+--                                         [ Element.width <| Element.px 80
+--                                         , Element.spacing 9
+--                                         , Element.paddingXY 0 5
+--                                         , onClickNoPropagation <| typeStringChangedMsgConstructor symbol
+--                                         , Element.mouseOver [ Element.Background.color <| Element.rgb 0.8 0.8 1 ]
+--                                         ]
+--                                         [ Images.toElement
+--                                             [ Element.height <| Element.px 26
+--                                             ]
+--                                             (maybeImage |> Maybe.withDefault Images.none)
+--                                         , Element.el [ Element.Font.size 16, Element.Font.semiBold ] <| textWithoutTextCursor symbol
+--                                         ]
+--                                 )
+--                         )
+--     in
+--     Element.row
+--         [ Element.spacing 4
+--         , Element.below dropdownEl
+--         ]
+--         [ Element.el [ Element.Events.onClick flagClickedMsg ]
+--             (Currencies.getIcon symbolInput |> Maybe.withDefault Element.none)
+--         , inputElement
+--         ]
 -- BUTTONS
 
 
@@ -1201,10 +1178,9 @@ coolCurrencyHbreak reversed length =
     Element.el
         [ Element.width Element.fill
         , Element.inFront
-            (Prices.charsAndImages
+            (Currencies.fiatCharsAndImages
                 |> Dict.toList
                 |> List.map (Tuple.second >> Tuple.first)
-                |> Maybe.Extra.values
                 |> List.Extra.unique
                 |> (if reversed then
                         List.reverse

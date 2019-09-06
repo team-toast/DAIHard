@@ -17,7 +17,7 @@ import Helpers.Element as EH
 import Helpers.Tuple exposing (mapTuple2)
 import Marketplace.Types
 import Marketplace.View
-import Prices
+import Currencies
 import Routing
 import Trade.View
 import Types exposing (..)

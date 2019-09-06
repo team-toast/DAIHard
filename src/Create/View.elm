@@ -2,6 +2,7 @@ module Create.View exposing (root)
 
 import CommonTypes exposing (..)
 import Create.Types exposing (..)
+import Currencies
 import Element exposing (Element)
 import Element.Background
 import Element.Border
@@ -10,13 +11,12 @@ import Element.Input
 import Helpers.Element as EH
 import Images
 import Maybe.Extra
-import Prices
 
 
 root : Model -> ( Element Msg, List (Element Msg) )
 root model =
     ( EH.simpleSubmodelContainer
-        1000
+        800
         (Element.column
             [ Element.width Element.fill
             , Element.spacing 20
@@ -24,6 +24,9 @@ root model =
             [ header model.mode
             , EH.thinGrayHRuler
             , body model
+            , Element.el
+                [ Element.height <| Element.px 600 ]
+                Element.none
             ]
         )
     , viewModals model
@@ -39,20 +42,19 @@ header mode =
                     "Please choose which two cryptocurrencies you’d like to exchange, indicate which wallet address you’d like your exchanged coins sent, and edit the three trade windows if necessary."
 
                 OffRamp ->
-                    Debug.todo ""
+                    "You are the seller. Choose what cryptocurrency/fiat you wish to exchange, what payment methods you are willing to accept from the buyer, and edit the three trade windows if necessary."
 
                 OnRamp ->
-                    Debug.todo ""
+                    "You are the buyer. Choose what cryptocurrency/fiat you wish to exchange, what payment methods you are willing to send to the seller, and edit the three trade windows if necessary."
     in
     Element.column
         [ Element.width Element.fill
         , Element.spacing 20
-        , Element.padding 20
+        , Element.padding 30
         ]
         [ Element.row
-            [ Element.width Element.fill
-            , Element.spaceEvenly
-            , Element.spacing 30
+            [ Element.spacing 40
+            , Element.centerX
             ]
             [ modeHeader (mode == CryptoSwap Seller || mode == CryptoSwap Buyer) (CryptoSwap Seller)
             , modeHeader (mode == OffRamp) OffRamp
@@ -161,7 +163,7 @@ inTypeDropdown model =
             cryptoTypeDropdown
                 model.inputs.currencySearch
                 SearchInputChanged
-                (InTypeSelected << External << foreignCryptoName)
+                (InTypeSelected << External)
 
         OnRamp ->
             fiatTypeDropdown
@@ -180,34 +182,34 @@ dhTokenTypeDropdown msgConstructor =
                 (\tokenType ->
                     ( Element.row
                         [ Element.width Element.fill ]
-                        [ Images.toElement
-                            [ Element.width <| Element.px 36 ]
-                            (Images.currencyIcon <| tokenUnitName tokenType)
-                        , Element.text <| tokenUnitName tokenType
-                        ]
+                        (Maybe.Extra.values
+                            [ Currencies.icon <| tokenUnitName tokenType
+                            , Just <| Element.text <| tokenUnitName tokenType
+                            ]
+                        )
                     , msgConstructor tokenType
                     )
                 )
         )
 
 
-cryptoTypeDropdown : String -> (String -> Msg) -> (ForeignCrypto -> Msg) -> Element Msg
+cryptoTypeDropdown : String -> (String -> Msg) -> (Currencies.Symbol -> Msg) -> Element Msg
 cryptoTypeDropdown searchInput searchChangedMsg selectedMsg =
     EH.searchableOpenDropdown
         []
         "search cryptocurrencies"
-        (foreignCryptoList
+        (Currencies.foreignCryptoList
             |> List.map
-                (\foreignCrypto ->
+                (\symbol ->
                     ( Element.row
                         [ Element.width Element.fill ]
-                        [ Images.toElement
-                            [ Element.width <| Element.px 36 ]
-                            (Images.currencyIcon <| foreignCryptoName foreignCrypto)
-                        , Element.text <| foreignCryptoName foreignCrypto
-                        ]
-                    , [ foreignCryptoName foreignCrypto ]
-                    , selectedMsg foreignCrypto
+                        (Maybe.Extra.values
+                            [ Currencies.icon symbol
+                            , Just <| Element.text symbol
+                            ]
+                        )
+                    , [ symbol ]
+                    , selectedMsg symbol
                     )
                 )
         )
@@ -215,22 +217,22 @@ cryptoTypeDropdown searchInput searchChangedMsg selectedMsg =
         searchChangedMsg
 
 
-fiatTypeDropdown : String -> (String -> Msg) -> (Prices.Symbol -> Msg) -> Element Msg
+fiatTypeDropdown : String -> (String -> Msg) -> (Currencies.Symbol -> Msg) -> Element Msg
 fiatTypeDropdown searchInput searchChangedMsg selectedMsg =
     EH.searchableOpenDropdown
         []
         "search currencies"
-        (Prices.symbolList
+        (Currencies.fiatList
             |> List.map
                 (\fiatSymbol ->
                     ( Element.row
                         [ Element.width Element.fill ]
-                        [ Images.toElement
-                            [ Element.width <| Element.px 36 ]
-                            (Images.currencyIcon fiatSymbol)
-                        , Element.text fiatSymbol
-                        ]
-                    , Maybe.Extra.values [ Just fiatSymbol, Prices.char fiatSymbol ]
+                        (Maybe.Extra.values
+                            [ Currencies.icon fiatSymbol
+                            , Just <| Element.text fiatSymbol
+                            ]
+                        )
+                    , Maybe.Extra.values [ Just fiatSymbol, Currencies.fiatChar fiatSymbol ]
                     , selectedMsg fiatSymbol
                     )
                 )
@@ -242,13 +244,12 @@ fiatTypeDropdown searchInput searchChangedMsg selectedMsg =
 typeDropdownButton : Bool -> CurrencyType -> Msg -> Element Msg
 typeDropdownButton dropdownOpen currencyType onClick =
     Element.row
-        [ Element.Background.color <| Element.rgb 0.07 0.07 0.07
+        [ Element.Background.color <| Element.rgb 0.98 0.98 0.98
         , Element.padding 13
         , Element.spacing 13
         ]
-        [ Images.toElement
-            [ Element.width <| Element.px 36 ]
-            (Images.currencyIcon (currencySymbol currencyType))
+        [ Currencies.icon (currencySymbol currencyType)
+            |> Maybe.withDefault Element.none
         , Element.text <| currencySymbol currencyType
         , Images.toElement
             [ Element.width <| Element.px 12 ]
@@ -263,4 +264,4 @@ typeDropdownButton dropdownOpen currencyType onClick =
 
 viewModals : Model -> List (Element Msg)
 viewModals model =
-    Debug.todo ""
+    []

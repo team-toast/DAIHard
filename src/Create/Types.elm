@@ -5,7 +5,7 @@ import ChainCmd exposing (ChainCmd)
 import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Http
-import Prices
+import Currencies
 import TokenValue exposing (TokenValue)
 import Wallet
 
@@ -51,7 +51,7 @@ type Mode
 
 type CurrencyType
     = DHToken FactoryType
-    | External Prices.Symbol
+    | External Currencies.Symbol
 
 
 currencySymbol : CurrencyType -> String

@@ -4,6 +4,7 @@ import AgentHistory.Types exposing (..)
 import Array exposing (Array)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
+import Currencies exposing (Price)
 import Element exposing (Attribute, Element)
 import Element.Background
 import Element.Border
@@ -20,7 +21,6 @@ import Html.Events.Extra
 import Images exposing (Image)
 import Maybe.Extra
 import PaymentMethods exposing (PaymentMethod)
-import Prices exposing (Price)
 import Time
 import TokenValue exposing (TokenValue)
 import TradeCache.State as TradeCache
