@@ -27,7 +27,11 @@ type Msg
     | AmountInChanged String
     | InTypeClicked
     | InTypeSelected CurrencyType
+    | AmountOutChanged String
+    | OutTypeClicked
+    | OutTypeSelected CurrencyType
     | SearchInputChanged String
+    | SwapClicked
     | CloseModals
     | NoOp
     | CmdUp (CmdUp Msg)
@@ -35,8 +39,10 @@ type Msg
 
 type alias Inputs =
     { amountIn : String
-    , currencySearch : String
     , inType : CurrencyType
+    , amountOut : String
+    , outType : CurrencyType
+    , currencySearch : String
     }
 
 

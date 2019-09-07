@@ -1,4 +1,4 @@
-module Images exposing (Image(..), aborted, addButton, backButton, burned, chatIcon, closeIcon, committedPhase, daiSymbol, downArrow, fiatBag, flame, image, judgmentPhase, loadingArrows, marginSymbol, none, numberOnCircleEl, openPhase, openWindowIcon, pmBank, pmCash, pmCustom, qmarkCircle, release, releaseWindowIcon, released, searchIcon, stopWhite, swapArrows, toElement, upArrow)
+module Images exposing (Image(..), aborted, addButton, backButton, burned, chatIcon, closeIcon, committedPhase, daiSymbol, downArrow, fiatBag, flame, image, judgmentPhase, loadingArrows, marginSymbol, none, numberOnCircleEl, openPhase, openWindowIcon, pmBank, pmCash, pmCustom, qmarkCircle, release, releaseWindowIcon, released, searchIcon, stopWhite, swapArrows, toElement, upArrow, verticalSwapArrows)
 
 import Element exposing (Attribute, Element)
 import Time
@@ -272,4 +272,12 @@ searchIcon =
     JustImage
         { src = "/DAIHard/static/img/search.svg"
         , description = "search"
+        }
+
+
+verticalSwapArrows : Image
+verticalSwapArrows =
+    JustImage
+        { src = "/DAIHard/static/img/vertical-swap.svg"
+        , description = "swap"
         }

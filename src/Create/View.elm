@@ -101,8 +101,12 @@ body model =
     Element.column
         [ Element.width Element.fill
         , Element.padding 20
+        , Element.spacing 25
         ]
-        [ amountAndTypeIn model ]
+        [ amountAndTypeIn model
+        , Element.el [ Element.centerX ] swapButton
+        , amountOutRow model
+        ]
 
 
 amountAndTypeIn : Model -> Element Msg
@@ -110,16 +114,10 @@ amountAndTypeIn model =
     EH.withInputHeader
         [ Element.width Element.fill ]
         "I want to Sell"
-        (Element.row
-            [ Element.width Element.fill
-            , Element.Background.color EH.lightGray
-            , Element.Border.rounded 4
-            , Element.Border.width 1
-            , Element.Border.color EH.lightGray
-            , Element.spacing 1
-            ]
+        (inputContainer
             [ Element.Input.text
                 [ Element.width Element.fill
+                , Element.height Element.fill
                 , Element.Border.width 0
                 ]
                 { onChange = AmountInChanged
@@ -149,6 +147,101 @@ amountAndTypeIn model =
         )
 
 
+swapButton : Element Msg
+swapButton =
+    EH.elOnCircle
+        [ Element.pointer
+        , Element.Events.onClick SwapClicked
+        ]
+        52
+        (Element.rgba 0.05 0.03 0.92 0.05)
+        (Images.toElement
+            [ Element.height <| Element.px 30 ]
+            Images.verticalSwapArrows
+        )
+
+
+amountOutRow : Model -> Element Msg
+amountOutRow model =
+    Element.row
+        [ Element.width Element.fill
+        , Element.spacing 25
+        ]
+        [ Element.el [ Element.width <| Element.fillPortion 2 ]
+            (amountAndTypeOut model)
+        , Element.el
+            [ Element.Font.size 28
+            , Element.Font.color <| Element.rgba 0.05 0.1 0.3 0.25
+            , Element.Font.semiBold
+            , Element.alignBottom
+            , Element.paddingEach
+                { bottom = 14
+                , top = 0
+                , right = 0
+                , left = 0
+                }
+            ]
+            (Element.text "@")
+        , Element.el [ Element.width <| Element.fillPortion 1 ]
+            (margin model)
+        ]
+
+
+amountAndTypeOut : Model -> Element Msg
+amountAndTypeOut model =
+    EH.withInputHeader
+        [ Element.width Element.fill ]
+        "In Exchange for"
+        (inputContainer
+            [ Element.Input.text
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                , Element.Border.width 0
+                ]
+                { onChange = AmountOutChanged
+                , text = model.inputs.amountOut
+                , placeholder =
+                    Just <|
+                        Element.Input.placeholder
+                            [ Element.Font.color EH.placeholderTextColor ]
+                            (Element.text "0")
+                , label = Element.Input.labelHidden "amount out"
+                }
+            , Element.el
+                (if model.showOutTypeDropdown then
+                    [ Element.below
+                        (outTypeDropdown model)
+                    ]
+
+                 else
+                    []
+                )
+                (typeDropdownButton
+                    model.showOutTypeDropdown
+                    model.inputs.outType
+                    OutTypeClicked
+                )
+            ]
+        )
+
+
+inputContainer : List (Element Msg) -> Element Msg
+inputContainer =
+    Element.row
+        [ Element.width Element.fill
+        , Element.Background.color EH.lightGray
+        , Element.Border.rounded 4
+        , Element.Border.width 1
+        , Element.Border.color EH.lightGray
+        , Element.spacing 1
+        ]
+
+
+margin : Model -> Element Msg
+margin model =
+    Element.none
+
+
 inTypeDropdown : Model -> Element Msg
 inTypeDropdown model =
     case model.mode of
@@ -173,6 +266,30 @@ inTypeDropdown model =
                 (InTypeSelected << External)
 
 
+outTypeDropdown : Model -> Element Msg
+outTypeDropdown model =
+    case model.mode of
+        CryptoSwap Seller ->
+            cryptoTypeDropdown
+                model.inputs.currencySearch
+                SearchInputChanged
+                (OutTypeSelected << External)
+
+        CryptoSwap Buyer ->
+            dhTokenTypeDropdown
+                (OutTypeSelected << DHToken)
+
+        OffRamp ->
+            fiatTypeDropdown
+                model.inputs.currencySearch
+                SearchInputChanged
+                (OutTypeSelected << External)
+
+        OnRamp ->
+            dhTokenTypeDropdown
+                (OutTypeSelected << DHToken)
+
+
 dhTokenTypeDropdown : (FactoryType -> Msg) -> Element Msg
 dhTokenTypeDropdown msgConstructor =
     EH.modal
@@ -181,7 +298,7 @@ dhTokenTypeDropdown msgConstructor =
         CloseModals
     <|
         EH.basicOpenDropdown
-            [ Element.width (Element.shrink |> Element.maximum 300 |> Element.minimum 100)
+            [ Element.width <| Element.px 300
             , Element.moveDown 10
             ]
             Nothing
@@ -189,7 +306,9 @@ dhTokenTypeDropdown msgConstructor =
                 |> List.map
                     (\tokenType ->
                         ( Element.row
-                            [ Element.width Element.fill ]
+                            [ Element.width Element.fill
+                            , Element.spacing 18
+                            ]
                             (Maybe.Extra.values
                                 [ Currencies.icon <| tokenUnitName tokenType
                                 , Just <| Element.text <| tokenUnitName tokenType
@@ -203,54 +322,68 @@ dhTokenTypeDropdown msgConstructor =
 
 cryptoTypeDropdown : String -> (String -> Msg) -> (Currencies.Symbol -> Msg) -> Element Msg
 cryptoTypeDropdown searchInput searchChangedMsg selectedMsg =
-    EH.searchableOpenDropdown
-        [ Element.width (Element.shrink |> Element.maximum 300 |> Element.minimum 100)
-        , Element.moveDown 18
-        ]
-        "search cryptocurrencies"
-        (Currencies.foreignCryptoList
-            |> List.map
-                (\symbol ->
-                    ( Element.row
-                        [ Element.width Element.fill ]
-                        (Maybe.Extra.values
-                            [ Currencies.icon symbol
-                            , Just <| Element.text symbol
+    EH.modal
+        (Element.rgba 0 0 0 0.1)
+        NoOp
+        CloseModals
+    <|
+        EH.searchableOpenDropdown
+            [ Element.width <| Element.px 300
+            , Element.moveDown 18
+            ]
+            "search cryptocurrencies"
+            (Currencies.foreignCryptoList
+                |> List.map
+                    (\symbol ->
+                        ( Element.row
+                            [ Element.width Element.fill
+                            , Element.spacing 18
                             ]
+                            (Maybe.Extra.values
+                                [ Currencies.icon symbol
+                                , Just <| Element.text symbol
+                                ]
+                            )
+                        , [ symbol ]
+                        , selectedMsg symbol
                         )
-                    , [ symbol ]
-                    , selectedMsg symbol
                     )
-                )
-        )
-        searchInput
-        searchChangedMsg
+            )
+            searchInput
+            searchChangedMsg
 
 
 fiatTypeDropdown : String -> (String -> Msg) -> (Currencies.Symbol -> Msg) -> Element Msg
 fiatTypeDropdown searchInput searchChangedMsg selectedMsg =
-    EH.searchableOpenDropdown
-        [ Element.width (Element.shrink |> Element.maximum 300 |> Element.minimum 100)
-        , Element.moveDown 18
-        ]
-        "search currencies"
-        (Currencies.fiatList
-            |> List.map
-                (\fiatSymbol ->
-                    ( Element.row
-                        [ Element.width Element.fill ]
-                        (Maybe.Extra.values
-                            [ Currencies.icon fiatSymbol
-                            , Just <| Element.text fiatSymbol
+    EH.modal
+        (Element.rgba 0 0 0 0.1)
+        NoOp
+        CloseModals
+    <|
+        EH.searchableOpenDropdown
+            [ Element.width <| Element.px 300
+            , Element.moveDown 18
+            ]
+            "search currencies"
+            (Currencies.fiatList
+                |> List.map
+                    (\fiatSymbol ->
+                        ( Element.row
+                            [ Element.width Element.fill
+                            , Element.spacing 18
                             ]
+                            (Maybe.Extra.values
+                                [ Currencies.icon fiatSymbol
+                                , Just <| Element.text fiatSymbol
+                                ]
+                            )
+                        , Maybe.Extra.values [ Just fiatSymbol, Currencies.fiatChar fiatSymbol ]
+                        , selectedMsg fiatSymbol
                         )
-                    , Maybe.Extra.values [ Just fiatSymbol, Currencies.fiatChar fiatSymbol ]
-                    , selectedMsg fiatSymbol
                     )
-                )
-        )
-        searchInput
-        searchChangedMsg
+            )
+            searchInput
+            searchChangedMsg
 
 
 typeDropdownButton : Bool -> CurrencyType -> Msg -> Element Msg

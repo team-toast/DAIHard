@@ -18,7 +18,7 @@ init wallet mode =
     UpdateResult
         { wallet = wallet
         , mode = mode
-        , inputs = initialInputs wallet
+        , inputs = initialInputs wallet mode
         , errors = noErrors
         , showInTypeDropdown = False
         , showOutTypeDropdown = False
@@ -29,16 +29,48 @@ init wallet mode =
         []
 
 
-initialInputs : Wallet.State -> Inputs
-initialInputs wallet =
+initialInputs : Wallet.State -> Mode -> Inputs
+initialInputs wallet mode =
     Inputs
         ""
+        (Tuple.first (defaultCurrencyTypes wallet mode))
         ""
-        (DHToken
-            (Wallet.factory wallet
-                |> Maybe.withDefault (Native XDai)
-            )
-        )
+        (Tuple.second (defaultCurrencyTypes wallet mode))
+        ""
+
+
+defaultCurrencyTypes : Wallet.State -> Mode -> ( CurrencyType, CurrencyType )
+defaultCurrencyTypes wallet mode =
+    let
+        defaultDhToken =
+            DHToken <|
+                (Wallet.factory wallet
+                    |> Maybe.withDefault (Native XDai)
+                )
+
+        defaultCrypto =
+            External "ZEC"
+
+        defaultFiat =
+            External "USD"
+    in
+    ( if mode == CryptoSwap Seller || mode == OffRamp then
+        defaultDhToken
+
+      else if mode == CryptoSwap Buyer then
+        defaultCrypto
+
+      else
+        defaultFiat
+    , if mode == CryptoSwap Buyer || mode == OnRamp then
+        defaultDhToken
+
+      else if mode == CryptoSwap Seller then
+        defaultCrypto
+
+      else
+        defaultFiat
+    )
 
 
 update : Msg -> Model -> UpdateResult
@@ -144,15 +176,64 @@ update msg prevModel =
                     | inputs =
                         { oldInputs
                             | inType = newType
+                            , currencySearch = ""
                         }
                     , showInTypeDropdown = False
                 }
 
+        AmountOutChanged input ->
+            let
+                oldInputs =
+                    prevModel.inputs
+            in
+            justModelUpdate
+                { prevModel
+                    | inputs =
+                        { oldInputs
+                            | amountOut = input
+                        }
+                }
+
+        OutTypeClicked ->
+            justModelUpdate
+                { prevModel
+                    | showOutTypeDropdown =
+                        if prevModel.showOutTypeDropdown then
+                            False
+
+                        else
+                            True
+                }
+
+        OutTypeSelected newType ->
+            let
+                oldInputs =
+                    prevModel.inputs
+            in
+            justModelUpdate
+                { prevModel
+                    | inputs =
+                        { oldInputs
+                            | outType = newType
+                            , currencySearch = ""
+                        }
+                    , showOutTypeDropdown = False
+                }
+
+        SwapClicked ->
+            Debug.todo ""
+
         CloseModals ->
+            let
+                oldInputs =
+                    prevModel.inputs
+            in
             justModelUpdate
                 { prevModel
                     | showInTypeDropdown = False
                     , showOutTypeDropdown = False
+                    , inputs =
+                        { oldInputs | currencySearch = "" }
                 }
 
         NoOp ->

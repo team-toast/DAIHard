@@ -1122,7 +1122,15 @@ elOnCircle attributes width color el =
                 |> Element.html
     in
     Element.el
-        ([ Element.inFront el ] ++ attributes)
+        ([ Element.inFront <|
+            Element.el
+                [ Element.centerX
+                , Element.centerY
+                ]
+                el
+         ]
+            ++ attributes
+        )
         circleElement
 
 
@@ -1253,7 +1261,6 @@ simpleSubmodelContainer maxWidth el =
         Element.el
             [ Element.Background.color white
             , Element.Border.rounded 8
-            , Element.clip
             , Element.centerX
             , Element.width (Element.fill |> Element.maximum maxWidth)
             , Element.Border.shadow
@@ -1330,7 +1337,7 @@ withInputHeader : List (Attribute msg) -> String -> Element msg -> Element msg
 withInputHeader attributes titleStr el =
     Element.column
         (attributes
-            ++ [ Element.spacing 5
+            ++ [ Element.spacing 10
                ]
         )
         [ Element.el
@@ -1389,7 +1396,6 @@ basicOpenDropdown attributes maybeFirstEl items =
             ++ [ Element.height (Element.shrink |> Element.maximum 340)
                , Element.Background.color white
                , Element.Border.rounded 6
-               , Element.clip
                , Element.Border.shadow
                     { offset = ( 0, 3 )
                     , size = 0
@@ -1403,7 +1409,7 @@ basicOpenDropdown attributes maybeFirstEl items =
             [ Element.Background.color lightGray
             , Element.spacing 1
             , Element.width Element.fill
-            , Element.height Element.fill
+            , Element.height <| Element.px 300
             ]
             [ maybeFirstEl |> Maybe.withDefault Element.none
             , Element.column
@@ -1417,7 +1423,7 @@ basicOpenDropdown attributes maybeFirstEl items =
                     |> List.map
                         (\( el, onClick ) ->
                             Element.el
-                                [ Element.paddingXY 14 7
+                                [ Element.paddingXY 14 10
                                 , Element.Background.color white
                                 , Element.width Element.fill
                                 , Element.Events.onClick onClick
@@ -1443,7 +1449,7 @@ searchableOpenDropdown attributes placeholderText items searchInput searchInputC
                 items
                     |> List.filterMap
                         (\( el, searchables, onClick ) ->
-                            if List.any (String.contains searchInput) searchables then
+                            if List.any (String.contains (String.toLower searchInput)) (List.map String.toLower searchables) then
                                 Just ( el, onClick )
 
                             else
@@ -1453,30 +1459,37 @@ searchableOpenDropdown attributes placeholderText items searchInput searchInputC
     basicOpenDropdown
         attributes
         (Just <|
-            Element.row
+            Element.el
                 [ Element.width Element.fill
-                , Element.Background.color <| Element.rgba 0 0 0 0.02
-                , Element.padding 13
-                , Element.spacing 13
-                , Element.Border.rounded 4
+                , Element.paddingXY 9 15
+                , Element.Background.color white
                 ]
-                [ Images.toElement
-                    [ Element.width <| Element.px 21 ]
-                    Images.searchIcon
-                , Element.Input.text
-                    [ Element.Border.width 0
-                    , Element.width Element.fill
+            <|
+                Element.row
+                    [ Element.width Element.fill
+                    , Element.Background.color <| Element.rgb 0.98 0.98 0.98
+                    , Element.paddingXY 13 0
+                    , Element.spacing 13
+                    , Element.Border.rounded 4
                     ]
-                    { onChange = searchInputChangedMsg
-                    , text = searchInput
-                    , placeholder =
-                        Just <|
-                            Element.Input.placeholder
-                                [ Element.Font.color placeholderTextColor ]
-                                (Element.text placeholderText)
-                    , label = Element.Input.labelHidden "search"
-                    }
-                ]
+                    [ Images.toElement
+                        [ Element.width <| Element.px 21 ]
+                        Images.searchIcon
+                    , Element.Input.text
+                        [ Element.Border.width 0
+                        , Element.width Element.fill
+                        , Element.Background.color <| Element.rgb 0.98 0.98 0.98
+                        ]
+                        { onChange = searchInputChangedMsg
+                        , text = searchInput
+                        , placeholder =
+                            Just <|
+                                Element.Input.placeholder
+                                    [ Element.Font.color placeholderTextColor ]
+                                    (Element.text placeholderText)
+                        , label = Element.Input.labelHidden "search"
+                        }
+                    ]
         )
         filteredItems
 
