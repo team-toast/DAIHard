@@ -23,6 +23,7 @@ init wallet mode =
         , margin = 0
         , showInTypeDropdown = False
         , showOutTypeDropdown = False
+        , showMarginModal = False
         , userAllowance = Nothing
         }
         Cmd.none
@@ -38,6 +39,7 @@ initialInputs wallet mode =
         ""
         (Tuple.second (defaultCurrencyTypes wallet mode))
         ""
+        "0"
 
 
 defaultCurrencyTypes : Wallet.State -> Mode -> ( CurrencyType, CurrencyType )
@@ -130,19 +132,6 @@ update msg prevModel =
                         ChainCmd.none
                         [ CmdUp.UserNotice <| UN.web3FetchError "allowance" httpError ]
 
-        SearchInputChanged input ->
-            let
-                oldInputs =
-                    prevModel.inputs
-            in
-            justModelUpdate
-                { prevModel
-                    | inputs =
-                        { oldInputs
-                            | currencySearch = input
-                        }
-                }
-
         AmountInChanged input ->
             let
                 oldInputs =
@@ -221,6 +210,52 @@ update msg prevModel =
                     , showOutTypeDropdown = False
                 }
 
+        SearchInputChanged input ->
+            let
+                oldInputs =
+                    prevModel.inputs
+            in
+            justModelUpdate
+                { prevModel
+                    | inputs =
+                        { oldInputs
+                            | currencySearch = input
+                        }
+                }
+
+        MarginBoxClicked ->
+            justModelUpdate
+                { prevModel
+                    | showMarginModal =
+                        if prevModel.showMarginModal then
+                            False
+
+                        else
+                            True
+                }
+
+        MarginInputChanged input ->
+            let
+                oldInputs =
+                    prevModel.inputs
+            in
+            justModelUpdate
+                { prevModel
+                    | inputs =
+                        { oldInputs
+                            | margin = input
+                        }
+                }
+
+        MarginLossClicked ->
+            Debug.todo ""
+
+        MarginEvenClicked ->
+            Debug.todo ""
+
+        MarginProfitClicked ->
+            Debug.todo ""
+
         SwapClicked ->
             Debug.todo ""
 
@@ -233,6 +268,7 @@ update msg prevModel =
                 { prevModel
                     | showInTypeDropdown = False
                     , showOutTypeDropdown = False
+                    , showMarginModal = False
                     , inputs =
                         { oldInputs | currencySearch = "" }
                 }

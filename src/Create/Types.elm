@@ -18,6 +18,7 @@ type alias Model =
     , margin : Float
     , showInTypeDropdown : Bool
     , showOutTypeDropdown : Bool
+    , showMarginModal : Bool
     , userAllowance : Maybe TokenValue
     }
 
@@ -32,6 +33,11 @@ type Msg
     | OutTypeClicked
     | OutTypeSelected CurrencyType
     | SearchInputChanged String
+    | MarginBoxClicked
+    | MarginInputChanged String
+    | MarginLossClicked
+    | MarginEvenClicked
+    | MarginProfitClicked
     | SwapClicked
     | CloseModals
     | NoOp
@@ -44,12 +50,14 @@ type alias Inputs =
     , amountOut : String
     , outType : CurrencyType
     , currencySearch : String
+    , margin : String
     }
 
 
 type alias Errors =
     { amountIn : Maybe String
     , amountOut : Maybe String
+    , margin : Maybe String
     }
 
 
@@ -76,7 +84,7 @@ currencySymbol currencyType =
 
 noErrors : Errors
 noErrors =
-    Errors Nothing Nothing
+    Errors Nothing Nothing Nothing
 
 
 type alias UpdateResult =

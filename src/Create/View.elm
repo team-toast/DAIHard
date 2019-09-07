@@ -116,7 +116,7 @@ amountAndTypeIn model =
         [ Element.width Element.fill ]
         "I want to Sell"
         (inputContainer
-            []
+            [ Element.width Element.fill ]
             [ Element.Input.text
                 [ Element.width Element.fill
                 , Element.height Element.fill
@@ -184,7 +184,16 @@ amountOutRow model =
                 }
             ]
             (Element.text "@")
-        , Element.el [ Element.width <| Element.fillPortion 1 ]
+        , Element.el
+            [ Element.width <| Element.fillPortion 1
+            , Element.above
+                (if model.showMarginModal then
+                    marginModal model.margin model.inputs.margin
+
+                 else
+                    Element.none
+                )
+            ]
             (marginBox model)
         ]
 
@@ -195,7 +204,7 @@ amountAndTypeOut model =
         [ Element.width Element.fill ]
         "In Exchange for"
         (inputContainer
-            []
+            [ Element.width Element.fill ]
             [ Element.Input.text
                 [ Element.width Element.fill
                 , Element.height Element.fill
@@ -234,7 +243,9 @@ marginBox model =
         [ Element.width Element.fill ]
         "Margin"
         (inputContainer
-            [ Element.pointer
+            [ Element.width Element.fill
+            , Element.pointer
+            , EH.onClickNoPropagation MarginBoxClicked
             ]
             [ Element.row
                 [ Element.height Element.fill
@@ -262,6 +273,138 @@ marginBox model =
                     )
             ]
         )
+
+
+marginModal : Float -> String -> Element Msg
+marginModal margin marginInput =
+    EH.modal
+        (Element.rgba 0 0 0 0.1)
+        NoOp
+        CloseModals
+    <|
+        Element.column
+            [ Element.alignRight
+            , Element.moveUp 10
+            , Element.Border.rounded 8
+            , Element.Background.color EH.lightGray
+            , Element.clip
+            , Element.spacing 1
+            , Element.Border.shadow
+                { offset = ( 0, 3 )
+                , size = 0
+                , blur = 20
+                , color = Element.rgba 0 0 0 0.08
+                }
+            ]
+            [ Element.el
+                [ Element.paddingXY 23 18
+                , Element.Background.color EH.white
+                ]
+              <|
+                Element.column
+                    [ Element.width Element.fill
+                    , Element.spacing 10
+                    ]
+                    [ Element.el
+                        [ Element.Font.size 20
+                        , Element.Font.semiBold
+                        , Element.Font.color <| Element.rgb255 16 7 234
+                        ]
+                        (Element.text "Margin")
+                    , Element.paragraph
+                        [ Element.Font.size 16
+                        , Element.Font.color <| Element.rgba 0 0 0 0.75
+                        ]
+                        [ Element.text "This is how much you want to either make as a profit or loss from this trade. Choose ‘loss’ if you’re looking to find a buyer fast. Choose ‘Even’ to set the margin to 0%." ]
+                    ]
+            , let
+                inactiveBgColor =
+                    Element.rgba255 10 33 108 0.04
+
+                inactiveTextColor =
+                    Element.rgb255 10 33 108
+              in
+              Element.row
+                [ Element.width Element.shrink
+                , Element.Background.color EH.white
+                , Element.paddingXY 23 18
+                , Element.spacing 12
+                ]
+                [ inputContainer
+                    [ Element.width <| Element.px 140 ]
+                    [ Element.Input.text
+                        [ Element.Border.width 0
+                        , Element.width Element.fill
+                        ]
+                        { onChange = MarginInputChanged
+                        , text = marginInput
+                        , placeholder = Nothing
+                        , label = Element.Input.labelHidden "margin"
+                        }
+                    ]
+                , if margin < 0 then
+                    marginTypeButton
+                        (Element.rgb255 255 0 118)
+                        EH.white
+                        "Loss"
+                        Nothing
+
+                  else
+                    marginTypeButton
+                        inactiveBgColor
+                        inactiveTextColor
+                        "Loss"
+                        (Just MarginLossClicked)
+                , if margin == 0 then
+                    marginTypeButton
+                        (Element.rgb255 16 7 234)
+                        EH.white
+                        "Even"
+                        Nothing
+
+                  else
+                    marginTypeButton
+                        inactiveBgColor
+                        inactiveTextColor
+                        "Even"
+                        (Just MarginEvenClicked)
+                , if margin > 0 then
+                    marginTypeButton
+                        (Element.rgb255 0 188 137)
+                        EH.white
+                        "Profit"
+                        Nothing
+
+                  else
+                    marginTypeButton
+                        inactiveBgColor
+                        inactiveTextColor
+                        "Profit"
+                        (Just MarginProfitClicked)
+                ]
+            ]
+
+
+marginTypeButton : Element.Color -> Element.Color -> String -> Maybe Msg -> Element Msg
+marginTypeButton bgColor textColor text maybeOnClick =
+    Element.el
+        ([ Element.Background.color bgColor
+         , Element.Border.rounded 4
+         , Element.paddingXY 27 16
+         , Element.Font.color textColor
+         , Element.Font.size 20
+         ]
+            ++ (case maybeOnClick of
+                    Just onClick ->
+                        [ Element.pointer
+                        , Element.Events.onClick onClick
+                        ]
+
+                    Nothing ->
+                        []
+               )
+        )
+        (Element.text text)
 
 
 profitLossOrEven : Float -> Element Msg
@@ -320,8 +463,7 @@ inputContainer : List (Element.Attribute Msg) -> List (Element Msg) -> Element M
 inputContainer attributes =
     Element.row <|
         attributes
-            ++ [ Element.width Element.fill
-               , Element.Background.color EH.lightGray
+            ++ [ Element.Background.color EH.lightGray
                , Element.Border.rounded 4
                , Element.Border.width 1
                , Element.Border.color EH.lightGray
