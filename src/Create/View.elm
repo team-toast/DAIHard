@@ -115,6 +115,7 @@ amountAndTypeIn model =
         [ Element.width Element.fill ]
         "I want to Sell"
         (inputContainer
+            []
             [ Element.Input.text
                 [ Element.width Element.fill
                 , Element.height Element.fill
@@ -183,7 +184,7 @@ amountOutRow model =
             ]
             (Element.text "@")
         , Element.el [ Element.width <| Element.fillPortion 1 ]
-            (margin model)
+            (marginBox model)
         ]
 
 
@@ -193,6 +194,7 @@ amountAndTypeOut model =
         [ Element.width Element.fill ]
         "In Exchange for"
         (inputContainer
+            []
             [ Element.Input.text
                 [ Element.width Element.fill
                 , Element.height Element.fill
@@ -225,21 +227,100 @@ amountAndTypeOut model =
         )
 
 
-inputContainer : List (Element Msg) -> Element Msg
-inputContainer =
-    Element.row
-        [ Element.width Element.fill
-        , Element.Background.color EH.lightGray
-        , Element.Border.rounded 4
-        , Element.Border.width 1
-        , Element.Border.color EH.lightGray
-        , Element.spacing 1
+marginBox : Model -> Element Msg
+marginBox model =
+    EH.withInputHeader
+        [ Element.width Element.fill ]
+        "Margin"
+        (inputContainer
+            [ Element.pointer
+            ]
+            [ Element.row
+                [ Element.height Element.fill
+                , Element.width Element.fill
+                , Element.Background.color EH.white
+                , Element.spacing 13
+                ]
+                [ profitLossOrEven model.margin
+                , absMarginPercentage model.margin
+                ]
+            , Element.el
+                [ Element.alignRight
+                , Element.height Element.fill
+                , Element.Background.color <| Element.rgb 0.98 0.98 0.98
+                , Element.padding 13
+                ]
+              <|
+                Images.toElement
+                    [ Element.centerY ]
+                    (if False then
+                        Images.upArrow
+
+                     else
+                        Images.downArrow
+                    )
+            ]
+        )
+
+
+profitLossOrEven : Float -> Element Msg
+profitLossOrEven margin =
+    let
+        ( text, bgColor, textColor ) =
+            if margin == 0 then
+                ( "Even"
+                , Element.rgba255 16 7 234 0.05
+                , Element.rgb255 16 7 234
+                )
+
+            else if margin > 0 then
+                ( "Profit"
+                , Element.rgba255 0 188 137 0.05
+                , Element.rgb255 0 188 137
+                )
+
+            else
+                ( "Loss"
+                , Element.rgba255 255 0 118 0.05
+                , Element.rgb255 255 0 118
+                )
+    in
+    Element.el
+        [ Element.padding 7 ]
+    <|
+        Element.el
+            [ Element.paddingXY 15 9
+            , Element.Background.color bgColor
+            , Element.Border.rounded 4
+            , Element.Font.color textColor
+            , Element.Font.size 20
+            , Element.Font.semiBold
+            ]
+            (Element.text text)
+
+
+absMarginPercentage : Float -> Element Msg
+absMarginPercentage margin =
+    Element.el
+        [ Element.Font.size 20
+        , Element.Font.semiBold
         ]
+        (Element.text
+            (Debug.todo "")
+        )
 
 
-margin : Model -> Element Msg
-margin model =
-    Element.none
+inputContainer : List (Element.Attribute Msg) -> List (Element Msg) -> Element Msg
+inputContainer attributes =
+    Element.row <|
+        attributes
+            ++ [ Element.width Element.fill
+               , Element.Background.color EH.lightGray
+               , Element.Border.rounded 4
+               , Element.Border.width 1
+               , Element.Border.color EH.lightGray
+               , Element.spacing 1
+               ]
 
 
 inTypeDropdown : Model -> Element Msg

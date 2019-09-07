@@ -20,6 +20,7 @@ init wallet mode =
         , mode = mode
         , inputs = initialInputs wallet mode
         , errors = noErrors
+        , margin = 0
         , showInTypeDropdown = False
         , showOutTypeDropdown = False
         , userAllowance = Nothing

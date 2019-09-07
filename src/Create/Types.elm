@@ -15,6 +15,7 @@ type alias Model =
     , mode : Mode
     , inputs : Inputs
     , errors : Errors
+    , margin : Float
     , showInTypeDropdown : Bool
     , showOutTypeDropdown : Bool
     , userAllowance : Maybe TokenValue
@@ -47,7 +48,9 @@ type alias Inputs =
 
 
 type alias Errors =
-    { amountIn : Maybe String }
+    { amountIn : Maybe String
+    , amountOut : Maybe String
+    }
 
 
 type Mode
@@ -73,7 +76,7 @@ currencySymbol currencyType =
 
 noErrors : Errors
 noErrors =
-    Errors Nothing
+    Errors Nothing Nothing
 
 
 type alias UpdateResult =
