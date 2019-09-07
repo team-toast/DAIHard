@@ -6,6 +6,7 @@ import Currencies
 import Element exposing (Element)
 import Element.Background
 import Element.Border
+import Element.Events
 import Element.Font
 import Element.Input
 import Helpers.Element as EH
@@ -174,29 +175,38 @@ inTypeDropdown model =
 
 dhTokenTypeDropdown : (FactoryType -> Msg) -> Element Msg
 dhTokenTypeDropdown msgConstructor =
-    EH.basicOpenDropdown
-        []
-        Nothing
-        (dhTokenList
-            |> List.map
-                (\tokenType ->
-                    ( Element.row
-                        [ Element.width Element.fill ]
-                        (Maybe.Extra.values
-                            [ Currencies.icon <| tokenUnitName tokenType
-                            , Just <| Element.text <| tokenUnitName tokenType
-                            ]
+    EH.modal
+        (Element.rgba 0 0 0 0.1)
+        NoOp
+        CloseModals
+    <|
+        EH.basicOpenDropdown
+            [ Element.width (Element.shrink |> Element.maximum 300 |> Element.minimum 100)
+            , Element.moveDown 10
+            ]
+            Nothing
+            (dhTokenList
+                |> List.map
+                    (\tokenType ->
+                        ( Element.row
+                            [ Element.width Element.fill ]
+                            (Maybe.Extra.values
+                                [ Currencies.icon <| tokenUnitName tokenType
+                                , Just <| Element.text <| tokenUnitName tokenType
+                                ]
+                            )
+                        , msgConstructor tokenType
                         )
-                    , msgConstructor tokenType
                     )
-                )
-        )
+            )
 
 
 cryptoTypeDropdown : String -> (String -> Msg) -> (Currencies.Symbol -> Msg) -> Element Msg
 cryptoTypeDropdown searchInput searchChangedMsg selectedMsg =
     EH.searchableOpenDropdown
-        []
+        [ Element.width (Element.shrink |> Element.maximum 300 |> Element.minimum 100)
+        , Element.moveDown 18
+        ]
         "search cryptocurrencies"
         (Currencies.foreignCryptoList
             |> List.map
@@ -220,7 +230,9 @@ cryptoTypeDropdown searchInput searchChangedMsg selectedMsg =
 fiatTypeDropdown : String -> (String -> Msg) -> (Currencies.Symbol -> Msg) -> Element Msg
 fiatTypeDropdown searchInput searchChangedMsg selectedMsg =
     EH.searchableOpenDropdown
-        []
+        [ Element.width (Element.shrink |> Element.maximum 300 |> Element.minimum 100)
+        , Element.moveDown 18
+        ]
         "search currencies"
         (Currencies.fiatList
             |> List.map
@@ -247,6 +259,8 @@ typeDropdownButton dropdownOpen currencyType onClick =
         [ Element.Background.color <| Element.rgb 0.98 0.98 0.98
         , Element.padding 13
         , Element.spacing 13
+        , Element.pointer
+        , EH.onClickNoPropagation onClick
         ]
         [ Currencies.icon (currencySymbol currencyType)
             |> Maybe.withDefault Element.none

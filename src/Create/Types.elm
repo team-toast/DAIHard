@@ -4,8 +4,8 @@ import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
 import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
-import Http
 import Currencies
+import Http
 import TokenValue exposing (TokenValue)
 import Wallet
 
@@ -28,6 +28,7 @@ type Msg
     | InTypeClicked
     | InTypeSelected CurrencyType
     | SearchInputChanged String
+    | CloseModals
     | NoOp
     | CmdUp (CmdUp Msg)
 

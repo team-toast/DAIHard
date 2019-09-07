@@ -145,6 +145,14 @@ update msg prevModel =
                         { oldInputs
                             | inType = newType
                         }
+                    , showInTypeDropdown = False
+                }
+
+        CloseModals ->
+            justModelUpdate
+                { prevModel
+                    | showInTypeDropdown = False
+                    , showOutTypeDropdown = False
                 }
 
         NoOp ->
@@ -179,11 +187,8 @@ runCmdDown cmdDown prevModel =
                 []
 
         CmdDown.CloseAnyDropdownsOrModals ->
-            justModelUpdate
-                { prevModel
-                    | showInTypeDropdown = False
-                    , showOutTypeDropdown = False
-                }
+            prevModel
+                |> update CloseModals
 
 
 subscriptions : Model -> Sub Msg
