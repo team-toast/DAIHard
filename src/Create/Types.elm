@@ -1,4 +1,4 @@
-module Create.Types exposing (CurrencyType(..), Errors, Inputs, Mode(..), Model, Msg(..), UpdateResult, currencySymbol, justModelUpdate, noErrors)
+module Create.Types exposing (CurrencyType(..), Errors, Inputs, IntervalUnit(..), Mode(..), Model, Msg(..), UpdateResult, UserInterval, currencySymbol, intervalUnitToString, justModelUpdate, noErrors)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -6,6 +6,7 @@ import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Currencies
 import Http
+import Time
 import TokenValue exposing (TokenValue)
 import Wallet
 
@@ -19,6 +20,7 @@ type alias Model =
     , showInTypeDropdown : Bool
     , showOutTypeDropdown : Bool
     , showMarginModal : Bool
+    , showIntervalModals : ( Bool, Bool, Bool )
     , userAllowance : Maybe TokenValue
     }
 
@@ -26,6 +28,8 @@ type alias Model =
 type Msg
     = Refresh
     | AllowanceFetched TokenFactoryType (Result Http.Error BigInt)
+    | ChangeMode Mode
+    | SwapClicked
     | AmountInChanged String
     | InTypeClicked
     | InTypeSelected CurrencyType
@@ -38,7 +42,10 @@ type Msg
     | MarginLossClicked
     | MarginEvenClicked
     | MarginProfitClicked
-    | SwapClicked
+    | ReceiveAddressChanged String
+    | ExpiryWindowBoxClicked
+    | PaymentWindowBoxClicked
+    | BurnWindowBoxClicked
     | CloseModals
     | NoOp
     | CmdUp (CmdUp Msg)
@@ -51,6 +58,8 @@ type alias Inputs =
     , outType : CurrencyType
     , currencySearch : String
     , margin : String
+    , receiveAddress : String
+    , intervals : ( UserInterval, UserInterval, UserInterval )
     }
 
 
@@ -102,3 +111,32 @@ justModelUpdate model =
     , chainCmd = ChainCmd.none
     , cmdUps = []
     }
+
+
+type alias UserInterval =
+    { num : Int
+    , unit : IntervalUnit
+    }
+
+
+type IntervalUnit
+    = Minute
+    | Hour
+    | Day
+    | Week
+
+
+intervalUnitToString : IntervalUnit -> String
+intervalUnitToString intervalUnit =
+    case intervalUnit of
+        Minute ->
+            "Minute"
+
+        Hour ->
+            "Hour"
+
+        Day ->
+            "Day"
+
+        Week ->
+            "Week"

@@ -7,6 +7,7 @@ import CommonTypes exposing (..)
 import Config
 import Contracts.Wrappers
 import Create.Types exposing (..)
+import Helpers.Tuple as TupleHelpers
 import Time
 import TokenValue exposing (TokenValue)
 import UserNotice as UN
@@ -24,6 +25,7 @@ init wallet mode =
         , showInTypeDropdown = False
         , showOutTypeDropdown = False
         , showMarginModal = False
+        , showIntervalModals = ( False, False, False )
         , userAllowance = Nothing
         }
         Cmd.none
@@ -40,6 +42,8 @@ initialInputs wallet mode =
         (Tuple.second (defaultCurrencyTypes wallet mode))
         ""
         "0"
+        ""
+        (defaultIntervals mode)
 
 
 defaultCurrencyTypes : Wallet.State -> Mode -> ( CurrencyType, CurrencyType )
@@ -74,6 +78,34 @@ defaultCurrencyTypes wallet mode =
       else
         defaultFiat
     )
+
+
+defaultIntervals : Mode -> ( UserInterval, UserInterval, UserInterval )
+defaultIntervals mode =
+    case mode of
+        CryptoSwap Seller ->
+            ( UserInterval 24 Hour
+            , UserInterval 1 Hour
+            , UserInterval 24 Hour
+            )
+
+        CryptoSwap Buyer ->
+            ( UserInterval 24 Hour
+            , UserInterval 24 Hour
+            , UserInterval 24 Hour
+            )
+
+        OffRamp ->
+            ( UserInterval 3 Day
+            , UserInterval 3 Day
+            , UserInterval 3 Day
+            )
+
+        OnRamp ->
+            ( UserInterval 3 Day
+            , UserInterval 3 Day
+            , UserInterval 3 Day
+            )
 
 
 update : Msg -> Model -> UpdateResult
@@ -131,6 +163,13 @@ update msg prevModel =
                         Cmd.none
                         ChainCmd.none
                         [ CmdUp.UserNotice <| UN.web3FetchError "allowance" httpError ]
+
+        ChangeMode newMode ->
+            justModelUpdate
+                { prevModel | mode = newMode }
+
+        SwapClicked ->
+            Debug.todo ""
 
         AmountInChanged input ->
             let
@@ -256,8 +295,60 @@ update msg prevModel =
         MarginProfitClicked ->
             Debug.todo ""
 
-        SwapClicked ->
-            Debug.todo ""
+        ReceiveAddressChanged input ->
+            let
+                oldInputs =
+                    prevModel.inputs
+            in
+            justModelUpdate
+                { prevModel
+                    | inputs =
+                        { oldInputs
+                            | receiveAddress = input
+                        }
+                }
+
+        ExpiryWindowBoxClicked ->
+            justModelUpdate
+                { prevModel
+                    | showIntervalModals =
+                        ( if TupleHelpers.tuple3First prevModel.showIntervalModals then
+                            False
+
+                          else
+                            True
+                        , False
+                        , False
+                        )
+                }
+
+        PaymentWindowBoxClicked ->
+            justModelUpdate
+                { prevModel
+                    | showIntervalModals =
+                        ( False
+                        , if TupleHelpers.tuple3Second prevModel.showIntervalModals then
+                            False
+
+                          else
+                            True
+                        , False
+                        )
+                }
+
+        BurnWindowBoxClicked ->
+            justModelUpdate
+                { prevModel
+                    | showIntervalModals =
+                        ( False
+                        , False
+                        , if TupleHelpers.tuple3Third prevModel.showIntervalModals then
+                            False
+
+                          else
+                            True
+                        )
+                }
 
         CloseModals ->
             let
@@ -269,6 +360,7 @@ update msg prevModel =
                     | showInTypeDropdown = False
                     , showOutTypeDropdown = False
                     , showMarginModal = False
+                    , showIntervalModals = ( False, False, False )
                     , inputs =
                         { oldInputs | currencySearch = "" }
                 }

@@ -11,6 +11,7 @@ import Element.Font
 import Element.Input
 import FormatFloat exposing (formatFloat)
 import Helpers.Element as EH
+import Helpers.Tuple as TupleHelpers
 import Images
 import Maybe.Extra
 
@@ -26,9 +27,6 @@ root model =
             [ header model.mode
             , EH.thinGrayHRuler
             , body model
-            , Element.el
-                [ Element.height <| Element.px 600 ]
-                Element.none
             ]
         )
     , viewModals model
@@ -93,6 +91,8 @@ modeHeader selected mode =
         [ Element.Font.size 28
         , Element.Font.semiBold
         , Element.Font.color <| Element.rgba 0 0 0 fontAlpha
+        , Element.pointer
+        , Element.Events.onClick <| ChangeMode mode
         ]
         (Element.text text)
 
@@ -107,6 +107,9 @@ body model =
         [ amountAndTypeIn model
         , Element.el [ Element.centerX ] swapButton
         , amountOutRow model
+        , moreInfoInput model
+        , intervalsRow model
+        , openTradeButton
         ]
 
 
@@ -132,13 +135,15 @@ amountAndTypeIn model =
                 , label = Element.Input.labelHidden "amount in"
                 }
             , Element.el
-                (if model.showInTypeDropdown then
-                    [ Element.below
-                        (inTypeDropdown model)
-                    ]
+                ([ Element.height Element.fill ]
+                    ++ (if model.showInTypeDropdown then
+                            [ Element.below
+                                (inTypeDropdown model)
+                            ]
 
-                 else
-                    []
+                        else
+                            []
+                       )
                 )
                 (typeDropdownButton
                     model.showInTypeDropdown
@@ -198,6 +203,31 @@ amountOutRow model =
         ]
 
 
+moreInfoInput : Model -> Element Msg
+moreInfoInput model =
+    case model.mode of
+        CryptoSwap Seller ->
+            case model.inputs.outType of
+                External cryptoSymbol ->
+                    cryptoAddressInput cryptoSymbol model.inputs.receiveAddress
+
+                _ ->
+                    let
+                        _ =
+                            Debug.log "Unexpected currency type for outType!" model.inputs.outType
+                    in
+                    Element.none
+
+        CryptoSwap Buyer ->
+            Element.none
+
+        OffRamp ->
+            paymentMethodInput model
+
+        OnRamp ->
+            paymentMethodInput model
+
+
 amountAndTypeOut : Model -> Element Msg
 amountAndTypeOut model =
     EH.withInputHeader
@@ -220,13 +250,15 @@ amountAndTypeOut model =
                 , label = Element.Input.labelHidden "amount out"
                 }
             , Element.el
-                (if model.showOutTypeDropdown then
-                    [ Element.below
-                        (outTypeDropdown model)
-                    ]
+                ([ Element.height Element.fill ]
+                    ++ (if model.showOutTypeDropdown then
+                            [ Element.below
+                                (outTypeDropdown model)
+                            ]
 
-                 else
-                    []
+                        else
+                            []
+                       )
                 )
                 (typeDropdownButton
                     model.showOutTypeDropdown
@@ -256,21 +288,7 @@ marginBox model =
                 [ profitLossOrEven model.margin
                 , absMarginPercentage model.margin
                 ]
-            , Element.el
-                [ Element.alignRight
-                , Element.height Element.fill
-                , Element.Background.color <| Element.rgb 0.98 0.98 0.98
-                , Element.padding 13
-                ]
-              <|
-                Images.toElement
-                    [ Element.centerY ]
-                    (if False then
-                        Images.upArrow
-
-                     else
-                        Images.downArrow
-                    )
+            , dropdownArrow model.showMarginModal
             ]
         )
 
@@ -459,18 +477,6 @@ absMarginPercentage margin =
         )
 
 
-inputContainer : List (Element.Attribute Msg) -> List (Element Msg) -> Element Msg
-inputContainer attributes =
-    Element.row <|
-        attributes
-            ++ [ Element.Background.color EH.lightGray
-               , Element.Border.rounded 4
-               , Element.Border.width 1
-               , Element.Border.color EH.lightGray
-               , Element.spacing 1
-               ]
-
-
 inTypeDropdown : Model -> Element Msg
 inTypeDropdown model =
     case model.mode of
@@ -619,6 +625,7 @@ typeDropdownButton : Bool -> CurrencyType -> Msg -> Element Msg
 typeDropdownButton dropdownOpen currencyType onClick =
     Element.row
         [ Element.Background.color <| Element.rgb 0.98 0.98 0.98
+        , Element.height Element.fill
         , Element.padding 13
         , Element.spacing 13
         , Element.pointer
@@ -636,6 +643,161 @@ typeDropdownButton dropdownOpen currencyType onClick =
             else
                 Images.downArrow
         ]
+
+
+cryptoAddressInput : Currencies.Symbol -> String -> Element Msg
+cryptoAddressInput symbol input =
+    EH.withInputHeader
+        [ Element.width Element.fill ]
+        (symbol ++ " Receive Address")
+    <|
+        inputContainer
+            [ Element.width Element.fill
+            ]
+            [ Element.Input.text
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                , Element.Border.width 0
+                ]
+                { onChange = ReceiveAddressChanged
+                , text = input
+                , placeholder = Nothing
+                , label = Element.Input.labelHidden "receive address"
+                }
+            ]
+
+
+paymentMethodInput : Model -> Element Msg
+paymentMethodInput model =
+    Element.none
+
+
+intervalsRow : Model -> Element Msg
+intervalsRow model =
+    Element.row
+        [ Element.width Element.fill
+        , Element.spacing 23
+        ]
+        [ expiryWindowBox model
+        , paymentWindowBox model
+        , burnWindowBox model
+        ]
+
+
+expiryWindowBox : Model -> Element Msg
+expiryWindowBox model =
+    intervalBox
+        "Offer Expiry"
+        (TupleHelpers.tuple3First model.inputs.intervals)
+        (TupleHelpers.tuple3First model.showIntervalModals)
+        ExpiryWindowBoxClicked
+
+
+paymentWindowBox : Model -> Element Msg
+paymentWindowBox model =
+    intervalBox
+        "Payment Due"
+        (TupleHelpers.tuple3Second model.inputs.intervals)
+        (TupleHelpers.tuple3Second model.showIntervalModals)
+        PaymentWindowBoxClicked
+
+
+burnWindowBox : Model -> Element Msg
+burnWindowBox model =
+    intervalBox
+        "Burn Window"
+        (TupleHelpers.tuple3Third model.inputs.intervals)
+        (TupleHelpers.tuple3Third model.showIntervalModals)
+        BurnWindowBoxClicked
+
+
+intervalBox : String -> UserInterval -> Bool -> Msg -> Element Msg
+intervalBox title interval modalIsOpen onClick =
+    EH.withInputHeader
+        [ Element.width Element.fill ]
+        title
+    <|
+        inputContainer
+            [ Element.width Element.fill
+            , Element.pointer
+            , Element.Events.onClick onClick
+            ]
+            [ Element.el
+                [ Element.height Element.fill
+                , Element.width Element.fill
+                , Element.Background.color EH.white
+                , Element.paddingXY 15 17
+                ]
+                (userInterval interval)
+            , dropdownArrow modalIsOpen
+            ]
+
+
+openTradeButton : Element Msg
+openTradeButton =
+    Element.el
+        [ Element.width Element.fill
+        , Element.padding 17
+        , Element.Border.rounded 4
+        , Element.Background.color <| Element.rgb255 255 0 118
+        , Element.pointer
+        , Element.Font.size 20
+        , Element.Font.semiBold
+        , Element.Font.center
+        , Element.Font.color EH.white
+        ]
+        (Element.text "Open Trade")
+
+
+userInterval : UserInterval -> Element Msg
+userInterval interval =
+    Element.el
+        [ Element.Font.size 20
+        , Element.Font.medium
+        ]
+    <|
+        Element.text <|
+            String.fromInt interval.num
+                ++ " "
+                ++ intervalUnitToString interval.unit
+                ++ (if interval.num == 1 then
+                        ""
+
+                    else
+                        "s"
+                   )
+
+
+dropdownArrow : Bool -> Element Msg
+dropdownArrow pointUp =
+    Element.el
+        [ Element.alignRight
+        , Element.height Element.fill
+        , Element.Background.color <| Element.rgb 0.98 0.98 0.98
+        , Element.padding 13
+        ]
+    <|
+        Images.toElement
+            [ Element.centerY ]
+            (if pointUp then
+                Images.upArrow
+
+             else
+                Images.downArrow
+            )
+
+
+inputContainer : List (Element.Attribute Msg) -> List (Element Msg) -> Element Msg
+inputContainer attributes =
+    Element.row <|
+        attributes
+            ++ [ Element.Background.color EH.lightGray
+               , Element.height <| Element.px 55
+               , Element.Border.rounded 4
+               , Element.Border.width 1
+               , Element.Border.color EH.lightGray
+               , Element.spacing 1
+               ]
 
 
 viewModals : Model -> List (Element Msg)
