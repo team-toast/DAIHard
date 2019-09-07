@@ -9,6 +9,7 @@ import Element.Border
 import Element.Events
 import Element.Font
 import Element.Input
+import FormatFloat exposing (formatFloat)
 import Helpers.Element as EH
 import Images
 import Maybe.Extra
@@ -306,7 +307,12 @@ absMarginPercentage margin =
         , Element.Font.semiBold
         ]
         (Element.text
-            (Debug.todo "")
+            (((margin * 100)
+                |> abs
+                |> formatFloat 2
+             )
+                ++ "%"
+            )
         )
 
 
