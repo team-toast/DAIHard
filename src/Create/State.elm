@@ -43,6 +43,7 @@ initialInputs wallet mode =
         ""
         "0"
         ""
+        ""
         (defaultIntervals mode)
 
 
@@ -305,6 +306,19 @@ update msg prevModel =
                     | inputs =
                         { oldInputs
                             | receiveAddress = input
+                        }
+                }
+
+        PaymentMethodChanged input ->
+            let
+                oldInputs =
+                    prevModel.inputs
+            in
+            justModelUpdate
+                { prevModel
+                    | inputs =
+                        { oldInputs
+                            | paymentMethod = input
                         }
                 }
 

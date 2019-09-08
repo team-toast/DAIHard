@@ -105,7 +105,12 @@ body model =
         , Element.spacing 25
         ]
         [ amountAndTypeIn model
-        , Element.el [ Element.centerX ] swapButton
+        , case model.mode of
+            CryptoSwap _ ->
+                Element.el [ Element.centerX ] swapButton
+
+            _ ->
+                Element.none
         , amountOutRow model
         , moreInfoInput model
         , intervalsRow model
@@ -222,10 +227,10 @@ moreInfoInput model =
             Element.none
 
         OffRamp ->
-            paymentMethodInput model
+            paymentMethodInput Seller model.inputs.paymentMethod
 
         OnRamp ->
-            paymentMethodInput model
+            paymentMethodInput Buyer model.inputs.paymentMethod
 
 
 amountAndTypeOut : Model -> Element Msg
@@ -667,9 +672,48 @@ cryptoAddressInput symbol input =
             ]
 
 
-paymentMethodInput : Model -> Element Msg
-paymentMethodInput model =
-    Element.none
+paymentMethodInput : BuyerOrSeller -> String -> Element Msg
+paymentMethodInput initiatorRole input =
+    EH.withInputHeader
+        [ Element.width Element.fill ]
+        (case initiatorRole of
+            Buyer ->
+                "Making the Payment"
+
+            Seller ->
+                "Accepting the Payment"
+        )
+    <|
+        inputContainer
+            [ Element.height <| Element.px 134
+            , Element.width Element.fill
+            ]
+            [ Element.Input.multiline
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                , Element.Border.width 0
+                , Element.scrollbarY
+                ]
+                { onChange = PaymentMethodChanged
+                , text = input
+                , placeholder =
+                    Just <|
+                        Element.Input.placeholder
+                            [ Element.Font.color EH.placeholderTextColor ]
+                        <|
+                            case initiatorRole of
+                                Buyer ->
+                                    Debug.todo ""
+
+                                Seller ->
+                                    Element.column [ Element.spacing 20 ]
+                                        [ Element.text "Indicate here how you will accept payment from the buyer."
+                                        , Element.text "Eg. National bank transfer (UK only) or cash in person (London only)"
+                                        ]
+                , label = Element.Input.labelHidden "payment method"
+                , spellcheck = True
+                }
+            ]
 
 
 intervalsRow : Model -> Element Msg
@@ -790,14 +834,14 @@ dropdownArrow pointUp =
 inputContainer : List (Element.Attribute Msg) -> List (Element Msg) -> Element Msg
 inputContainer attributes =
     Element.row <|
-        attributes
-            ++ [ Element.Background.color EH.lightGray
-               , Element.height <| Element.px 55
-               , Element.Border.rounded 4
-               , Element.Border.width 1
-               , Element.Border.color EH.lightGray
-               , Element.spacing 1
-               ]
+        [ Element.Background.color EH.lightGray
+        , Element.height <| Element.px 55
+        , Element.Border.rounded 4
+        , Element.Border.width 1
+        , Element.Border.color EH.lightGray
+        , Element.spacing 1
+        ]
+            ++ attributes
 
 
 viewModals : Model -> List (Element Msg)

@@ -43,6 +43,7 @@ type Msg
     | MarginEvenClicked
     | MarginProfitClicked
     | ReceiveAddressChanged String
+    | PaymentMethodChanged String
     | ExpiryWindowBoxClicked
     | PaymentWindowBoxClicked
     | BurnWindowBoxClicked
@@ -59,6 +60,7 @@ type alias Inputs =
     , currencySearch : String
     , margin : String
     , receiveAddress : String
+    , paymentMethod : String
     , intervals : ( UserInterval, UserInterval, UserInterval )
     }
 
