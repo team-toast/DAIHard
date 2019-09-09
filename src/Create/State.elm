@@ -246,16 +246,17 @@ update msg prevModel =
                 CryptoSwap prevInitiatorRole ->
                     let
                         ( newModel, appCmds ) =
-                            case prevInitiatorRole of
-                                Buyer ->
-                                    { prevModel
-                                        | mode = CryptoSwap Seller
-                                        , inputs = newInputs
-                                    }
-                                        |> tryAutofillForeignCurrencyAmount
+                            { prevModel
+                                | mode =
+                                    case prevInitiatorRole of
+                                        Buyer ->
+                                            CryptoSwap Seller
 
-                                Seller ->
-                                    Debug.todo ""
+                                        Seller ->
+                                            CryptoSwap Buyer
+                                , inputs = newInputs
+                            }
+                                |> tryAutofillForeignCurrencyAmount
                     in
                     UpdateResult
                         newModel
