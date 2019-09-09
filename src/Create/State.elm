@@ -7,7 +7,9 @@ import CommonTypes exposing (..)
 import Config
 import Contracts.Wrappers
 import Create.Types exposing (..)
+import Currencies
 import Helpers.Tuple as TupleHelpers
+import PriceFetch
 import Time
 import TokenValue exposing (TokenValue)
 import UserNotice as UN
@@ -16,30 +18,36 @@ import Wallet
 
 init : Wallet.State -> Mode -> UpdateResult
 init wallet mode =
-    UpdateResult
-        { wallet = wallet
-        , mode = mode
-        , inputs = initialInputs wallet mode
-        , errors = noErrors
-        , margin = 0
-        , showInTypeDropdown = False
-        , showOutTypeDropdown = False
-        , showMarginModal = False
-        , showIntervalModals = ( False, False, False )
-        , userAllowance = Nothing
-        }
-        Cmd.none
-        ChainCmd.none
-        []
+    { wallet = wallet
+    , mode = mode
+    , now = Time.millisToPosix 0
+    , prices = []
+    , inputs = initialInputs wallet mode
+    , errors = noErrors
+    , margin = 0
+    , dhTokenType =
+        Wallet.factory wallet
+            |> Maybe.withDefault (Native XDai)
+    , dhTokenAmount = Nothing
+    , foreignCurrencyType =
+        defaultExternalCurrency mode
+    , foreignCurrencyAmount = Nothing
+    , showInTypeDropdown = False
+    , showOutTypeDropdown = False
+    , showMarginModal = False
+    , showIntervalModals = ( False, False, False )
+    , userAllowance = Nothing
+    }
+        |> update Refresh
 
 
 initialInputs : Wallet.State -> Mode -> Inputs
 initialInputs wallet mode =
     Inputs
         ""
-        (Tuple.first (defaultCurrencyTypes wallet mode))
+        (Tuple.first (defaultCurrencyInputs wallet mode))
         ""
-        (Tuple.second (defaultCurrencyTypes wallet mode))
+        (Tuple.second (defaultCurrencyInputs wallet mode))
         ""
         "0"
         ""
@@ -47,8 +55,8 @@ initialInputs wallet mode =
         (defaultIntervals mode)
 
 
-defaultCurrencyTypes : Wallet.State -> Mode -> ( CurrencyType, CurrencyType )
-defaultCurrencyTypes wallet mode =
+defaultCurrencyInputs : Wallet.State -> Mode -> ( CurrencyType, CurrencyType )
+defaultCurrencyInputs wallet mode =
     let
         defaultDhToken =
             DHToken <|
@@ -79,6 +87,16 @@ defaultCurrencyTypes wallet mode =
       else
         defaultFiat
     )
+
+
+defaultExternalCurrency : Mode -> Currencies.Symbol
+defaultExternalCurrency mode =
+    case mode of
+        CryptoSwap _ ->
+            "ZEC"
+
+        _ ->
+            "USD"
 
 
 defaultIntervals : Mode -> ( UserInterval, UserInterval, UserInterval )
@@ -112,25 +130,61 @@ defaultIntervals mode =
 update : Msg -> Model -> UpdateResult
 update msg prevModel =
     case msg of
+        UpdateNow time ->
+            justModelUpdate
+                { prevModel | now = time }
+
         Refresh ->
-            case ( Wallet.userInfo prevModel.wallet, Wallet.factory prevModel.wallet ) of
-                ( Just userInfo, Just (Token tokenType) ) ->
-                    let
-                        cmd =
+            let
+                maybeAllowanceCmd =
+                    case ( Wallet.userInfo prevModel.wallet, Wallet.factory prevModel.wallet ) of
+                        ( Just userInfo, Just (Token tokenType) ) ->
                             Contracts.Wrappers.getAllowanceCmd
                                 tokenType
                                 userInfo.address
                                 (Config.factoryAddress (Token tokenType))
                                 (AllowanceFetched tokenType)
+
+                        _ ->
+                            Cmd.none
+
+                fetchExchangeRateCmd =
+                    PriceFetch.fetch PricesFetched
+            in
+            UpdateResult
+                prevModel
+                (Cmd.batch
+                    [ maybeAllowanceCmd
+                    , fetchExchangeRateCmd
+                    ]
+                )
+                ChainCmd.none
+                []
+
+        PricesFetched fetchResult ->
+            case fetchResult of
+                Ok pricesAndTimestamps ->
+                    let
+                        newPrices =
+                            pricesAndTimestamps
+                                |> List.map (Tuple.mapSecond (PriceFetch.checkAgainstTime prevModel.now))
+
+                        ( newModel, appCmds ) =
+                            { prevModel | prices = newPrices }
+                                |> tryAutofillAmountOut
                     in
                     UpdateResult
-                        prevModel
-                        cmd
+                        newModel
+                        Cmd.none
                         ChainCmd.none
-                        []
+                        appCmds
 
-                _ ->
-                    justModelUpdate prevModel
+                Err httpErr ->
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        ChainCmd.none
+                        [ CmdUp.UserNotice UN.cantFetchPrices ]
 
         AllowanceFetched tokenType fetchResult ->
             case fetchResult of
@@ -166,24 +220,91 @@ update msg prevModel =
                         [ CmdUp.UserNotice <| UN.web3FetchError "allowance" httpError ]
 
         ChangeMode newMode ->
-            justModelUpdate
-                { prevModel | mode = newMode }
+            let
+                newModel =
+                    { prevModel | mode = newMode }
+            in
+            justModelUpdate <|
+                if tradeType prevModel.mode /= tradeType newMode then
+                    newModel |> updateForeignCurrencyType (defaultExternalCurrency newMode)
+
+                else
+                    newModel
 
         SwapClicked ->
-            Debug.todo ""
+            let
+                prevInputs =
+                    prevModel.inputs
+
+                newInputs =
+                    { prevInputs
+                        | amountIn = prevInputs.amountOut
+                        , amountOut = prevInputs.amountIn
+                    }
+            in
+            case prevModel.mode of
+                CryptoSwap prevInitiatorRole ->
+                    let
+                        ( newModel, appCmds ) =
+                            case prevInitiatorRole of
+                                Buyer ->
+                                    { prevModel
+                                        | mode = CryptoSwap Seller
+                                        , inputs = newInputs
+                                    }
+                                        |> tryAutofillForeignCurrencyAmount
+
+                                Seller ->
+                                    Debug.todo ""
+                    in
+                    UpdateResult
+                        newModel
+                        Cmd.none
+                        ChainCmd.none
+                        appCmds
+
+                _ ->
+                    let
+                        _ =
+                            Debug.log "swap button clicked, but it should be hidden right now!" ""
+                    in
+                    justModelUpdate
+                        prevModel
 
         AmountInChanged input ->
             let
-                oldInputs =
+                prevInputs =
                     prevModel.inputs
+
+                ( newMaybeAmountIn, newErrors ) =
+                    let
+                        prevErrors =
+                            prevModel.errors
+                    in
+                    case interpretAmount input of
+                        Ok maybeAmount ->
+                            ( maybeAmount
+                            , { prevErrors | amountIn = Nothing }
+                            )
+
+                        Err errStr ->
+                            ( Nothing
+                            , { prevErrors | amountIn = Just errStr }
+                            )
+
+                ( newModel, appCmds ) =
+                    { prevModel
+                        | inputs = { prevInputs | amountIn = input }
+                        , errors = newErrors
+                    }
+                        |> updateAmountIn newMaybeAmountIn
+                        |> tryAutofillAmountOut
             in
-            justModelUpdate
-                { prevModel
-                    | inputs =
-                        { oldInputs
-                            | amountIn = input
-                        }
-                }
+            UpdateResult
+                newModel
+                Cmd.none
+                ChainCmd.none
+                appCmds
 
         InTypeClicked ->
             justModelUpdate
@@ -213,16 +334,38 @@ update msg prevModel =
 
         AmountOutChanged input ->
             let
-                oldInputs =
+                prevInputs =
                     prevModel.inputs
+
+                ( newMaybeAmountOut, newErrors ) =
+                    let
+                        prevErrors =
+                            prevModel.errors
+                    in
+                    case interpretAmount input of
+                        Ok maybeAmount ->
+                            ( maybeAmount
+                            , { prevErrors | amountOut = Nothing }
+                            )
+
+                        Err errStr ->
+                            ( Nothing
+                            , { prevErrors | amountOut = Just errStr }
+                            )
+
+                ( newModel, appCmds ) =
+                    { prevModel
+                        | inputs = { prevInputs | amountOut = input }
+                        , errors = newErrors
+                    }
+                        |> updateAmountOut newMaybeAmountOut
+                        |> tryAutofillAmountIn
             in
-            justModelUpdate
-                { prevModel
-                    | inputs =
-                        { oldInputs
-                            | amountOut = input
-                        }
-                }
+            UpdateResult
+                newModel
+                Cmd.none
+                ChainCmd.none
+                appCmds
 
         OutTypeClicked ->
             justModelUpdate
@@ -415,6 +558,147 @@ runCmdDown cmdDown prevModel =
                 |> update CloseModals
 
 
+interpretAmount : String -> Result String (Maybe Float)
+interpretAmount input =
+    if input == "" then
+        Ok Nothing
+
+    else
+        case String.toFloat input of
+            Just value ->
+                Ok (Just value)
+
+            Nothing ->
+                Err "Invalid amount"
+
+
+tryAutofillAmountOut : Model -> ( Model, List (CmdUp Msg) )
+tryAutofillAmountOut prevModel =
+    case externalCurrencyPrice prevModel of
+        Just (PriceFetch.Ok price) ->
+            let
+                newAmountOut =
+                    Maybe.map
+                        (\amountIn ->
+                            case initiatorRole prevModel.mode of
+                                Buyer ->
+                                    (amountIn * price) / (1 - prevModel.margin)
+
+                                Seller ->
+                                    let
+                                        tradeAmountAfterDevFee =
+                                            amountIn / 1.01
+
+                                        equivalentForeignCrypto =
+                                            tradeAmountAfterDevFee / price
+                                    in
+                                    equivalentForeignCrypto / (1 - prevModel.margin)
+                        )
+                        (amountIn prevModel)
+
+                oldInputs =
+                    prevModel.inputs
+            in
+            ( case newAmountOut of
+                Just amountOut ->
+                    { prevModel
+                        | inputs =
+                            { oldInputs | amountOut = String.fromFloat amountOut }
+                    }
+                        |> updateAmountOut (Just amountOut)
+
+                Nothing ->
+                    prevModel
+            , []
+            )
+
+        Just PriceFetch.Outdated ->
+            ( prevModel
+            , [ CmdUp.UserNotice UN.oldPriceDataWarning ]
+            )
+
+        Nothing ->
+            ( prevModel
+            , []
+            )
+
+
+tryAutofillAmountIn : Model -> ( Model, List (CmdUp Msg) )
+tryAutofillAmountIn prevModel =
+    case externalCurrencyPrice prevModel of
+        Just (PriceFetch.Ok price) ->
+            let
+                newAmountIn =
+                    Maybe.map
+                        (\amountOut ->
+                            case initiatorRole prevModel.mode of
+                                Buyer ->
+                                    (amountOut * (1 - prevModel.margin)) / price
+
+                                Seller ->
+                                    let
+                                        amountOutMinusMargin =
+                                            amountOut * (1 - prevModel.margin)
+
+                                        equivalentDai =
+                                            amountOutMinusMargin * price
+                                    in
+                                    equivalentDai * 1.01
+                        )
+                        (amountOut prevModel)
+
+                oldInputs =
+                    prevModel.inputs
+            in
+            ( case newAmountIn of
+                Just amountIn ->
+                    { prevModel
+                        | inputs =
+                            { oldInputs
+                                | amountIn = String.fromFloat amountIn
+                            }
+                    }
+                        |> updateAmountIn (Just amountIn)
+
+                Nothing ->
+                    prevModel
+            , []
+            )
+
+        Just PriceFetch.Outdated ->
+            ( prevModel
+            , [ CmdUp.UserNotice UN.oldPriceDataWarning ]
+            )
+
+        Nothing ->
+            ( prevModel
+            , []
+            )
+
+
+tryAutofillDhTokenAmount : Model -> ( Model, List (CmdUp Msg) )
+tryAutofillDhTokenAmount prevModel =
+    case initiatorRole prevModel.mode of
+        Buyer ->
+            tryAutofillAmountOut prevModel
+
+        Seller ->
+            tryAutofillAmountIn prevModel
+
+
+tryAutofillForeignCurrencyAmount : Model -> ( Model, List (CmdUp Msg) )
+tryAutofillForeignCurrencyAmount prevModel =
+    case initiatorRole prevModel.mode of
+        Buyer ->
+            tryAutofillAmountIn prevModel
+
+        Seller ->
+            tryAutofillAmountOut prevModel
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Time.every 2000 (always Refresh)
+    Sub.batch
+        [ Time.every 2000 (always Refresh)
+        , Time.every 500 UpdateNow
+        ]
