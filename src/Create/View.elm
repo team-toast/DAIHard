@@ -366,40 +366,40 @@ marginModal margin marginInput =
                         }
                     ]
                 , if margin < 0 then
-                    marginTypeButton
+                    button
                         (Element.rgb255 255 0 118)
                         EH.white
                         "Loss"
                         Nothing
 
                   else
-                    marginTypeButton
+                    button
                         inactiveBgColor
                         inactiveTextColor
                         "Loss"
                         (Just MarginLossClicked)
                 , if margin == 0 then
-                    marginTypeButton
+                    button
                         (Element.rgb255 16 7 234)
                         EH.white
                         "Even"
                         Nothing
 
                   else
-                    marginTypeButton
+                    button
                         inactiveBgColor
                         inactiveTextColor
                         "Even"
                         (Just MarginEvenClicked)
                 , if margin > 0 then
-                    marginTypeButton
+                    button
                         (Element.rgb255 0 188 137)
                         EH.white
                         "Profit"
                         Nothing
 
                   else
-                    marginTypeButton
+                    button
                         inactiveBgColor
                         inactiveTextColor
                         "Profit"
@@ -408,12 +408,12 @@ marginModal margin marginInput =
             ]
 
 
-marginTypeButton : Element.Color -> Element.Color -> String -> Maybe Msg -> Element Msg
-marginTypeButton bgColor textColor text maybeOnClick =
+button : Element.Color -> Element.Color -> String -> Maybe Msg -> Element Msg
+button bgColor textColor text maybeOnClick =
     Element.el
         ([ Element.Background.color bgColor
          , Element.Border.rounded 4
-         , Element.paddingXY 27 16
+         , Element.paddingXY 22 16
          , Element.Font.color textColor
          , Element.Font.size 20
          ]
@@ -701,12 +701,14 @@ paymentMethodInput initiatorRole input =
                         Element.Input.placeholder
                             [ Element.Font.color EH.placeholderTextColor ]
                         <|
-                            case initiatorRole of
-                                Buyer ->
-                                    Debug.todo ""
+                            Element.column [ Element.spacing 20 ] <|
+                                case initiatorRole of
+                                    Buyer ->
+                                        [ Element.text "Indicate here how you will send payment to the seller."
+                                        , Element.text "Eg. National bank transfer (UK only) or cash in person (London only)"
+                                        ]
 
-                                Seller ->
-                                    Element.column [ Element.spacing 20 ]
+                                    Seller ->
                                         [ Element.text "Indicate here how you will accept payment from the buyer."
                                         , Element.text "Eg. National bank transfer (UK only) or cash in person (London only)"
                                         ]
@@ -730,29 +732,71 @@ intervalsRow model =
 
 expiryWindowBox : Model -> Element Msg
 expiryWindowBox model =
-    intervalBox
-        "Offer Expiry"
-        (TupleHelpers.tuple3First model.inputs.intervals)
-        (TupleHelpers.tuple3First model.showIntervalModals)
-        ExpiryWindowBoxClicked
+    Element.el
+        [ Element.above <|
+            if TupleHelpers.tuple3First model.showIntervalModals then
+                intervalModal
+                    "Offer Expiry"
+                    "This is the window of time that your trade will be available in the marketplace for someone to claim. You can recall this trade at anytime during this window given that it hasn’t yet been claimed."
+                    model.inputs.interval
+                    (TupleHelpers.tuple3First model.intervals)
+                    ExpiryWindowChanged
+
+            else
+                Element.none
+        ]
+    <|
+        intervalBox
+            "Offer Expiry"
+            (TupleHelpers.tuple3First model.intervals)
+            (TupleHelpers.tuple3First model.showIntervalModals)
+            ExpiryWindowBoxClicked
 
 
 paymentWindowBox : Model -> Element Msg
 paymentWindowBox model =
-    intervalBox
-        "Payment Due"
-        (TupleHelpers.tuple3Second model.inputs.intervals)
-        (TupleHelpers.tuple3Second model.showIntervalModals)
-        PaymentWindowBoxClicked
+    Element.el
+        [ Element.above <|
+            if TupleHelpers.tuple3Second model.showIntervalModals then
+                intervalModal
+                    "Payment Due"
+                    "This is the window of time that the responder of this trade will have to confirm that they have successfully sent the exchange amount to your specified wallet."
+                    model.inputs.interval
+                    (TupleHelpers.tuple3Second model.intervals)
+                    PaymentWindowChanged
+
+            else
+                Element.none
+        ]
+    <|
+        intervalBox
+            "Payment Due"
+            (TupleHelpers.tuple3Second model.intervals)
+            (TupleHelpers.tuple3Second model.showIntervalModals)
+            PaymentWindowBoxClicked
 
 
 burnWindowBox : Model -> Element Msg
 burnWindowBox model =
-    intervalBox
-        "Burn Window"
-        (TupleHelpers.tuple3Third model.inputs.intervals)
-        (TupleHelpers.tuple3Third model.showIntervalModals)
-        BurnWindowBoxClicked
+    Element.el
+        [ Element.above <|
+            if TupleHelpers.tuple3Third model.showIntervalModals then
+                intervalModal
+                    "Burn Window"
+                    "During this window, you have to decide if the responder has indeed sent the exchange amount to you and thus decide to burn or release the trade. If there is no action from you before this window expires, the trade will be auto-released."
+                    model.inputs.interval
+                    (TupleHelpers.tuple3Third model.intervals)
+                    BurnWindowChanged
+
+            else
+                Element.none
+        ]
+    <|
+        intervalBox
+            "Burn Window"
+            (TupleHelpers.tuple3Third model.intervals)
+            (TupleHelpers.tuple3Third model.showIntervalModals)
+            BurnWindowBoxClicked
 
 
 intervalBox : String -> UserInterval -> Bool -> Msg -> Element Msg
@@ -764,7 +808,7 @@ intervalBox title interval modalIsOpen onClick =
         inputContainer
             [ Element.width Element.fill
             , Element.pointer
-            , Element.Events.onClick onClick
+            , EH.onClickNoPropagation onClick
             ]
             [ Element.el
                 [ Element.height Element.fill
@@ -810,6 +854,102 @@ userInterval interval =
                     else
                         "s"
                    )
+
+
+intervalModal : String -> String -> String -> UserInterval -> (UserInterval -> Msg) -> Element Msg
+intervalModal title text input value onChange =
+    EH.modal
+        (Element.rgba 0 0 0 0.1)
+        NoOp
+        CloseModals
+    <|
+        Element.column
+            [ Element.moveUp 10
+            , Element.Border.rounded 8
+            , Element.Background.color EH.lightGray
+            , Element.spacing 1
+            , Element.clip
+            , Element.Border.shadow
+                { offset = ( 0, 3 )
+                , size = 0
+                , blur = 20
+                , color = Element.rgba 0 0 0 0.08
+                }
+            ]
+            [ Element.el
+                [ Element.paddingXY 23 18
+                , Element.Background.color EH.white
+                , Element.width Element.fill
+                ]
+              <|
+                Element.column
+                    [ Element.width Element.fill
+                    , Element.spacing 10
+                    ]
+                    [ Element.el
+                        [ Element.Font.size 20
+                        , Element.Font.semiBold
+                        , Element.Font.color <| Element.rgb255 16 7 234
+                        ]
+                        (Element.text title)
+                    , Element.paragraph
+                        [ Element.Font.size 16
+                        , Element.Font.color <| Element.rgba 0 0 0 0.75
+                        ]
+                        [ Element.text text ]
+                    ]
+            , let
+                timeUnitButton : IntervalUnit -> Bool -> Element Msg
+                timeUnitButton unit selected =
+                    button
+                        (if selected then
+                            Element.rgb255 16 7 234
+
+                         else
+                            Element.rgba255 10 33 108 0.04
+                        )
+                        (if selected then
+                            EH.white
+
+                         else
+                            Element.rgb255 10 33 108
+                        )
+                        (intervalUnitToString unit
+                            ++ "s"
+                            |> String.toLower
+                        )
+                        (if selected then
+                            Nothing
+
+                         else
+                            Just <|
+                                IntervalUnitChanged unit
+                        )
+              in
+              Element.row
+                [ Element.paddingXY 23 18
+                , Element.Background.color EH.white
+                , Element.spacing 12
+                ]
+                [ inputContainer
+                    [ Element.width <| Element.px 140 ]
+                    [ Element.Input.text
+                        [ Element.Border.width 0
+                        , Element.width Element.fill
+                        , Element.height Element.fill
+                        ]
+                        { onChange = IntervalInputChanged
+                        , text = input
+                        , placeholder = Nothing
+                        , label = Element.Input.labelHidden (title ++ " input")
+                        }
+                    ]
+                , timeUnitButton Minute (value.unit == Minute)
+                , timeUnitButton Hour (value.unit == Hour)
+                , timeUnitButton Day (value.unit == Day)
+                , timeUnitButton Week (value.unit == Week)
+                ]
+            ]
 
 
 dropdownArrow : Bool -> Element Msg

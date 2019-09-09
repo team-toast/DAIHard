@@ -24,6 +24,7 @@ type alias Model =
     , foreignCurrencyType : Currencies.Symbol
     , foreignCurrencyAmount : Maybe Float
     , margin : Float
+    , intervals : ( UserInterval, UserInterval, UserInterval )
     , showInTypeDropdown : Bool
     , showOutTypeDropdown : Bool
     , showMarginModal : Bool
@@ -56,6 +57,11 @@ type Msg
     | ExpiryWindowBoxClicked
     | PaymentWindowBoxClicked
     | BurnWindowBoxClicked
+    | IntervalInputChanged String
+    | IntervalUnitChanged IntervalUnit
+    | ExpiryWindowChanged UserInterval
+    | PaymentWindowChanged UserInterval
+    | BurnWindowChanged UserInterval
     | CloseModals
     | NoOp
     | CmdUp (CmdUp Msg)
@@ -70,7 +76,7 @@ type alias Inputs =
     , margin : String
     , receiveAddress : String
     , paymentMethod : String
-    , intervals : ( UserInterval, UserInterval, UserInterval )
+    , interval : String
     }
 
 

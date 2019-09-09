@@ -32,6 +32,7 @@ init wallet mode =
     , foreignCurrencyType =
         defaultExternalCurrency mode
     , foreignCurrencyAmount = Nothing
+    , intervals = defaultIntervals mode
     , showInTypeDropdown = False
     , showOutTypeDropdown = False
     , showMarginModal = False
@@ -52,7 +53,7 @@ initialInputs wallet mode =
         "0"
         ""
         ""
-        (defaultIntervals mode)
+        ""
 
 
 defaultCurrencyInputs : Wallet.State -> Mode -> ( CurrencyType, CurrencyType )
@@ -467,6 +468,10 @@ update msg prevModel =
                 }
 
         ExpiryWindowBoxClicked ->
+            let
+                prevInputs =
+                    prevModel.inputs
+            in
             justModelUpdate
                 { prevModel
                     | showIntervalModals =
@@ -478,9 +483,20 @@ update msg prevModel =
                         , False
                         , False
                         )
+                    , inputs =
+                        { prevInputs
+                            | interval =
+                                TupleHelpers.tuple3First prevModel.intervals
+                                    |> .num
+                                    |> String.fromInt
+                        }
                 }
 
         PaymentWindowBoxClicked ->
+            let
+                prevInputs =
+                    prevModel.inputs
+            in
             justModelUpdate
                 { prevModel
                     | showIntervalModals =
@@ -492,9 +508,20 @@ update msg prevModel =
                             True
                         , False
                         )
+                    , inputs =
+                        { prevInputs
+                            | interval =
+                                TupleHelpers.tuple3Second prevModel.intervals
+                                    |> .num
+                                    |> String.fromInt
+                        }
                 }
 
         BurnWindowBoxClicked ->
+            let
+                prevInputs =
+                    prevModel.inputs
+            in
             justModelUpdate
                 { prevModel
                     | showIntervalModals =
@@ -506,7 +533,29 @@ update msg prevModel =
                           else
                             True
                         )
+                    , inputs =
+                        { prevInputs
+                            | interval =
+                                TupleHelpers.tuple3Second prevModel.intervals
+                                    |> .num
+                                    |> String.fromInt
+                        }
                 }
+
+        IntervalInputChanged input ->
+            Debug.todo ""
+
+        IntervalUnitChanged newUnit ->
+            Debug.todo ""
+
+        ExpiryWindowChanged newInterval ->
+            Debug.todo ""
+
+        PaymentWindowChanged newInterval ->
+            Debug.todo ""
+
+        BurnWindowChanged newInterval ->
+            Debug.todo ""
 
         CloseModals ->
             let
