@@ -67,7 +67,7 @@ fiatCharsAndImages =
                 ( typeString
                 , ( typeChar
                   , Images.image
-                        { src = "/DAIHard/static/img/currencies/" ++ typeString ++ ".svg"
+                        { src = "/DAIHard/static/img/currencies/fiat/" ++ typeString ++ ".svg"
                         , description = typeString
                         }
                   )
@@ -81,12 +81,14 @@ cryptoImages =
     [ "ZEC"
     , "XMR"
     , "BTC"
+    , "DAI"
+    , "XDAI"
     ]
         |> List.map
             (\symbol ->
                 ( symbol
                 , Images.image
-                    { src = "/DAIHard/static/img/currencies/" ++ symbol ++ ".svg"
+                    { src = "/DAIHard/static/img/currencies/crypto/" ++ symbol ++ ".png"
                     , description = symbol
                     }
                 )
@@ -129,11 +131,15 @@ charAndImage symbol =
 
 image : Symbol -> Maybe Image
 image symbol =
-    Maybe.Extra.or
-        (Dict.get symbol cryptoImages)
-        (Dict.get symbol fiatCharsAndImages
-            |> Maybe.map Tuple.second
-        )
+    if symbol == "DAI" then
+        Just Images.daiSymbol
+
+    else
+        Maybe.Extra.or
+            (Dict.get symbol cryptoImages)
+            (Dict.get symbol fiatCharsAndImages
+                |> Maybe.map Tuple.second
+            )
 
 
 toString : Price -> String

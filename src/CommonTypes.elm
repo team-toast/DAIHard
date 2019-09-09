@@ -1,4 +1,4 @@
-module CommonTypes exposing (BuyerOrSeller(..), FactoryType(..), GTagData, InitiatorOrResponder(..), NativeFactoryType(..), TokenFactoryType(..), UserInfo, buyerOrSellerToString, dhTokenList, factoryName, networkNameForFactory, tokenUnitName)
+module CommonTypes exposing (BuyerOrSeller(..), FactoryType(..), GTagData, InitiatorOrResponder(..), NativeFactoryType(..), TokenFactoryType(..), UserInfo, buyerOrSellerToString, dhTokenList, factoryName, networkNameForFactory, tokenSymbol, tokenUnitName)
 
 import Dict
 import Eth.Net
@@ -94,6 +94,25 @@ tokenUnitName factoryType =
 
         Native XDai ->
             "xDai"
+
+
+tokenSymbol : FactoryType -> String
+tokenSymbol factoryType =
+    case factoryType of
+        Token EthDai ->
+            "DAI"
+
+        Token KovanDai ->
+            "DAI"
+
+        Native Eth ->
+            "ETH"
+
+        Native Kovan ->
+            "ETH"
+
+        Native XDai ->
+            "XDAI"
 
 
 networkNameForFactory : FactoryType -> String

@@ -550,7 +550,7 @@ dhTokenTypeDropdown msgConstructor =
                             , Element.spacing 18
                             ]
                             (Maybe.Extra.values
-                                [ Currencies.icon <| tokenUnitName tokenType
+                                [ Currencies.icon <| tokenSymbol tokenType
                                 , Just <| Element.text <| tokenUnitName tokenType
                                 ]
                             )

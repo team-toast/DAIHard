@@ -96,7 +96,7 @@ currencySymbol : CurrencyType -> String
 currencySymbol currencyType =
     case currencyType of
         DHToken tokenType ->
-            tokenUnitName tokenType
+            tokenSymbol tokenType
 
         External symbol ->
             symbol
