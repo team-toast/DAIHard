@@ -120,9 +120,10 @@ body model =
 
 amountAndTypeIn : Model -> Element Msg
 amountAndTypeIn model =
-    EH.withInputHeader
+    EH.withInputHeaderAndMaybeError
         [ Element.width Element.fill ]
         "I want to Sell"
+        model.errors.amountIn
         (inputContainer
             [ Element.width Element.fill ]
             [ Element.Input.text
@@ -198,7 +199,7 @@ amountOutRow model =
             [ Element.width <| Element.fillPortion 1
             , Element.above
                 (if model.showMarginModal then
-                    marginModal model.margin model.inputs.margin
+                    marginModal model.margin model.inputs.margin model.errors.margin
 
                  else
                     Element.none
@@ -235,9 +236,10 @@ moreInfoInput model =
 
 amountAndTypeOut : Model -> Element Msg
 amountAndTypeOut model =
-    EH.withInputHeader
+    EH.withInputHeaderAndMaybeError
         [ Element.width Element.fill ]
         "In Exchange for"
+        model.errors.amountOut
         (inputContainer
             [ Element.width Element.fill ]
             [ Element.Input.text
@@ -298,8 +300,8 @@ marginBox model =
         )
 
 
-marginModal : Float -> String -> Element Msg
-marginModal margin marginInput =
+marginModal : Float -> String -> Maybe String -> Element Msg
+marginModal margin marginInput maybeError =
     EH.modal
         (Element.rgba 0 0 0 0.1)
         NoOp
@@ -354,7 +356,30 @@ marginModal margin marginInput =
                 , Element.spacing 12
                 ]
                 [ inputContainer
-                    [ Element.width <| Element.px 140 ]
+                    [ Element.width <| Element.px 140
+                    , Element.above <|
+                        case maybeError of
+                            Just error ->
+                                Element.el
+                                    [ Element.Font.size 12
+                                    , Element.Font.color EH.red
+                                    , Element.moveUp 16
+                                    , Element.alignLeft
+                                    , Element.Background.color EH.white
+                                    , Element.Border.widthEach
+                                        { top = 0
+                                        , bottom = 0
+                                        , right = 1
+                                        , left = 1
+                                        }
+                                    , Element.paddingXY 5 0
+                                    , Element.Border.color EH.lightGray
+                                    ]
+                                    (Element.text error)
+
+                            Nothing ->
+                                Element.none
+                    ]
                     [ Element.Input.text
                         [ Element.Border.width 0
                         , Element.width Element.fill
@@ -745,6 +770,7 @@ phaseWindowBoxAndMaybeModal intervalType model =
                     intervalType
                     (getUserInterval intervalType model)
                     model.inputs.interval
+                    model.errors.interval
 
             else
                 Element.none
@@ -806,8 +832,8 @@ userInterval interval =
                    )
 
 
-intervalModal : IntervalType -> UserInterval -> String -> Element Msg
-intervalModal intervalType value input =
+intervalModal : IntervalType -> UserInterval -> String -> Maybe String -> Element Msg
+intervalModal intervalType value input maybeError =
     let
         ( title, text ) =
             case intervalType of
@@ -900,7 +926,30 @@ intervalModal intervalType value input =
                 , Element.spacing 12
                 ]
                 [ inputContainer
-                    [ Element.width <| Element.px 140 ]
+                    [ Element.width <| Element.px 140
+                    , Element.above <|
+                        case maybeError of
+                            Just error ->
+                                Element.el
+                                    [ Element.Font.size 12
+                                    , Element.Font.color EH.red
+                                    , Element.moveUp 16
+                                    , Element.alignLeft
+                                    , Element.Background.color EH.white
+                                    , Element.Border.widthEach
+                                        { top = 0
+                                        , bottom = 0
+                                        , right = 1
+                                        , left = 1
+                                        }
+                                    , Element.paddingXY 5 0
+                                    , Element.Border.color EH.lightGray
+                                    ]
+                                    (Element.text error)
+
+                            Nothing ->
+                                Element.none
+                    ]
                     [ Element.Input.text
                         [ Element.Border.width 0
                         , Element.width Element.fill

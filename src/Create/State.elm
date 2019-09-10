@@ -806,12 +806,15 @@ tryAutofillAmountOut prevModel =
 
                 oldInputs =
                     prevModel.inputs
+
+                oldErrors =
+                    prevModel.errors
             in
             ( case newAmountOut of
                 Just amountOut ->
                     { prevModel
-                        | inputs =
-                            { oldInputs | amountOut = String.fromFloat amountOut }
+                        | inputs = { oldInputs | amountOut = String.fromFloat amountOut }
+                        , errors = { oldErrors | amountOut = Nothing }
                     }
                         |> updateAmountOut (Just amountOut)
 
@@ -857,14 +860,16 @@ tryAutofillAmountIn prevModel =
 
                 oldInputs =
                     prevModel.inputs
+
+                oldErrors =
+                    prevModel.errors
             in
             ( case newAmountIn of
                 Just amountIn ->
                     { prevModel
                         | inputs =
-                            { oldInputs
-                                | amountIn = String.fromFloat amountIn
-                            }
+                            { oldInputs | amountIn = String.fromFloat amountIn }
+                        , errors = { oldErrors | amountIn = Nothing }
                     }
                         |> updateAmountIn (Just amountIn)
 

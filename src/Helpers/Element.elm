@@ -1,4 +1,4 @@
-module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, basicOpenDropdown, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredResponderProfit, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, maybeErrorElement, mediumGray, modal, moveToFront, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, red, redButton, releasedIconColor, responderProfitFloatToConciseString, responderProfitSymbol, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, searchableOpenDropdown, simpleSubmodelContainer, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, thinGrayHRuler, txProcessModal, uncoloredResponderProfit, white, withHeader, withInputHeader, withSelectedUnderline, yellow)
+module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, basicOpenDropdown, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredResponderProfit, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, maybeErrorElement, mediumGray, modal, moveToFront, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, red, redButton, releasedIconColor, responderProfitFloatToConciseString, responderProfitSymbol, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, searchableOpenDropdown, simpleSubmodelContainer, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, thinGrayHRuler, txProcessModal, uncoloredResponderProfit, white, withHeader, withInputHeader, withInputHeaderAndMaybeError, withSelectedUnderline, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -1335,18 +1335,37 @@ submodelContainer maxWidth maybeBigTitleText smallTitleText el =
 
 withInputHeader : List (Attribute msg) -> String -> Element msg -> Element msg
 withInputHeader attributes titleStr el =
+    withInputHeaderAndMaybeError attributes titleStr Nothing el
+
+
+withInputHeaderAndMaybeError : List (Attribute msg) -> String -> Maybe String -> Element msg -> Element msg
+withInputHeaderAndMaybeError attributes titleStr maybeError el =
     Element.column
         (attributes
             ++ [ Element.spacing 10
                ]
         )
-        [ Element.el
-            [ Element.Font.size 18
-            , Element.Font.semiBold
-            , Element.Font.color <| Element.rgb255 1 31 52
-            , Element.alignLeft
+        [ Element.row
+            [ Element.spacing 20
             ]
-            (Element.text titleStr)
+            [ Element.el
+                [ Element.Font.size 18
+                , Element.Font.semiBold
+                , Element.Font.color <| Element.rgb255 1 31 52
+                , Element.alignLeft
+                ]
+                (Element.text titleStr)
+            , case maybeError of
+                Just error ->
+                    Element.el
+                        [ Element.Font.size 12
+                        , Element.Font.color red
+                        ]
+                        (Element.text error)
+
+                Nothing ->
+                    Element.none
+            ]
         , el
         ]
 
