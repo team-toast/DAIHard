@@ -78,12 +78,11 @@ fiatCharsAndImages =
 
 cryptoImages : Dict Symbol Image
 cryptoImages =
-    [ "ZEC"
-    , "XMR"
-    , "BTC"
-    , "DAI"
-    , "XDAI"
-    ]
+    (foreignCryptoList
+        ++ [ "DAI"
+           , "XDAI"
+           ]
+    )
         |> List.map
             (\symbol ->
                 ( symbol
@@ -103,7 +102,10 @@ fiatList =
 
 foreignCryptoList : List Symbol
 foreignCryptoList =
-    Dict.keys cryptoImages
+    [ "ZEC"
+    , "XMR"
+    , "BTC"
+    ]
 
 
 
