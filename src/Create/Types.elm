@@ -1,4 +1,4 @@
-module Create.Types exposing (CurrencyType(..), Errors, Inputs, IntervalUnit(..), MarginButtonType(..), Mode(..), Model, Msg(..), TradeType(..), UpdateResult, UserInterval, amountIn, amountOut, currencySymbol, externalCurrencyPrice, getUserInterval, initiatorRole, intervalUnitToString, justModelUpdate, noErrors, tradeType, updateAmountIn, updateAmountOut, updateForeignCurrencyType)
+module Create.Types exposing (CurrencyType(..), Errors, Inputs, IntervalUnit(..), MarginButtonType(..), Mode(..), Model, Msg(..), TradeType(..), UpdateResult, UserInterval, amountIn, amountOut, currencySymbol, externalCurrencyPrice, getUserInterval, initiatorRole, intervalUnitToString, justModelUpdate, noErrors, tradeType, updateAmountIn, updateAmountOut, updateForeignCurrencyType, updateUserInterval)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -79,7 +79,13 @@ type alias Errors =
     { amountIn : Maybe String
     , amountOut : Maybe String
     , margin : Maybe String
+    , interval : Maybe String
     }
+
+
+noErrors : Errors
+noErrors =
+    Errors Nothing Nothing Nothing Nothing
 
 
 type Mode
@@ -101,11 +107,6 @@ currencySymbol currencyType =
 
         External symbol ->
             symbol
-
-
-noErrors : Errors
-noErrors =
-    Errors Nothing Nothing Nothing
 
 
 type alias UpdateResult =
@@ -210,6 +211,27 @@ updateAmountIn newMaybeAmount model =
 
         Buyer ->
             { model | foreignCurrencyAmount = newMaybeAmount }
+
+
+updateUserInterval : IntervalType -> UserInterval -> Model -> Model
+updateUserInterval intervalType interval prevModel =
+    let
+        mapper =
+            case intervalType of
+                Expiry ->
+                    TupleHelpers.tuple3MapFirst
+
+                Payment ->
+                    TupleHelpers.tuple3MapSecond
+
+                Judgment ->
+                    TupleHelpers.tuple3MapThird
+    in
+    { prevModel
+        | intervals =
+            prevModel.intervals
+                |> mapper (always interval)
+    }
 
 
 type TradeType

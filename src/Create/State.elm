@@ -559,10 +559,74 @@ update msg prevModel =
                 }
 
         IntervalInputChanged input ->
-            Debug.todo ""
+            case prevModel.showIntervalModal of
+                Just intervalType ->
+                    let
+                        prevInputs =
+                            prevModel.inputs
+
+                        ( newInterval, newErrors ) =
+                            let
+                                prevErrors =
+                                    prevModel.errors
+                            in
+                            case interpretInterval input of
+                                Ok maybeInt ->
+                                    ( maybeInt
+                                        |> Maybe.map
+                                            (\num ->
+                                                UserInterval
+                                                    num
+                                                    (getUserInterval intervalType prevModel |> .unit)
+                                            )
+                                        |> Maybe.withDefault (getUserInterval intervalType prevModel)
+                                    , { prevErrors | interval = Nothing }
+                                    )
+
+                                Err errStr ->
+                                    ( getUserInterval intervalType prevModel
+                                    , { prevErrors | interval = Just errStr }
+                                    )
+
+                        newModel =
+                            { prevModel
+                                | inputs = { prevInputs | interval = input }
+                                , errors = newErrors
+                            }
+                                |> updateUserInterval intervalType newInterval
+                    in
+                    UpdateResult
+                        newModel
+                        Cmd.none
+                        ChainCmd.none
+                        []
+
+                Nothing ->
+                    let
+                        _ =
+                            Debug.log "Interal input changed, but there is no interval modal open! Wut" ""
+                    in
+                    justModelUpdate prevModel
 
         IntervalUnitChanged newUnit ->
-            Debug.todo ""
+            case prevModel.showIntervalModal of
+                Just intervalType ->
+                    justModelUpdate
+                        (prevModel
+                            |> updateUserInterval
+                                intervalType
+                                (UserInterval
+                                    (getUserInterval intervalType prevModel |> .num)
+                                    newUnit
+                                )
+                        )
+
+                Nothing ->
+                    let
+                        _ =
+                            Debug.log "Interal unit changed, but there is no interval modal open! Wut" ""
+                    in
+                    justModelUpdate prevModel
 
         CloseModals ->
             let
@@ -636,8 +700,19 @@ interpretMargin input =
 
     else
         String.toFloat input
-            |> Result.fromMaybe "Invalid responderProfit"
+            |> Result.fromMaybe "Invalid margin"
             |> Result.map (\percent -> percent / 100.0)
+            |> Result.map Just
+
+
+interpretInterval : String -> Result String (Maybe Int)
+interpretInterval input =
+    if input == "" then
+        Ok Nothing
+
+    else
+        String.toInt input
+            |> Result.fromMaybe "Must be an integer"
             |> Result.map Just
 
 

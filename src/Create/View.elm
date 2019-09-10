@@ -738,7 +738,8 @@ phaseWindowBoxAndMaybeModal intervalType model =
             model.showIntervalModal == Just intervalType
     in
     Element.el
-        [ Element.above <|
+        [ Element.width Element.fill
+        , Element.above <|
             if showModal then
                 intervalModal
                     intervalType

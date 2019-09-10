@@ -1,4 +1,4 @@
-module Helpers.Tuple exposing (extractTuple3Result, mapEachTuple3, mapTuple2, mapTuple3, tuple3First, tuple3Second, tuple3Third)
+module Helpers.Tuple exposing (extractTuple3Result, mapEachTuple3, mapTuple2, mapTuple3, tuple3First, tuple3MapFirst, tuple3MapSecond, tuple3MapThird, tuple3Second, tuple3Third)
 
 
 mapTuple2 : (a -> b) -> ( a, a ) -> ( b, b )
@@ -38,6 +38,18 @@ mapEachTuple3 f1 f2 f3 ( v1, v2, v3 ) =
     , f2 v2
     , f3 v3
     )
+
+
+tuple3MapFirst f =
+    mapEachTuple3 f identity identity
+
+
+tuple3MapSecond f =
+    mapEachTuple3 identity f identity
+
+
+tuple3MapThird f =
+    mapEachTuple3 identity identity f
 
 
 tuple3First : ( a, b, c ) -> a
