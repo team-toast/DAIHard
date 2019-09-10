@@ -22,6 +22,7 @@ init wallet mode =
     , mode = mode
     , now = Time.millisToPosix 0
     , prices = []
+    , lastAmountInputChanged = AmountIn
     , inputs = initialInputs wallet mode
     , errors = noErrors
     , margin = 0
@@ -173,7 +174,13 @@ update msg prevModel =
 
                         ( newModel, appCmds ) =
                             { prevModel | prices = newPrices }
-                                |> tryAutofillAmountOut
+                                |> (case prevModel.lastAmountInputChanged of
+                                        AmountIn ->
+                                            tryAutofillAmountOut
+
+                                        AmountOut ->
+                                            tryAutofillAmountIn
+                                   )
                     in
                     UpdateResult
                         newModel
@@ -264,8 +271,21 @@ update msg prevModel =
                                         Seller ->
                                             CryptoSwap Buyer
                                 , inputs = newInputs
+                                , lastAmountInputChanged =
+                                    case prevModel.lastAmountInputChanged of
+                                        AmountIn ->
+                                            AmountOut
+
+                                        AmountOut ->
+                                            AmountIn
                             }
-                                |> tryAutofillForeignCurrencyAmount
+                                |> (case prevModel.lastAmountInputChanged of
+                                        AmountIn ->
+                                            tryAutofillAmountOut
+
+                                        AmountOut ->
+                                            tryAutofillAmountIn
+                                   )
                     in
                     UpdateResult
                         newModel
@@ -306,6 +326,7 @@ update msg prevModel =
                     { prevModel
                         | inputs = { prevInputs | amountIn = input }
                         , errors = newErrors
+                        , lastAmountInputChanged = AmountIn
                     }
                         |> updateAmountIn newMaybeAmountIn
                         |> tryAutofillAmountOut
@@ -375,6 +396,7 @@ update msg prevModel =
                     { prevModel
                         | inputs = { prevInputs | amountOut = input }
                         , errors = newErrors
+                        , lastAmountInputChanged = AmountOut
                     }
                         |> updateAmountOut newMaybeAmountOut
                         |> tryAutofillAmountIn
@@ -489,7 +511,13 @@ update msg prevModel =
                                 |> Maybe.withDefault prevModel.margin
                         , errors = newErrors
                     }
-                        |> tryAutofillAmountOut
+                        |> (case prevModel.lastAmountInputChanged of
+                                AmountIn ->
+                                    tryAutofillAmountOut
+
+                                AmountOut ->
+                                    tryAutofillAmountIn
+                           )
             in
             UpdateResult
                 newModel
@@ -530,7 +558,13 @@ update msg prevModel =
                             }
                         , margin = newMargin
                     }
-                        |> tryAutofillAmountOut
+                        |> (case prevModel.lastAmountInputChanged of
+                                AmountIn ->
+                                    tryAutofillAmountOut
+
+                                AmountOut ->
+                                    tryAutofillAmountIn
+                           )
             in
             UpdateResult
                 newModel

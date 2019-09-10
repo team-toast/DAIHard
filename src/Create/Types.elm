@@ -1,4 +1,4 @@
-module Create.Types exposing (CurrencyType(..), Errors, Inputs, IntervalUnit(..), MarginButtonType(..), Mode(..), Model, Msg(..), TradeType(..), UpdateResult, UserInterval, amountIn, amountOut, currencySymbol, externalCurrencyPrice, getUserInterval, initiatorRole, intervalUnitToString, justModelUpdate, noErrors, tradeType, updateAmountIn, updateAmountOut, updateForeignCurrencyType, updateInType, updateOutType, updateUserInterval)
+module Create.Types exposing (AmountInputType(..), CurrencyType(..), Errors, Inputs, IntervalUnit(..), MarginButtonType(..), Mode(..), Model, Msg(..), TradeType(..), UpdateResult, UserInterval, amountIn, amountOut, currencySymbol, externalCurrencyPrice, getUserInterval, initiatorRole, intervalUnitToString, justModelUpdate, noErrors, tradeType, updateAmountIn, updateAmountOut, updateForeignCurrencyType, updateInType, updateOutType, updateUserInterval)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -18,6 +18,7 @@ type alias Model =
     , mode : Mode
     , now : Time.Posix
     , prices : List ( Currencies.Symbol, PriceFetch.PriceData )
+    , lastAmountInputChanged : AmountInputType
     , inputs : Inputs
     , errors : Errors
     , dhTokenType : FactoryType
@@ -73,6 +74,11 @@ type alias Inputs =
     , paymentMethod : String
     , interval : String
     }
+
+
+type AmountInputType
+    = AmountIn
+    | AmountOut
 
 
 type alias Errors =
