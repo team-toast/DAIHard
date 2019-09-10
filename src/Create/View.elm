@@ -725,91 +725,55 @@ intervalsRow model =
         [ Element.width Element.fill
         , Element.spacing 23
         ]
-        [ expiryWindowBox model
-        , paymentWindowBox model
-        , burnWindowBox model
+        [ phaseWindowBoxAndMaybeModal Expiry model
+        , phaseWindowBoxAndMaybeModal Payment model
+        , phaseWindowBoxAndMaybeModal Judgment model
         ]
 
 
-expiryWindowBox : Model -> Element Msg
-expiryWindowBox model =
+phaseWindowBoxAndMaybeModal : IntervalType -> Model -> Element Msg
+phaseWindowBoxAndMaybeModal intervalType model =
+    let
+        showModal =
+            model.showIntervalModal == Just intervalType
+    in
     Element.el
         [ Element.above <|
-            if TupleHelpers.tuple3First model.showIntervalModals then
+            if showModal then
                 intervalModal
-                    "Offer Expiry"
-                    "This is the window of time that your trade will be available in the marketplace for someone to claim. You can recall this trade at anytime during this window given that it hasn’t yet been claimed."
+                    intervalType
+                    (getUserInterval intervalType model)
                     model.inputs.interval
-                    (TupleHelpers.tuple3First model.intervals)
-                    ExpiryWindowChanged
 
             else
                 Element.none
         ]
     <|
-        intervalBox
-            "Offer Expiry"
-            (TupleHelpers.tuple3First model.intervals)
-            (TupleHelpers.tuple3First model.showIntervalModals)
-            ExpiryWindowBoxClicked
+        phaseWindowBox
+            intervalType
+            (getUserInterval intervalType model)
+            showModal
 
 
-paymentWindowBox : Model -> Element Msg
-paymentWindowBox model =
-    Element.el
-        [ Element.above <|
-            if TupleHelpers.tuple3Second model.showIntervalModals then
-                intervalModal
-                    "Payment Due"
-                    "This is the window of time that the responder of this trade will have to confirm that they have successfully sent the exchange amount to your specified wallet."
-                    model.inputs.interval
-                    (TupleHelpers.tuple3Second model.intervals)
-                    PaymentWindowChanged
-
-            else
-                Element.none
-        ]
-    <|
-        intervalBox
-            "Payment Due"
-            (TupleHelpers.tuple3Second model.intervals)
-            (TupleHelpers.tuple3Second model.showIntervalModals)
-            PaymentWindowBoxClicked
-
-
-burnWindowBox : Model -> Element Msg
-burnWindowBox model =
-    Element.el
-        [ Element.above <|
-            if TupleHelpers.tuple3Third model.showIntervalModals then
-                intervalModal
-                    "Burn Window"
-                    "During this window, you have to decide if the responder has indeed sent the exchange amount to you and thus decide to burn or release the trade. If there is no action from you before this window expires, the trade will be auto-released."
-                    model.inputs.interval
-                    (TupleHelpers.tuple3Third model.intervals)
-                    BurnWindowChanged
-
-            else
-                Element.none
-        ]
-    <|
-        intervalBox
-            "Burn Window"
-            (TupleHelpers.tuple3Third model.intervals)
-            (TupleHelpers.tuple3Third model.showIntervalModals)
-            BurnWindowBoxClicked
-
-
-intervalBox : String -> UserInterval -> Bool -> Msg -> Element Msg
-intervalBox title interval modalIsOpen onClick =
+phaseWindowBox : IntervalType -> UserInterval -> Bool -> Element Msg
+phaseWindowBox intervalType interval modalIsOpen =
     EH.withInputHeader
         [ Element.width Element.fill ]
-        title
+        (case intervalType of
+            Expiry ->
+                "Offer Expiry"
+
+            Payment ->
+                "Payment Due"
+
+            Judgment ->
+                "Burn Window"
+        )
     <|
         inputContainer
             [ Element.width Element.fill
             , Element.pointer
-            , EH.onClickNoPropagation onClick
+            , EH.onClickNoPropagation (WindowBoxClicked intervalType)
             ]
             [ Element.el
                 [ Element.height Element.fill
@@ -820,22 +784,6 @@ intervalBox title interval modalIsOpen onClick =
                 (userInterval interval)
             , dropdownArrow modalIsOpen
             ]
-
-
-openTradeButton : Element Msg
-openTradeButton =
-    Element.el
-        [ Element.width Element.fill
-        , Element.padding 17
-        , Element.Border.rounded 4
-        , Element.Background.color <| Element.rgb255 255 0 118
-        , Element.pointer
-        , Element.Font.size 20
-        , Element.Font.semiBold
-        , Element.Font.center
-        , Element.Font.color EH.white
-        ]
-        (Element.text "Open Trade")
 
 
 userInterval : UserInterval -> Element Msg
@@ -857,8 +805,26 @@ userInterval interval =
                    )
 
 
-intervalModal : String -> String -> String -> UserInterval -> (UserInterval -> Msg) -> Element Msg
-intervalModal title text input value onChange =
+intervalModal : IntervalType -> UserInterval -> String -> Element Msg
+intervalModal intervalType value input =
+    let
+        ( title, text ) =
+            case intervalType of
+                Expiry ->
+                    ( "Offer Expiry"
+                    , "This is the window of time that your trade will be available in the marketplace for someone to claim. You can recall this trade at anytime during this window given that it hasn’t yet been claimed."
+                    )
+
+                Payment ->
+                    ( "Payment Due"
+                    , "This is the window of time that the responder of this trade will have to confirm that they have successfully sent the exchange amount to your specified wallet."
+                    )
+
+                Judgment ->
+                    ( "Burn Window"
+                    , "During this window, you have to decide if the responder has indeed sent the exchange amount to you and thus decide to burn or release the trade. If there is no action from you before this window expires, the trade will be auto-released."
+                    )
+    in
     EH.modal
         (Element.rgba 0 0 0 0.1)
         NoOp
@@ -983,6 +949,22 @@ inputContainer attributes =
         , Element.spacing 1
         ]
             ++ attributes
+
+
+openTradeButton : Element Msg
+openTradeButton =
+    Element.el
+        [ Element.width Element.fill
+        , Element.padding 17
+        , Element.Border.rounded 4
+        , Element.Background.color <| Element.rgb255 255 0 118
+        , Element.pointer
+        , Element.Font.size 20
+        , Element.Font.semiBold
+        , Element.Font.center
+        , Element.Font.color EH.white
+        ]
+        (Element.text "Open Trade")
 
 
 viewModals : Model -> List (Element Msg)

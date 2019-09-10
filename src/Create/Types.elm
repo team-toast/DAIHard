@@ -1,10 +1,11 @@
-module Create.Types exposing (CurrencyType(..), Errors, Inputs, IntervalUnit(..), MarginButtonType(..), Mode(..), Model, Msg(..), TradeType(..), UpdateResult, UserInterval, amountIn, amountOut, currencySymbol, externalCurrencyPrice, initiatorRole, intervalUnitToString, justModelUpdate, noErrors, tradeType, updateAmountIn, updateAmountOut, updateForeignCurrencyType)
+module Create.Types exposing (CurrencyType(..), Errors, Inputs, IntervalUnit(..), MarginButtonType(..), Mode(..), Model, Msg(..), TradeType(..), UpdateResult, UserInterval, amountIn, amountOut, currencySymbol, externalCurrencyPrice, getUserInterval, initiatorRole, intervalUnitToString, justModelUpdate, noErrors, tradeType, updateAmountIn, updateAmountOut, updateForeignCurrencyType)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
 import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Currencies
+import Helpers.Tuple as TupleHelpers
 import Http
 import PriceFetch
 import Time
@@ -28,7 +29,7 @@ type alias Model =
     , showInTypeDropdown : Bool
     , showOutTypeDropdown : Bool
     , showMarginModal : Bool
-    , showIntervalModals : ( Bool, Bool, Bool )
+    , showIntervalModal : Maybe IntervalType
     , userAllowance : Maybe TokenValue
     }
 
@@ -52,14 +53,9 @@ type Msg
     | MarginButtonClicked MarginButtonType
     | ReceiveAddressChanged String
     | PaymentMethodChanged String
-    | ExpiryWindowBoxClicked
-    | PaymentWindowBoxClicked
-    | BurnWindowBoxClicked
+    | WindowBoxClicked IntervalType
     | IntervalInputChanged String
     | IntervalUnitChanged IntervalUnit
-    | ExpiryWindowChanged UserInterval
-    | PaymentWindowChanged UserInterval
-    | BurnWindowChanged UserInterval
     | CloseModals
     | NoOp
     | CmdUp (CmdUp Msg)
@@ -253,3 +249,16 @@ type MarginButtonType
     = Loss
     | Even
     | Profit
+
+
+getUserInterval : IntervalType -> Model -> UserInterval
+getUserInterval intervalType model =
+    case intervalType of
+        Expiry ->
+            TupleHelpers.tuple3First model.intervals
+
+        Payment ->
+            TupleHelpers.tuple3Second model.intervals
+
+        Judgment ->
+            TupleHelpers.tuple3Third model.intervals

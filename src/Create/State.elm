@@ -36,7 +36,7 @@ init wallet mode =
     , showInTypeDropdown = False
     , showOutTypeDropdown = False
     , showMarginModal = False
-    , showIntervalModals = ( False, False, False )
+    , showIntervalModal = Nothing
     , userAllowance = Nothing
     }
         |> update Refresh
@@ -541,76 +541,18 @@ update msg prevModel =
                         }
                 }
 
-        ExpiryWindowBoxClicked ->
+        WindowBoxClicked intervalType ->
             let
                 prevInputs =
                     prevModel.inputs
             in
             justModelUpdate
                 { prevModel
-                    | showIntervalModals =
-                        ( if TupleHelpers.tuple3First prevModel.showIntervalModals then
-                            False
-
-                          else
-                            True
-                        , False
-                        , False
-                        )
+                    | showIntervalModal = Just intervalType
                     , inputs =
                         { prevInputs
                             | interval =
-                                TupleHelpers.tuple3First prevModel.intervals
-                                    |> .num
-                                    |> String.fromInt
-                        }
-                }
-
-        PaymentWindowBoxClicked ->
-            let
-                prevInputs =
-                    prevModel.inputs
-            in
-            justModelUpdate
-                { prevModel
-                    | showIntervalModals =
-                        ( False
-                        , if TupleHelpers.tuple3Second prevModel.showIntervalModals then
-                            False
-
-                          else
-                            True
-                        , False
-                        )
-                    , inputs =
-                        { prevInputs
-                            | interval =
-                                TupleHelpers.tuple3Second prevModel.intervals
-                                    |> .num
-                                    |> String.fromInt
-                        }
-                }
-
-        BurnWindowBoxClicked ->
-            let
-                prevInputs =
-                    prevModel.inputs
-            in
-            justModelUpdate
-                { prevModel
-                    | showIntervalModals =
-                        ( False
-                        , False
-                        , if TupleHelpers.tuple3Third prevModel.showIntervalModals then
-                            False
-
-                          else
-                            True
-                        )
-                    , inputs =
-                        { prevInputs
-                            | interval =
-                                TupleHelpers.tuple3Second prevModel.intervals
+                                getUserInterval intervalType prevModel
                                     |> .num
                                     |> String.fromInt
                         }
@@ -620,15 +562,6 @@ update msg prevModel =
             Debug.todo ""
 
         IntervalUnitChanged newUnit ->
-            Debug.todo ""
-
-        ExpiryWindowChanged newInterval ->
-            Debug.todo ""
-
-        PaymentWindowChanged newInterval ->
-            Debug.todo ""
-
-        BurnWindowChanged newInterval ->
             Debug.todo ""
 
         CloseModals ->
@@ -641,7 +574,7 @@ update msg prevModel =
                     | showInTypeDropdown = False
                     , showOutTypeDropdown = False
                     , showMarginModal = False
-                    , showIntervalModals = ( False, False, False )
+                    , showIntervalModal = Nothing
                     , inputs =
                         { oldInputs | currencySearch = "" }
                 }

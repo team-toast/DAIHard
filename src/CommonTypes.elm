@@ -1,4 +1,4 @@
-module CommonTypes exposing (BuyerOrSeller(..), FactoryType(..), GTagData, InitiatorOrResponder(..), NativeFactoryType(..), TokenFactoryType(..), UserInfo, buyerOrSellerToString, dhTokenList, factoryName, networkNameForFactory, tokenSymbol, tokenUnitName)
+module CommonTypes exposing (BuyerOrSeller(..), FactoryType(..), GTagData, InitiatorOrResponder(..), IntervalType(..), NativeFactoryType(..), TokenFactoryType(..), UserInfo, buyerOrSellerToString, dhTokenList, factoryName, networkNameForFactory, tokenSymbol, tokenUnitName)
 
 import Dict
 import Eth.Net
@@ -46,6 +46,12 @@ type InitiatorOrResponder
 type BuyerOrSeller
     = Buyer
     | Seller
+
+
+type IntervalType
+    = Expiry
+    | Payment
+    | Judgment
 
 
 buyerOrSellerToString : BuyerOrSeller -> String
