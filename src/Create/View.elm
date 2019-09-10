@@ -566,6 +566,7 @@ dhTokenTypeDropdown msgConstructor =
         EH.basicOpenDropdown
             [ Element.width <| Element.px 300
             , Element.moveDown 10
+            , Element.alignRight
             ]
             Nothing
             (dhTokenList
@@ -596,6 +597,7 @@ cryptoTypeDropdown searchInput searchChangedMsg selectedMsg =
         EH.searchableOpenDropdown
             [ Element.width <| Element.px 300
             , Element.moveDown 18
+            , Element.alignRight
             ]
             "search cryptocurrencies"
             (Currencies.foreignCryptoList
@@ -629,6 +631,7 @@ fiatTypeDropdown searchInput searchChangedMsg selectedMsg =
         EH.searchableOpenDropdown
             [ Element.width <| Element.px 300
             , Element.moveDown 18
+            , Element.alignRight
             ]
             "search currencies"
             (Currencies.fiatList
@@ -869,6 +872,11 @@ intervalModal intervalType value input maybeError =
                 , blur = 20
                 , color = Element.rgba 0 0 0 0.08
                 }
+            , if intervalType == Judgment then
+                Element.alignRight
+
+              else
+                Element.alignLeft
             ]
             [ Element.el
                 [ Element.paddingXY 23 18
