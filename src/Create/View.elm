@@ -358,9 +358,10 @@ marginModal margin marginInput =
                     [ Element.Input.text
                         [ Element.Border.width 0
                         , Element.width Element.fill
+                        , Element.height Element.fill
                         ]
                         { onChange = MarginInputChanged
-                        , text = marginInput
+                        , text = marginInput ++ "%"
                         , placeholder = Nothing
                         , label = Element.Input.labelHidden "margin"
                         }
@@ -377,7 +378,7 @@ marginModal margin marginInput =
                         inactiveBgColor
                         inactiveTextColor
                         "Loss"
-                        (Just MarginLossClicked)
+                        (Just <| MarginButtonClicked Loss)
                 , if margin == 0 then
                     button
                         (Element.rgb255 16 7 234)
@@ -390,7 +391,7 @@ marginModal margin marginInput =
                         inactiveBgColor
                         inactiveTextColor
                         "Even"
-                        (Just MarginEvenClicked)
+                        (Just <| MarginButtonClicked Even)
                 , if margin > 0 then
                     button
                         (Element.rgb255 0 188 137)
@@ -403,7 +404,7 @@ marginModal margin marginInput =
                         inactiveBgColor
                         inactiveTextColor
                         "Profit"
-                        (Just MarginProfitClicked)
+                        (Just <| MarginButtonClicked Profit)
                 ]
             ]
 

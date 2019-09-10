@@ -1,4 +1,4 @@
-module Create.Types exposing (CurrencyType(..), Errors, Inputs, IntervalUnit(..), Mode(..), Model, Msg(..), TradeType(..), UpdateResult, UserInterval, amountIn, amountOut, currencySymbol, externalCurrencyPrice, initiatorRole, intervalUnitToString, justModelUpdate, noErrors, tradeType, updateAmountIn, updateAmountOut, updateForeignCurrencyType)
+module Create.Types exposing (CurrencyType(..), Errors, Inputs, IntervalUnit(..), MarginButtonType(..), Mode(..), Model, Msg(..), TradeType(..), UpdateResult, UserInterval, amountIn, amountOut, currencySymbol, externalCurrencyPrice, initiatorRole, intervalUnitToString, justModelUpdate, noErrors, tradeType, updateAmountIn, updateAmountOut, updateForeignCurrencyType)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -49,9 +49,7 @@ type Msg
     | SearchInputChanged String
     | MarginBoxClicked
     | MarginInputChanged String
-    | MarginLossClicked
-    | MarginEvenClicked
-    | MarginProfitClicked
+    | MarginButtonClicked MarginButtonType
     | ReceiveAddressChanged String
     | PaymentMethodChanged String
     | ExpiryWindowBoxClicked
@@ -74,6 +72,7 @@ type alias Inputs =
     , outType : CurrencyType
     , currencySearch : String
     , margin : String
+    , marginType : MarginButtonType
     , receiveAddress : String
     , paymentMethod : String
     , interval : String
@@ -248,3 +247,9 @@ updateForeignCurrencyType symbol prevModel =
                 Seller ->
                     { prevInputs | outType = External symbol }
     }
+
+
+type MarginButtonType
+    = Loss
+    | Even
+    | Profit

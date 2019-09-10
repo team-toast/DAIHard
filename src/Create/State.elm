@@ -51,6 +51,7 @@ initialInputs wallet mode =
         (Tuple.second (defaultCurrencyInputs wallet mode))
         ""
         "0"
+        Even
         ""
         ""
         ""
@@ -421,25 +422,98 @@ update msg prevModel =
 
         MarginInputChanged input ->
             let
-                oldInputs =
+                prevInputs =
                     prevModel.inputs
+
+                filteredInput =
+                    input
+                        |> String.filter
+                            (\c ->
+                                List.any ((==) c) [ '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '.' ]
+                            )
+
+                ( newMargin, newMarginType, newErrors ) =
+                    let
+                        prevErrors =
+                            prevModel.errors
+                    in
+                    case interpretMargin filteredInput of
+                        Ok maybeMargin ->
+                            ( maybeMargin
+                            , if maybeMargin == Just 0 then
+                                Even
+
+                              else
+                                prevInputs.marginType
+                            , { prevErrors | margin = Nothing }
+                            )
+
+                        Err errStr ->
+                            ( Nothing
+                            , prevInputs.marginType
+                            , { prevErrors | margin = Just errStr }
+                            )
+
+                ( newModel, appCmds ) =
+                    { prevModel
+                        | inputs =
+                            { prevInputs
+                                | margin = filteredInput
+                                , marginType = newMarginType
+                            }
+                        , margin =
+                            newMargin
+                                |> Maybe.withDefault prevModel.margin
+                        , errors = newErrors
+                    }
+                        |> tryAutofillAmountOut
             in
-            justModelUpdate
-                { prevModel
-                    | inputs =
-                        { oldInputs
-                            | margin = input
-                        }
-                }
+            UpdateResult
+                newModel
+                Cmd.none
+                ChainCmd.none
+                appCmds
 
-        MarginLossClicked ->
-            Debug.todo ""
+        MarginButtonClicked typeClicked ->
+            let
+                prevInputs =
+                    prevModel.inputs
 
-        MarginEvenClicked ->
-            Debug.todo ""
+                newMargin =
+                    case typeClicked of
+                        Loss ->
+                            if prevModel.margin == 0 then
+                                -0.01
 
-        MarginProfitClicked ->
-            Debug.todo ""
+                            else
+                                negate (abs prevModel.margin)
+
+                        Even ->
+                            0
+
+                        Profit ->
+                            if prevModel.margin == 0 then
+                                0.01
+
+                            else
+                                abs prevModel.margin
+
+                ( newModel, appCmds ) =
+                    { prevModel
+                        | inputs =
+                            { prevInputs
+                                | margin = marginToInputString newMargin
+                                , marginType = typeClicked
+                            }
+                        , margin = newMargin
+                    }
+                        |> tryAutofillAmountOut
+            in
+            UpdateResult
+                newModel
+                Cmd.none
+                ChainCmd.none
+                appCmds
 
         ReceiveAddressChanged input ->
             let
@@ -622,6 +696,18 @@ interpretAmount input =
                 Err "Invalid amount"
 
 
+interpretMargin : String -> Result String (Maybe Float)
+interpretMargin input =
+    if input == "" then
+        Ok Nothing
+
+    else
+        String.toFloat input
+            |> Result.fromMaybe "Invalid responderProfit"
+            |> Result.map (\percent -> percent / 100.0)
+            |> Result.map Just
+
+
 tryAutofillAmountOut : Model -> ( Model, List (CmdUp Msg) )
 tryAutofillAmountOut prevModel =
     case externalCurrencyPrice prevModel of
@@ -744,6 +830,14 @@ tryAutofillForeignCurrencyAmount prevModel =
 
         Seller ->
             tryAutofillAmountOut prevModel
+
+
+marginToInputString : Float -> String
+marginToInputString float =
+    float
+        * 100
+        |> abs
+        |> String.fromFloat
 
 
 subscriptions : Model -> Sub Msg
