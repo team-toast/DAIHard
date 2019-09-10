@@ -460,7 +460,7 @@ update msg prevModel =
                         prevErrors =
                             prevModel.errors
                     in
-                    case interpretMargin filteredInput of
+                    case interpretMargin filteredInput prevInputs.marginType of
                         Ok maybeMargin ->
                             ( maybeMargin
                             , if maybeMargin == Just 0 then
@@ -716,8 +716,8 @@ interpretAmount input =
                 Err "Invalid amount"
 
 
-interpretMargin : String -> Result String (Maybe Float)
-interpretMargin input =
+interpretMargin : String -> MarginButtonType -> Result String (Maybe Float)
+interpretMargin input marginType =
     if input == "" then
         Ok Nothing
 
@@ -725,6 +725,13 @@ interpretMargin input =
         String.toFloat input
             |> Result.fromMaybe "Invalid margin"
             |> Result.map (\percent -> percent / 100.0)
+            |> Result.map
+                (if marginType == Loss then
+                    negate
+
+                 else
+                    identity
+                )
             |> Result.map Just
 
 
@@ -749,7 +756,7 @@ tryAutofillAmountOut prevModel =
                         (\amountIn ->
                             case initiatorRole prevModel.mode of
                                 Buyer ->
-                                    (amountIn * price) / (1 - prevModel.margin)
+                                    (amountIn * price) * (1 + prevModel.margin)
 
                                 Seller ->
                                     let
@@ -759,7 +766,7 @@ tryAutofillAmountOut prevModel =
                                         equivalentForeignCrypto =
                                             tradeAmountAfterDevFee / price
                                     in
-                                    equivalentForeignCrypto / (1 - prevModel.margin)
+                                    equivalentForeignCrypto * (1 + prevModel.margin)
                         )
                         (amountIn prevModel)
 
@@ -800,12 +807,12 @@ tryAutofillAmountIn prevModel =
                         (\amountOut ->
                             case initiatorRole prevModel.mode of
                                 Buyer ->
-                                    (amountOut * (1 - prevModel.margin)) / price
+                                    (amountOut / (1 + prevModel.margin)) / price
 
                                 Seller ->
                                     let
                                         amountOutMinusMargin =
-                                            amountOut * (1 - prevModel.margin)
+                                            amountOut / (1 + prevModel.margin)
 
                                         equivalentDai =
                                             amountOutMinusMargin * price
