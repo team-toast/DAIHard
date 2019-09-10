@@ -224,16 +224,21 @@ update msg prevModel =
         ChangeMode newMode ->
             let
                 newModel =
-                    { prevModel | mode = newMode }
+                    { prevModel
+                        | mode = newMode
+                    }
             in
             justModelUpdate <|
                 if tradeType prevModel.mode /= tradeType newMode then
-                    newModel |> updateForeignCurrencyType (defaultExternalCurrency newMode)
+                    { newModel
+                        | inputs = initialInputs prevModel.wallet newMode
+                    }
+                        |> updateForeignCurrencyType (defaultExternalCurrency newMode)
 
                 else
                     newModel
 
-        SwapClicked ->
+        SwapClicked ->``
             let
                 prevInputs =
                     prevModel.inputs
