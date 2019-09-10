@@ -1393,8 +1393,7 @@ basicOpenDropdown : List (Attribute msg) -> Maybe (Element msg) -> List ( Elemen
 basicOpenDropdown attributes maybeFirstEl items =
     Element.el
         (attributes
-            ++ [ Element.height (Element.shrink |> Element.maximum 340)
-               , Element.Background.color white
+            ++ [ Element.Background.color white
                , Element.Border.rounded 6
                , Element.Border.shadow
                     { offset = ( 0, 3 )
@@ -1409,7 +1408,7 @@ basicOpenDropdown attributes maybeFirstEl items =
             [ Element.Background.color lightGray
             , Element.spacing 1
             , Element.width Element.fill
-            , Element.height <| Element.px 300
+            , Element.height (Element.shrink |> Element.maximum 340)
             ]
             [ maybeFirstEl |> Maybe.withDefault Element.none
             , Element.column
