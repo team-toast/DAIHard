@@ -1,4 +1,4 @@
-module Create.Types exposing (CurrencyType(..), Errors, Inputs, IntervalUnit(..), MarginButtonType(..), Mode(..), Model, Msg(..), TradeType(..), UpdateResult, UserInterval, amountIn, amountOut, currencySymbol, externalCurrencyPrice, getUserInterval, initiatorRole, intervalUnitToString, justModelUpdate, noErrors, tradeType, updateAmountIn, updateAmountOut, updateForeignCurrencyType, updateUserInterval)
+module Create.Types exposing (CurrencyType(..), Errors, Inputs, IntervalUnit(..), MarginButtonType(..), Mode(..), Model, Msg(..), TradeType(..), UpdateResult, UserInterval, amountIn, amountOut, currencySymbol, externalCurrencyPrice, getUserInterval, initiatorRole, intervalUnitToString, justModelUpdate, noErrors, tradeType, updateAmountIn, updateAmountOut, updateForeignCurrencyType, updateInType, updateOutType, updateUserInterval)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -211,6 +211,62 @@ updateAmountIn newMaybeAmount model =
 
         Buyer ->
             { model | foreignCurrencyAmount = newMaybeAmount }
+
+
+updateInType : CurrencyType -> Model -> Model
+updateInType newType prevModel =
+    case initiatorRole prevModel.mode of
+        Seller ->
+            case newType of
+                DHToken tokenType ->
+                    { prevModel | dhTokenType = tokenType }
+
+                _ ->
+                    let
+                        _ =
+                            Debug.log "Trying to update inType with the wrong currency type" ( initiatorRole prevModel.mode, newType )
+                    in
+                    prevModel
+
+        Buyer ->
+            case newType of
+                External symbol ->
+                    { prevModel | foreignCurrencyType = symbol }
+
+                _ ->
+                    let
+                        _ =
+                            Debug.log "Trying to update inType with the wrong currency type" ( initiatorRole prevModel.mode, newType )
+                    in
+                    prevModel
+
+
+updateOutType : CurrencyType -> Model -> Model
+updateOutType newType prevModel =
+    case initiatorRole prevModel.mode of
+        Seller ->
+            case newType of
+                External symbol ->
+                    { prevModel | foreignCurrencyType = symbol }
+
+                _ ->
+                    let
+                        _ =
+                            Debug.log "Trying to update outType with the wrong currency type" ( initiatorRole prevModel.mode, newType )
+                    in
+                    prevModel
+
+        Buyer ->
+            case newType of
+                DHToken tokenType ->
+                    { prevModel | dhTokenType = tokenType }
+
+                _ ->
+                    let
+                        _ =
+                            Debug.log "Trying to update outType with the wrong currency type" ( initiatorRole prevModel.mode, newType )
+                    in
+                    prevModel
 
 
 updateUserInterval : IntervalType -> UserInterval -> Model -> Model

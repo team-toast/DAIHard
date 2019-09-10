@@ -238,7 +238,7 @@ update msg prevModel =
                 else
                     newModel
 
-        SwapClicked ->``
+        SwapClicked ->
             let
                 prevInputs =
                     prevModel.inputs
@@ -247,6 +247,8 @@ update msg prevModel =
                     { prevInputs
                         | amountIn = prevInputs.amountOut
                         , amountOut = prevInputs.amountIn
+                        , inType = prevInputs.outType
+                        , outType = prevInputs.inType
                     }
             in
             case prevModel.mode of
@@ -330,15 +332,23 @@ update msg prevModel =
                 oldInputs =
                     prevModel.inputs
             in
-            justModelUpdate
-                { prevModel
-                    | inputs =
-                        { oldInputs
-                            | inType = newType
-                            , currencySearch = ""
-                        }
-                    , showInTypeDropdown = False
-                }
+            { prevModel
+                | inputs =
+                    { oldInputs
+                        | inType = newType
+                        , currencySearch = ""
+                    }
+                , showInTypeDropdown = False
+            }
+                |> updateInType newType
+                |> tryAutofillAmountOut
+                |> (\( model, cmdUps ) ->
+                        UpdateResult
+                            model
+                            Cmd.none
+                            ChainCmd.none
+                            cmdUps
+                   )
 
         AmountOutChanged input ->
             let
@@ -391,15 +401,23 @@ update msg prevModel =
                 oldInputs =
                     prevModel.inputs
             in
-            justModelUpdate
-                { prevModel
-                    | inputs =
-                        { oldInputs
-                            | outType = newType
-                            , currencySearch = ""
-                        }
-                    , showOutTypeDropdown = False
-                }
+            { prevModel
+                | inputs =
+                    { oldInputs
+                        | outType = newType
+                        , currencySearch = ""
+                    }
+                , showOutTypeDropdown = False
+            }
+                |> updateOutType newType
+                |> tryAutofillAmountOut
+                |> (\( model, cmdUps ) ->
+                        UpdateResult
+                            model
+                            Cmd.none
+                            ChainCmd.none
+                            cmdUps
+                   )
 
         SearchInputChanged input ->
             let
