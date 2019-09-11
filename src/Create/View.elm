@@ -1,5 +1,6 @@
 module Create.View exposing (root)
 
+import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Create.Types exposing (..)
 import Currencies
@@ -14,6 +15,7 @@ import Helpers.Element as EH
 import Helpers.Tuple as TupleHelpers
 import Images
 import Maybe.Extra
+import Wallet
 
 
 root : Model -> ( Element Msg, List (Element Msg) )
@@ -114,7 +116,7 @@ body model =
         , amountOutRow model
         , moreInfoInput model
         , intervalsRow model
-        , openTradeButton
+        , placeOrderButton model
         ]
 
 
@@ -1009,20 +1011,83 @@ inputContainer attributes =
             ++ attributes
 
 
-openTradeButton : Element Msg
-openTradeButton =
-    Element.el
-        [ Element.width Element.fill
-        , Element.padding 17
-        , Element.Border.rounded 4
-        , Element.Background.color <| Element.rgb255 255 0 118
-        , Element.pointer
-        , Element.Font.size 20
-        , Element.Font.semiBold
-        , Element.Font.center
-        , Element.Font.color EH.white
-        ]
-        (Element.text "Open Trade")
+placeOrderButton : Model -> Element Msg
+placeOrderButton model =
+    let
+        buttonBuilder bgColor textColor text maybeOnClick maybeError =
+            Element.el
+                ([ Element.width Element.fill
+                 , Element.padding 17
+                 , Element.Border.rounded 4
+                 , Element.Font.size 20
+                 , Element.Font.semiBold
+                 , Element.Font.center
+                 , Element.Background.color bgColor
+                 , Element.Font.color textColor
+                 , Element.above <|
+                    case maybeError of
+                        Just error ->
+                            Element.el
+                                [ Element.Font.size 12
+                                , Element.Font.color EH.red
+                                , Element.moveUp 16
+                                , Element.centerX
+                                ]
+                                (Element.text error)
+
+                        Nothing ->
+                            Element.none
+                 ]
+                    ++ (case maybeOnClick of
+                            Just onClick ->
+                                [ Element.pointer
+                                , Element.Events.onClick onClick
+                                ]
+
+                            Nothing ->
+                                []
+                       )
+                )
+                (Element.text text)
+    in
+    case ( Wallet.userInfo model.wallet, maybeUserParameters model ) of
+        ( Just userInfo, Just userParameters ) ->
+            if Wallet.factory model.wallet == Just model.dhTokenType then
+                buttonBuilder
+                    (Element.rgb255 255 0 110)
+                    EH.white
+                    "Place Order"
+                    (Just <| PlaceOrderClicked model.dhTokenType userInfo userParameters)
+                    Nothing
+
+            else
+                buttonBuilder
+                    EH.lightGray
+                    EH.black
+                    "Place Order"
+                    Nothing
+                    (Just <|
+                        "You must switch your wallet to the "
+                            ++ networkNameForFactory model.dhTokenType
+                            ++ " network to create a trade with "
+                            ++ tokenUnitName model.dhTokenType
+                    )
+
+        ( Nothing, _ ) ->
+            buttonBuilder
+                EH.red
+                EH.white
+                "Connect to Wallet"
+                (Just <| CmdUp CmdUp.Web3Connect)
+                Nothing
+
+        ( _, Nothing ) ->
+            buttonBuilder
+                EH.lightGray
+                EH.black
+                "Place Order"
+                Nothing
+                Nothing
 
 
 viewModals : Model -> List (Element Msg)

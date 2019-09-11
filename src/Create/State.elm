@@ -700,6 +700,9 @@ update msg prevModel =
                         { oldInputs | currencySearch = "" }
                 }
 
+        PlaceOrderClicked factoryType userInfo userParameters ->
+            Debug.todo ""
+
         NoOp ->
             justModelUpdate prevModel
 
@@ -802,7 +805,7 @@ tryAutofillAmountOut prevModel =
                                     in
                                     equivalentForeignCrypto * (1 + prevModel.margin)
                         )
-                        (amountIn prevModel)
+                        (getAmountIn prevModel)
 
                 oldInputs =
                     prevModel.inputs
@@ -856,7 +859,7 @@ tryAutofillAmountIn prevModel =
                                     in
                                     equivalentDai * 1.01
                         )
-                        (amountOut prevModel)
+                        (getAmountOut prevModel)
 
                 oldInputs =
                     prevModel.inputs

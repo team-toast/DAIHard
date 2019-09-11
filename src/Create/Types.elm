@@ -1,12 +1,14 @@
-module Create.Types exposing (AmountInputType(..), CurrencyType(..), Errors, Inputs, IntervalUnit(..), MarginButtonType(..), Mode(..), Model, Msg(..), TradeType(..), UpdateResult, UserInterval, amountIn, amountOut, currencySymbol, externalCurrencyPrice, getUserInterval, initiatorRole, intervalUnitToString, justModelUpdate, noErrors, tradeType, updateAmountIn, updateAmountOut, updateForeignCurrencyType, updateInType, updateOutType, updateUserInterval)
+module Create.Types exposing (AmountInputType(..), CurrencyType(..), Errors, Inputs, IntervalUnit(..), MarginButtonType(..), Mode(..), Model, Msg(..), TradeType(..), UpdateResult, UserInterval, currencySymbol, externalCurrencyPrice, getAmountIn, getAmountOut, getUserInterval, initiatorRole, intervalUnitToString, justModelUpdate, maybeUserParameters, noErrors, tradeType, updateAmountIn, updateAmountOut, updateForeignCurrencyType, updateInType, updateOutType, updateUserInterval)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
 import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
+import Contracts.Types as CTypes
 import Currencies
 import Helpers.Tuple as TupleHelpers
 import Http
+import PaymentMethods exposing (PaymentMethod)
 import PriceFetch
 import Time
 import TokenValue exposing (TokenValue)
@@ -58,6 +60,7 @@ type Msg
     | IntervalInputChanged String
     | IntervalUnitChanged IntervalUnit
     | CloseModals
+    | PlaceOrderClicked FactoryType UserInfo CTypes.UserParameters
     | NoOp
     | CmdUp (CmdUp Msg)
 
@@ -179,8 +182,8 @@ initiatorRole mode =
             Buyer
 
 
-amountIn : Model -> Maybe Float
-amountIn model =
+getAmountIn : Model -> Maybe Float
+getAmountIn model =
     case initiatorRole model.mode of
         Buyer ->
             model.foreignCurrencyAmount
@@ -189,8 +192,8 @@ amountIn model =
             model.dhTokenAmount
 
 
-amountOut : Model -> Maybe Float
-amountOut model =
+getAmountOut : Model -> Maybe Float
+getAmountOut model =
     case initiatorRole model.mode of
         Buyer ->
             model.dhTokenAmount
@@ -346,3 +349,101 @@ getUserInterval intervalType model =
 
         Judgment ->
             TupleHelpers.tuple3Third model.intervals
+
+
+maybeUserParameters : Model -> Maybe CTypes.UserParameters
+maybeUserParameters model =
+    Maybe.map3
+        (\tradeAmount price paymentMethods ->
+            { initiatorRole = initiatorRole model.mode
+            , tradeAmount = tradeAmount
+            , price = price
+            , paymentMethods = paymentMethods
+            , autorecallInterval = userIntervalToPosix (TupleHelpers.tuple3First model.intervals)
+            , autoabortInterval = userIntervalToPosix (TupleHelpers.tuple3Second model.intervals)
+            , autoreleaseInterval = userIntervalToPosix (TupleHelpers.tuple3Third model.intervals)
+            }
+        )
+        (getTradeAmount model)
+        (getTradePrice model)
+        (maybeBuildPaymentMethods model)
+
+
+userIntervalToPosix : UserInterval -> Time.Posix
+userIntervalToPosix interval =
+    interval.num
+        * (case interval.unit of
+            Minute ->
+                60
+
+            Hour ->
+                60 * 60
+
+            Day ->
+                60 * 60 * 24
+
+            Week ->
+                60 * 60 * 24 * 7
+          )
+        |> (*) 1000
+        |> Time.millisToPosix
+
+
+getTradeAmount : Model -> Maybe TokenValue
+getTradeAmount model =
+    model.dhTokenAmount
+        |> Maybe.map TokenValue.fromFloatWithWarning
+
+
+getTradePrice : Model -> Maybe Currencies.Price
+getTradePrice model =
+    Maybe.map
+        (Currencies.Price model.foreignCurrencyType)
+        model.foreignCurrencyAmount
+
+
+maybeBuildPaymentMethods : Model -> Maybe (List PaymentMethod)
+maybeBuildPaymentMethods model =
+    case model.mode of
+        CryptoSwap Buyer ->
+            Just
+                [ PaymentMethod
+                    PaymentMethods.Custom
+                  <|
+                    "Provide your "
+                        ++ model.foreignCurrencyType
+                        ++ " address immediately upon commitment, via chat."
+                ]
+
+        CryptoSwap Seller ->
+            if model.inputs.receiveAddress == "" then
+                Nothing
+
+            else
+                Just
+                    [ PaymentMethod
+                        PaymentMethods.Custom
+                        ("Pay to " ++ model.inputs.receiveAddress ++ " immediately upon commitment.")
+                    ]
+
+        OffRamp ->
+            if model.inputs.paymentMethod == "" then
+                Nothing
+
+            else
+                Just
+                    [ PaymentMethod
+                        PaymentMethods.Custom
+                        model.inputs.paymentMethod
+                    ]
+
+        OnRamp ->
+            if model.inputs.paymentMethod == "" then
+                Nothing
+
+            else
+                Just
+                    [ PaymentMethod
+                        PaymentMethods.Custom
+                        model.inputs.paymentMethod
+                    ]
