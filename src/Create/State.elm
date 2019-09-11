@@ -1,15 +1,21 @@
 module Create.State exposing (init, runCmdDown, subscriptions, update)
 
+import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
 import CmdDown exposing (CmdDown)
 import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Config
+import Contracts.Generated.ERC20Token as TokenContract
+import Contracts.Types as CTypes
 import Contracts.Wrappers
 import Create.Types exposing (..)
 import Currencies
+import Eth
+import Helpers.BigInt as BigIntHelpers
 import Helpers.Tuple as TupleHelpers
 import PriceFetch
+import Routing
 import Time
 import TokenValue exposing (TokenValue)
 import UserNotice as UN
@@ -39,6 +45,8 @@ init wallet mode =
     , showMarginModal = False
     , showIntervalModal = Nothing
     , userAllowance = Nothing
+    , depositAmount = Nothing
+    , txChainStatus = Nothing
     }
         |> update Refresh
 
@@ -194,39 +202,6 @@ update msg prevModel =
                         Cmd.none
                         ChainCmd.none
                         [ CmdUp.UserNotice UN.cantFetchPrices ]
-
-        AllowanceFetched tokenType fetchResult ->
-            case fetchResult of
-                Ok allowance ->
-                    let
-                        newModel =
-                            { prevModel
-                                | userAllowance = Just (TokenValue.tokenValue allowance)
-                            }
-                    in
-                    -- case ( newModel.txChainStatus, newModel.depositAmount ) of
-                    --     ( Just (ApproveMining _ createParameters _), Just depositAmount ) ->
-                    --         if BigInt.compare allowance depositAmount /= LT then
-                    --             let
-                    --                 ( txChainStatus, chainCmd ) =
-                    --                     initiateCreateCall (Token tokenType) createParameters
-                    --             in
-                    --             UpdateResult
-                    --                 { newModel | txChainStatus = txChainStatus }
-                    --                 Cmd.none
-                    --                 chainCmd
-                    --                 []
-                    --         else
-                    --             justModelUpdate newModel
-                    --     _ ->
-                    justModelUpdate newModel
-
-                Err httpError ->
-                    UpdateResult
-                        prevModel
-                        Cmd.none
-                        ChainCmd.none
-                        [ CmdUp.UserNotice <| UN.web3FetchError "allowance" httpError ]
 
         ChangeMode newMode ->
             let
@@ -701,7 +676,163 @@ update msg prevModel =
                 }
 
         PlaceOrderClicked factoryType userInfo userParameters ->
-            Debug.todo ""
+            let
+                createParameters =
+                    CTypes.buildCreateParameters userInfo userParameters
+            in
+            justModelUpdate
+                { prevModel
+                    | txChainStatus = Just <| Confirm factoryType createParameters
+                    , depositAmount =
+                        case initiatorRole prevModel.mode of
+                            Buyer ->
+                                Just <| CTypes.calculateFullInitialDeposit createParameters
+
+                            Seller ->
+                                Maybe.map
+                                    TokenValue.fromFloatWithWarning
+                                    (getAmountIn prevModel)
+                }
+
+        AbortCreate ->
+            UpdateResult
+                { prevModel | txChainStatus = Nothing }
+                Cmd.none
+                ChainCmd.none
+                [ CmdUp.gTag "abort" "abort" "create" 0 ]
+
+        ConfirmCreate factoryType createParameters fullDepositAmount ->
+            let
+                ( txChainStatus, chainCmd ) =
+                    case factoryType of
+                        Native _ ->
+                            initiateCreateCall factoryType createParameters
+
+                        Token tokenType ->
+                            let
+                                approveChainCmd =
+                                    let
+                                        txParams =
+                                            TokenContract.approve
+                                                (Config.tokenContractAddress tokenType)
+                                                (Config.factoryAddress factoryType)
+                                                (TokenValue.getEvmValue fullDepositAmount)
+                                                |> Eth.toSend
+
+                                        customSend =
+                                            { onMined = Nothing
+                                            , onSign = Just (ApproveSigned tokenType createParameters)
+                                            , onBroadcast = Nothing
+                                            }
+                                    in
+                                    ChainCmd.custom customSend txParams
+                            in
+                            case prevModel.userAllowance of
+                                Just allowance ->
+                                    if BigInt.compare allowance (TokenValue.getEvmValue fullDepositAmount) /= LT then
+                                        initiateCreateCall factoryType createParameters
+
+                                    else
+                                        ( Just (ApproveNeedsSig tokenType), approveChainCmd )
+
+                                Nothing ->
+                                    ( Just (ApproveNeedsSig tokenType), approveChainCmd )
+            in
+            UpdateResult
+                { prevModel | txChainStatus = txChainStatus }
+                Cmd.none
+                chainCmd
+                []
+
+        ApproveSigned tokenType createParameters result ->
+            case result of
+                Ok txHash ->
+                    justModelUpdate { prevModel | txChainStatus = Just <| ApproveMining tokenType createParameters txHash }
+
+                Err s ->
+                    UpdateResult
+                        { prevModel | txChainStatus = Nothing }
+                        Cmd.none
+                        ChainCmd.none
+                        [ CmdUp.UserNotice <| UN.web3SigError "appove" s ]
+
+        AllowanceFetched tokenType fetchResult ->
+            case fetchResult of
+                Ok allowance ->
+                    let
+                        newModel =
+                            { prevModel
+                                | userAllowance = Just allowance
+                            }
+                    in
+                    case ( newModel.txChainStatus, newModel.depositAmount ) of
+                        ( Just (ApproveMining _ createParameters _), Just depositAmount ) ->
+                            if BigInt.compare allowance (TokenValue.getEvmValue depositAmount) /= LT then
+                                let
+                                    ( txChainStatus, chainCmd ) =
+                                        initiateCreateCall (Token tokenType) createParameters
+                                in
+                                UpdateResult
+                                    { newModel | txChainStatus = txChainStatus }
+                                    Cmd.none
+                                    chainCmd
+                                    []
+
+                            else
+                                justModelUpdate newModel
+
+                        _ ->
+                            justModelUpdate newModel
+
+                Err httpError ->
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        ChainCmd.none
+                        [ CmdUp.UserNotice <| UN.web3FetchError "allowance" httpError ]
+
+        CreateSigned factoryType result ->
+            case result of
+                Ok txHash ->
+                    justModelUpdate { prevModel | txChainStatus = Just <| CreateMining factoryType txHash }
+
+                Err s ->
+                    UpdateResult
+                        { prevModel | txChainStatus = Nothing }
+                        Cmd.none
+                        ChainCmd.none
+                        [ CmdUp.UserNotice <| UN.web3SigError "create" s ]
+
+        CreateMined factoryType (Err s) ->
+            UpdateResult
+                prevModel
+                Cmd.none
+                ChainCmd.none
+                [ CmdUp.UserNotice <| UN.web3MiningError "create" s ]
+
+        CreateMined factory (Ok txReceipt) ->
+            let
+                maybeId =
+                    CTypes.txReceiptToCreatedTradeSellId factory txReceipt
+                        |> Result.toMaybe
+                        |> Maybe.andThen BigIntHelpers.toInt
+            in
+            case maybeId of
+                Just id ->
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        ChainCmd.none
+                        [ CmdUp.GotoRoute (Routing.Trade factory id) ]
+
+                Nothing ->
+                    UpdateResult
+                        prevModel
+                        Cmd.none
+                        ChainCmd.none
+                        [ CmdUp.UserNotice <|
+                            UN.unexpectedError "Error getting the ID of the created offer. Check the \"My Trades\" page for your open offer." txReceipt
+                        ]
 
         NoOp ->
             justModelUpdate prevModel
@@ -918,6 +1049,26 @@ marginToInputString float =
         * 100
         |> abs
         |> String.fromFloat
+
+
+initiateCreateCall : FactoryType -> CTypes.CreateParameters -> ( Maybe TxChainStatus, ChainCmd Msg )
+initiateCreateCall factoryType parameters =
+    let
+        txParams =
+            Contracts.Wrappers.openTrade
+                factoryType
+                parameters
+                |> Eth.toSend
+
+        customSend =
+            { onMined = Just ( CreateMined factoryType, Nothing )
+            , onSign = Just (CreateSigned factoryType)
+            , onBroadcast = Nothing
+            }
+    in
+    ( Just (CreateNeedsSig factoryType)
+    , ChainCmd.custom customSend txParams
+    )
 
 
 subscriptions : Model -> Sub Msg

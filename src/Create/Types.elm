@@ -1,4 +1,4 @@
-module Create.Types exposing (AmountInputType(..), CurrencyType(..), Errors, Inputs, IntervalUnit(..), MarginButtonType(..), Mode(..), Model, Msg(..), TradeType(..), UpdateResult, UserInterval, currencySymbol, externalCurrencyPrice, getAmountIn, getAmountOut, getUserInterval, initiatorRole, intervalUnitToString, justModelUpdate, maybeUserParameters, noErrors, tradeType, updateAmountIn, updateAmountOut, updateForeignCurrencyType, updateInType, updateOutType, updateUserInterval)
+module Create.Types exposing (AmountInputType(..), CurrencyType(..), Errors, Inputs, IntervalUnit(..), MarginButtonType(..), Mode(..), Model, Msg(..), TradeType(..), TxChainStatus(..), UpdateResult, UserInterval, currencySymbol, externalCurrencyPrice, getAmountIn, getAmountOut, getTradeAmount, getTradePrice, getUserInterval, initiatorRole, intervalUnitToString, justModelUpdate, maybeBuildPaymentMethods, maybeUserParameters, noErrors, tradeType, updateAmountIn, updateAmountOut, updateForeignCurrencyType, updateInType, updateOutType, updateUserInterval, userIntervalToPosix, userIntervalToString)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -6,6 +6,7 @@ import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
 import Currencies
+import Eth.Types exposing (Address, TxHash, TxReceipt)
 import Helpers.Tuple as TupleHelpers
 import Http
 import PaymentMethods exposing (PaymentMethod)
@@ -33,15 +34,24 @@ type alias Model =
     , showOutTypeDropdown : Bool
     , showMarginModal : Bool
     , showIntervalModal : Maybe IntervalType
-    , userAllowance : Maybe TokenValue
+    , userAllowance : Maybe BigInt
+    , depositAmount : Maybe TokenValue
+    , txChainStatus : Maybe TxChainStatus
     }
+
+
+type TxChainStatus
+    = Confirm FactoryType CTypes.CreateParameters
+    | ApproveNeedsSig TokenFactoryType
+    | ApproveMining TokenFactoryType CTypes.CreateParameters TxHash
+    | CreateNeedsSig FactoryType
+    | CreateMining FactoryType TxHash
 
 
 type Msg
     = Refresh
     | UpdateNow Time.Posix
     | PricesFetched (Result Http.Error (List ( Currencies.Symbol, PriceFetch.PriceAndTimestamp )))
-    | AllowanceFetched TokenFactoryType (Result Http.Error BigInt)
     | ChangeMode Mode
     | SwapClicked
     | AmountInChanged String
@@ -61,6 +71,12 @@ type Msg
     | IntervalUnitChanged IntervalUnit
     | CloseModals
     | PlaceOrderClicked FactoryType UserInfo CTypes.UserParameters
+    | AbortCreate
+    | ConfirmCreate FactoryType CTypes.CreateParameters TokenValue
+    | AllowanceFetched TokenFactoryType (Result Http.Error BigInt)
+    | ApproveSigned TokenFactoryType CTypes.CreateParameters (Result String TxHash)
+    | CreateSigned FactoryType (Result String TxHash)
+    | CreateMined FactoryType (Result String TxReceipt)
     | NoOp
     | CmdUp (CmdUp Msg)
 
@@ -162,6 +178,19 @@ intervalUnitToString intervalUnit =
 
         Week ->
             "Week"
+
+
+userIntervalToString : UserInterval -> String
+userIntervalToString interval =
+    String.fromInt interval.num
+        ++ " "
+        ++ intervalUnitToString interval.unit
+        ++ (if interval.num /= 1 then
+                "s"
+
+            else
+                ""
+           )
 
 
 externalCurrencyPrice : Model -> Maybe PriceFetch.PriceData

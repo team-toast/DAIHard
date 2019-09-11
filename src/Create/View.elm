@@ -2,6 +2,7 @@ module Create.View exposing (root)
 
 import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
+import Contracts.Types as CTypes
 import Create.Types exposing (..)
 import Currencies
 import Element exposing (Element)
@@ -12,9 +13,12 @@ import Element.Font
 import Element.Input
 import FormatFloat exposing (formatFloat)
 import Helpers.Element as EH
+import Helpers.Eth as EthHelpers
 import Helpers.Tuple as TupleHelpers
 import Images
 import Maybe.Extra
+import Routing
+import TokenValue exposing (TokenValue)
 import Wallet
 
 
@@ -1090,6 +1094,368 @@ placeOrderButton model =
                 Nothing
 
 
+txChainStatusModal : TxChainStatus -> Model -> Element Msg
+txChainStatusModal txChainStatus model =
+    case txChainStatus of
+        Confirm factoryType createParameters ->
+            let
+                ( depositAmountEl, totalBurnableEl, confirmButton ) =
+                    case model.depositAmount of
+                        Just depositAmount ->
+                            let
+                                depositAmountText =
+                                    TokenValue.toConciseString depositAmount
+                                        ++ " "
+                                        ++ tokenUnitName factoryType
+
+                                totalBurnableText =
+                                    TokenValue.toConciseString
+                                        (TokenValue.add
+                                            depositAmount
+                                            (CTypes.getResponderDeposit createParameters)
+                                            |> TokenValue.add (CTypes.calculateDHFee createParameters)
+                                        )
+                                        ++ " "
+                                        ++ tokenUnitName factoryType
+                            in
+                            ( blueText depositAmountText
+                            , blueText totalBurnableText
+                            , EH.redButton
+                                ("Yes. Deposit "
+                                    ++ depositAmountText
+                                    ++ " and open this trade."
+                                )
+                                (ConfirmCreate factoryType createParameters depositAmount)
+                            )
+
+                        Nothing ->
+                            ( blueText "??"
+                            , blueText "??"
+                            , EH.disabledButton "(loading exact fees...)" Nothing
+                            )
+
+                feeAmountEl =
+                    blueText <|
+                        TokenValue.toConciseString (CTypes.calculateDHFee createParameters)
+                            ++ " "
+                            ++ tokenUnitName factoryType
+
+                tradeAmountEl =
+                    blueText <|
+                        TokenValue.toConciseString createParameters.tradeAmount
+                            ++ " "
+                            ++ tokenUnitName factoryType
+
+                notYetButton =
+                    EH.blueButton
+                        "Not yet. Go back."
+                        AbortCreate
+
+                buyerDepositEl =
+                    blueText <|
+                        TokenValue.toConciseString createParameters.buyerDeposit
+                            ++ " "
+                            ++ tokenUnitName factoryType
+
+                totalReleaseableEl =
+                    blueText <|
+                        TokenValue.toConciseString (TokenValue.add createParameters.tradeAmount createParameters.buyerDeposit)
+                            ++ " "
+                            ++ tokenUnitName factoryType
+
+                expiryWindowEl =
+                    emphasizedText <|
+                        userIntervalToString <|
+                            getUserInterval Expiry model
+
+                paymentWindowEl =
+                    emphasizedText <|
+                        userIntervalToString <|
+                            getUserInterval Payment model
+
+                judgmentWindowEl =
+                    emphasizedText <|
+                        userIntervalToString <|
+                            getUserInterval Judgment model
+
+                priceEl =
+                    blueText <| Currencies.toString createParameters.price
+
+                emphasizedText =
+                    Element.el
+                        [ Element.Font.bold
+                        , Element.Font.color EH.black
+                        ]
+                        << Element.text
+
+                blueText =
+                    Element.el
+                        [ Element.Font.semiBold
+                        , Element.Font.color EH.blue
+                        ]
+                        << Element.text
+            in
+            EH.closeableModal
+                []
+                (Element.column
+                    [ Element.spacing 20
+                    , Element.padding 20
+                    , Element.centerX
+                    , Element.height Element.fill
+                    , Element.width Element.fill
+                    , Element.Font.center
+                    ]
+                    [ Element.el
+                        [ Element.Font.size 26
+                        , Element.Font.semiBold
+                        , Element.centerX
+                        , Element.centerY
+                        ]
+                        (case createParameters.initiatorRole of
+                            Buyer ->
+                                Element.text "Opening a DAIHard Buy Offer"
+
+                            Seller ->
+                                Element.text "Opening a DAIHard Sell Offer"
+                        )
+                    , Element.column
+                        [ Element.spacing 20
+                        , Element.centerX
+                        , Element.centerY
+                        ]
+                        (List.map
+                            (Element.paragraph
+                                [ Element.centerX
+                                , Element.Font.size 18
+                                , Element.Font.medium
+                                , Element.Font.color EH.permanentTextColor
+                                ]
+                            )
+                            (case createParameters.initiatorRole of
+                                Buyer ->
+                                    [ [ Element.text "To open this offer, you must deposit "
+                                      , depositAmountEl
+                                      , Element.text ". Your offer to buy "
+                                      , tradeAmountEl
+                                      , Element.text " for "
+                                      , priceEl
+                                      , Element.text " will then be listed on the marketplace."
+                                      ]
+                                    , [ Element.text "You can abort the offer any time before a Seller commits for a full refund. If no Seller commits within "
+                                      , expiryWindowEl
+                                      , Element.text " your offer will automatically expire. In both these cases, the full "
+                                      , depositAmountEl
+                                      , Element.text " is returned to you."
+                                      ]
+                                    , [ Element.text "A Seller can commit to the trade by depositing the full "
+                                      , tradeAmountEl
+                                      , Element.text " into the contract, and is expected to immediately post his "
+                                      , blueText <| createParameters.price.symbol
+                                      , Element.text " address in the DAIHard chat."
+                                      ]
+                                    , case model.mode of
+                                        CryptoSwap _ ->
+                                            [ Element.text "You will then have "
+                                            , paymentWindowEl
+                                            , Element.text " to send "
+                                            , priceEl
+                                            , Element.text " to that address and click \"Confirm Payment\"."
+                                            ]
+
+                                        _ ->
+                                            [ Element.text "You are then expected to send "
+                                            , priceEl
+                                            , Element.text " and click \"Confirm Payment\" within "
+                                            , paymentWindowEl
+                                            , Element.text "."
+                                            ]
+                                    , [ Element.text "Once you've confirmed payment, for "
+                                      , judgmentWindowEl
+                                      , Element.text ", the Seller has the option of burning the trade's full balance of "
+                                      , totalBurnableEl
+                                      , Element.text ". He is expected to do this if and only if you failed to send the "
+                                      , priceEl
+                                      , Element.text " to the address he posted."
+                                      ]
+                                    , [ Element.text "If the Seller has not burned the "
+                                      , Element.text <| tokenUnitName factoryType
+                                      , Element.text " within the "
+                                      , judgmentWindowEl
+                                      , Element.text ", "
+                                      , totalReleaseableEl
+                                      , Element.text " is yours to claim and we take a 1% fee ("
+                                      , feeAmountEl
+                                      , Element.text ")."
+                                      ]
+                                    , [ Element.text <| "Are you ready?" ]
+                                    ]
+                                        ++ (case factoryType of
+                                                Token _ ->
+                                                    [ [ Element.text <| "(Trade creation ususally requires two Metamask signatures. Your " ++ tokenUnitName factoryType ++ " will not be deposited until the final transaction has been mined.)" ] ]
+
+                                                Native _ ->
+                                                    []
+                                           )
+
+                                Seller ->
+                                    [ [ Element.text "Of your "
+                                      , depositAmountEl
+                                      , Element.text ", 1% ("
+                                      , feeAmountEl
+                                      , Element.text ") will be set aside, and "
+                                      , tradeAmountEl
+                                      , Element.text " will be listed as selling for "
+                                      , priceEl
+                                      , Element.text "."
+                                      ]
+                                    , [ Element.text "You can abort the offer at any time before a Buyer commits for a full refund. If no Buyer commits within "
+                                      , expiryWindowEl
+                                      , Element.text " your offer will automatically expire. In both these cases, the full "
+                                      , depositAmountEl
+                                      , Element.text " is returned to you."
+                                      ]
+                                    ]
+                                        ++ (case model.mode of
+                                                CryptoSwap _ ->
+                                                    [ [ Element.text "A Buyer must deposit "
+                                                      , buyerDepositEl
+                                                      , Element.text <| " into this contract to commit. He is then expected to send the "
+                                                      , priceEl
+                                                      , Element.text <| " to your receive address "
+                                                      , blueText model.inputs.receiveAddress
+                                                      , Element.text ", and mark the payment as complete, all within "
+                                                      , paymentWindowEl
+                                                      ]
+                                                    , [ emphasizedText "Make sure the above address is correct! DAIHard does not do refunds!" ]
+                                                    ]
+
+                                                _ ->
+                                                    [ [ Element.text "A Buyer must deposit "
+                                                      , buyerDepositEl
+                                                      , Element.text <| " into this contract to commit. He is then expected to pay the "
+                                                      , priceEl
+                                                      , Element.text " to you, via the method you've descried in your "
+                                                      , emphasizedText "Payment Methods"
+                                                      , Element.text ", and mark the payment as complete, all within "
+                                                      , paymentWindowEl
+                                                      , Element.text "."
+                                                      ]
+                                                    ]
+                                           )
+                                        ++ [ [ Element.text <| "When the Buyer marks the payment complete, for "
+                                             , judgmentWindowEl
+                                             , Element.text " you will have the option to burn the trade's balance of "
+                                             , totalBurnableEl
+                                             , Element.text <| ", which you are expected to do if and only if the Buyer has not sent the payment."
+                                             ]
+                                           , [ Element.text "If the trade has resolved successfully, DAIHard takes the 1% fee of "
+                                             , feeAmountEl
+                                             , Element.text " set aside earlier."
+                                             ]
+                                           , [ Element.text <| "Are you ready?" ]
+                                           ]
+                                        ++ (case factoryType of
+                                                Token _ ->
+                                                    [ [ Element.text <| "(Trade creation ususally requires two Metamask signatures. Your " ++ tokenUnitName factoryType ++ " will not be deposited until the final transaction has been mined.)" ] ]
+
+                                                Native _ ->
+                                                    []
+                                           )
+                            )
+                        )
+                    , Element.column
+                        [ Element.centerX
+                        , Element.spacing 15
+                        ]
+                        ([ confirmButton
+                         , notYetButton
+                         ]
+                            |> List.map (Element.el [ Element.centerX ])
+                        )
+                    ]
+                )
+                NoOp
+                AbortCreate
+
+        ApproveNeedsSig tokenType ->
+            Element.el
+                [ Element.centerX
+                , Element.centerY
+                , Element.Events.onClick <|
+                    CmdUp <|
+                        CmdUp.gTag "txChainModal clicked" "misclick" "ApproveNeedsSig" 0
+                ]
+            <|
+                EH.txProcessModal
+                    [ Element.text "Waiting for user signature for the approve call."
+                    , Element.text "(check Metamask!)"
+                    , Element.text "Note that there will be a second transaction to sign after this."
+                    ]
+                    NoOp
+                    NoOp
+
+        ApproveMining tokenType createParameters txHash ->
+            Element.el
+                [ Element.centerX
+                , Element.centerY
+                , Element.Events.onClick <|
+                    CmdUp <|
+                        CmdUp.gTag "txChainModal clicked" "misclick" "ApproveMining" 0
+                ]
+            <|
+                EH.txProcessModal
+                    [ Element.text "Mining the initial approve transaction..."
+                    , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
+                        { url = EthHelpers.makeViewTxUrl (Token tokenType) txHash
+                        , label = Element.text "See the transaction on Etherscan"
+                        }
+                    , Element.text "Funds will not leave your wallet until you sign the next transaction."
+                    ]
+                    NoOp
+                    NoOp
+
+        CreateNeedsSig _ ->
+            Element.el
+                [ Element.centerX
+                , Element.centerY
+                , Element.Events.onClick <|
+                    CmdUp <|
+                        CmdUp.gTag "txChainModal clicked" "misclick" "CreateNeedsSig" 0
+                ]
+            <|
+                EH.txProcessModal
+                    [ Element.text "Waiting for user signature for the create call."
+                    , Element.text "(check Metamask!)"
+                    ]
+                    NoOp
+                    NoOp
+
+        CreateMining factoryType txHash ->
+            Element.el
+                [ Element.centerX
+                , Element.centerY
+                , Element.Events.onClick <|
+                    CmdUp <|
+                        CmdUp.gTag "txChainModal clicked" "misclick" "CreateMining" 0
+                ]
+            <|
+                EH.txProcessModal
+                    [ Element.text "Mining the final create call..."
+                    , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
+                        { url = EthHelpers.makeViewTxUrl factoryType txHash
+                        , label = Element.text "See the transaction on Etherscan"
+                        }
+                    , Element.text "You will be redirected when it's mined."
+                    ]
+                    NoOp
+                    NoOp
+
+
 viewModals : Model -> List (Element Msg)
 viewModals model =
-    []
+    case model.txChainStatus of
+        Just txChainStatus ->
+            [ txChainStatusModal txChainStatus model ]
+
+        Nothing ->
+            []
