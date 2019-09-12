@@ -16,6 +16,7 @@ import Element.Font
 import Element.Input
 import Helpers.Element as EH
 import Helpers.Tuple exposing (mapTuple2)
+import Images exposing (Image)
 import Marketplace.Types
 import Marketplace.View
 import Routing
@@ -113,6 +114,7 @@ headerContent model =
         , Element.paddingXY 30 17
         ]
         [ headerLink
+            (Just Images.marketplace)
             "Marketplace"
             (GotoRoute Routing.Marketplace)
             (case model.submodel of
@@ -125,6 +127,7 @@ headerContent model =
         , case Wallet.userInfo model.wallet of
             Just userInfo ->
                 headerLink
+                    (Just Images.myTrades)
                     "My Trades"
                     (GotoRoute <| Routing.AgentHistory userInfo.address)
                     (case model.submodel of
@@ -141,10 +144,12 @@ headerContent model =
 
             Nothing ->
                 headerLink
+                    Nothing
                     "Connect to Wallet"
                     ConnectToWeb3
                     Important
         , headerLink
+            (Just Images.newTrade)
             "Create New Trade"
             (GotoRoute <| Routing.CreateFiat)
             (case model.submodel of
@@ -170,8 +175,8 @@ type HeaderLinkStyle
     | Important
 
 
-headerLink : String -> Msg -> HeaderLinkStyle -> Element Msg
-headerLink title onClick style =
+headerLink : Maybe Image -> String -> Msg -> HeaderLinkStyle -> Element Msg
+headerLink maybeIcon title onClick style =
     let
         extraStyles =
             case style of
@@ -180,7 +185,7 @@ headerLink title onClick style =
 
                 Active ->
                     [ Element.Border.rounded 4
-                    , Element.Background.color <| Element.rgb 0 0 1
+                    , Element.Background.color <| Element.rgb255 2 172 214
                     ]
 
                 Important ->
@@ -188,17 +193,30 @@ headerLink title onClick style =
                     , Element.Background.color <| Element.rgb 0.9 0 0
                     ]
     in
-    Element.el
+    Element.row
         ([ Element.paddingXY 23 12
-         , Element.Font.size 22
+         , Element.Font.size 21
          , Element.Font.semiBold
          , Element.Font.color EH.white
          , Element.pointer
          , Element.Events.onClick onClick
+         , Element.spacing 13
          ]
             ++ extraStyles
         )
-        (Element.text title)
+        [ Maybe.map
+            (Images.toElement
+                [ Element.height <| Element.px 26 ]
+            )
+            maybeIcon
+            |> Maybe.withDefault Element.none
+        , Element.el
+            [ Element.centerY
+            , Element.height <| Element.px 26
+            ]
+          <|
+            Element.text title
+        ]
 
 
 logoElement : Element Msg
