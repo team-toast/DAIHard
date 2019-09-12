@@ -32,25 +32,14 @@ import Wallet
 
 root : Time.Posix -> List TradeCache -> Model -> Element Msg
 root time tradeCaches model =
-    EH.submodelContainer
+    EH.simpleSubmodelContainer
         1800
-        Nothing
-        (case Wallet.userInfo model.wallet of
-            Nothing ->
-                "TRADE HISTORY FOR " ++ Eth.Utils.addressToString model.agentAddress
-
-            Just userInfo ->
-                if userInfo.address == model.agentAddress then
-                    "YOUR TRADES"
-
-                else
-                    "TRADE HISTORY FOR " ++ Eth.Utils.addressToString model.agentAddress
-        )
         (Element.column
             [ Element.width Element.fill
             , Element.padding 30
             ]
-            [ statusAndFiltersElement tradeCaches model
+            [ titleElement model
+            , statusAndFiltersElement tradeCaches model
             , let
                 tcDoneLoading =
                     List.all
@@ -60,6 +49,40 @@ root time tradeCaches model =
               maybeResultsElement time tcDoneLoading tradeCaches model
             ]
         )
+
+
+titleElement : Model -> Element Msg
+titleElement model =
+    let
+        viewingOwnHistory =
+            case Wallet.userInfo model.wallet of
+                Nothing ->
+                    False
+
+                Just userInfo ->
+                    userInfo.address == model.agentAddress
+    in
+    if viewingOwnHistory then
+        Element.none
+
+    else
+        Element.row
+            [ Element.spacing 10
+            , Element.centerX
+            , Element.paddingEach
+                { top = 10
+                , left = 20
+                , right = 20
+                , bottom = 20
+                }
+            ]
+            [ Element.el
+                [ Element.Font.size 24
+                , Element.Font.semiBold
+                ]
+                (Element.text "Trade History for User")
+            , EH.ethAddress 18 model.agentAddress
+            ]
 
 
 statusAndFiltersElement : List TradeCache -> Model -> Element Msg

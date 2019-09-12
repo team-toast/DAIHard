@@ -6,6 +6,7 @@ import CommonTypes exposing (..)
 import Config
 import Contracts.Types as CTypes
 import Create.View
+import Currencies
 import Dict
 import Element exposing (Attribute, Element)
 import Element.Background
@@ -17,7 +18,6 @@ import Helpers.Element as EH
 import Helpers.Tuple exposing (mapTuple2)
 import Marketplace.Types
 import Marketplace.View
-import Currencies
 import Routing
 import Trade.View
 import Types exposing (..)
@@ -85,29 +85,20 @@ headerBackground : Element Msg
 headerBackground =
     let
         bottomBackgroundColor =
-            Element.rgb255 255 144 0
+            Element.rgb255 10 33 108
+
+        headerColor =
+            Element.rgb255 7 27 92
     in
     Element.el
         [ Element.width Element.fill
-        , Element.height <| Element.px 400
+        , Element.height <| Element.px 600
         , Element.Background.color bottomBackgroundColor
-        , Element.Border.shadow
-            { offset = ( 0, 0 )
-            , size = 30
-            , blur = 30
-            , color = bottomBackgroundColor
-            }
         , Element.inFront <|
             Element.el
                 [ Element.width Element.fill
                 , Element.height <| Element.px 80
-                , Element.Background.color <| Element.rgb255 10 33 108
-                , Element.Border.shadow
-                    { offset = ( 0, 0 )
-                    , size = 8
-                    , blur = 20
-                    , color = Element.rgba 0 0 0 0.4
-                    }
+                , Element.Background.color headerColor
                 ]
                 Element.none
         ]
