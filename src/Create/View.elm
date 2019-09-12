@@ -186,33 +186,41 @@ amountOutRow model =
         [ Element.width Element.fill
         , Element.spacing 25
         ]
-        [ Element.el [ Element.width <| Element.fillPortion 2 ]
+        ([ Element.el [ Element.width <| Element.fillPortion 2 ]
             (amountAndTypeOut model)
-        , Element.el
-            [ Element.Font.size 28
-            , Element.Font.color <| Element.rgba 0.05 0.1 0.3 0.25
-            , Element.Font.semiBold
-            , Element.alignBottom
-            , Element.paddingEach
-                { bottom = 14
-                , top = 0
-                , right = 0
-                , left = 0
-                }
-            ]
-            (Element.text "@")
-        , Element.el
-            [ Element.width <| Element.fillPortion 1
-            , Element.above
-                (if model.showMarginModal then
-                    marginModal model.margin model.inputs.margin model.errors.margin
+         ]
+            ++ (case model.mode of
+                    CryptoSwap _ ->
+                        [ Element.el
+                            [ Element.Font.size 28
+                            , Element.Font.color <| Element.rgba 0.05 0.1 0.3 0.25
+                            , Element.Font.semiBold
+                            , Element.alignBottom
+                            , Element.paddingEach
+                                { bottom = 14
+                                , top = 0
+                                , right = 0
+                                , left = 0
+                                }
+                            ]
+                            (Element.text "@")
+                        , Element.el
+                            [ Element.width <| Element.fillPortion 1
+                            , Element.above
+                                (if model.showMarginModal then
+                                    marginModal model.margin model.inputs.margin model.errors.margin
 
-                 else
-                    Element.none
-                )
-            ]
-            (marginBox model)
-        ]
+                                 else
+                                    Element.none
+                                )
+                            ]
+                            (marginBox model)
+                        ]
+
+                    _ ->
+                        []
+               )
+        )
 
 
 moreInfoInput : Model -> Element Msg
