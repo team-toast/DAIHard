@@ -108,7 +108,16 @@ update msg prevModel =
 
         FiatTypeInputChanged input ->
             justModelUpdate
-                { prevModel | inputs = prevModel.inputs |> updateFiatTypeInput input }
+                { prevModel | inputs = prevModel.inputs |> updateFiatTypeInput (String.toUpper input) }
+
+        FiatTypeSelected input ->
+            justModelUpdate
+                ({ prevModel
+                    | inputs = prevModel.inputs |> updateFiatTypeInput input
+                    , showCurrencyDropdown = False
+                 }
+                    |> applyInputs
+                )
 
         ShowCurrencyDropdown flag ->
             let

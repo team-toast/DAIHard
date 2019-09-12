@@ -54,10 +54,8 @@ root time tradeCaches model =
                 (TradeCache.loadingStatus >> (==) TradeCache.AllFetched)
                 tradeCaches
     in
-    ( EH.submodelContainer
+    ( EH.simpleSubmodelContainer
         1800
-        (Just "Browse Offers. Local or Worldwide, Cash or Crypto.")
-        "MARKETPLACE"
         (Element.column
             [ Element.width Element.fill
             , Element.height Element.fill
@@ -324,14 +322,113 @@ fiatInput showTypeDropdown symbol errors =
             CmdUp <| CmdUp.gTag "click" "misclick" "currency flag" 0
     in
     Element.el
-        [ Element.alignTop, Element.width <| Element.px 120 ]
-        (Debug.todo "replace currency selector")
+        [ Element.alignTop
+        , Element.width <| Element.px 120
+        , Element.below
+            (if showTypeDropdown then
+                currencyTypeDropdown
+                    symbol
+                    FiatTypeInputChanged
+                    FiatTypeSelected
+
+             else
+                Element.none
+            )
+        ]
+        (withInputHeader "Currency Type" <|
+            currencyTypeButton
+                showTypeDropdown
+                symbol
+                (ShowCurrencyDropdown True)
+        )
 
 
+currencyTypeButton : Bool -> Currencies.Symbol -> Msg -> Element Msg
+currencyTypeButton dropdownOpen symbol onClick =
+    Element.row
+        [ Element.Background.color <| Element.rgb 0.98 0.98 0.98
+        , Element.height Element.fill
+        , Element.padding 13
+        , Element.spacing 13
+        , Element.pointer
+        , EH.onClickNoPropagation onClick
+        ]
+        [ Currencies.icon symbol
+            |> Maybe.withDefault Element.none
+        , Element.text
+            (symbol
+                |> (\s ->
+                        if s == "" then
+                            "[any]"
 
--- (EH.currencySelector showTypeDropdown symbol (ShowCurrencyDropdown True) FiatTypeInputChanged flagClickedMsg
---     |> withInputHeader "Currency Type"
--- )
+                        else
+                            s
+                   )
+            )
+        , Images.toElement
+            [ Element.width <| Element.px 12 ]
+          <|
+            if dropdownOpen then
+                Images.upArrow
+
+            else
+                Images.downArrow
+        ]
+
+
+currencyTypeDropdown : String -> (String -> Msg) -> (Currencies.Symbol -> Msg) -> Element Msg
+currencyTypeDropdown searchInput searchChangedMsg selectedMsg =
+    EH.modal
+        (Element.rgba 0 0 0 0.1)
+        NoOp
+        (ShowCurrencyDropdown False)
+    <|
+        let
+            currenciesList =
+                Currencies.fiatList ++ Currencies.foreignCryptoList
+        in
+        EH.searchableOpenDropdown
+            [ Element.width <| Element.px 300
+            , Element.moveDown 18
+            , Element.alignRight
+            , EH.moveToFront
+            ]
+            "search currencies"
+            ([ ( Element.el [ Element.width Element.fill ] (Element.text "[any]")
+               , []
+               , selectedMsg ""
+               )
+             ]
+                ++ (currenciesList
+                        |> List.map
+                            (\fiatSymbol ->
+                                ( Element.row
+                                    [ Element.width Element.fill
+                                    , Element.spacing 18
+                                    ]
+                                    (Maybe.Extra.values
+                                        [ Currencies.icon fiatSymbol
+                                        , Just <| Element.text fiatSymbol
+                                        ]
+                                    )
+                                , Maybe.Extra.values [ Just fiatSymbol, Currencies.fiatChar fiatSymbol ]
+                                , selectedMsg fiatSymbol
+                                )
+                            )
+                   )
+                ++ (if not (List.member searchInput currenciesList) then
+                        [ ( Element.el [ Element.width Element.fill ] (Element.text <| "\"" ++ searchInput ++ "\"")
+                          , [ searchInput ]
+                          , selectedMsg <| searchInput
+                          )
+                        ]
+
+                    else
+                        []
+                   )
+            )
+            searchInput
+            searchChangedMsg
 
 
 paymentMethodsInput : String -> Element Msg

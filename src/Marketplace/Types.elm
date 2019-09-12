@@ -45,6 +45,7 @@ type Msg
     | MinDaiChanged String
     | MaxDaiChanged String
     | FiatTypeInputChanged String
+    | FiatTypeSelected String
     | PaymentMethodInputChanged String
     | ShowCurrencyDropdown Bool
     | FiatTypeLostFocus
