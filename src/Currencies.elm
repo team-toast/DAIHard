@@ -4,6 +4,7 @@ import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
 import Dict exposing (Dict)
 import Element exposing (Element)
+import FormatFloat exposing (formatFloat)
 import Helpers.BigInt as BigIntHelpers
 import Images exposing (Image)
 import Json.Decode
@@ -149,7 +150,7 @@ toString p =
     (fiatChar p.symbol
         |> Maybe.withDefault ""
     )
-        ++ (String.fromFloat p.amount
+        ++ (formatFloat 8 p.amount
                 ++ " "
                 ++ p.symbol
            )
