@@ -1300,15 +1300,15 @@ txChainStatusModal txChainStatus model =
                                 Seller ->
                                     [ [ Element.text "Of your "
                                       , depositAmountEl
-                                      , Element.text ", 1% ("
+                                      , Element.text ", ~1% ("
                                       , feeAmountEl
-                                      , Element.text ") will be set aside, and "
+                                      , Element.text ") will be set aside, and the remaining "
                                       , tradeAmountEl
                                       , Element.text " will be listed as selling for "
                                       , priceEl
                                       , Element.text "."
                                       ]
-                                    , [ Element.text "You can abort the offer at any time before a Buyer commits for a full refund. If no Buyer commits within "
+                                    , [ Element.text "You can abort the offer at any time before a Buyer commits, and if no Buyer commits within "
                                       , expiryWindowEl
                                       , Element.text " your offer will automatically expire. In both these cases, the full "
                                       , depositAmountEl
@@ -1325,6 +1325,7 @@ txChainStatusModal txChainStatus model =
                                                       , blueText model.inputs.receiveAddress
                                                       , Element.text ", and mark the payment as complete, all within "
                                                       , paymentWindowEl
+                                                      , Element.text "."
                                                       ]
                                                     , [ emphasizedText "Make sure the above address is correct! DAIHard does not do refunds!" ]
                                                     ]
@@ -1352,7 +1353,6 @@ txChainStatusModal txChainStatus model =
                                              , feeAmountEl
                                              , Element.text " set aside earlier."
                                              ]
-                                           , [ Element.text <| "Are you ready?" ]
                                            ]
                                         ++ (case factoryType of
                                                 Token _ ->
@@ -1361,6 +1361,8 @@ txChainStatusModal txChainStatus model =
                                                 Native _ ->
                                                     []
                                            )
+                                        ++ [ [ Element.text <| "Are you ready?" ]
+                                           ]
                             )
                         )
                     , Element.column

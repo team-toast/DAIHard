@@ -1,4 +1,4 @@
-module FormatFloat exposing (formatFloat)
+module FormatFloat exposing (autoFormatFloat, formatFloat)
 
 import FormatNumber
 import FormatNumber.Humanize exposing (ZeroStrategy(..))
@@ -12,3 +12,19 @@ formatFloat numDecimals =
             | decimals = numDecimals
         }
         RemoveZeros
+
+
+autoFormatFloat : Float -> String
+autoFormatFloat f =
+    let
+        magnitude =
+            floor <| logBase 10 f + 1
+
+        numDecimals =
+            max
+                (3 - magnitude)
+                0
+    in
+    formatFloat
+        numDecimals
+        f
