@@ -211,11 +211,11 @@ update msg prevModel =
                     }
             in
             justModelUpdate <|
-                if tradeType prevModel.mode /= tradeType newMode then
+                if prevModel.mode /= newMode then
                     { newModel
                         | inputs = initialInputs prevModel.wallet newMode
                     }
-                        |> updateForeignCurrencyType (defaultExternalCurrency newMode)
+                        |> updateCurrencyTypesFromInput
 
                 else
                     newModel
@@ -1069,6 +1069,30 @@ initiateCreateCall factoryType parameters =
     ( Just (CreateNeedsSig factoryType)
     , ChainCmd.custom customSend txParams
     )
+
+
+updateCurrencyTypesFromInput : Model -> Model
+updateCurrencyTypesFromInput prevModel =
+    let
+        ( newForeignCurrency, newDhTokenType ) =
+            case ( initiatorRole prevModel.mode, ( prevModel.inputs.inType, prevModel.inputs.outType ) ) of
+                ( Buyer, ( External externalSymbol, DHToken dhTokenType ) ) ->
+                    ( externalSymbol, dhTokenType )
+
+                ( Seller, ( DHToken dhTokenType, External externalSymbol ) ) ->
+                    ( externalSymbol, dhTokenType )
+
+                _ ->
+                    let
+                        _ =
+                            Debug.log "unexpected currency types in input when trying to update model currency types" ""
+                    in
+                    ( prevModel.foreignCurrencyType, prevModel.dhTokenType )
+    in
+    { prevModel
+        | foreignCurrencyType = newForeignCurrency
+        , dhTokenType = newDhTokenType
+    }
 
 
 subscriptions : Model -> Sub Msg
