@@ -352,6 +352,8 @@ currencyTypeButton dropdownOpen symbol onClick =
         , Element.spacing 13
         , Element.pointer
         , EH.onClickNoPropagation onClick
+        , Element.Border.width 1
+        , Element.Border.color EH.lightGray
         ]
         [ Currencies.icon symbol
             |> Maybe.withDefault Element.none
