@@ -30,6 +30,7 @@ import TradeCache.Types as TradeCache exposing (TradeCache)
 import TradeTable.State as TradeTable
 import TradeTable.Types as TradeTable
 import UserNotice as UN
+import Utils
 import Wallet
 
 
@@ -100,11 +101,11 @@ update msg prevModel =
 
         MinDaiChanged input ->
             justModelUpdate
-                { prevModel | inputs = prevModel.inputs |> updateMinDaiInput input }
+                { prevModel | inputs = prevModel.inputs |> updateMinDaiInput (Utils.filterPositiveNumericInput input) }
 
         MaxDaiChanged input ->
             justModelUpdate
-                { prevModel | inputs = prevModel.inputs |> updateMaxDaiInput input }
+                { prevModel | inputs = prevModel.inputs |> updateMaxDaiInput (Utils.filterPositiveNumericInput input) }
 
         FiatTypeInputChanged input ->
             justModelUpdate
