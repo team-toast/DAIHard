@@ -376,7 +376,7 @@ marginModal margin marginInput maybeError =
                             Just error ->
                                 Element.el
                                     [ Element.Font.size 12
-                                    , Element.Font.color EH.red
+                                    , Element.Font.color EH.softRed
                                     , Element.moveUp 16
                                     , Element.alignLeft
                                     , Element.Background.color EH.white
@@ -954,7 +954,7 @@ intervalModal intervalType value input maybeError =
                             Just error ->
                                 Element.el
                                     [ Element.Font.size 12
-                                    , Element.Font.color EH.red
+                                    , Element.Font.color EH.softRed
                                     , Element.moveUp 16
                                     , Element.alignLeft
                                     , Element.Background.color EH.white
@@ -1041,7 +1041,7 @@ placeOrderButton model =
                         Just error ->
                             Element.el
                                 [ Element.Font.size 12
-                                , Element.Font.color EH.red
+                                , Element.Font.color EH.softRed
                                 , Element.moveUp 16
                                 , Element.centerX
                                 ]
@@ -1087,7 +1087,7 @@ placeOrderButton model =
 
         ( Nothing, _ ) ->
             buttonBuilder
-                EH.red
+                EH.softRed
                 EH.white
                 "Connect to Wallet"
                 (Just <| CmdUp CmdUp.Web3Connect)
