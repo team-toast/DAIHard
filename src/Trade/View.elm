@@ -830,7 +830,7 @@ phaseStateElement pState =
         Active ->
             Element.el
                 (commonAttributes
-                    ++ [ Element.Font.color <| EH.red ]
+                    ++ [ Element.Font.color <| EH.softRed ]
                 )
                 (Element.text "Active")
 
@@ -883,7 +883,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
             Element.el [ Element.Font.color emphasizedColor ] << Element.text
 
         scaryText =
-            Element.el [ Element.Font.color <| Element.rgb 1 0 0 ] << Element.text
+            Element.el [ Element.Font.color EH.lightRed ] << Element.text
 
         tradeAmountString =
             TokenValue.toConciseString trade.parameters.tradeAmount ++ " " ++ tokenUnitName trade.factory

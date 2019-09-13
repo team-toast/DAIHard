@@ -202,7 +202,7 @@ viewTradeCell time prices colType trade =
                         let
                             baseIntervalColor =
                                 if TimeHelpers.getRatio (Tuple.first timeoutInfo) (Tuple.second timeoutInfo) < 0.05 then
-                                    EH.red
+                                    EH.softRed
 
                                 else
                                     EH.black
@@ -234,7 +234,7 @@ viewTradeCell time prices colType trade =
                                 let
                                     baseIntervalColor =
                                         if TimeHelpers.getRatio (Tuple.first timeoutInfo) (Tuple.second timeoutInfo) < 0.05 then
-                                            EH.red
+                                            EH.softRed
 
                                         else
                                             EH.black
@@ -249,7 +249,7 @@ viewTradeCell time prices colType trade =
                                 EH.intervalWithElapsedBar
                                     [ Element.width Element.fill ]
                                     [ Element.Font.size 16 ]
-                                    ( EH.red, EH.lightGray )
+                                    ( EH.softRed, EH.lightGray )
                                     ( Time.millisToPosix 0, totalInterval )
 
                     _ ->
@@ -285,7 +285,7 @@ viewTradeCell time prices colType trade =
                     lowValColor =
                         case trade.parameters.initiatorRole of
                             Seller ->
-                                EH.red
+                                EH.softRed
 
                             Buyer ->
                                 EH.green
@@ -311,7 +311,7 @@ viewTradeCell time prices colType trade =
                                 EH.green
 
                             Buyer ->
-                                EH.red
+                                EH.softRed
 
                     baseColor =
                         if Time.posixToMillis trade.parameters.autoabortInterval < (1000 * 60 * 60 * 6) then

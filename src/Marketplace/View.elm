@@ -197,7 +197,7 @@ removeSearchTermButton term =
         , Element.pointer
         , Element.Events.onClick <| RemoveTerm term
         , Element.Font.size 10
-        , Element.Font.color EH.red
+        , Element.Font.color EH.softRed
         ]
         (Element.text "x")
 

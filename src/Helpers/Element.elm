@@ -1,4 +1,4 @@
-module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, basicOpenDropdown, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredResponderProfit, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, maybeErrorElement, mediumGray, modal, moveToFront, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, red, redButton, releasedIconColor, responderProfitFloatToConciseString, responderProfitSymbol, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, searchableOpenDropdown, simpleSubmodelContainer, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, thinGrayHRuler, txProcessModal, uncoloredResponderProfit, white, withHeader, withInputHeader, withInputHeaderAndMaybeError, withSelectedUnderline, yellow)
+module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, basicOpenDropdown, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredResponderProfit, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, maybeErrorElement, mediumGray, modal, moveToFront, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, redButton, releasedIconColor, responderProfitFloatToConciseString, responderProfitSymbol, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, searchableOpenDropdown, simpleSubmodelContainer, softRed, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, thinGrayHRuler, txProcessModal, uncoloredResponderProfit, white, withHeader, withInputHeader, withInputHeaderAndMaybeError, withSelectedUnderline, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -44,8 +44,8 @@ white =
     Element.rgb 1 1 1
 
 
-red =
-    Element.rgb255 244 0 103
+softRed =
+    Element.rgb255 255 0 110
 
 
 lightRed =
@@ -196,7 +196,7 @@ coloredResponderProfit upIsGreen responderProfitFloat =
                         green
 
                     else
-                        red
+                        softRed
             in
             Element.el [ Element.Font.color textColor, Element.Font.size 16 ]
                 (Element.text unsignedPercentString)
@@ -284,7 +284,7 @@ intervalWithElapsedBar containerAttributes textAttributes ( defaultColor, zeroCo
 
         color =
             if timeLeftRatio < 0.1 then
-                red
+                softRed
 
             else if timeLeftRatio < 0.2 then
                 yellow
@@ -960,7 +960,7 @@ comingSoonMsg : List (Attribute msg) -> String -> Element msg
 comingSoonMsg attributes text =
     Element.paragraph
         ([ Element.Font.size 12
-         , Element.Font.color red
+         , Element.Font.color softRed
          ]
             ++ attributes
         )
@@ -1022,7 +1022,7 @@ maybeErrorElement attributes maybeError =
         Just errorString ->
             Element.el
                 ([ Element.Border.rounded 5
-                 , Element.Border.color <| Element.rgb 0.9 0 0
+                 , Element.Border.color softRed
                  , Element.Border.width 1
                  , Element.Background.color <| Element.rgb 1 0.4 0.4
                  , Element.padding 5
@@ -1190,7 +1190,7 @@ submodelContainer maxWidth maybeBigTitleText smallTitleText el =
               <|
                 Element.el
                     [ Element.Font.size 16
-                    , Element.Font.color red
+                    , Element.Font.color softRed
                     , Element.Font.bold
                     , Element.centerX
                     ]
@@ -1226,7 +1226,7 @@ withInputHeaderAndMaybeError attributes titleStr maybeError el =
                 Just error ->
                     Element.el
                         [ Element.Font.size 12
-                        , Element.Font.color red
+                        , Element.Font.color softRed
                         ]
                         (Element.text error)
 

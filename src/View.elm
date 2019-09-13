@@ -190,7 +190,7 @@ headerLink maybeIcon title onClick style =
 
                 Important ->
                     [ Element.Border.rounded 4
-                    , Element.Background.color <| Element.rgb 0.9 0 0
+                    , Element.Background.color EH.softRed
                     ]
     in
     Element.row
@@ -231,7 +231,7 @@ logoElement =
         ]
         (Element.paragraph []
             [ Element.text "DAI"
-            , Element.el [ Element.Font.color EH.red ] <| Element.text "Hard"
+            , Element.el [ Element.Font.color EH.softRed ] <| Element.text "Hard"
             ]
         )
 
