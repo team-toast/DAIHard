@@ -214,6 +214,7 @@ update msg prevModel =
                 (if prevModel.mode /= newMode then
                     { newModel
                         | inputs = initialInputs prevModel.wallet newMode
+                        , intervals = defaultIntervals newMode
                     }
                         |> updateCurrencyTypesFromInput
 
