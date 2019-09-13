@@ -19,6 +19,7 @@ import Routing
 import Time
 import TokenValue exposing (TokenValue)
 import UserNotice as UN
+import Utils
 import Wallet
 
 
@@ -214,6 +215,7 @@ update msg prevModel =
                 (if prevModel.mode /= newMode then
                     { newModel
                         | inputs = initialInputs prevModel.wallet newMode
+                        , intervals = defaultIntervals newMode
                     }
                         |> updateCurrencyTypesFromInput
 
@@ -287,12 +289,15 @@ update msg prevModel =
                 prevInputs =
                     prevModel.inputs
 
+                filteredInput =
+                    input |> Utils.filterPositiveNumericInput
+
                 ( newMaybeAmountIn, newErrors ) =
                     let
                         prevErrors =
                             prevModel.errors
                     in
-                    case interpretAmount input of
+                    case interpretAmount filteredInput of
                         Ok maybeAmount ->
                             ( maybeAmount
                             , { prevErrors | amountIn = Nothing }
@@ -305,7 +310,7 @@ update msg prevModel =
 
                 ( newModel, appCmds ) =
                     { prevModel
-                        | inputs = { prevInputs | amountIn = input }
+                        | inputs = { prevInputs | amountIn = filteredInput }
                         , errors = newErrors
                         , lastAmountInputChanged = AmountIn
                     }
@@ -368,12 +373,15 @@ update msg prevModel =
                 prevInputs =
                     prevModel.inputs
 
+                filteredInput =
+                    input |> Utils.filterPositiveNumericInput
+
                 ( newMaybeAmountOut, newErrors ) =
                     let
                         prevErrors =
                             prevModel.errors
                     in
-                    case interpretAmount input of
+                    case interpretAmount filteredInput of
                         Ok maybeAmount ->
                             ( maybeAmount
                             , { prevErrors | amountOut = Nothing }
@@ -386,7 +394,7 @@ update msg prevModel =
 
                 ( newModel, appCmds ) =
                     { prevModel
-                        | inputs = { prevInputs | amountOut = input }
+                        | inputs = { prevInputs | amountOut = filteredInput }
                         , errors = newErrors
                         , lastAmountInputChanged = AmountOut
                     }
@@ -477,11 +485,7 @@ update msg prevModel =
                     prevModel.inputs
 
                 filteredInput =
-                    input
-                        |> String.filter
-                            (\c ->
-                                List.any ((==) c) [ '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '.' ]
-                            )
+                    input |> Utils.filterPositiveNumericInput
 
                 ( newMargin, newMarginType, newErrors ) =
                     let
@@ -633,12 +637,15 @@ update msg prevModel =
                         prevInputs =
                             prevModel.inputs
 
+                        filteredInput =
+                            input |> Utils.filterPositiveNumericInput
+
                         ( newInterval, newErrors ) =
                             let
                                 prevErrors =
                                     prevModel.errors
                             in
-                            case interpretInterval input of
+                            case interpretInterval filteredInput of
                                 Ok maybeInt ->
                                     ( maybeInt
                                         |> Maybe.map
@@ -658,7 +665,7 @@ update msg prevModel =
 
                         newModel =
                             { prevModel
-                                | inputs = { prevInputs | interval = input }
+                                | inputs = { prevInputs | interval = filteredInput }
                                 , errors = newErrors
                             }
                                 |> updateUserInterval intervalType newInterval
@@ -930,7 +937,11 @@ interpretAmount input =
     else
         case String.toFloat input of
             Just value ->
-                Ok (Just value)
+                if value > 0 then
+                    Ok (Just value)
+
+                else
+                    Err "Number must be greater than 0"
 
             Nothing ->
                 Err "Invalid amount"
@@ -961,9 +972,16 @@ interpretInterval input =
         Ok Nothing
 
     else
-        String.toInt input
-            |> Result.fromMaybe "Must be an integer"
-            |> Result.map Just
+        case String.toInt input of
+            Just value ->
+                if value > 0 then
+                    Ok (Just value)
+
+                else
+                    Err "Number must be greater than 0"
+
+            Nothing ->
+                Err "Must be an integer"
 
 
 tryAutofillAmountOut : Model -> ( Model, List (CmdUp Msg) )
