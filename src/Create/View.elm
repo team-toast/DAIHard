@@ -24,19 +24,53 @@ import Wallet
 
 root : Model -> ( Element Msg, List (Element Msg) )
 root model =
-    ( EH.simpleSubmodelContainer
-        800
-        (Element.column
-            [ Element.width Element.fill
-            , Element.spacing 20
-            ]
-            [ header model.mode
-            , EH.thinGrayHRuler
-            , body model
-            ]
-        )
+    ( Element.column
+        [ Element.width Element.fill
+        , Element.paddingEach
+            { bottom = 40
+            , top = 0
+            , right = 0
+            , left = 0
+            }
+        ]
+        [ EH.simpleSubmodelContainer
+            800
+            (Element.column
+                [ Element.width Element.fill
+                , Element.spacing 20
+                ]
+                [ header model.mode
+                , EH.thinGrayHRuler
+                , body model
+                ]
+            )
+        , telegramButton
+        ]
     , viewModals model
     )
+
+
+telegramButton : Element Msg
+telegramButton =
+    Element.link
+        [ Element.Border.rounded 4
+        , Element.width Element.fill
+        , Element.pointer
+        , Element.paddingXY 22 15
+        , Element.Background.color EH.blue
+        , Element.Font.color EH.white
+        , Element.Font.semiBold
+        , Element.Font.size 20
+        , Element.centerX
+        , Element.width Element.shrink
+        , Element.height Element.shrink
+        ]
+        { url = "https://t.me/daihardexchange_group"
+        , label =
+            Element.paragraph
+                [ Element.Font.center ]
+                [ Element.text "Join the Telegram Group" ]
+        }
 
 
 header : Mode -> Element Msg
@@ -1062,43 +1096,47 @@ placeOrderButton model =
                 )
                 (Element.text text)
     in
-    case ( Wallet.userInfo model.wallet, maybeUserParameters model ) of
-        ( Just userInfo, Just userParameters ) ->
+    case Wallet.userInfo model.wallet of
+        Just userInfo ->
             if Wallet.factory model.wallet == Just model.dhTokenType then
-                buttonBuilder
-                    (Element.rgb255 255 0 110)
-                    EH.white
-                    "Place Order"
-                    (Just <| PlaceOrderClicked model.dhTokenType userInfo userParameters)
-                    Nothing
+                case maybeUserParameters model of
+                    Just userParameters ->
+                        buttonBuilder
+                            (Element.rgb255 255 0 110)
+                            EH.white
+                            "Place Order"
+                            (Just <| PlaceOrderClicked model.dhTokenType userInfo userParameters)
+                            Nothing
+
+                    Nothing ->
+                        buttonBuilder
+                            EH.lightGray
+                            EH.black
+                            "Place Order"
+                            Nothing
+                            Nothing
 
             else
-                buttonBuilder
-                    EH.lightGray
-                    EH.black
-                    "Place Order"
-                    Nothing
-                    (Just <|
+                Element.paragraph
+                    [ Element.Font.size 18
+                    , Element.Font.italic
+                    , Element.Font.color EH.darkGray
+                    , Element.centerX
+                    ]
+                    [ Element.text <|
                         "You must switch your wallet to the "
                             ++ networkNameForFactory model.dhTokenType
                             ++ " network to create a trade with "
                             ++ tokenUnitName model.dhTokenType
-                    )
+                            ++ "."
+                    ]
 
-        ( Nothing, _ ) ->
+        Nothing ->
             buttonBuilder
                 EH.softRed
                 EH.white
                 "Connect to Wallet"
                 (Just <| CmdUp CmdUp.Web3Connect)
-                Nothing
-
-        ( _, Nothing ) ->
-            buttonBuilder
-                EH.lightGray
-                EH.black
-                "Place Order"
-                Nothing
                 Nothing
 
 
