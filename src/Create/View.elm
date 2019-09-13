@@ -407,7 +407,7 @@ marginModal margin marginInput maybeError =
                     ]
                 , if margin < 0 then
                     button
-                        (Element.rgb255 255 0 118)
+                        EH.lightRed
                         EH.white
                         "Loss"
                         Nothing
@@ -488,8 +488,8 @@ profitLossOrEven margin =
 
             else
                 ( "Loss"
-                , Element.rgba255 255 0 118 0.05
-                , Element.rgb255 255 0 118
+                , EH.lightRed |> EH.addAlpha 0.5
+                , EH.lightRed
                 )
     in
     Element.el

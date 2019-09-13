@@ -369,7 +369,7 @@ statsElement trade tradeCaches showModal =
                       , Element.el
                             [ Element.Font.size 24
                             , Element.Font.medium
-                            , Element.Font.color <| EH.burnedIconColor
+                            , Element.Font.color <| EH.lightRed
                             ]
                             (Element.text (String.padLeft 2 '0' <| String.fromInt userStats.numBurns))
                       ]

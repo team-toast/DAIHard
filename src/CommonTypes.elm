@@ -1,4 +1,4 @@
-module CommonTypes exposing (BuyerOrSeller(..), FactoryType(..), GTagData, InitiatorOrResponder(..), IntervalType(..), NativeFactoryType(..), TokenFactoryType(..), UserInfo, buyerOrSellerToString, dhTokenList, factoryName, networkNameForFactory, tokenSymbol, tokenUnitName)
+module CommonTypes exposing (BuyerOrSeller(..), FactoryType(..), GTagData, InitiatorOrResponder(..), IntervalType(..), NativeFactoryType(..), TokenFactoryType(..), UserInfo, buyerOrSellerToString, dhTokenList, factoryName, intervalTypeToString, networkNameForFactory, tokenSymbol, tokenUnitName)
 
 import Dict
 import Eth.Net
@@ -52,6 +52,19 @@ type IntervalType
     = Expiry
     | Payment
     | Judgment
+
+
+intervalTypeToString : IntervalType -> String
+intervalTypeToString intervalType =
+    case intervalType of
+        Expiry ->
+            "Expiry"
+
+        Payment ->
+            "Payment"
+
+        Judgment ->
+            "Judgment"
 
 
 buyerOrSellerToString : BuyerOrSeller -> String

@@ -210,15 +210,19 @@ update msg prevModel =
                         | mode = newMode
                     }
             in
-            justModelUpdate <|
-                if prevModel.mode /= newMode then
+            UpdateResult
+                (if prevModel.mode /= newMode then
                     { newModel
                         | inputs = initialInputs prevModel.wallet newMode
                     }
                         |> updateCurrencyTypesFromInput
 
-                else
+                 else
                     newModel
+                )
+                Cmd.none
+                ChainCmd.none
+                [ CmdUp.gTag "change mode" "navigation" (modeToString newMode) 0 ]
 
         SwapClicked ->
             let
@@ -266,7 +270,9 @@ update msg prevModel =
                         newModel
                         Cmd.none
                         ChainCmd.none
-                        appCmds
+                        (appCmds
+                            ++ [ CmdUp.gTag "swap clicked" "navigation" (buyerOrSellerToString (initiatorRole newModel.mode)) 0 ]
+                        )
 
                 _ ->
                     let
@@ -313,7 +319,7 @@ update msg prevModel =
                 appCmds
 
         InTypeClicked ->
-            justModelUpdate
+            UpdateResult
                 { prevModel
                     | showInTypeDropdown =
                         if prevModel.showInTypeDropdown then
@@ -322,6 +328,9 @@ update msg prevModel =
                         else
                             True
                 }
+                Cmd.none
+                ChainCmd.none
+                [ CmdUp.gTag "in currency dropdown clicked" "input" "" 0 ]
 
         InTypeSelected newType ->
             let
@@ -344,6 +353,14 @@ update msg prevModel =
                             Cmd.none
                             ChainCmd.none
                             cmdUps
+                   )
+                |> (\updateResult ->
+                        { updateResult
+                            | cmdUps =
+                                List.append
+                                    updateResult.cmdUps
+                                    [ CmdUp.gTag "in currency selected" "input" (currencySymbol newType) 0 ]
+                        }
                    )
 
         AmountOutChanged input ->
@@ -383,7 +400,7 @@ update msg prevModel =
                 appCmds
 
         OutTypeClicked ->
-            justModelUpdate
+            UpdateResult
                 { prevModel
                     | showOutTypeDropdown =
                         if prevModel.showOutTypeDropdown then
@@ -392,6 +409,9 @@ update msg prevModel =
                         else
                             True
                 }
+                Cmd.none
+                ChainCmd.none
+                [ CmdUp.gTag "out currency dropdown clicked" "input" "" 0 ]
 
         OutTypeSelected newType ->
             let
@@ -415,6 +435,14 @@ update msg prevModel =
                             ChainCmd.none
                             cmdUps
                    )
+                |> (\updateResult ->
+                        { updateResult
+                            | cmdUps =
+                                List.append
+                                    updateResult.cmdUps
+                                    [ CmdUp.gTag "out currency selected" "input" (currencySymbol newType) 0 ]
+                        }
+                   )
 
         SearchInputChanged input ->
             let
@@ -430,7 +458,7 @@ update msg prevModel =
                 }
 
         MarginBoxClicked ->
-            justModelUpdate
+            UpdateResult
                 { prevModel
                     | showMarginModal =
                         if prevModel.showMarginModal then
@@ -439,6 +467,9 @@ update msg prevModel =
                         else
                             True
                 }
+                Cmd.none
+                ChainCmd.none
+                [ CmdUp.gTag "margin box clicked" "input" "" 0 ]
 
         MarginInputChanged input ->
             let
@@ -545,7 +576,9 @@ update msg prevModel =
                 newModel
                 Cmd.none
                 ChainCmd.none
-                appCmds
+                (appCmds
+                    ++ [ CmdUp.gTag "margin button clicked" "input" (marginButtonTypeToString typeClicked) 0 ]
+                )
 
         ReceiveAddressChanged input ->
             let
@@ -578,7 +611,7 @@ update msg prevModel =
                 prevInputs =
                     prevModel.inputs
             in
-            justModelUpdate
+            UpdateResult
                 { prevModel
                     | showIntervalModal = Just intervalType
                     , inputs =
@@ -589,6 +622,9 @@ update msg prevModel =
                                     |> String.fromInt
                         }
                 }
+                Cmd.none
+                ChainCmd.none
+                [ CmdUp.gTag "window box clicked" "input" (intervalTypeToString intervalType) 0 ]
 
         IntervalInputChanged input ->
             case prevModel.showIntervalModal of
@@ -643,7 +679,7 @@ update msg prevModel =
         IntervalUnitChanged newUnit ->
             case prevModel.showIntervalModal of
                 Just intervalType ->
-                    justModelUpdate
+                    UpdateResult
                         (prevModel
                             |> updateUserInterval
                                 intervalType
@@ -652,6 +688,9 @@ update msg prevModel =
                                     newUnit
                                 )
                         )
+                        Cmd.none
+                        ChainCmd.none
+                        [ CmdUp.gTag "interval unit changed" "input" (intervalUnitToString newUnit) 0 ]
 
                 Nothing ->
                     let
@@ -680,7 +719,7 @@ update msg prevModel =
                 createParameters =
                     CTypes.buildCreateParameters userInfo userParameters
             in
-            justModelUpdate
+            UpdateResult
                 { prevModel
                     | txChainStatus = Just <| Confirm factoryType createParameters
                     , depositAmount =
@@ -693,13 +732,16 @@ update msg prevModel =
                                     TokenValue.fromFloatWithWarning
                                     (getAmountIn prevModel)
                 }
+                Cmd.none
+                ChainCmd.none
+                [ CmdUp.gTag "place order clicked" "txchain" prevModel.inputs.paymentMethod (createParameters.tradeAmount |> TokenValue.getFloatValueWithWarning |> floor) ]
 
         AbortCreate ->
             UpdateResult
                 { prevModel | txChainStatus = Nothing }
                 Cmd.none
                 ChainCmd.none
-                [ CmdUp.gTag "abort" "abort" "create" 0 ]
+                [ CmdUp.gTag "abort" "txchain" "" 0 ]
 
         ConfirmCreate factoryType createParameters fullDepositAmount ->
             let
@@ -742,12 +784,16 @@ update msg prevModel =
                 { prevModel | txChainStatus = txChainStatus }
                 Cmd.none
                 chainCmd
-                []
+                [ CmdUp.gTag "confirm" "txchain" "" 0 ]
 
         ApproveSigned tokenType createParameters result ->
             case result of
                 Ok txHash ->
-                    justModelUpdate { prevModel | txChainStatus = Just <| ApproveMining tokenType createParameters txHash }
+                    UpdateResult
+                        { prevModel | txChainStatus = Just <| ApproveMining tokenType createParameters txHash }
+                        Cmd.none
+                        ChainCmd.none
+                        [ CmdUp.gTag "approve signed" "txchain" "" 0 ]
 
                 Err s ->
                     UpdateResult
@@ -794,7 +840,11 @@ update msg prevModel =
         CreateSigned factoryType result ->
             case result of
                 Ok txHash ->
-                    justModelUpdate { prevModel | txChainStatus = Just <| CreateMining factoryType txHash }
+                    UpdateResult
+                        { prevModel | txChainStatus = Just <| CreateMining factoryType txHash }
+                        Cmd.none
+                        ChainCmd.none
+                        [ CmdUp.gTag "create signed" "txchain" "" 0 ]
 
                 Err s ->
                     UpdateResult
@@ -823,7 +873,9 @@ update msg prevModel =
                         prevModel
                         Cmd.none
                         ChainCmd.none
-                        [ CmdUp.GotoRoute (Routing.Trade factory id) ]
+                        [ CmdUp.gTag "create mined" "txchain" "" 0
+                        , CmdUp.GotoRoute (Routing.Trade factory id)
+                        ]
 
                 Nothing ->
                     UpdateResult
