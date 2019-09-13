@@ -9,6 +9,7 @@ import CommonTypes exposing (..)
 import Config
 import Contracts.Types as CTypes
 import Contracts.Wrappers
+import Currencies exposing (Price)
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
 import Filters.State as Filters
@@ -20,7 +21,6 @@ import Helpers.Time as TimeHelpers
 import Marketplace.Types exposing (..)
 import PaymentMethods exposing (PaymentMethod)
 import PriceFetch
-import Prices exposing (Price)
 import Routing
 import String.Extra
 import Time
@@ -108,7 +108,16 @@ update msg prevModel =
 
         FiatTypeInputChanged input ->
             justModelUpdate
-                { prevModel | inputs = prevModel.inputs |> updateFiatTypeInput input }
+                { prevModel | inputs = prevModel.inputs |> updateFiatTypeInput (String.toUpper input) }
+
+        FiatTypeSelected input ->
+            justModelUpdate
+                ({ prevModel
+                    | inputs = prevModel.inputs |> updateFiatTypeInput input
+                    , showCurrencyDropdown = False
+                 }
+                    |> applyInputs
+                )
 
         ShowCurrencyDropdown flag ->
             let

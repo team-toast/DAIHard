@@ -1,6 +1,7 @@
 module PriceFetch exposing (PriceAndTimestamp, PriceData(..), checkAgainstTime, fetch, getPriceData, priceDataToMaybe)
 
-import CommonTypes exposing (ForeignCrypto, foreignCryptoFromName)
+import CommonTypes exposing (..)
+import Currencies
 import Dict exposing (Dict)
 import Helpers.Time as TimeHelpers
 import Http
@@ -20,7 +21,7 @@ type PriceData
     | Outdated
 
 
-fetch : (Result Http.Error (List ( ForeignCrypto, PriceAndTimestamp )) -> msg) -> Cmd msg
+fetch : (Result Http.Error (List ( Currencies.Symbol, PriceAndTimestamp )) -> msg) -> Cmd msg
 fetch msgConstructor =
     Http.request
         { method = "GET"
@@ -52,17 +53,17 @@ checkAgainstTime now priceAndTimestamp =
         Ok priceAndTimestamp.price
 
 
-responseDecoder : Json.Decode.Decoder (List ( ForeignCrypto, PriceAndTimestamp ))
+responseDecoder : Json.Decode.Decoder (List ( Currencies.Symbol, PriceAndTimestamp ))
 responseDecoder =
     Json.Decode.dict dataToPriceTupleDecoder
         |> Json.Decode.map Dict.values
 
 
-dataToPriceTupleDecoder : Json.Decode.Decoder ( ForeignCrypto, PriceAndTimestamp )
+dataToPriceTupleDecoder : Json.Decode.Decoder ( Currencies.Symbol, PriceAndTimestamp )
 dataToPriceTupleDecoder =
     Json.Decode.map2
         Tuple.pair
-        (Json.Decode.field "symbol" foreignCryptoDecoder)
+        (Json.Decode.field "symbol" Json.Decode.string)
         (Json.Decode.field "quote" <|
             Json.Decode.field "USD" <|
                 Json.Decode.map2
@@ -72,20 +73,10 @@ dataToPriceTupleDecoder =
         )
 
 
-foreignCryptoDecoder : Json.Decode.Decoder ForeignCrypto
-foreignCryptoDecoder =
-    Json.Decode.string
-        |> Json.Decode.andThen
-            (foreignCryptoFromName
-                >> Maybe.map Json.Decode.succeed
-                >> Maybe.withDefault (Json.Decode.fail "")
-            )
-
-
-getPriceData : ForeignCrypto -> List ( ForeignCrypto, PriceData ) -> Maybe PriceData
-getPriceData crypto prices =
+getPriceData : Currencies.Symbol -> List ( Currencies.Symbol, PriceData ) -> Maybe PriceData
+getPriceData symbol prices =
     prices
-        |> List.filter (Tuple.first >> (==) crypto)
+        |> List.filter (Tuple.first >> (==) symbol)
         |> List.head
         |> Maybe.map Tuple.second
 

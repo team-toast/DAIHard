@@ -1,4 +1,4 @@
-module Images exposing (Image, aborted, addButton, backButton, burned, chatIcon, closeIcon, committedPhase, daiSymbol, downArrow, fiatBag, flame, image, judgmentPhase, loadingArrows, marginSymbol, none, numberOnCircleEl, openPhase, openWindowIcon, pmBank, pmCash, pmCustom, qmarkCircle, release, releaseWindowIcon, released, stopWhite, swapArrows, toElement, upArrow)
+module Images exposing (Image(..), aborted, addButton, backButton, burned, chatIcon, closeIcon, committedPhase, daiSymbol, downArrow, fiatBag, flame, image, judgmentPhase, loadingArrows, marginSymbol, marketplace, myTrades, newTrade, none, numberOnCircleEl, openPhase, openWindowIcon, pmBank, pmCash, pmCustom, qmarkCircle, release, releaseWindowIcon, released, searchIcon, stopWhite, swapArrows, toElement, upArrow, verticalSwapArrows)
 
 import Element exposing (Attribute, Element)
 import Time
@@ -16,7 +16,7 @@ toElement : List (Attribute msg) -> Image -> Element msg
 toElement attributes image_ =
     case image_ of
         None ->
-            Element.none
+            Element.el attributes Element.none
 
         JustImage img ->
             Element.image attributes img
@@ -264,4 +264,44 @@ swapArrows =
     JustImage
         { src = "/DAIHard/static/img/swap-arrows.svg"
         , description = "switch order type"
+        }
+
+
+searchIcon : Image
+searchIcon =
+    JustImage
+        { src = "/DAIHard/static/img/search.svg"
+        , description = "search"
+        }
+
+
+verticalSwapArrows : Image
+verticalSwapArrows =
+    JustImage
+        { src = "/DAIHard/static/img/vertical-swap.svg"
+        , description = "swap"
+        }
+
+
+marketplace : Image
+marketplace =
+    JustImage
+        { src = "/DAIHard/static/img/farmer-s-market-kiosk-1.svg"
+        , description = "marketplace"
+        }
+
+
+myTrades : Image
+myTrades =
+    JustImage
+        { src = "/DAIHard/static/img/diamond.svg"
+        , description = "myTrades"
+        }
+
+
+newTrade : Image
+newTrade =
+    JustImage
+        { src = "/DAIHard/static/img/add-circle-bold.svg"
+        , description = "newTrade"
         }

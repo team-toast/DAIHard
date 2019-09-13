@@ -21,7 +21,7 @@ import Http
 import Json.Decode
 import Json.Encode
 import PaymentMethods
-import Prices exposing (Price)
+import Currencies exposing (Price)
 import Task
 import Time
 import TokenValue exposing (TokenValue)

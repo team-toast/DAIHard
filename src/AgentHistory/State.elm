@@ -22,7 +22,7 @@ import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
 import PaymentMethods exposing (PaymentMethod)
 import PriceFetch
-import Prices exposing (Price)
+import Currencies exposing (Price)
 import Routing
 import String.Extra
 import Time
