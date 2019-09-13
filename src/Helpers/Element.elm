@@ -1,4 +1,4 @@
-module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, basicOpenDropdown, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredResponderProfit, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, maybeErrorElement, mediumGray, modal, moveToFront, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, redButton, releasedIconColor, responderProfitFloatToConciseString, responderProfitSymbol, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, searchableOpenDropdown, simpleSubmodelContainer, softRed, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, thinGrayHRuler, txProcessModal, uncoloredResponderProfit, white, withHeader, withInputHeader, withInputHeaderAndMaybeError, withSelectedUnderline, yellow)
+module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, addAlpha, basicOpenDropdown, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredResponderProfit, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, maybeErrorElement, mediumGray, modal, moveToFront, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, redButton, releasedIconColor, responderProfitFloatToConciseString, responderProfitSymbol, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, searchableOpenDropdown, simpleSubmodelContainer, softRed, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, thinGrayHRuler, txProcessModal, uncoloredResponderProfit, white, withHeader, withInputHeader, withInputHeaderAndMaybeError, withSelectedUnderline, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -130,6 +130,18 @@ abortedIconColor =
 
 burnedIconColor =
     Element.rgb255 255 0 0
+
+
+addAlpha : Float -> Element.Color -> Element.Color
+addAlpha a color =
+    let
+        oldRgba =
+            Element.toRgb color
+    in
+    Element.fromRgb
+        { oldRgba
+            | alpha = a
+        }
 
 
 

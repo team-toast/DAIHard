@@ -1,4 +1,4 @@
-module Create.Types exposing (AmountInputType(..), CurrencyType(..), Errors, Inputs, IntervalUnit(..), MarginButtonType(..), Mode(..), Model, Msg(..), TradeType(..), TxChainStatus(..), UpdateResult, UserInterval, currencySymbol, externalCurrencyPrice, getAmountIn, getAmountOut, getTradeAmount, getTradePrice, getUserInterval, initiatorRole, intervalUnitToString, justModelUpdate, maybeBuildPaymentMethods, maybeUserParameters, noErrors, tradeType, updateAmountIn, updateAmountOut, updateForeignCurrencyType, updateInType, updateOutType, updateUserInterval, userIntervalToPosix, userIntervalToString)
+module Create.Types exposing (AmountInputType(..), CurrencyType(..), Errors, Inputs, IntervalUnit(..), MarginButtonType(..), Mode(..), Model, Msg(..), TradeType(..), TxChainStatus(..), UpdateResult, UserInterval, currencySymbol, externalCurrencyPrice, getAmountIn, getAmountOut, getTradeAmount, getTradePrice, getUserInterval, initiatorRole, intervalUnitToString, justModelUpdate, marginButtonTypeToString, maybeBuildPaymentMethods, maybeUserParameters, modeToString, noErrors, tradeType, updateAmountIn, updateAmountOut, updateForeignCurrencyType, updateInType, updateOutType, updateUserInterval, userIntervalToPosix, userIntervalToString)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -117,6 +117,22 @@ type Mode
     = CryptoSwap BuyerOrSeller
     | OnRamp
     | OffRamp
+
+
+modeToString : Mode -> String
+modeToString mode =
+    case mode of
+        CryptoSwap Seller ->
+            "CryptoSwap Seller"
+
+        CryptoSwap Buyer ->
+            "CryptoSwap Buyer"
+
+        OffRamp ->
+            "OffRamp"
+
+        OnRamp ->
+            "OnRamp"
 
 
 type CurrencyType
@@ -365,6 +381,19 @@ type MarginButtonType
     = Loss
     | Even
     | Profit
+
+
+marginButtonTypeToString : MarginButtonType -> String
+marginButtonTypeToString t =
+    case t of
+        Loss ->
+            "Loss"
+
+        Even ->
+            "Even"
+
+        Profit ->
+            "Profit"
 
 
 getUserInterval : IntervalType -> Model -> UserInterval

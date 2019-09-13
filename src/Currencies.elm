@@ -103,9 +103,10 @@ fiatList =
 
 foreignCryptoList : List Symbol
 foreignCryptoList =
-    [ "ZEC"
+    [ "BTC"
+    , "ZEC"
     , "XMR"
-    , "BTC"
+    , "DASH"
     ]
 
 

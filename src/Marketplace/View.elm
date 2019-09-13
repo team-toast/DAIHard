@@ -317,9 +317,6 @@ fiatInput showTypeDropdown symbol errors =
                 [ fiatLabelElement
                 , Element.el [ Element.Font.size 16, Element.centerY ] (Element.text "max")
                 ]
-
-        flagClickedMsg =
-            CmdUp <| CmdUp.gTag "click" "misclick" "currency flag" 0
     in
     Element.el
         [ Element.alignTop
