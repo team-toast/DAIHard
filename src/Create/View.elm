@@ -78,14 +78,17 @@ header mode =
     let
         descriptionText =
             case mode of
-                CryptoSwap _ ->
-                    "Please choose which two cryptocurrencies you’d like to exchange, indicate which wallet address you’d like your exchanged coins sent, and edit the three trade windows if necessary."
+                CryptoSwap Seller ->
+                    "Trade Dai/xDai for another crypto. Choose the amounts and types of crypto, and fill in your crypto receive address. Advanced users may wish to change the three trade windows."
+
+                CryptoSwap Buyer ->
+                    "Trade another crypto for Dai/xDai. Choose the amounts and types of crypto, and advanced users may wish to change the three trade windows."
 
                 OffRamp ->
-                    "You are the seller. Choose what cryptocurrency/fiat you wish to exchange, what payment methods you are willing to accept from the buyer, and edit the three trade windows if necessary."
+                    "Turn your Dai/xDai into any local currency. Choose your amounts and fiat type, describe how you can accept the fiat payment from a Buyer, and if necessary edit the three trade windows."
 
                 OnRamp ->
-                    "You are the buyer. Choose what cryptocurrency/fiat you wish to exchange, what payment methods you are willing to send to the seller, and edit the three trade windows if necessary."
+                    "Deposit Dai/xDai to begin a fiat purchase to get 3X more Dai/xDai than your deposit. Choose your amounts and fiat type, describe how you can make the fiat payment to a Seller, and if necessary edit the three trade windows."
     in
     Element.column
         [ Element.width Element.fill
@@ -388,7 +391,7 @@ marginModal margin marginInput maybeError =
                         [ Element.Font.size 16
                         , Element.Font.color <| Element.rgba 0 0 0 0.75
                         ]
-                        [ Element.text "This is how much you want to either make as a profit or loss from this trade. Choose ‘loss’ if you’re looking to find a buyer fast. Choose ‘Even’ to set the margin to 0%." ]
+                        [ Element.text "This is how much you want to either make as a profit or loss from this trade. Trading at a loss can help to find a buyer fast, but it's possible to trade at a profit if your payment method is highly convenient to the other party." ]
                     ]
             , let
                 inactiveBgColor =
@@ -778,16 +781,20 @@ paymentMethodInput initiatorRole input =
                         Element.Input.placeholder
                             [ Element.Font.color EH.placeholderTextColor ]
                         <|
-                            Element.column [ Element.spacing 20 ] <|
+                            Element.column [ Element.spacing 5 ] <|
                                 case initiatorRole of
                                     Buyer ->
-                                        [ Element.text "Indicate here how you will send payment to the seller."
-                                        , Element.text "Eg. National bank transfer (UK only) or cash in person (London only)"
+                                        [ Element.text "Indicate here how you will send payment to the Seller. Some examples:"
+                                        , Element.text "\"I can send to any EU bank\""
+                                        , Element.text "\"I'll reveal a hidden cash drop within 10 km of Grand Central Station\""
+                                        , Element.text "\"Can send via ecocash\""
                                         ]
 
                                     Seller ->
-                                        [ Element.text "Indicate here how you will accept payment from the buyer."
-                                        , Element.text "Eg. National bank transfer (UK only) or cash in person (London only)"
+                                        [ Element.text "Indicate here how you will send payment to the Buyer. Some examples:"
+                                        , Element.text "\"I have TransferWise\""
+                                        , Element.text "\"I can pick up a cash drop within 10 km of Grand Central Station\""
+                                        , Element.text "\"I can pick up a WorldRemit payment to Zimbabwe\""
                                         ]
                 , label = Element.Input.labelHidden "payment method"
                 , spellcheck = True
@@ -819,6 +826,7 @@ phaseWindowBoxAndMaybeModal intervalType model =
             if showModal then
                 intervalModal
                     intervalType
+                    (initiatorRole model.mode)
                     (getUserInterval intervalType model)
                     model.inputs.interval
                     model.errors.interval
@@ -883,24 +891,34 @@ userInterval interval =
                    )
 
 
-intervalModal : IntervalType -> UserInterval -> String -> Maybe String -> Element Msg
-intervalModal intervalType value input maybeError =
+intervalModal : IntervalType -> BuyerOrSeller -> UserInterval -> String -> Maybe String -> Element Msg
+intervalModal intervalType userRole value input maybeError =
     let
         ( title, text ) =
             case intervalType of
                 Expiry ->
                     ( "Offer Expiry"
-                    , "This is the window of time that your trade will be available in the marketplace for someone to claim. You can recall this trade at anytime during this window given that it hasn’t yet been claimed."
+                    , "This is how long your offer remains valid and visible in the marketplace. Note that you can manually recall the trade at any time, as long as no one has yet committed to it."
                     )
 
                 Payment ->
                     ( "Payment Due"
-                    , "This is the window of time that the responder of this trade will have to confirm that they have successfully sent the exchange amount to your specified wallet."
+                    , case userRole of
+                        Buyer ->
+                            "Once a Seller commits, this is how long you to work with the Seller to complete the payment, and click \"confirm payment\". We recommend setting this to about 2X or 3X more than you expect you'll need!"
+
+                        Seller ->
+                            "Once a Buyer commits, this is how long they have to work with you to complete the payment and click \"confirm payment\". We recommend setting this to about 2X or 3X more than you expect you'll need!"
                     )
 
                 Judgment ->
                     ( "Burn Window"
-                    , "During this window, you have to decide if the responder has indeed sent the exchange amount to you and thus decide to burn or release the trade. If there is no action from you before this window expires, the trade will be auto-released."
+                    , case userRole of
+                        Buyer ->
+                            "Once you confirm payment, this is how long the Seller will have the option to burn the entire Dai/xDai balance (or manually release early). If the Seller makes no decision before this timer expires, the Dai/xDai balance is yours to claim."
+
+                        Seller ->
+                            "Once the Buyer confirms payment, this is how long you will have the option to burn the entire Dai/xDai balance (or manually release early). If you don't make a decision before this timer expires, the Buyer can then claim the Dai/xDai balance."
                     )
     in
     EH.modal
@@ -1104,7 +1122,7 @@ placeOrderButton model =
                         buttonBuilder
                             (Element.rgb255 255 0 110)
                             EH.white
-                            "Place Order"
+                            "Review Terms and Place Order"
                             (Just <| PlaceOrderClicked model.dhTokenType userInfo userParameters)
                             Nothing
 
@@ -1112,7 +1130,7 @@ placeOrderButton model =
                         buttonBuilder
                             EH.lightGray
                             EH.black
-                            "Place Order"
+                            "Review Terms and Place Order"
                             Nothing
                             Nothing
 
@@ -1167,7 +1185,7 @@ txChainStatusModal txChainStatus model =
                             ( blueText depositAmountText
                             , blueText totalBurnableText
                             , EH.redButton
-                                ("Yes. Deposit "
+                                ("Understood. Deposit "
                                     ++ depositAmountText
                                     ++ " and open this trade."
                                 )
@@ -1201,7 +1219,7 @@ txChainStatusModal txChainStatus model =
                         , Element.Font.size 18
                         , Element.Font.semiBold
                         ]
-                        (Element.text "Not yet. Go back.")
+                        (Element.text "I'm not ready yet. Go back.")
 
                 buyerDepositEl =
                     blueText <|
@@ -1270,7 +1288,7 @@ txChainStatusModal txChainStatus model =
                                 [ Element.Font.size 16
                                 , Element.Font.medium
                                 ]
-                                [ Element.text "You’ve set up your trade parameters. Please read through these five points and make sure you’re ready to proceed with opening this trade." ]
+                                [ Element.text "DAIHard is different than other exchanges. If this is your first trade here, carefully read the details to the right before proceeding with opening this trade." ]
                             , Element.paragraph
                                 [ Element.Font.size 16
                                 , Element.Font.medium

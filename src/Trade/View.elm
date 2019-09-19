@@ -708,7 +708,7 @@ phaseStatusElement viewPhase trade currentTime =
                             "Payment Window"
 
                         CTypes.Judgment ->
-                            "Burn/Release Window"
+                            "Burn Window"
 
                         CTypes.Closed ->
                             "Closed"
@@ -1121,11 +1121,11 @@ phaseBodyElement viewPhase currentTime trade wallet =
                 ( CTypes.Judgment, Just Buyer ) ->
                     ( "Judgement"
                     , List.map makeParagraph
-                        [ [ Element.text "If the Seller confirms receipt of payment, or fails to decide within the Burn/Release Window, the combined balance of "
+                        [ [ Element.text "If the Seller confirms receipt of payment, or makes no decision within the Burn Window, the combined balance of "
                           , emphasizedText tradePlusDepositString
-                          , Element.text " will be released to you."
+                          , Element.text " is yours to claim."
                           ]
-                        , [ Element.text "If they cannot confirm they've received payment from you, they will probably instead "
+                        , [ Element.text "If they cannot confirm they've received payment from you, they will probably choose to "
                           , scaryText "burn the contract's balance of "
                           , emphasizedText tradePlusDepositString
                           , scaryText "."
@@ -1153,7 +1153,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
                           , scaryText "burn it all"
                           , Element.text ". You're not getting it back either way, and you wouldn't want the other guy to get it, would you?"
                           ]
-                        , [ Element.text "If you don't decide within the Burn/Release Window, the balance will be automatically released."
+                        , [ Element.text "If you don't decide within the Burn Window, the Buyer will be able to claim the full balance."
                           ]
                         ]
                     )
@@ -1171,9 +1171,9 @@ phaseBodyElement viewPhase currentTime trade wallet =
                           , scaryText "burn it all"
                           , Element.text "."
                           ]
-                        , [ Element.text "If the Seller has not made a decision before the Burn/Release Window expires, the "
+                        , [ Element.text "If the Seller has not made a decision before the Burn Window expires, the "
                           , emphasizedText tradeAmountString
-                          , Element.text " will be automaticall released."
+                          , Element.text " becomes claimable by the Buyer."
                           ]
                         ]
                     )
