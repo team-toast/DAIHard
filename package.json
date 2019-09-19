@@ -1,7 +1,7 @@
 {
   "name": "daihard",
   "description": "decentralized fiat/crypto transfers, using threat of burn",
-  "version": "0.9.4",
+  "version": "0.9.5",
   "license": "UNLICENSED",
   "author": "Logan Brutsche",
   "repository": {

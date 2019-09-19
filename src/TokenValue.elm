@@ -1,7 +1,8 @@
-module TokenValue exposing (TokenValue, add, compare, decoder, div, divFloatWithWarning, encode, fromFloatWithWarning, fromIntTokenValue, fromString, getEvmValue, getFloatValueWithWarning, isZero, mul, mulFloatWithWarning, sub, toConciseString, toFloatString, tokenValue, zero)
+module TokenValue exposing (TokenValue(..), add, compare, decoder, div, divFloatWithWarning, encode, evmValueToTruncatedUserFloatString, evmValueToUserFloatString, fromFloatWithWarning, fromIntTokenValue, fromString, getEvmValue, getFloatValueWithWarning, isZero, mul, mulFloatWithWarning, negate, pullAnyFirstDecimalOffToRight, removeUnnecessaryZerosAndDots, sub, toConciseString, toFloatString, tokenValue, userStringToEvmValue, zero)
 
 import BigInt exposing (BigInt)
 import Config
+import FormatFloat exposing (..)
 import Helpers.BigInt as BigIntHelpers
 import Json.Decode
 import Json.Encode
@@ -86,48 +87,48 @@ toFloatString maxDigitsAfterDecimal tokens =
 
 toConciseString : TokenValue -> String
 toConciseString tv =
-    if BigInt.compare (getEvmValue tv) (BigInt.fromInt 0) == LT then
-        "-" ++ toConciseString (negate tv)
+    getFloatValueWithWarning tv
+        |> autoFormatFloat
 
-    else
-        let
-            hackyRoundFloatString s =
-                String.toFloat s
-                    |> Maybe.map ((*) 100.0)
-                    |> Maybe.map round
-                    |> Maybe.map toFloat
-                    |> Maybe.map (\f -> f / 100.0)
-                    |> Maybe.map String.fromFloat
-                    |> Maybe.withDefault s
-                    |> String.left 4
 
-            floatStr =
-                evmValueToUserFloatString (getEvmValue tv)
-        in
-        case String.indexes "." floatStr of
-            [] ->
-                floatStr
 
-            [ 0 ] ->
-                "0"
-                    ++ floatStr
-                    |> hackyRoundFloatString
-
-            [ 1 ] ->
-                hackyRoundFloatString floatStr
-
-            [ i ] ->
-                String.toFloat floatStr
-                    |> Maybe.map round
-                    |> Maybe.map String.fromInt
-                    |> Maybe.withDefault (String.left i floatStr)
-
-            _ ->
-                let
-                    _ =
-                        Debug.log "Error interpreting evmValueToString result. More than one decimal??"
-                in
-                "???"
+-- oldToConciseString tv =
+--     if BigInt.compare (getEvmValue tv) (BigInt.fromInt 0) == LT then
+--         "-" ++ toConciseString (negate tv)
+--     else
+--         let
+--             hackyRoundFloatString s =
+--                 String.toFloat s
+--                     |> Maybe.map ((*) 100.0)
+--                     |> Maybe.map round
+--                     |> Maybe.map toFloat
+--                     |> Maybe.map (\f -> f / 100.0)
+--                     |> Maybe.map String.fromFloat
+--                     |> Maybe.withDefault s
+--                     |> String.left 4
+--             floatStr =
+--                 evmValueToUserFloatString (getEvmValue tv)
+--         in
+--         case String.indexes "." floatStr of
+--             [] ->
+--                 floatStr
+--             [ 0 ] ->
+--                 "0"
+--                     ++ floatStr
+--                     |> hackyRoundFloatString
+--             [ 1 ] ->
+--                 hackyRoundFloatString floatStr
+--             [ i ] ->
+--                 String.toFloat floatStr
+--                     |> Maybe.map round
+--                     |> Maybe.map String.fromInt
+--                     |> Maybe.withDefault (String.left i floatStr)
+--             _ ->
+--                 let
+--                     _ =
+--                         Debug.log "Error interpreting evmValueToString result. More than one decimal??"
+--                 in
+--                 "???"
 
 
 negate : TokenValue -> TokenValue

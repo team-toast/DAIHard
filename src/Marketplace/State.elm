@@ -9,6 +9,7 @@ import CommonTypes exposing (..)
 import Config
 import Contracts.Types as CTypes
 import Contracts.Wrappers
+import Currencies exposing (Price)
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
 import Filters.State as Filters
@@ -20,7 +21,6 @@ import Helpers.Time as TimeHelpers
 import Marketplace.Types exposing (..)
 import PaymentMethods exposing (PaymentMethod)
 import PriceFetch
-import Prices exposing (Price)
 import Routing
 import String.Extra
 import Time
@@ -30,6 +30,7 @@ import TradeCache.Types as TradeCache exposing (TradeCache)
 import TradeTable.State as TradeTable
 import TradeTable.Types as TradeTable
 import UserNotice as UN
+import Utils
 import Wallet
 
 
@@ -100,15 +101,24 @@ update msg prevModel =
 
         MinDaiChanged input ->
             justModelUpdate
-                { prevModel | inputs = prevModel.inputs |> updateMinDaiInput input }
+                { prevModel | inputs = prevModel.inputs |> updateMinDaiInput (Utils.filterPositiveNumericInput input) }
 
         MaxDaiChanged input ->
             justModelUpdate
-                { prevModel | inputs = prevModel.inputs |> updateMaxDaiInput input }
+                { prevModel | inputs = prevModel.inputs |> updateMaxDaiInput (Utils.filterPositiveNumericInput input) }
 
         FiatTypeInputChanged input ->
             justModelUpdate
-                { prevModel | inputs = prevModel.inputs |> updateFiatTypeInput input }
+                { prevModel | inputs = prevModel.inputs |> updateFiatTypeInput (String.toUpper input) }
+
+        FiatTypeSelected input ->
+            justModelUpdate
+                ({ prevModel
+                    | inputs = prevModel.inputs |> updateFiatTypeInput input
+                    , showCurrencyDropdown = False
+                 }
+                    |> applyInputs
+                )
 
         ShowCurrencyDropdown flag ->
             let
