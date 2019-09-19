@@ -119,13 +119,13 @@ modeHeader selected mode =
         text =
             case mode of
                 CryptoSwap _ ->
-                    "CryptoSwap"
+                    "Crypto Portal"
 
                 OffRamp ->
-                    "Off Ramp"
+                    "Get Fiat"
 
                 OnRamp ->
-                    "???"
+                    "Get More Dai"
     in
     Element.el
         [ Element.Font.size 28
@@ -1193,9 +1193,15 @@ txChainStatusModal txChainStatus model =
                             ++ tokenUnitName factoryType
 
                 notYetButton =
-                    EH.blueButton
-                        "Not yet. Go back."
-                        AbortCreate
+                    Element.el
+                        [ Element.pointer
+                        , Element.Events.onClick AbortCreate
+                        , Element.paddingXY 25 17
+                        , Element.Font.color EH.white
+                        , Element.Font.size 18
+                        , Element.Font.semiBold
+                        ]
+                        (Element.text "Not yet. Go back.")
 
                 buyerDepositEl =
                     blueText <|
@@ -1242,40 +1248,68 @@ txChainStatusModal txChainStatus model =
                         << Element.text
             in
             EH.closeableModal
-                []
-                (Element.column
-                    [ Element.spacing 20
-                    , Element.padding 20
-                    , Element.centerX
-                    , Element.height Element.fill
-                    , Element.width Element.fill
-                    , Element.Font.center
-                    ]
-                    [ Element.el
-                        [ Element.Font.size 26
-                        , Element.Font.semiBold
-                        , Element.centerX
-                        , Element.centerY
+                [ Element.width <| Element.px 1200 ]
+                (Element.row
+                    [ Element.width Element.fill ]
+                    [ Element.column
+                        [ Element.padding 90
+                        , Element.height Element.fill
+                        , Element.Background.color <| Element.rgb255 10 33 108
                         ]
-                        (case createParameters.initiatorRole of
-                            Buyer ->
-                                Element.text "Opening a DAIHard Buy Offer"
-
-                            Seller ->
-                                Element.text "Opening a DAIHard Sell Offer"
-                        )
+                        [ Element.column
+                            [ Element.width Element.fill
+                            , Element.spacing 18
+                            , Element.Font.color EH.white
+                            ]
+                            [ Element.el
+                                [ Element.Font.size 38
+                                , Element.Font.semiBold
+                                ]
+                                (Element.text "Are you Ready?")
+                            , Element.paragraph
+                                [ Element.Font.size 16
+                                , Element.Font.medium
+                                ]
+                                [ Element.text "You’ve set up your trade parameters. Please read through these five points and make sure you’re ready to proceed with opening this trade." ]
+                            , Element.paragraph
+                                [ Element.Font.size 16
+                                , Element.Font.medium
+                                ]
+                                [ Element.text "You can't edit a trade once it's live (but you can abort and re-deploy, as described in point 2)." ]
+                            ]
+                        , Element.column
+                            [ Element.centerX
+                            , Element.spacing 15
+                            , Element.alignBottom
+                            ]
+                            [ Element.el [ Element.centerX ] confirmButton
+                            , Element.el [ Element.centerX ] notYetButton
+                            ]
+                        ]
                     , Element.column
-                        [ Element.spacing 20
-                        , Element.centerX
-                        , Element.centerY
+                        [ Element.spacing 23
+                        , Element.padding 40
+                        , Element.width Element.fill
                         ]
                         (List.map
-                            (Element.paragraph
-                                [ Element.centerX
-                                , Element.Font.size 18
-                                , Element.Font.medium
-                                , Element.Font.color EH.permanentTextColor
-                                ]
+                            (\lines ->
+                                Element.row
+                                    [ Element.width Element.fill
+                                    , Element.height Element.fill
+                                    , Element.Border.width 2
+                                    , Element.Border.color EH.lightGray
+                                    , Element.padding 16
+                                    , Element.spacing 20
+                                    ]
+                                    [ Element.el
+                                        [ Element.Font.size 40
+                                        , Element.centerY
+                                        ]
+                                        (Element.text EH.bulletPointString)
+                                    , Element.paragraph
+                                        [ Element.Font.size 16 ]
+                                        lines
+                                    ]
                             )
                             (case createParameters.initiatorRole of
                                 Buyer ->
@@ -1333,7 +1367,6 @@ txChainStatusModal txChainStatus model =
                                       , feeAmountEl
                                       , Element.text ")."
                                       ]
-                                    , [ Element.text <| "Are you ready?" ]
                                     ]
                                         ++ (case factoryType of
                                                 Token _ ->
@@ -1407,18 +1440,7 @@ txChainStatusModal txChainStatus model =
                                                 Native _ ->
                                                     []
                                            )
-                                        ++ [ [ Element.text <| "Are you ready?" ]
-                                           ]
                             )
-                        )
-                    , Element.column
-                        [ Element.centerX
-                        , Element.spacing 15
-                        ]
-                        ([ confirmButton
-                         , notYetButton
-                         ]
-                            |> List.map (Element.el [ Element.centerX ])
                         )
                     ]
                 )
