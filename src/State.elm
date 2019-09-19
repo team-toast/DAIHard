@@ -472,12 +472,16 @@ addUserNotices userNotices prevModel =
 
 addUserNotice : UserNotice Msg -> Model -> Model
 addUserNotice userNotice prevModel =
-    { prevModel
-        | userNotices =
-            List.append
-                prevModel.userNotices
-                [ userNotice ]
-    }
+    if List.member userNotice prevModel.userNotices then
+        prevModel
+
+    else
+        { prevModel
+            | userNotices =
+                List.append
+                    prevModel.userNotices
+                    [ userNotice ]
+        }
 
 
 encodeGTag : GTagData -> Json.Decode.Value
