@@ -632,23 +632,12 @@ button ( bgColor, bgHoverColor, bgPressedColor ) textColor text msg =
 closeButton : msg -> Element msg
 closeButton msg =
     Element.el
-        [ Element.paddingEach
-            { top = 0
-            , left = 5
-            , right = 5
-            , bottom = 5
-            }
+        [ Element.padding 10
         , Element.Events.onClick msg
-        , Element.Border.rounded 30
-        , Element.Background.color <| Element.rgba 1 1 1 0.4
-        , Element.Border.width 1
-        , Element.Border.color <| Element.rgba 0 0 0 0.3
         , Element.pointer
-        , Element.Font.size 14
         ]
-        (Element.el
-            [ Element.Font.color <| Element.rgba 0 0 0 0.7 ]
-            (Element.text "x")
+        (Images.toElement [ Element.width <| Element.px 22 ]
+            Images.closeIcon
         )
 
 
