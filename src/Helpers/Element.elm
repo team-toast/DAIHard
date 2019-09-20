@@ -1,4 +1,4 @@
-module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredResponderProfit, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, currencySelector, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, dhTokenTypeSelector, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, foreignCryptoTypeSelector, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, maybeErrorElement, mediumGray, modal, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, priceSymbolToImageElement, red, redButton, releasedIconColor, responderProfitFloatToConciseString, responderProfitSymbol, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, txProcessModal, uncoloredResponderProfit, white, withHeader, withInputHeader, withSelectedUnderline, yellow)
+module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, addAlpha, basicOpenDropdown, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredResponderProfit, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, maybeErrorElement, mediumGray, modal, moveToFront, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, redButton, releasedIconColor, responderProfitFloatToConciseString, responderProfitSymbol, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, searchableOpenDropdown, simpleSubmodelContainer, softRed, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, thinGrayHRuler, txProcessModal, uncoloredResponderProfit, white, withHeader, withInputHeader, withInputHeaderAndMaybeError, withSelectedUnderline, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -7,6 +7,7 @@ import Color exposing (Color)
 import CommonTypes exposing (..)
 import Config
 import Css
+import Currencies exposing (Price)
 import Dict
 import Element exposing (Attribute, Element)
 import Element.Background
@@ -26,7 +27,6 @@ import Json.Decode
 import List
 import List.Extra
 import Maybe.Extra
-import Prices exposing (Price)
 import Task
 import Time
 import TokenValue exposing (TokenValue)
@@ -44,8 +44,8 @@ white =
     Element.rgb 1 1 1
 
 
-red =
-    Element.rgb255 244 0 103
+softRed =
+    Element.rgb255 255 0 110
 
 
 lightRed =
@@ -132,6 +132,18 @@ burnedIconColor =
     Element.rgb255 255 0 0
 
 
+addAlpha : Float -> Element.Color -> Element.Color
+addAlpha a color =
+    let
+        oldRgba =
+            Element.toRgb color
+    in
+    Element.fromRgb
+        { oldRgba
+            | alpha = a
+        }
+
+
 
 -- LINKS
 
@@ -165,26 +177,15 @@ daiValue tv =
 
 price : Price -> Element msg
 price p =
-    let
-        currencyElement =
-            case Dict.get p.symbol Prices.charsAndImages of
-                Nothing ->
-                    Element.none
-
-                Just ( _, maybeImage ) ->
-                    Images.toElement
-                        [ Element.height <| Element.px 26 ]
-                        (maybeImage |> Maybe.withDefault Images.none)
-    in
     Element.row [ Element.spacing 4 ]
-        [ currencyElement
+        [ Currencies.icon p.symbol |> Maybe.withDefault Element.none
         , Element.el
             [ Element.Font.color <| Element.rgba 0 0 0 0.5
             , Element.Font.medium
             , Element.width <| Element.px 50
             ]
             (Element.text p.symbol)
-        , Element.text <| Prices.toString p
+        , Element.text <| Currencies.toString p
         ]
 
 
@@ -207,7 +208,7 @@ coloredResponderProfit upIsGreen responderProfitFloat =
                         green
 
                     else
-                        red
+                        softRed
             in
             Element.el [ Element.Font.color textColor, Element.Font.size 16 ]
                 (Element.text unsignedPercentString)
@@ -295,7 +296,7 @@ intervalWithElapsedBar containerAttributes textAttributes ( defaultColor, zeroCo
 
         color =
             if timeLeftRatio < 0.1 then
-                red
+                softRed
 
             else if timeLeftRatio < 0.2 then
                 yellow
@@ -376,20 +377,17 @@ bigTimeUnitElement numDigits color labelString num =
         (Element.text <| numStr ++ labelString)
 
 
-priceSymbolToImageElement : Prices.Symbol -> Element msg
-priceSymbolToImageElement symbol =
-    case Dict.get symbol Prices.charsAndImages of
-        Nothing ->
-            Element.text "*"
 
-        Just ( _, maybeImage ) ->
-            Images.toElement [ Element.height <| Element.px 26 ]
-                (maybeImage
-                    |> Maybe.withDefault Images.none
-                )
-
-
-
+-- priceSymbolToImageElement : Currencies.Symbol -> Element msg
+-- priceSymbolToImageElement symbol =
+--     case Dict.get symbol Currencies.charsAndImages of
+--         Nothing ->
+--             Element.text "*"
+--         Just ( _, maybeImage ) ->
+--             Images.toElement [ Element.height <| Element.px 26 ]
+--                 (maybeImage
+--                     |> Maybe.withDefault Images.none
+--                 )
 -- INPUTS
 
 
@@ -580,78 +578,6 @@ textInputWithElement attributes inputAttributes addedElement labelStr value plac
         ]
 
 
-dhTokenTypeSelector : FactoryType -> Bool -> msg -> (FactoryType -> msg) -> Element msg
-dhTokenTypeSelector currentToken showDropdown onClickMsg onSelectMsg =
-    Element.row
-        [ Element.spacing 8
-        , Element.pointer
-        , onClickNoPropagation onClickMsg
-        , Element.centerY
-        , Element.inFront <|
-            if showDropdown then
-                Element.el
-                    [ Element.moveUp 15
-                    , Element.moveLeft 10
-                    , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
-                    , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
-                    ]
-                <|
-                    dropdownSelector
-                        ([ Token EthDai, Native XDai ]
-                            |> List.map
-                                (\token ->
-                                    ( Element.text (tokenUnitName token)
-                                    , onSelectMsg token
-                                    )
-                                )
-                        )
-
-            else
-                Element.none
-        ]
-        [ Element.text <| tokenUnitName currentToken
-        , Images.toElement
-            [ Element.width <| Element.px 12 ]
-            Images.downArrow
-        ]
-
-
-foreignCryptoTypeSelector : ForeignCrypto -> Bool -> msg -> (ForeignCrypto -> msg) -> Element msg
-foreignCryptoTypeSelector currentCrypto showDropdown onClickMsg onSelectMsg =
-    Element.row
-        [ Element.spacing 8
-        , Element.pointer
-        , onClickNoPropagation onClickMsg
-        , Element.centerY
-        , Element.inFront <|
-            if showDropdown then
-                Element.el
-                    [ Element.moveUp 15
-                    , Element.moveLeft 10
-                    , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
-                    , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
-                    ]
-                <|
-                    dropdownSelector
-                        (foreignCryptoList
-                            |> List.map
-                                (\crypto ->
-                                    ( Element.text (foreignCryptoName crypto)
-                                    , onSelectMsg crypto
-                                    )
-                                )
-                        )
-
-            else
-                Element.none
-        ]
-        [ Element.text <| foreignCryptoName currentCrypto
-        , Images.toElement
-            [ Element.width <| Element.px 12 ]
-            Images.downArrow
-        ]
-
-
 dropdownSelector : List ( Element msg, msg ) -> Element msg
 dropdownSelector itemsAndMsgs =
     Element.column
@@ -682,76 +608,6 @@ dropdownSelector itemsAndMsgs =
         )
 
 
-currencySelector : Bool -> String -> msg -> (String -> msg) -> msg -> Element msg
-currencySelector showDropdown symbolInput openCurrencySelectorMsg typeStringChangedMsgConstructor flagClickedMsg =
-    let
-        maybeCharAndImage =
-            Dict.get symbolInput Prices.charsAndImages
-
-        inputElement =
-            Element.Input.text
-                [ Element.width <| Element.px 80
-                , Element.height <| Element.px 40
-                , Element.Font.size 24
-                , Element.Font.medium
-                , Element.Border.color lightGray
-                , onClickNoPropagation openCurrencySelectorMsg
-                ]
-                { onChange = String.toUpper >> typeStringChangedMsgConstructor
-                , text = symbolInput
-                , placeholder = Nothing
-                , label = Element.Input.labelHidden "currency type"
-                }
-
-        dropdownEl =
-            case ( showDropdown, maybeCharAndImage ) of
-                ( False, _ ) ->
-                    Element.none
-
-                ( True, Just _ ) ->
-                    Element.none
-
-                ( True, Nothing ) ->
-                    Element.wrappedRow
-                        [ Element.width <| Element.px 350
-                        , Element.Border.color black
-                        , Element.Border.width 1
-                        , Element.Background.color white
-                        , Element.padding 10
-                        , Element.centerX
-                        , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
-                        , Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
-                        ]
-                        (Prices.searchPriceTypes symbolInput
-                            |> Dict.toList
-                            |> List.map
-                                (\( symbol, ( _, maybeImage ) ) ->
-                                    Element.row
-                                        [ Element.width <| Element.px 80
-                                        , Element.spacing 9
-                                        , Element.paddingXY 0 5
-                                        , onClickNoPropagation <| typeStringChangedMsgConstructor symbol
-                                        , Element.mouseOver [ Element.Background.color <| Element.rgb 0.8 0.8 1 ]
-                                        ]
-                                        [ Images.toElement
-                                            [ Element.height <| Element.px 26
-                                            ]
-                                            (maybeImage |> Maybe.withDefault Images.none)
-                                        , Element.el [ Element.Font.size 16, Element.Font.semiBold ] <| textWithoutTextCursor symbol
-                                        ]
-                                )
-                        )
-    in
-    Element.row
-        [ Element.spacing 4
-        , Element.below dropdownEl
-        ]
-        [ Element.el [ Element.Events.onClick flagClickedMsg ]
-            (Prices.getIcon symbolInput |> Maybe.withDefault Element.none)
-        , inputElement
-        ]
-
-
 
 -- BUTTONS
 
@@ -776,23 +632,12 @@ button ( bgColor, bgHoverColor, bgPressedColor ) textColor text msg =
 closeButton : msg -> Element msg
 closeButton msg =
     Element.el
-        [ Element.paddingEach
-            { top = 0
-            , left = 5
-            , right = 5
-            , bottom = 5
-            }
+        [ Element.padding 10
         , Element.Events.onClick msg
-        , Element.Border.rounded 30
-        , Element.Background.color <| Element.rgba 1 1 1 0.4
-        , Element.Border.width 1
-        , Element.Border.color <| Element.rgba 0 0 0 0.3
         , Element.pointer
-        , Element.Font.size 14
         ]
-        (Element.el
-            [ Element.Font.color <| Element.rgba 0 0 0 0.7 ]
-            (Element.text "x")
+        (Images.toElement [ Element.width <| Element.px 22 ]
+            Images.closeIcon
         )
 
 
@@ -1116,7 +961,7 @@ comingSoonMsg : List (Attribute msg) -> String -> Element msg
 comingSoonMsg attributes text =
     Element.paragraph
         ([ Element.Font.size 12
-         , Element.Font.color red
+         , Element.Font.color softRed
          ]
             ++ attributes
         )
@@ -1145,7 +990,15 @@ elOnCircle attributes width color el =
                 |> Element.html
     in
     Element.el
-        ([ Element.inFront el ] ++ attributes)
+        ([ Element.inFront <|
+            Element.el
+                [ Element.centerX
+                , Element.centerY
+                ]
+                el
+         ]
+            ++ attributes
+        )
         circleElement
 
 
@@ -1170,7 +1023,7 @@ maybeErrorElement attributes maybeError =
         Just errorString ->
             Element.el
                 ([ Element.Border.rounded 5
-                 , Element.Border.color <| Element.rgb 0.9 0 0
+                 , Element.Border.color softRed
                  , Element.Border.width 1
                  , Element.Background.color <| Element.rgb 1 0.4 0.4
                  , Element.padding 5
@@ -1201,10 +1054,9 @@ coolCurrencyHbreak reversed length =
     Element.el
         [ Element.width Element.fill
         , Element.inFront
-            (Prices.charsAndImages
+            (Currencies.fiatCharsAndImages
                 |> Dict.toList
                 |> List.map (Tuple.second >> Tuple.first)
-                |> Maybe.Extra.values
                 |> List.Extra.unique
                 |> (if reversed then
                         List.reverse
@@ -1262,6 +1114,33 @@ scrollbarYEl attrs body =
             body
 
 
+simpleSubmodelContainer : Int -> Element msg -> Element msg
+simpleSubmodelContainer maxWidth el =
+    Element.el
+        [ Element.paddingEach
+            { top = 60
+            , bottom = 40
+            , right = 0
+            , left = 0
+            }
+        , Element.width Element.fill
+        ]
+    <|
+        Element.el
+            [ Element.Background.color white
+            , Element.Border.rounded 8
+            , Element.centerX
+            , Element.width (Element.fill |> Element.maximum maxWidth)
+            , Element.Border.shadow
+                { offset = ( 0, 3 )
+                , size = 0
+                , blur = 20
+                , color = Element.rgba 0 0 0 0.06
+                }
+            ]
+            el
+
+
 submodelContainer : Int -> Maybe String -> String -> Element msg -> Element msg
 submodelContainer maxWidth maybeBigTitleText smallTitleText el =
     Element.column
@@ -1312,7 +1191,7 @@ submodelContainer maxWidth maybeBigTitleText smallTitleText el =
               <|
                 Element.el
                     [ Element.Font.size 16
-                    , Element.Font.color red
+                    , Element.Font.color softRed
                     , Element.Font.bold
                     , Element.centerX
                     ]
@@ -1324,17 +1203,37 @@ submodelContainer maxWidth maybeBigTitleText smallTitleText el =
 
 withInputHeader : List (Attribute msg) -> String -> Element msg -> Element msg
 withInputHeader attributes titleStr el =
+    withInputHeaderAndMaybeError attributes titleStr Nothing el
+
+
+withInputHeaderAndMaybeError : List (Attribute msg) -> String -> Maybe String -> Element msg -> Element msg
+withInputHeaderAndMaybeError attributes titleStr maybeError el =
     Element.column
         (attributes
-            ++ [ Element.spacing 5
+            ++ [ Element.spacing 10
                ]
         )
-        [ Element.el
-            [ Element.Font.size 20
-            , Element.paddingXY 20 0
-            , Element.Font.color red
+        [ Element.row
+            [ Element.spacing 20
             ]
-            (Element.text titleStr)
+            [ Element.el
+                [ Element.Font.size 18
+                , Element.Font.semiBold
+                , Element.Font.color <| Element.rgb255 1 31 52
+                , Element.alignLeft
+                ]
+                (Element.text titleStr)
+            , case maybeError of
+                Just error ->
+                    Element.el
+                        [ Element.Font.size 12
+                        , Element.Font.color softRed
+                        ]
+                        (Element.text error)
+
+                Nothing ->
+                    Element.none
+            ]
         , el
         ]
 
@@ -1365,3 +1264,122 @@ withSelectedUnderline attributes selected el =
                ]
         )
         el
+
+
+thinGrayHRuler : Element msg
+thinGrayHRuler =
+    Element.el
+        [ Element.height <| Element.px 1
+        , Element.width Element.fill
+        , Element.Background.color <| Element.rgba 0 0 0 0.2
+        ]
+        Element.none
+
+
+basicOpenDropdown : List (Attribute msg) -> Maybe (Element msg) -> List ( Element msg, msg ) -> Element msg
+basicOpenDropdown attributes maybeFirstEl items =
+    Element.el
+        (attributes
+            ++ [ Element.Background.color white
+               , Element.Border.rounded 6
+               , Element.Border.shadow
+                    { offset = ( 0, 3 )
+                    , size = 0
+                    , blur = 20
+                    , color = Element.rgba 0 0 0 0.08
+                    }
+               ]
+        )
+    <|
+        Element.column
+            [ Element.Background.color lightGray
+            , Element.spacing 1
+            , Element.width Element.fill
+            , Element.height (Element.shrink |> Element.maximum 340)
+            ]
+            [ maybeFirstEl |> Maybe.withDefault Element.none
+            , Element.column
+                [ Element.scrollbarY
+                , Element.width Element.fill
+                , Element.height Element.fill
+                , Element.Background.color lightGray
+                , Element.spacing 1
+                ]
+                (items
+                    |> List.map
+                        (\( el, onClick ) ->
+                            Element.el
+                                [ Element.paddingXY 14 10
+                                , Element.Background.color white
+                                , Element.width Element.fill
+                                , Element.Events.onClick onClick
+                                , Element.pointer
+                                , Element.mouseOver
+                                    [ Element.Background.color <| Element.rgba 0 0 1 0.15 ]
+                                ]
+                                el
+                        )
+                )
+            ]
+
+
+searchableOpenDropdown : List (Attribute msg) -> String -> List ( Element msg, List String, msg ) -> String -> (String -> msg) -> Element msg
+searchableOpenDropdown attributes placeholderText items searchInput searchInputChangedMsg =
+    let
+        filteredItems =
+            if searchInput == "" then
+                items
+                    |> List.map (\( a, b, c ) -> ( a, c ))
+
+            else
+                items
+                    |> List.filterMap
+                        (\( el, searchables, onClick ) ->
+                            if List.any (String.contains (String.toLower searchInput)) (List.map String.toLower searchables) then
+                                Just ( el, onClick )
+
+                            else
+                                Nothing
+                        )
+    in
+    basicOpenDropdown
+        attributes
+        (Just <|
+            Element.el
+                [ Element.width Element.fill
+                , Element.paddingXY 9 15
+                , Element.Background.color white
+                ]
+            <|
+                Element.row
+                    [ Element.width Element.fill
+                    , Element.Background.color <| Element.rgb 0.98 0.98 0.98
+                    , Element.paddingXY 13 0
+                    , Element.spacing 13
+                    , Element.Border.rounded 4
+                    ]
+                    [ Images.toElement
+                        [ Element.width <| Element.px 21 ]
+                        Images.searchIcon
+                    , Element.Input.text
+                        [ Element.Border.width 0
+                        , Element.width Element.fill
+                        , Element.Background.color <| Element.rgb 0.98 0.98 0.98
+                        ]
+                        { onChange = searchInputChangedMsg
+                        , text = searchInput
+                        , placeholder =
+                            Just <|
+                                Element.Input.placeholder
+                                    [ Element.Font.color placeholderTextColor ]
+                                    (Element.text placeholderText)
+                        , label = Element.Input.labelHidden "search"
+                        }
+                    ]
+        )
+        filteredItems
+
+
+moveToFront : Attribute msg
+moveToFront =
+    Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"

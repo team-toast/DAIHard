@@ -1,7 +1,5 @@
 port module State exposing (init, subscriptions, update)
 
--- import CryptoSwap.State
-
 import AgentHistory.State
 import Array exposing (Array)
 import BigInt
@@ -15,8 +13,7 @@ import CommonTypes exposing (..)
 import Config
 import Contracts.Types as CTypes
 import Create.State
-import CryptoSwap.State
-import CryptoSwap.Types as CryptoSwap
+import Create.Types as Create
 import Element
 import Eth.Net
 import Eth.Sentry.Tx as TxSentry
@@ -108,21 +105,15 @@ init flags url key =
                     )
                 |> Cmd.batch
 
-        submodelInitResult =
-            CryptoSwap.State.init wallet
-
-        ( newTxSentry, chainCmd, chainCmdUserNotices ) =
-            ChainCmd.execute txSentry (ChainCmd.map CryptoSwapMsg submodelInitResult.chainCmd)
-
         ( model, fromUrlCmd ) =
             { key = key
             , wallet = wallet
             , userAddress = Nothing
             , time = Time.millisToPosix 0
-            , txSentry = newTxSentry
+            , txSentry = txSentry
             , tradeCaches = tradeCaches
-            , submodel = CryptoSwapModel submodelInitResult.model
-            , currentRoute = Routing.CryptoSwap
+            , submodel = InitialBlank
+            , currentRoute = Routing.InitialBlank
             , userNotices = []
             , screenWidth = flags.width
             }
@@ -130,16 +121,12 @@ init flags url key =
                 |> runCmdUps cmdUps
     in
     ( model
-        |> addUserNotices
-            (userNotices ++ chainCmdUserNotices)
+        |> addUserNotices userNotices
     , Cmd.batch
         [ tcCmd
         , fromUrlCmd
-        , Cmd.map CryptoSwapMsg submodelInitResult.cmd
-        , chainCmd
         ]
     )
-        |> runCmdUps (List.map (CmdUp.map CryptoSwapMsg) submodelInitResult.cmdUps)
 
 
 type alias EncryptedMessage =
@@ -291,6 +278,18 @@ update msg model =
                             , Cmd.none
                             )
 
+                        ( _, Wallet.Active userInfo ) ->
+                            let
+                                _ =
+                                    Debug.log "User pubkey set, but there's already an active userInfo! Overwriting commpubkey." userInfo
+
+                                wallet =
+                                    Wallet.Active
+                                        { userInfo | commPubkey = commPubkey }
+                            in
+                            { model | wallet = wallet }
+                                |> runCmdDown (CmdDown.UpdateWallet wallet)
+
                         ( _, _ ) ->
                             ( model
                                 |> addUserNotice
@@ -327,33 +326,6 @@ update msg model =
                     )
                         |> runCmdUps
                             (CmdUp.mapList CreateMsg updateResult.cmdUps
-                                ++ List.map CmdUp.UserNotice userNotices
-                            )
-
-                _ ->
-                    ( model, Cmd.none )
-
-        CryptoSwapMsg cryptoSwapMsg ->
-            case model.submodel of
-                CryptoSwapModel cryptoSwapModel ->
-                    let
-                        updateResult =
-                            CryptoSwap.State.update cryptoSwapMsg cryptoSwapModel
-
-                        ( newTxSentry, chainCmd, userNotices ) =
-                            ChainCmd.execute model.txSentry (ChainCmd.map CryptoSwapMsg updateResult.chainCmd)
-                    in
-                    ( { model
-                        | submodel = CryptoSwapModel updateResult.model
-                        , txSentry = newTxSentry
-                      }
-                    , Cmd.batch
-                        [ Cmd.map CryptoSwapMsg updateResult.cmd
-                        , chainCmd
-                        ]
-                    )
-                        |> runCmdUps
-                            (CmdUp.mapList CryptoSwapMsg updateResult.cmdUps
                                 ++ List.map CmdUp.UserNotice userNotices
                             )
 
@@ -512,12 +484,16 @@ addUserNotices userNotices prevModel =
 
 addUserNotice : UserNotice Msg -> Model -> Model
 addUserNotice userNotice prevModel =
-    { prevModel
-        | userNotices =
-            List.append
-                prevModel.userNotices
-                [ userNotice ]
-    }
+    if List.member userNotice prevModel.userNotices then
+        prevModel
+
+    else
+        { prevModel
+            | userNotices =
+                List.append
+                    prevModel.userNotices
+                    [ userNotice ]
+        }
 
 
 encodeGTag : GTagData -> Json.Decode.Value
@@ -551,11 +527,12 @@ updateFromUrl url model =
 
 gotoRoute : Routing.Route -> Model -> ( Model, Cmd Msg )
 gotoRoute route oldModel =
-    (case route of
-        Routing.Create maybeCreateParameters ->
+    let
+        initCreate : Create.Mode -> ( Model, Cmd Msg )
+        initCreate mode =
             let
                 updateResult =
-                    Create.State.init oldModel.wallet maybeCreateParameters
+                    Create.State.init oldModel.wallet mode
 
                 ( newTxSentry, chainCmd, userNotices ) =
                     ChainCmd.execute oldModel.txSentry (ChainCmd.map CreateMsg updateResult.chainCmd)
@@ -573,28 +550,18 @@ gotoRoute route oldModel =
                     (CmdUp.mapList CreateMsg updateResult.cmdUps
                         ++ List.map CmdUp.UserNotice userNotices
                     )
-
-        Routing.CryptoSwap ->
-            let
-                updateResult =
-                    CryptoSwap.State.init oldModel.wallet
-
-                ( newTxSentry, chainCmd, userNotices ) =
-                    ChainCmd.execute oldModel.txSentry (ChainCmd.map CryptoSwapMsg updateResult.chainCmd)
-            in
-            ( { oldModel
-                | submodel = CryptoSwapModel updateResult.model
-                , txSentry = newTxSentry
-              }
-            , Cmd.batch
-                [ Cmd.map CryptoSwapMsg updateResult.cmd
-                , chainCmd
-                ]
+    in
+    (case route of
+        Routing.InitialBlank ->
+            ( oldModel
+            , Cmd.none
             )
-                |> runCmdUps
-                    (CmdUp.mapList CryptoSwapMsg updateResult.cmdUps
-                        ++ List.map CmdUp.UserNotice userNotices
-                    )
+
+        Routing.CreateFiat ->
+            initCreate Create.OffRamp
+
+        Routing.CreateCrypto ->
+            initCreate (Create.CryptoSwap Seller)
 
         Routing.Trade factory id ->
             let
@@ -669,6 +636,9 @@ getTradeFromCaches factory id tradeCaches =
 runCmdDown : CmdDown.CmdDown -> Model -> ( Model, Cmd Msg )
 runCmdDown cmdDown oldModel =
     case oldModel.submodel of
+        InitialBlank ->
+            ( oldModel, Cmd.none )
+
         CreateModel createModel ->
             let
                 updateResult =
@@ -688,28 +658,6 @@ runCmdDown cmdDown oldModel =
             )
                 |> runCmdUps
                     (CmdUp.mapList CreateMsg updateResult.cmdUps
-                        ++ List.map CmdUp.UserNotice userNotices
-                    )
-
-        CryptoSwapModel cryptoSwapModel ->
-            let
-                updateResult =
-                    cryptoSwapModel |> CryptoSwap.State.runCmdDown cmdDown
-
-                ( newTxSentry, chainCmd, userNotices ) =
-                    ChainCmd.execute oldModel.txSentry (ChainCmd.map CryptoSwapMsg updateResult.chainCmd)
-            in
-            ( { oldModel
-                | submodel = CryptoSwapModel updateResult.model
-                , txSentry = newTxSentry
-              }
-            , Cmd.batch
-                [ Cmd.map CryptoSwapMsg updateResult.cmd
-                , chainCmd
-                ]
-            )
-                |> runCmdUps
-                    (CmdUp.mapList CryptoSwapMsg updateResult.cmdUps
                         ++ List.map CmdUp.UserNotice userNotices
                     )
 
@@ -806,11 +754,11 @@ subscriptions model =
 submodelSubscriptions : Model -> Sub Msg
 submodelSubscriptions model =
     case model.submodel of
+        InitialBlank ->
+            Sub.none
+
         CreateModel createModel ->
             Sub.map CreateMsg <| Create.State.subscriptions createModel
-
-        CryptoSwapModel cryptoSwapModel ->
-            Sub.map CryptoSwapMsg <| CryptoSwap.State.subscriptions cryptoSwapModel
 
         TradeModel tradeModel ->
             Sub.map TradeMsg <| Trade.State.subscriptions tradeModel

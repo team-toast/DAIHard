@@ -6,6 +6,7 @@ import ChainCmd exposing (ChainCmd)
 import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
+import Currencies exposing (Price)
 import Dict exposing (Dict)
 import Eth.Net
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
@@ -16,7 +17,6 @@ import Http
 import Json.Decode
 import PaymentMethods exposing (PaymentMethod)
 import PriceFetch
-import Prices exposing (Price)
 import String.Extra
 import Time
 import TokenValue exposing (TokenValue)
@@ -33,7 +33,7 @@ type alias Model =
     , tradeTable : TradeTable.Model
     , filters : Filters.Model
     , filterFunc : Time.Posix -> CTypes.FullTradeInfo -> Bool
-    , prices : List ( ForeignCrypto, PriceFetch.PriceData )
+    , prices : List ( Currencies.Symbol, PriceFetch.PriceData )
     , now : Time.Posix
     }
 
@@ -41,10 +41,11 @@ type alias Model =
 type Msg
     = UpdateNow Time.Posix
     | Refresh
-    | PricesFetched (Result Http.Error (List ( ForeignCrypto, PriceFetch.PriceAndTimestamp )))
+    | PricesFetched (Result Http.Error (List ( Currencies.Symbol, PriceFetch.PriceAndTimestamp )))
     | MinDaiChanged String
     | MaxDaiChanged String
     | FiatTypeInputChanged String
+    | FiatTypeSelected String
     | PaymentMethodInputChanged String
     | ShowCurrencyDropdown Bool
     | FiatTypeLostFocus
@@ -78,7 +79,7 @@ justModelUpdate model =
 type alias SearchInputs =
     { minDai : String
     , maxDai : String
-    , fiatType : Prices.Symbol
+    , fiatType : Currencies.Symbol
     , paymentMethod : String
     , paymentMethodTerms : List String
     }
@@ -96,7 +97,7 @@ noErrors =
 
 type alias Query =
     { dai : TokenRange
-    , fiatSymbol : Maybe Prices.Symbol
+    , fiatSymbol : Maybe Currencies.Symbol
     , paymentMethodTerms : List String
     }
 

@@ -6,6 +6,7 @@ import ChainCmd exposing (ChainCmd)
 import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
+import Currencies exposing (Price)
 import Dict exposing (Dict)
 import Eth.Net
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
@@ -16,7 +17,6 @@ import Http
 import Json.Decode
 import PaymentMethods exposing (PaymentMethod)
 import PriceFetch
-import Prices exposing (Price)
 import Routing
 import String.Extra
 import Time
@@ -31,7 +31,7 @@ type alias Model =
     , agentAddress : Address
     , filters : Filters.Model
     , tradeTable : TradeTable.Model
-    , prices : List ( ForeignCrypto, PriceFetch.PriceData )
+    , prices : List ( Currencies.Symbol, PriceFetch.PriceData )
     , now : Time.Posix
     }
 
@@ -43,7 +43,7 @@ type Msg
     | TradeTableMsg TradeTable.Msg
     | UpdateNow Time.Posix
     | Refresh
-    | PricesFetched (Result Http.Error (List ( ForeignCrypto, PriceFetch.PriceAndTimestamp )))
+    | PricesFetched (Result Http.Error (List ( Currencies.Symbol, PriceFetch.PriceAndTimestamp )))
     | NoOp
 
 

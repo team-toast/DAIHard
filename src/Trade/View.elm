@@ -7,6 +7,7 @@ import Collage.Render
 import CommonTypes exposing (..)
 import Config
 import Contracts.Types as CTypes exposing (FullTradeInfo)
+import Currencies exposing (Price)
 import DateFormat
 import Element exposing (Attribute, Element)
 import Element.Background
@@ -22,7 +23,6 @@ import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
 import Images exposing (Image)
 import PaymentMethods exposing (PaymentMethod)
-import Prices exposing (Price)
 import Time
 import TokenValue exposing (TokenValue)
 import Trade.ChatHistory.View as ChatHistory
@@ -189,13 +189,13 @@ renderPrice : Price -> Element Msg
 renderPrice price =
     Element.row
         [ Element.spacing 5 ]
-        [ Prices.getIcon price.symbol
+        [ Currencies.icon price.symbol
             |> Maybe.withDefault Element.none
         , Element.el
             [ Element.Font.size 24
             , Element.Font.medium
             ]
-            (Element.text <| Prices.toString price)
+            (Element.text <| Currencies.toString price)
         ]
 
 
@@ -369,7 +369,7 @@ statsElement trade tradeCaches showModal =
                       , Element.el
                             [ Element.Font.size 24
                             , Element.Font.medium
-                            , Element.Font.color <| EH.burnedIconColor
+                            , Element.Font.color <| EH.lightRed
                             ]
                             (Element.text (String.padLeft 2 '0' <| String.fromInt userStats.numBurns))
                       ]
@@ -708,7 +708,7 @@ phaseStatusElement viewPhase trade currentTime =
                             "Payment Window"
 
                         CTypes.Judgment ->
-                            "Burn/Release Window"
+                            "Burn Window"
 
                         CTypes.Closed ->
                             "Closed"
@@ -830,7 +830,7 @@ phaseStateElement pState =
         Active ->
             Element.el
                 (commonAttributes
-                    ++ [ Element.Font.color <| EH.red ]
+                    ++ [ Element.Font.color <| EH.softRed ]
                 )
                 (Element.text "Active")
 
@@ -883,13 +883,13 @@ phaseBodyElement viewPhase currentTime trade wallet =
             Element.el [ Element.Font.color emphasizedColor ] << Element.text
 
         scaryText =
-            Element.el [ Element.Font.color <| Element.rgb 1 0 0 ] << Element.text
+            Element.el [ Element.Font.color EH.lightRed ] << Element.text
 
         tradeAmountString =
             TokenValue.toConciseString trade.parameters.tradeAmount ++ " " ++ tokenUnitName trade.factory
 
         priceString =
-            Prices.toString trade.terms.price
+            Currencies.toString trade.terms.price
 
         buyerDepositString =
             TokenValue.toConciseString trade.parameters.buyerDeposit ++ " " ++ tokenUnitName trade.factory
@@ -1121,11 +1121,11 @@ phaseBodyElement viewPhase currentTime trade wallet =
                 ( CTypes.Judgment, Just Buyer ) ->
                     ( "Judgement"
                     , List.map makeParagraph
-                        [ [ Element.text "If the Seller confirms receipt of payment, or fails to decide within the Burn/Release Window, the combined balance of "
+                        [ [ Element.text "If the Seller confirms receipt of payment, or makes no decision within the Burn Window, the combined balance of "
                           , emphasizedText tradePlusDepositString
-                          , Element.text " will be released to you."
+                          , Element.text " is yours to claim."
                           ]
-                        , [ Element.text "If they cannot confirm they've received payment from you, they will probably instead "
+                        , [ Element.text "If they cannot confirm they've received payment from you, they will probably choose to "
                           , scaryText "burn the contract's balance of "
                           , emphasizedText tradePlusDepositString
                           , scaryText "."
@@ -1153,7 +1153,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
                           , scaryText "burn it all"
                           , Element.text ". You're not getting it back either way, and you wouldn't want the other guy to get it, would you?"
                           ]
-                        , [ Element.text "If you don't decide within the Burn/Release Window, the balance will be automatically released."
+                        , [ Element.text "If you don't decide within the Burn Window, the Buyer will be able to claim the full balance."
                           ]
                         ]
                     )
@@ -1171,9 +1171,9 @@ phaseBodyElement viewPhase currentTime trade wallet =
                           , scaryText "burn it all"
                           , Element.text "."
                           ]
-                        , [ Element.text "If the Seller has not made a decision before the Burn/Release Window expires, the "
+                        , [ Element.text "If the Seller has not made a decision before the Burn Window expires, the "
                           , emphasizedText tradeAmountString
-                          , Element.text " will be automaticall released."
+                          , Element.text " becomes claimable by the Buyer."
                           ]
                         ]
                     )
@@ -1360,7 +1360,7 @@ getModalOrNone model =
                                 |> TokenValue.toConciseString
 
                         priceString =
-                            Prices.toString trade.terms.price
+                            Currencies.toString trade.terms.price
 
                         daiAmountString =
                             TokenValue.toConciseString trade.parameters.tradeAmount ++ " " ++ tokenUnitName trade.factory

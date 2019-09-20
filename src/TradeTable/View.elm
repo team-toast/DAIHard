@@ -2,6 +2,7 @@ module TradeTable.View exposing (view)
 
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
+import Currencies
 import Element exposing (Element)
 import Element.Background
 import Element.Border
@@ -13,14 +14,13 @@ import Helpers.Time as TimeHelpers
 import Images exposing (Image)
 import PaymentMethods exposing (PaymentMethod)
 import PriceFetch
-import Prices
 import ResponderProfit
 import Time
 import TokenValue exposing (TokenValue)
 import TradeTable.Types exposing (..)
 
 
-view : Time.Posix -> Model -> List ( ForeignCrypto, PriceFetch.PriceData ) -> List ColType -> List CTypes.FullTradeInfo -> Element Msg
+view : Time.Posix -> Model -> List ( Currencies.Symbol, PriceFetch.PriceData ) -> List ColType -> List CTypes.FullTradeInfo -> Element Msg
 view time model prices colTypes trades =
     Element.column
         [ Element.width Element.fill
@@ -136,7 +136,7 @@ colTitleEl colType =
                     "Burn Window"
 
 
-viewTradeRows : Time.Posix -> Model -> List ( ForeignCrypto, PriceFetch.PriceData ) -> List ColType -> List CTypes.FullTradeInfo -> Element Msg
+viewTradeRows : Time.Posix -> Model -> List ( Currencies.Symbol, PriceFetch.PriceData ) -> List ColType -> List CTypes.FullTradeInfo -> Element Msg
 viewTradeRows time model prices colTypes trades =
     Element.column
         [ Element.width Element.fill
@@ -153,7 +153,7 @@ viewTradeRows time model prices colTypes trades =
         )
 
 
-viewTradeRow : Time.Posix -> List ( ForeignCrypto, PriceFetch.PriceData ) -> List ColType -> CTypes.FullTradeInfo -> Element Msg
+viewTradeRow : Time.Posix -> List ( Currencies.Symbol, PriceFetch.PriceData ) -> List ColType -> CTypes.FullTradeInfo -> Element Msg
 viewTradeRow time prices colTypes trade =
     Element.column
         [ Element.width Element.fill
@@ -184,7 +184,7 @@ viewPaymentMethods paymentMethods =
         |> Maybe.withDefault Element.none
 
 
-viewTradeCell : Time.Posix -> List ( ForeignCrypto, PriceFetch.PriceData ) -> ColType -> CTypes.FullTradeInfo -> Element Msg
+viewTradeCell : Time.Posix -> List ( Currencies.Symbol, PriceFetch.PriceData ) -> ColType -> CTypes.FullTradeInfo -> Element Msg
 viewTradeCell time prices colType trade =
     cellMaker
         (colTypePortion colType)
@@ -202,7 +202,7 @@ viewTradeCell time prices colType trade =
                         let
                             baseIntervalColor =
                                 if TimeHelpers.getRatio (Tuple.first timeoutInfo) (Tuple.second timeoutInfo) < 0.05 then
-                                    EH.red
+                                    EH.softRed
 
                                 else
                                     EH.black
@@ -234,7 +234,7 @@ viewTradeCell time prices colType trade =
                                 let
                                     baseIntervalColor =
                                         if TimeHelpers.getRatio (Tuple.first timeoutInfo) (Tuple.second timeoutInfo) < 0.05 then
-                                            EH.red
+                                            EH.softRed
 
                                         else
                                             EH.black
@@ -249,7 +249,7 @@ viewTradeCell time prices colType trade =
                                 EH.intervalWithElapsedBar
                                     [ Element.width Element.fill ]
                                     [ Element.Font.size 16 ]
-                                    ( EH.red, EH.lightGray )
+                                    ( EH.softRed, EH.lightGray )
                                     ( Time.millisToPosix 0, totalInterval )
 
                     _ ->
@@ -285,7 +285,7 @@ viewTradeCell time prices colType trade =
                     lowValColor =
                         case trade.parameters.initiatorRole of
                             Seller ->
-                                EH.red
+                                EH.softRed
 
                             Buyer ->
                                 EH.green
@@ -311,7 +311,7 @@ viewTradeCell time prices colType trade =
                                 EH.green
 
                             Buyer ->
-                                EH.red
+                                EH.softRed
 
                     baseColor =
                         if Time.posixToMillis trade.parameters.autoabortInterval < (1000 * 60 * 60 * 6) then
@@ -344,7 +344,7 @@ cellMaker portion cellElement =
             cellElement
 
 
-sortByFunc : List ( ForeignCrypto, PriceFetch.PriceData ) -> ( ColType, Ordering ) -> (CTypes.FullTradeInfo -> CTypes.FullTradeInfo -> Order)
+sortByFunc : List ( Currencies.Symbol, PriceFetch.PriceData ) -> ( ColType, Ordering ) -> (CTypes.FullTradeInfo -> CTypes.FullTradeInfo -> Order)
 sortByFunc prices ( sortCol, ordering ) =
     (case sortCol of
         Phase ->
@@ -362,7 +362,7 @@ sortByFunc prices ( sortCol, ordering ) =
             \a b -> TokenValue.compare a.parameters.tradeAmount b.parameters.tradeAmount
 
         Price ->
-            \a b -> Prices.compare a.terms.price b.terms.price
+            \a b -> Currencies.compare a.terms.price b.terms.price
 
         ResponderProfit ->
             \a b ->

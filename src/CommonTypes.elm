@@ -1,4 +1,4 @@
-module CommonTypes exposing (BuyerOrSeller(..), FactoryType(..), ForeignCrypto(..), GTagData, InitiatorOrResponder(..), NativeFactoryType(..), TokenFactoryType(..), UserInfo, buyerOrSellerToString, factoryName, foreignCryptoFromName, foreignCryptoList, foreignCryptoName, networkNameForFactory, tokenUnitName)
+module CommonTypes exposing (BuyerOrSeller(..), FactoryType(..), GTagData, InitiatorOrResponder(..), IntervalType(..), NativeFactoryType(..), TokenFactoryType(..), UserInfo, buyerOrSellerToString, dhTokenList, factoryName, intervalTypeToString, networkNameForFactory, tokenSymbol, tokenUnitName)
 
 import Dict
 import Eth.Net
@@ -46,6 +46,25 @@ type InitiatorOrResponder
 type BuyerOrSeller
     = Buyer
     | Seller
+
+
+type IntervalType
+    = Expiry
+    | Payment
+    | Judgment
+
+
+intervalTypeToString : IntervalType -> String
+intervalTypeToString intervalType =
+    case intervalType of
+        Expiry ->
+            "Expiry"
+
+        Payment ->
+            "Payment"
+
+        Judgment ->
+            "Judgment"
 
 
 buyerOrSellerToString : BuyerOrSeller -> String
@@ -96,6 +115,25 @@ tokenUnitName factoryType =
             "xDai"
 
 
+tokenSymbol : FactoryType -> String
+tokenSymbol factoryType =
+    case factoryType of
+        Token EthDai ->
+            "DAI"
+
+        Token KovanDai ->
+            "DAI"
+
+        Native Eth ->
+            "ETH"
+
+        Native Kovan ->
+            "ETH"
+
+        Native XDai ->
+            "XDAI"
+
+
 networkNameForFactory : FactoryType -> String
 networkNameForFactory factoryType =
     case factoryType of
@@ -115,41 +153,8 @@ networkNameForFactory factoryType =
             "xDai"
 
 
-type ForeignCrypto
-    = ZEC
-    | XMR
-    | BTC
-
-
-foreignCryptoList : List ForeignCrypto
-foreignCryptoList =
-    [ ZEC
-    , XMR
-    , BTC
+dhTokenList : List FactoryType
+dhTokenList =
+    [ Native XDai
+    , Token EthDai
     ]
-
-
-foreignCryptoName : ForeignCrypto -> String
-foreignCryptoName crypto =
-    case crypto of
-        ZEC ->
-            "ZEC"
-
-        XMR ->
-            "XMR"
-
-        BTC ->
-            "BTC"
-
-
-foreignCryptoFromName : String -> Maybe ForeignCrypto
-foreignCryptoFromName name =
-    foreignCryptoList
-        |> List.map
-            (\fCrypto ->
-                ( foreignCryptoName fCrypto
-                , fCrypto
-                )
-            )
-        |> Dict.fromList
-        |> Dict.get name
