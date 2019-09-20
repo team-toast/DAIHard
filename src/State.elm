@@ -278,6 +278,18 @@ update msg model =
                             , Cmd.none
                             )
 
+                        ( _, Wallet.Active userInfo ) ->
+                            let
+                                _ =
+                                    Debug.log "User pubkey set, but there's already an active userInfo! Overwriting commpubkey." userInfo
+
+                                wallet =
+                                    Wallet.Active
+                                        { userInfo | commPubkey = commPubkey }
+                            in
+                            { model | wallet = wallet }
+                                |> runCmdDown (CmdDown.UpdateWallet wallet)
+
                         ( _, _ ) ->
                             ( model
                                 |> addUserNotice
