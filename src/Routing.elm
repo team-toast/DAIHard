@@ -24,8 +24,8 @@ routeParser : Parser (Route -> a) a
 routeParser =
     Url.Parser.s "DAIHard"
         </> Url.Parser.oneOf
-                [ Url.Parser.map CreateCrypto (Url.Parser.s "cryptoswap")
-                , Url.Parser.map CreateFiat Url.Parser.top
+                [ Url.Parser.map CreateFiat (Url.Parser.s "fiat")
+                , Url.Parser.map CreateCrypto Url.Parser.top
                 , Url.Parser.map Trade (Url.Parser.s "trade" </> factoryParser </> Url.Parser.int)
                 , Url.Parser.map Marketplace (Url.Parser.s "marketplace")
                 , Url.Parser.map AgentHistory (Url.Parser.s "history" </> addressParser)
@@ -124,10 +124,10 @@ routeToString route =
             Url.Builder.absolute [ "DAIHard" ] []
 
         CreateCrypto ->
-            Url.Builder.absolute [ "DAIHard", "create", "crypto" ] []
+            Url.Builder.absolute [ "DAIHard" ] []
 
         CreateFiat ->
-            Url.Builder.absolute [ "DAIHard" ] []
+            Url.Builder.absolute [ "DAIHard", "create", "fiat" ] []
 
         Trade factory id ->
             Url.Builder.absolute [ "DAIHard", "trade", factoryToString factory, String.fromInt id ] []
