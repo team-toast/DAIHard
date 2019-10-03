@@ -883,7 +883,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
             Element.el [ Element.Font.color emphasizedColor ] << Element.text
 
         scaryText =
-            Element.el [ Element.Font.color EH.lightRed ] << Element.text
+            Element.el [ Element.Font.color <| Element.rgb 1 0 0 ] << Element.text
 
         tradeAmountString =
             TokenValue.toConciseString trade.parameters.tradeAmount ++ " " ++ tokenUnitName trade.factory
