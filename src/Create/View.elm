@@ -1395,15 +1395,13 @@ txChainStatusModal txChainStatus model =
                                            )
 
                                 Seller ->
-                                    [ [ Element.text "Of your "
-                                      , depositAmountEl
-                                      , Element.text ", ~1% ("
-                                      , feeAmountEl
-                                      , Element.text ") will be set aside, and the remaining "
+                                    [ [ Element.text "Your "
                                       , tradeAmountEl
                                       , Element.text " will be listed as selling for "
                                       , priceEl
-                                      , Element.text "."
+                                      , Element.text ", and an additional 1% ("
+                                      , feeAmountEl
+                                      , Element.text ") will be set aside."
                                       ]
                                     , [ Element.text "You can abort the offer at any time before a Buyer commits, and if no Buyer commits within "
                                       , expiryWindowEl
@@ -1448,7 +1446,7 @@ txChainStatusModal txChainStatus model =
                                              ]
                                            , [ Element.text "If the trade has resolved successfully, DAIHard takes the 1% fee of "
                                              , feeAmountEl
-                                             , Element.text " set aside earlier."
+                                             , Element.text " set aside earlier. Otherwise it is burned with the rest."
                                              ]
                                            ]
                                         ++ (case factoryType of

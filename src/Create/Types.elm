@@ -450,14 +450,6 @@ userIntervalToPosix interval =
 getTradeAmount : Model -> Maybe TokenValue
 getTradeAmount model =
     model.dhTokenAmount
-        |> Maybe.map
-            (case initiatorRole model.mode of
-                Seller ->
-                    \f -> f / 1.01
-
-                Buyer ->
-                    identity
-            )
         |> Maybe.map TokenValue.fromFloatWithWarning
 
 

@@ -730,14 +730,7 @@ update msg prevModel =
                 { prevModel
                     | txChainStatus = Just <| Confirm factoryType createParameters
                     , depositAmount =
-                        case initiatorRole prevModel.mode of
-                            Buyer ->
-                                Just <| CTypes.calculateFullInitialDeposit createParameters
-
-                            Seller ->
-                                Maybe.map
-                                    TokenValue.fromFloatWithWarning
-                                    (getAmountIn prevModel)
+                        Just <| CTypes.calculateFullInitialDeposit createParameters
                 }
                 Cmd.none
                 ChainCmd.none
@@ -997,14 +990,7 @@ tryAutofillAmountOut prevModel =
                                     (amountIn * price) * (1 + prevModel.margin)
 
                                 Seller ->
-                                    let
-                                        tradeAmountAfterDevFee =
-                                            amountIn / 1.01
-
-                                        equivalentForeignCrypto =
-                                            tradeAmountAfterDevFee / price
-                                    in
-                                    equivalentForeignCrypto * (1 + prevModel.margin)
+                                    (amountIn / price) * (1 + prevModel.margin)
                         )
                         (getAmountIn prevModel)
 
@@ -1051,14 +1037,7 @@ tryAutofillAmountIn prevModel =
                                     (amountOut / (1 + prevModel.margin)) / price
 
                                 Seller ->
-                                    let
-                                        amountOutMinusMargin =
-                                            amountOut / (1 + prevModel.margin)
-
-                                        equivalentDai =
-                                            amountOutMinusMargin * price
-                                    in
-                                    equivalentDai * 1.01
+                                    (amountOut / (1 + prevModel.margin)) * price
                         )
                         (getAmountOut prevModel)
 
