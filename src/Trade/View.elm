@@ -369,7 +369,7 @@ statsElement trade tradeCaches showModal =
                       , Element.el
                             [ Element.Font.size 24
                             , Element.Font.medium
-                            , Element.Font.color <| EH.lightRed
+                            , Element.Font.color <| EH.softRed
                             ]
                             (Element.text (String.padLeft 2 '0' <| String.fromInt userStats.numBurns))
                       ]
@@ -883,7 +883,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
             Element.el [ Element.Font.color emphasizedColor ] << Element.text
 
         scaryText =
-            Element.el [ Element.Font.color <| Element.rgb 1 0 0 ] << Element.text
+            Element.el [ Element.Font.color EH.softRed ] << Element.text
 
         tradeAmountString =
             TokenValue.toConciseString trade.parameters.tradeAmount ++ " " ++ tokenUnitName trade.factory
