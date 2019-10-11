@@ -1,4 +1,4 @@
-module Contracts.Types exposing (ClosedReason(..), CreateParameters, DAIHardEvent(..), FullTradeInfo, PartialTradeInfo, Phase(..), PhaseStartInfo, State, Terms, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToPhase, buildCreateParameters, calculateDHFee, calculateFullInitialDeposit, createParametersToUserParameters, decodeParameters, decodePhaseStartInfo, decodeState, decodeTerms, defaultAbortPunishment, defaultBuyerDeposit, encodeTerms, eventDecoder, getBuyerOrSeller, getCreationInfo, getCurrentPhaseTimeoutInfo, getDevFee, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderDeposit, getResponderRole, initiatorOrResponderToBuyerOrSeller, partialTradeInfo, phaseIcon, phaseToInt, phaseToString, responderDeposit, tradeAddress, tradeFactory, tradeHasDefaultParameters, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePhaseStartInfo, updateState, updateTerms)
+module Contracts.Types exposing (ClosedReason(..), CreateParameters, DAIHardEvent(..), DerivedValues, FullTradeInfo, PartialTradeInfo, Phase(..), PhaseStartInfo, State, Terms, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToClosedReason, bigIntToPhase, buildCreateParameters, calculateDHFee, calculateFullInitialDeposit, checkIfTradeLoaded, createParametersToTradeParameters, createParametersToUserParameters, decodeParameters, decodePhaseStartInfo, decodeState, decodeTerms, defaultAbortPunishment, defaultBuyerDeposit, deriveValues, encodeTerms, eventDecoder, eventSigDecoder, getBuyerOrSeller, getCreationInfo, getCurrentPhaseTimeoutInfo, getDevFee, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderDeposit, getResponderRole, getUserParameters, initiatorOrResponderToBuyerOrSeller, partialTradeInfo, phaseIcon, phaseToInt, phaseToString, responderDeposit, tradeAddress, tradeFactory, tradeHasDefaultParameters, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePhaseStartInfo, updateState, updateTerms)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
@@ -27,8 +27,7 @@ type Trade
 
 
 type alias PartialTradeInfo =
-    { factory : FactoryType
-    , id : Int
+    { reference : TradeReference
     , creationInfo : Maybe TradeCreationInfo
     , parameters : Maybe TradeParameters
     , state : Maybe State
@@ -38,8 +37,7 @@ type alias PartialTradeInfo =
 
 
 type alias FullTradeInfo =
-    { factory : FactoryType
-    , id : Int
+    { reference : TradeReference
     , creationInfo : TradeCreationInfo
     , parameters : TradeParameters
     , state : State
@@ -181,6 +179,18 @@ createParametersToTradeParameters cParams =
     }
 
 
+getUserParameters : FullTradeInfo -> UserParameters
+getUserParameters trade =
+    { initiatorRole = trade.parameters.initiatorRole
+    , tradeAmount = trade.parameters.tradeAmount
+    , price = trade.terms.price
+    , paymentMethods = trade.terms.paymentMethods
+    , autorecallInterval = trade.parameters.autorecallInterval
+    , autoabortInterval = trade.parameters.autoabortInterval
+    , autoreleaseInterval = trade.parameters.autoreleaseInterval
+    }
+
+
 getCreationInfo : Trade -> Maybe TradeCreationInfo
 getCreationInfo trade =
     case trade of
@@ -201,10 +211,10 @@ tradeFactory trade =
             Nothing
 
         PartiallyLoadedTrade pTrade ->
-            Just pTrade.factory
+            Just pTrade.reference.factory
 
         LoadedTrade fTrade ->
-            Just fTrade.factory
+            Just fTrade.reference.factory
 
 
 tradeAddress : Trade -> Maybe Address
@@ -256,9 +266,9 @@ responderDeposit parameters =
             parameters.buyerDeposit
 
 
-partialTradeInfo : FactoryType -> Int -> Trade
-partialTradeInfo factory factoryID =
-    PartiallyLoadedTrade (PartialTradeInfo factory factoryID Nothing Nothing Nothing Nothing Nothing)
+partialTradeInfo : TradeReference -> Trade
+partialTradeInfo reference =
+    PartiallyLoadedTrade (PartialTradeInfo reference Nothing Nothing Nothing Nothing Nothing)
 
 
 updateCreationInfo : TradeCreationInfo -> Trade -> Trade
@@ -353,8 +363,7 @@ checkIfTradeLoaded pInfo =
         ( ( Just creationInfo, Just parameters ), ( Just state, Just terms ), Just phaseStartInfo ) ->
             LoadedTrade
                 (FullTradeInfo
-                    pInfo.factory
-                    pInfo.id
+                    pInfo.reference
                     creationInfo
                     parameters
                     state

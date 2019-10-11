@@ -160,7 +160,7 @@ viewTradeRow time prices colTypes trade =
         , Element.spacing 1
         , Element.Background.color EH.white
         , Element.pointer
-        , Element.Events.onClick (TradeClicked trade.factory trade.id)
+        , Element.Events.onClick (TradeClicked trade.reference)
         ]
         [ Element.row
             [ Element.width <| Element.fill
@@ -268,7 +268,7 @@ viewTradeCell time prices colType trade =
                          )
                             ++ TokenValue.toConciseString trade.parameters.tradeAmount
                             ++ " "
-                            ++ tokenUnitName trade.factory
+                            ++ tokenUnitName trade.reference.factory
                         )
                     ]
 
