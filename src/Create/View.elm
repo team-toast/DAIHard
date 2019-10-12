@@ -525,7 +525,7 @@ profitLossOrEven margin =
 
             else
                 ( "Loss"
-                , EH.softRed |> EH.addAlpha 0.5
+                , EH.softRed |> EH.addAlpha 0.05
                 , EH.softRed
                 )
     in
