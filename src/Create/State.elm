@@ -336,7 +336,9 @@ update msg prevModel =
                                 |> List.map (Tuple.mapSecond (PriceFetch.checkAgainstTime prevModel.now))
 
                         ( newModel, appCmds ) =
-                            { prevModel | prices = newPrices }
+                            { prevModel
+                                | prices = newPrices
+                            }
                                 |> (case prevModel.inputToAutofill of
                                         AmountIn ->
                                             tryAutofillAmountIn
@@ -345,7 +347,9 @@ update msg prevModel =
                                             tryAutofillAmountOut
 
                                         Margin ->
-                                            tryAutofillMargin
+                                            \m ->
+                                                { m | inputToAutofill = AmountOut }
+                                                    |> tryAutofillMargin
                                    )
                     in
                     UpdateResult
