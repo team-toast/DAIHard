@@ -378,6 +378,19 @@ submodelElementAndModal screenWidth model =
                             (Element.map CreateMsg)
                             (List.map (Element.map CreateMsg))
 
+                FetchingRedeployForCreate _ ->
+                    ( EH.simpleSubmodelContainer
+                        800
+                        (Element.el
+                            [ Element.centerX
+                            , Element.padding 30
+                            , Element.Font.size 30
+                            ]
+                            (Element.text "Loading trade info...")
+                        )
+                    , []
+                    )
+
                 TradeModel tradeModel ->
                     Trade.View.root screenWidth model.time model.tradeCaches tradeModel
                         |> Tuple.mapBoth

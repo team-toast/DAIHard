@@ -1,4 +1,4 @@
-module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, addAlpha, basicOpenDropdown, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredResponderProfit, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, maybeErrorElement, mediumGray, modal, moveToFront, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, redButton, releasedIconColor, responderProfitFloatToConciseString, responderProfitSymbol, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, searchableOpenDropdown, simpleSubmodelContainer, softRed, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, thinGrayHRuler, txProcessModal, uncoloredResponderProfit, white, withHeader, withInputHeader, withInputHeaderAndMaybeError, withSelectedUnderline, yellow)
+module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, addAlpha, basicOpenDropdown, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredResponderProfit, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, maybeErrorElement, mediumGray, modal, moveToFront, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, optionsDots, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, redButton, releasedIconColor, responderProfitFloatToConciseString, responderProfitSymbol, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, searchableOpenDropdown, simpleSubmodelContainer, softRed, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, thinGrayHRuler, txProcessModal, uncoloredResponderProfit, white, withHeader, withInputHeader, withInputHeaderAndMaybeError, withSelectedUnderline, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -1141,8 +1141,8 @@ simpleSubmodelContainer maxWidth el =
             el
 
 
-submodelContainer : Int -> Maybe String -> String -> Element msg -> Element msg
-submodelContainer maxWidth maybeBigTitleText smallTitleText el =
+submodelContainer : Int -> Maybe String -> Maybe (Element msg) -> Element msg -> Element msg
+submodelContainer maxWidth maybeBigTitleText maybeTitleEl el =
     Element.column
         [ Element.paddingEach
             { top = 60
@@ -1177,25 +1177,21 @@ submodelContainer maxWidth maybeBigTitleText smallTitleText el =
                 , color = Element.rgba 0 0 0 0.2
                 }
             ]
-            [ Element.el
-                [ Element.width Element.fill
-                , Element.padding 15
-                , Element.Background.color white
-                , Element.Border.shadow
-                    { offset = ( 0, 0 )
-                    , size = 0
-                    , blur = 30
-                    , color = Element.rgba 0 0 0 0.15
-                    }
-                ]
-              <|
-                Element.el
-                    [ Element.Font.size 16
-                    , Element.Font.color softRed
-                    , Element.Font.bold
-                    , Element.centerX
+            [ Maybe.map
+                (Element.el
+                    [ Element.width Element.fill
+                    , Element.padding 15
+                    , Element.Background.color white
+                    , Element.Border.shadow
+                        { offset = ( 0, 0 )
+                        , size = 0
+                        , blur = 30
+                        , color = Element.rgba 0 0 0 0.15
+                        }
                     ]
-                    (Element.text smallTitleText)
+                )
+                maybeTitleEl
+                |> Maybe.withDefault Element.none
             , el
             ]
         ]
@@ -1383,3 +1379,20 @@ searchableOpenDropdown attributes placeholderText items searchInput searchInputC
 moveToFront : Attribute msg
 moveToFront =
     Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
+
+
+optionsDots : Element msg
+optionsDots =
+    let
+        circle =
+            Element.el [ Element.width Element.shrink ]
+                (Collage.circle 5
+                    |> Collage.filled (Collage.uniform Color.darkGray)
+                    |> Collage.Render.svg
+                    |> Element.html
+                )
+    in
+    Element.row
+        [ Element.spacing 7
+        ]
+        (List.repeat 3 circle)

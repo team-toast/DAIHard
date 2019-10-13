@@ -39,21 +39,21 @@ import UserNotice as UN
 import Wallet
 
 
-init : Wallet.State -> FactoryType -> Int -> UpdateResult
-init wallet factory tradeId =
+init : Wallet.State -> TradeReference -> UpdateResult
+init wallet tradeReference =
     let
         creationInfoCmd =
-            getCreationInfoCmd factory tradeId
+            getCreationInfoCmd tradeReference
 
         ( eventSentry, eventSentryCmd ) =
-            initEventSentry factory
+            initEventSentry tradeReference.factory
     in
     UpdateResult
-        (initModel (CTypes.partialTradeInfo factory tradeId) eventSentry wallet)
+        (initModel (CTypes.partialTradeInfo tradeReference) eventSentry wallet)
         (Cmd.batch
             [ creationInfoCmd
             , eventSentryCmd
-            , getBlockCmd (EthHelpers.httpProviderForFactory factory)
+            , getBlockCmd (EthHelpers.httpProviderForFactory tradeReference.factory)
             ]
         )
         ChainCmd.none
@@ -66,7 +66,7 @@ initFromCached wallet trade =
         ( eventSentry, eventSentryCmd, _ ) =
             let
                 ( initialSentry, initialCmd ) =
-                    initEventSentry trade.factory
+                    initEventSentry trade.reference.factory
             in
             EventSentry.watch
                 EventLogFetched
@@ -87,7 +87,7 @@ initFromCached wallet trade =
         (initModel (CTypes.LoadedTrade trade) eventSentry wallet)
         (Cmd.batch
             [ eventSentryCmd
-            , getBlockCmd (EthHelpers.httpProviderForFactory trade.factory)
+            , getBlockCmd (EthHelpers.httpProviderForFactory trade.reference.factory)
             ]
         )
         ChainCmd.none
@@ -102,6 +102,7 @@ initModel trade eventSentry wallet =
     , chatHistoryModel = Nothing
     , showChatHistory = False
     , showStatsModal = False
+    , showOptions = False
     , eventsWaitingForChatHistory = []
     , secureCommInfo = partialCommInfo
     , eventSentry = eventSentry
@@ -116,9 +117,9 @@ initEventSentry factory =
     EventSentry.init EventSentryMsg (EthHelpers.httpProviderForFactory factory)
 
 
-getCreationInfoCmd : FactoryType -> Int -> Cmd Msg
-getCreationInfoCmd factoryType id =
-    Contracts.Wrappers.getCreationInfoFromIdCmd factoryType (BigInt.fromInt id) CreationInfoFetched
+getCreationInfoCmd : TradeReference -> Cmd Msg
+getCreationInfoCmd tradeReference =
+    Contracts.Wrappers.getCreationInfoFromIdCmd tradeReference.factory (BigInt.fromInt tradeReference.id) CreationInfoFetched
 
 
 update : Msg -> Model -> UpdateResult
@@ -131,7 +132,7 @@ update msg prevModel =
                         CTypes.PartiallyLoadedTrade pInfo ->
                             case pInfo.creationInfo of
                                 Nothing ->
-                                    getCreationInfoCmd pInfo.factory pInfo.id
+                                    getCreationInfoCmd pInfo.reference
 
                                 _ ->
                                     Cmd.none
@@ -157,7 +158,7 @@ update msg prevModel =
                 fetchAllowanceCmd =
                     case ( Wallet.userInfo prevModel.wallet, Wallet.factory prevModel.wallet, prevModel.trade ) of
                         ( Just userInfo, Just (Token tokenType), CTypes.LoadedTrade trade ) ->
-                            if Wallet.factory prevModel.wallet == Just trade.factory then
+                            if Wallet.factory prevModel.wallet == Just trade.reference.factory then
                                 Contracts.Wrappers.getAllowanceCmd
                                     tokenType
                                     userInfo.address
@@ -178,7 +179,7 @@ update msg prevModel =
                     UpdateResult
                         newModel
                         (Cmd.batch
-                            [ Contracts.Wrappers.getStateCmd tradeInfo.factory tradeInfo.creationInfo.address StateFetched
+                            [ Contracts.Wrappers.getStateCmd tradeInfo.reference.factory tradeInfo.creationInfo.address StateFetched
                             , decryptCmd
 
                             -- , fetchCreationInfoCmd
@@ -242,6 +243,21 @@ update msg prevModel =
                         [ CmdUp.UserNotice <|
                             UN.web3FetchError "allowance" httpError
                         ]
+
+        ToggleShowOptions flag ->
+            justModelUpdate
+                { prevModel
+                    | showOptions = flag
+                }
+
+        DuplicateClicked tradeRef ->
+            UpdateResult
+                prevModel
+                Cmd.none
+                ChainCmd.none
+                [ CmdUp.GotoRoute <|
+                    Routing.Redeploy tradeRef
+                ]
 
         CreationInfoFetched fetchResult ->
             case fetchResult of
@@ -570,7 +586,7 @@ update msg prevModel =
         ConfirmCommit trade userInfo depositAmount ->
             let
                 ( txChainStatus, chainCmd ) =
-                    case trade.factory of
+                    case trade.reference.factory of
                         Native _ ->
                             initiateCommitCall trade userInfo.address userInfo.commPubkey
 
@@ -919,7 +935,7 @@ initiateCommitCall : CTypes.FullTradeInfo -> Address -> String -> ( Maybe TxChai
 initiateCommitCall trade userAddress commPubkey =
     let
         commitConstructor =
-            case trade.factory of
+            case trade.reference.factory of
                 Token _ ->
                     DHT.commit
 
@@ -928,7 +944,7 @@ initiateCommitCall trade userAddress commPubkey =
 
         txParams =
             commitConstructor trade.creationInfo.address userAddress commPubkey
-                |> (case trade.factory of
+                |> (case trade.reference.factory of
                         Token _ ->
                             identity
 
@@ -956,7 +972,7 @@ runCmdDown cmdDown prevModel =
                 { prevModel | wallet = wallet }
                 (case ( Wallet.userInfo wallet, Wallet.factory wallet, prevModel.trade ) of
                     ( Just uInfo, Just (Token tokenType), CTypes.LoadedTrade trade ) ->
-                        if Wallet.factory wallet == Just trade.factory then
+                        if Wallet.factory wallet == Just trade.reference.factory then
                             Contracts.Wrappers.getAllowanceCmd
                                 tokenType
                                 uInfo.address
@@ -977,6 +993,7 @@ runCmdDown cmdDown prevModel =
                 { prevModel
                     | showChatHistory = False
                     , showStatsModal = False
+                    , showOptions = False
                 }
 
 

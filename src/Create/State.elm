@@ -14,8 +14,10 @@ import Currencies
 import Eth
 import Helpers.BigInt as BigIntHelpers
 import Helpers.Tuple as TupleHelpers
+import PaymentMethods exposing (PaymentMethod)
 import PriceFetch
 import Routing
+import String.Extra
 import Time
 import TokenValue exposing (TokenValue)
 import UserNotice as UN
@@ -23,33 +25,138 @@ import Utils
 import Wallet
 
 
-init : Wallet.State -> Mode -> UpdateResult
-init wallet mode =
-    { wallet = wallet
-    , mode = mode
-    , now = Time.millisToPosix 0
-    , prices = []
-    , lastAmountInputChanged = AmountIn
-    , inputs = initialInputs wallet mode
-    , errors = noErrors
-    , margin = 0
-    , dhTokenType =
-        Wallet.factory wallet
-            |> Maybe.withDefault (Native XDai)
-    , dhTokenAmount = Nothing
-    , foreignCurrencyType =
-        defaultExternalCurrency mode
-    , foreignCurrencyAmount = Nothing
-    , intervals = defaultIntervals mode
-    , showInTypeDropdown = False
-    , showOutTypeDropdown = False
-    , showMarginModal = False
-    , showIntervalModal = Nothing
-    , userAllowance = Nothing
-    , depositAmount = Nothing
-    , txChainStatus = Nothing
-    }
-        |> update Refresh
+init : Wallet.State -> ModeOrTrade -> UpdateResult
+init wallet modeOrTrade =
+    case modeOrTrade of
+        Trade trade ->
+            let
+                userParameters =
+                    CTypes.getUserParameters trade
+
+                isCrypto =
+                    List.member
+                        trade.terms.price.symbol
+                        Currencies.foreignCryptoList
+
+                ( mode, ( receiveAddress, paymentMethod ) ) =
+                    if isCrypto then
+                        case ( userParameters.initiatorRole, tryExtractReceiveAddress userParameters.paymentMethods ) of
+                            ( Seller, Just address ) ->
+                                ( CryptoSwap Seller
+                                , ( address, "" )
+                                )
+
+                            ( Seller, Nothing ) ->
+                                ( OffRamp
+                                , ( "", paymentMethodsToInput userParameters.paymentMethods )
+                                )
+
+                            ( Buyer, _ ) ->
+                                ( CryptoSwap Buyer
+                                , ( "", "" )
+                                )
+
+                    else
+                        case userParameters.initiatorRole of
+                            Buyer ->
+                                ( OnRamp
+                                , ( "", paymentMethodsToInput userParameters.paymentMethods )
+                                )
+
+                            Seller ->
+                                ( OffRamp
+                                , ( "", paymentMethodsToInput userParameters.paymentMethods )
+                                )
+
+                ( amountIn, amountOut ) =
+                    case userParameters.initiatorRole of
+                        Seller ->
+                            ( TokenValue.getFloatValueWithWarning userParameters.tradeAmount
+                            , userParameters.price.amount
+                            )
+
+                        Buyer ->
+                            ( userParameters.price.amount
+                            , TokenValue.getFloatValueWithWarning userParameters.tradeAmount
+                            )
+
+                inputs =
+                    let
+                        ( inType, outType ) =
+                            case userParameters.initiatorRole of
+                                Seller ->
+                                    ( DHToken trade.reference.factory
+                                    , External userParameters.price.symbol
+                                    )
+
+                                Buyer ->
+                                    ( External userParameters.price.symbol
+                                    , DHToken trade.reference.factory
+                                    )
+                    in
+                    { amountIn = String.fromFloat amountIn
+                    , inType = inType
+                    , amountOut = String.fromFloat amountOut
+                    , outType = outType
+                    , currencySearch = ""
+                    , margin = ""
+                    , marginType = Even
+                    , receiveAddress = receiveAddress
+                    , paymentMethod = paymentMethod
+                    , interval = ""
+                    }
+            in
+            { wallet = wallet
+            , mode = mode
+            , now = Time.millisToPosix 0
+            , prices = []
+            , inputToAutofill = Margin
+            , inputs = inputs
+            , errors = noErrors
+            , margin = 0
+            , dhTokenType = trade.reference.factory
+            , dhTokenAmount =
+                Just <| TokenValue.getFloatValueWithWarning trade.parameters.tradeAmount
+            , foreignCurrencyType = trade.terms.price.symbol
+            , foreignCurrencyAmount = Just trade.terms.price.amount
+            , intervals =
+                getIntervalsFromUserParameters userParameters
+            , showInTypeDropdown = False
+            , showOutTypeDropdown = False
+            , showMarginModal = False
+            , showIntervalModal = Nothing
+            , userAllowance = Nothing
+            , depositAmount = Nothing
+            , txChainStatus = Nothing
+            }
+                |> update Refresh
+
+        Mode mode ->
+            { wallet = wallet
+            , mode = mode
+            , now = Time.millisToPosix 0
+            , prices = []
+            , inputToAutofill = AmountOut
+            , inputs = initialInputs wallet mode
+            , errors = noErrors
+            , margin = 0
+            , dhTokenType =
+                Wallet.factory wallet
+                    |> Maybe.withDefault (Native XDai)
+            , dhTokenAmount = Nothing
+            , foreignCurrencyType =
+                defaultExternalCurrency mode
+            , foreignCurrencyAmount = Nothing
+            , intervals = defaultIntervals mode
+            , showInTypeDropdown = False
+            , showOutTypeDropdown = False
+            , showMarginModal = False
+            , showIntervalModal = Nothing
+            , userAllowance = Nothing
+            , depositAmount = Nothing
+            , txChainStatus = Nothing
+            }
+                |> update Refresh
 
 
 initialInputs : Wallet.State -> Mode -> Inputs
@@ -139,6 +246,53 @@ defaultIntervals mode =
             )
 
 
+tryExtractReceiveAddress : List PaymentMethod -> Maybe String
+tryExtractReceiveAddress paymentMethods =
+    List.head paymentMethods
+        |> Maybe.map .info
+        |> Maybe.map (String.Extra.rightOf cryptoSwapSellPaymentMethodPrefix)
+        |> Maybe.map (String.Extra.leftOf cryptoSwapSellPaymentMethodSuffix)
+        |> Maybe.andThen String.Extra.nonEmpty
+
+
+paymentMethodsToInput : List PaymentMethod -> String
+paymentMethodsToInput paymentMethods =
+    List.head paymentMethods
+        |> Maybe.map .info
+        |> Maybe.withDefault ""
+
+
+getIntervalsFromUserParameters : CTypes.UserParameters -> ( UserInterval, UserInterval, UserInterval )
+getIntervalsFromUserParameters userParameters =
+    ( userParameters.autorecallInterval, userParameters.autoabortInterval, userParameters.autoreleaseInterval )
+        |> TupleHelpers.mapTuple3
+            (\posixTime ->
+                let
+                    minutes =
+                        Time.posixToMillis posixTime // (1000 * 60)
+                in
+                if modBy minutes (60 * 24 * 7) == 0 && (minutes // (60 * 24 * 7) /= 0) then
+                    UserInterval
+                        (minutes // (60 * 24 * 7))
+                        Week
+
+                else if modBy minutes (60 * 24) == 0 && (minutes // (60 * 24) /= 0) then
+                    UserInterval
+                        (minutes // (60 * 24))
+                        Day
+
+                else if modBy minutes 60 == 0 && (minutes // 60 /= 0) then
+                    UserInterval
+                        (minutes // 60)
+                        Hour
+
+                else
+                    UserInterval
+                        minutes
+                        Minute
+            )
+
+
 update : Msg -> Model -> UpdateResult
 update msg prevModel =
     case msg of
@@ -182,13 +336,20 @@ update msg prevModel =
                                 |> List.map (Tuple.mapSecond (PriceFetch.checkAgainstTime prevModel.now))
 
                         ( newModel, appCmds ) =
-                            { prevModel | prices = newPrices }
-                                |> (case prevModel.lastAmountInputChanged of
+                            { prevModel
+                                | prices = newPrices
+                            }
+                                |> (case prevModel.inputToAutofill of
                                         AmountIn ->
-                                            tryAutofillAmountOut
+                                            tryAutofillAmountIn
 
                                         AmountOut ->
-                                            tryAutofillAmountIn
+                                            tryAutofillAmountOut
+
+                                        Margin ->
+                                            \m ->
+                                                { m | inputToAutofill = AmountOut }
+                                                    |> tryAutofillMargin
                                    )
                     in
                     UpdateResult
@@ -252,20 +413,26 @@ update msg prevModel =
                                         Seller ->
                                             CryptoSwap Buyer
                                 , inputs = newInputs
-                                , lastAmountInputChanged =
-                                    case prevModel.lastAmountInputChanged of
+                                , inputToAutofill =
+                                    case prevModel.inputToAutofill of
                                         AmountIn ->
                                             AmountOut
 
                                         AmountOut ->
                                             AmountIn
+
+                                        Margin ->
+                                            Margin
                             }
-                                |> (case prevModel.lastAmountInputChanged of
+                                |> (case prevModel.inputToAutofill of
                                         AmountIn ->
-                                            tryAutofillAmountOut
+                                            tryAutofillAmountIn
 
                                         AmountOut ->
-                                            tryAutofillAmountIn
+                                            tryAutofillAmountOut
+
+                                        Margin ->
+                                            \m -> ( m, [] )
                                    )
                     in
                     UpdateResult
@@ -312,7 +479,7 @@ update msg prevModel =
                     { prevModel
                         | inputs = { prevInputs | amountIn = filteredInput }
                         , errors = newErrors
-                        , lastAmountInputChanged = AmountIn
+                        , inputToAutofill = AmountOut
                     }
                         |> updateAmountIn newMaybeAmountIn
                         |> tryAutofillAmountOut
@@ -396,7 +563,7 @@ update msg prevModel =
                     { prevModel
                         | inputs = { prevInputs | amountOut = filteredInput }
                         , errors = newErrors
-                        , lastAmountInputChanged = AmountOut
+                        , inputToAutofill = AmountIn
                     }
                         |> updateAmountOut newMaybeAmountOut
                         |> tryAutofillAmountIn
@@ -487,7 +654,7 @@ update msg prevModel =
                 filteredInput =
                     input |> Utils.filterPositiveNumericInput
 
-                ( newMargin, newMarginType, newErrors ) =
+                ( maybeNewMargin, newMarginType, newErrors ) =
                     let
                         prevErrors =
                             prevModel.errors
@@ -517,16 +684,21 @@ update msg prevModel =
                                 , marginType = newMarginType
                             }
                         , margin =
-                            newMargin
+                            maybeNewMargin
                                 |> Maybe.withDefault prevModel.margin
                         , errors = newErrors
                     }
-                        |> (case prevModel.lastAmountInputChanged of
+                        |> (case prevModel.inputToAutofill of
                                 AmountIn ->
-                                    tryAutofillAmountOut
+                                    tryAutofillAmountIn
 
                                 AmountOut ->
-                                    tryAutofillAmountIn
+                                    tryAutofillAmountOut
+
+                                Margin ->
+                                    \m ->
+                                        { m | inputToAutofill = AmountOut }
+                                            |> tryAutofillAmountOut
                            )
             in
             UpdateResult
@@ -568,12 +740,17 @@ update msg prevModel =
                             }
                         , margin = newMargin
                     }
-                        |> (case prevModel.lastAmountInputChanged of
+                        |> (case prevModel.inputToAutofill of
                                 AmountIn ->
-                                    tryAutofillAmountOut
+                                    tryAutofillAmountIn
 
                                 AmountOut ->
-                                    tryAutofillAmountIn
+                                    tryAutofillAmountOut
+
+                                Margin ->
+                                    \m ->
+                                        { m | inputToAutofill = AmountOut }
+                                            |> tryAutofillAmountOut
                            )
             in
             UpdateResult
@@ -730,14 +907,7 @@ update msg prevModel =
                 { prevModel
                     | txChainStatus = Just <| Confirm factoryType createParameters
                     , depositAmount =
-                        case initiatorRole prevModel.mode of
-                            Buyer ->
-                                Just <| CTypes.calculateFullInitialDeposit createParameters
-
-                            Seller ->
-                                Maybe.map
-                                    TokenValue.fromFloatWithWarning
-                                    (getAmountIn prevModel)
+                        Just <| CTypes.calculateFullInitialDeposit createParameters
                 }
                 Cmd.none
                 ChainCmd.none
@@ -881,7 +1051,7 @@ update msg prevModel =
                         Cmd.none
                         ChainCmd.none
                         [ CmdUp.gTag "create mined" "txchain" "" 0
-                        , CmdUp.GotoRoute (Routing.Trade factory id)
+                        , CmdUp.GotoRoute (Routing.Trade (TradeReference factory id))
                         ]
 
                 Nothing ->
@@ -984,6 +1154,42 @@ interpretInterval input =
                 Err "Must be an integer"
 
 
+tryAutofillMargin : Model -> ( Model, List (CmdUp Msg) )
+tryAutofillMargin prevModel =
+    case PriceFetch.getPriceData prevModel.foreignCurrencyType prevModel.prices of
+        Just (PriceFetch.Ok price) ->
+            Maybe.map2
+                (\dhTokenAmount foreignCurrencyAmount ->
+                    let
+                        margin =
+                            case initiatorRole prevModel.mode of
+                                Buyer ->
+                                    (dhTokenAmount / (foreignCurrencyAmount * price)) - 1
+
+                                Seller ->
+                                    ((foreignCurrencyAmount * price) / dhTokenAmount) - 1
+                    in
+                    ( { prevModel
+                        | margin = margin
+                      }
+                    , []
+                    )
+                )
+                prevModel.dhTokenAmount
+                prevModel.foreignCurrencyAmount
+                |> Maybe.withDefault ( prevModel, [] )
+
+        Just PriceFetch.Outdated ->
+            ( prevModel
+            , [ CmdUp.UserNotice UN.oldPriceDataWarning ]
+            )
+
+        Nothing ->
+            ( prevModel
+            , []
+            )
+
+
 tryAutofillAmountOut : Model -> ( Model, List (CmdUp Msg) )
 tryAutofillAmountOut prevModel =
     case externalCurrencyPrice prevModel of
@@ -997,14 +1203,7 @@ tryAutofillAmountOut prevModel =
                                     (amountIn * price) * (1 + prevModel.margin)
 
                                 Seller ->
-                                    let
-                                        tradeAmountAfterDevFee =
-                                            amountIn / 1.01
-
-                                        equivalentForeignCrypto =
-                                            tradeAmountAfterDevFee / price
-                                    in
-                                    equivalentForeignCrypto * (1 + prevModel.margin)
+                                    (amountIn / price) * (1 + prevModel.margin)
                         )
                         (getAmountIn prevModel)
 
@@ -1051,14 +1250,7 @@ tryAutofillAmountIn prevModel =
                                     (amountOut / (1 + prevModel.margin)) / price
 
                                 Seller ->
-                                    let
-                                        amountOutMinusMargin =
-                                            amountOut / (1 + prevModel.margin)
-
-                                        equivalentDai =
-                                            amountOutMinusMargin * price
-                                    in
-                                    equivalentDai * 1.01
+                                    (amountOut / (1 + prevModel.margin)) * price
                         )
                         (getAmountOut prevModel)
 

@@ -12,7 +12,7 @@ type alias Model =
 
 
 type Msg
-    = TradeClicked FactoryType Int
+    = TradeClicked TradeReference
     | ChangeSort ColType
     | NoOp
 

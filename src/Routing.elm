@@ -14,7 +14,8 @@ type Route
     = InitialBlank
     | CreateCrypto
     | CreateFiat
-    | Trade FactoryType Int
+    | Redeploy TradeReference
+    | Trade TradeReference
     | Marketplace
     | AgentHistory Address
     | NotFound
@@ -26,7 +27,8 @@ routeParser =
         </> Url.Parser.oneOf
                 [ Url.Parser.map CreateFiat (Url.Parser.s "fiat")
                 , Url.Parser.map CreateCrypto Url.Parser.top
-                , Url.Parser.map Trade (Url.Parser.s "trade" </> factoryParser </> Url.Parser.int)
+                , Url.Parser.map Redeploy (Url.Parser.s "redeploy" </> tradeRefParser)
+                , Url.Parser.map Trade (Url.Parser.s "trade" </> tradeRefParser)
                 , Url.Parser.map Marketplace (Url.Parser.s "marketplace")
                 , Url.Parser.map AgentHistory (Url.Parser.s "history" </> addressParser)
                 , Url.Parser.map (\address -> AgentHistory address) (Url.Parser.s "history" </> addressParser)
@@ -38,6 +40,13 @@ addressParser =
     Url.Parser.custom
         "ADDRESS"
         (Eth.Utils.toAddress >> Result.toMaybe)
+
+
+tradeRefParser : Parser (TradeReference -> a) a
+tradeRefParser =
+    Url.Parser.map
+        TradeReference
+        (factoryParser </> Url.Parser.int)
 
 
 factoryParser : Parser (FactoryType -> a) a
@@ -129,8 +138,11 @@ routeToString route =
         CreateFiat ->
             Url.Builder.absolute [ "DAIHard", "create", "fiat" ] []
 
-        Trade factory id ->
-            Url.Builder.absolute [ "DAIHard", "trade", factoryToString factory, String.fromInt id ] []
+        Redeploy tradeRef ->
+            Url.Builder.absolute [ "DAIHard", "redeploy", factoryToString tradeRef.factory, String.fromInt tradeRef.id ] []
+
+        Trade tradeRef ->
+            Url.Builder.absolute [ "DAIHard", "trade", factoryToString tradeRef.factory, String.fromInt tradeRef.id ] []
 
         Marketplace ->
             Url.Builder.absolute [ "DAIHard", "marketplace" ] []

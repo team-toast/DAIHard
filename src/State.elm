@@ -305,6 +305,26 @@ update msg model =
                     , Cmd.none
                     )
 
+        CheckIfRedeployFetchComplete ->
+            case model.submodel of
+                FetchingRedeployForCreate tradeRef ->
+                    case getTradeFromCaches tradeRef model.tradeCaches of
+                        Just (CTypes.LoadedTrade trade) ->
+                            initCreate (Create.Trade trade) model
+
+                        Just CTypes.Invalid ->
+                            initCreate (Create.Mode <| Create.CryptoSwap Seller) model
+                                |> Tuple.mapFirst
+                                    (addUserNotice UN.tradeParametersNotDefault)
+
+                        _ ->
+                            ( { model | submodel = FetchingRedeployForCreate tradeRef }
+                            , Cmd.none
+                            )
+
+                _ ->
+                    ( model, Cmd.none )
+
         CreateMsg createMsg ->
             case model.submodel of
                 CreateModel createModel ->
@@ -525,58 +545,73 @@ updateFromUrl url model =
         gotoRoute (Routing.urlToRoute url) model
 
 
-gotoRoute : Routing.Route -> Model -> ( Model, Cmd Msg )
-gotoRoute route oldModel =
+initCreate : Create.ModeOrTrade -> Model -> ( Model, Cmd Msg )
+initCreate modeOrTrade prevModel =
     let
-        initCreate : Create.Mode -> ( Model, Cmd Msg )
-        initCreate mode =
-            let
-                updateResult =
-                    Create.State.init oldModel.wallet mode
+        updateResult =
+            Create.State.init prevModel.wallet modeOrTrade
 
-                ( newTxSentry, chainCmd, userNotices ) =
-                    ChainCmd.execute oldModel.txSentry (ChainCmd.map CreateMsg updateResult.chainCmd)
-            in
-            ( { oldModel
-                | submodel = CreateModel updateResult.model
-                , txSentry = newTxSentry
-              }
-            , Cmd.batch
-                [ Cmd.map CreateMsg updateResult.cmd
-                , chainCmd
-                ]
-            )
-                |> runCmdUps
-                    (CmdUp.mapList CreateMsg updateResult.cmdUps
-                        ++ List.map CmdUp.UserNotice userNotices
-                    )
+        ( newTxSentry, chainCmd, userNotices ) =
+            ChainCmd.execute prevModel.txSentry (ChainCmd.map CreateMsg updateResult.chainCmd)
     in
+    ( { prevModel
+        | submodel = CreateModel updateResult.model
+        , txSentry = newTxSentry
+      }
+    , Cmd.batch
+        [ Cmd.map CreateMsg updateResult.cmd
+        , chainCmd
+        ]
+    )
+        |> runCmdUps
+            (CmdUp.mapList CreateMsg updateResult.cmdUps
+                ++ List.map CmdUp.UserNotice userNotices
+            )
+
+
+gotoRoute : Routing.Route -> Model -> ( Model, Cmd Msg )
+gotoRoute route prevModel =
     (case route of
         Routing.InitialBlank ->
-            ( oldModel
+            ( prevModel
             , Cmd.none
             )
 
         Routing.CreateFiat ->
-            initCreate Create.OffRamp
+            initCreate (Create.Mode Create.OffRamp) prevModel
 
         Routing.CreateCrypto ->
-            initCreate (Create.CryptoSwap Seller)
+            initCreate (Create.Mode <| Create.CryptoSwap Seller) prevModel
 
-        Routing.Trade factory id ->
+        Routing.Redeploy tradeRef ->
+            case getTradeFromCaches tradeRef prevModel.tradeCaches of
+                Just (CTypes.LoadedTrade trade) ->
+                    initCreate (Create.Trade trade) prevModel
+
+                Just CTypes.Invalid ->
+                    initCreate (Create.Mode <| Create.CryptoSwap Seller) prevModel
+                        |> Tuple.mapFirst
+                            (addUserNotice UN.tradeParametersNotDefault)
+
+                _ ->
+                    ( { prevModel | submodel = FetchingRedeployForCreate tradeRef }
+                    , Cmd.none
+                    )
+
+        Routing.Trade tradeRef ->
             let
                 updateResult =
-                    case getTradeFromCaches factory id oldModel.tradeCaches of
+                    case getTradeFromCaches tradeRef prevModel.tradeCaches of
                         Just (CTypes.LoadedTrade trade) ->
-                            Trade.State.initFromCached oldModel.wallet trade
+                            Trade.State.initFromCached prevModel.wallet trade
 
                         _ ->
-                            Trade.State.init oldModel.wallet factory id
+                            Trade.State.init prevModel.wallet tradeRef
 
                 ( newTxSentry, chainCmd, userNotices ) =
-                    ChainCmd.execute oldModel.txSentry (ChainCmd.map TradeMsg updateResult.chainCmd)
+                    ChainCmd.execute prevModel.txSentry (ChainCmd.map TradeMsg updateResult.chainCmd)
             in
-            ( { oldModel
+            ( { prevModel
                 | submodel = TradeModel updateResult.model
                 , txSentry = newTxSentry
               }
@@ -593,9 +628,9 @@ gotoRoute route oldModel =
         Routing.Marketplace ->
             let
                 ( marketplaceModel, marketplaceCmd ) =
-                    Marketplace.State.init oldModel.wallet
+                    Marketplace.State.init prevModel.wallet
             in
-            ( { oldModel
+            ( { prevModel
                 | submodel = MarketplaceModel marketplaceModel
               }
             , Cmd.batch
@@ -606,9 +641,9 @@ gotoRoute route oldModel =
         Routing.AgentHistory address ->
             let
                 ( agentHistoryModel, agentHistoryCmd ) =
-                    AgentHistory.State.init oldModel.wallet address
+                    AgentHistory.State.init prevModel.wallet address
             in
-            ( { oldModel
+            ( { prevModel
                 | submodel = AgentHistoryModel agentHistoryModel
               }
             , Cmd.batch
@@ -617,7 +652,7 @@ gotoRoute route oldModel =
             )
 
         Routing.NotFound ->
-            ( oldModel |> addUserNotice UN.invalidUrl
+            ( prevModel |> addUserNotice UN.invalidUrl
             , Cmd.none
             )
     )
@@ -625,19 +660,19 @@ gotoRoute route oldModel =
             (\model -> { model | currentRoute = route })
 
 
-getTradeFromCaches : FactoryType -> Int -> List TradeCache -> Maybe CTypes.Trade
-getTradeFromCaches factory id tradeCaches =
+getTradeFromCaches : TradeReference -> List TradeCache -> Maybe CTypes.Trade
+getTradeFromCaches tradeRef tradeCaches =
     tradeCaches
-        |> List.Extra.find (\tc -> tc.factory == factory)
+        |> List.Extra.find (\tc -> tc.factory == tradeRef.factory)
         |> Maybe.map .trades
-        |> Maybe.andThen (Array.get id)
+        |> Maybe.andThen (Array.get tradeRef.id)
 
 
 runCmdDown : CmdDown.CmdDown -> Model -> ( Model, Cmd Msg )
-runCmdDown cmdDown oldModel =
-    case oldModel.submodel of
+runCmdDown cmdDown prevModel =
+    case prevModel.submodel of
         InitialBlank ->
-            ( oldModel, Cmd.none )
+            ( prevModel, Cmd.none )
 
         CreateModel createModel ->
             let
@@ -645,9 +680,9 @@ runCmdDown cmdDown oldModel =
                     createModel |> Create.State.runCmdDown cmdDown
 
                 ( newTxSentry, chainCmd, userNotices ) =
-                    ChainCmd.execute oldModel.txSentry (ChainCmd.map CreateMsg updateResult.chainCmd)
+                    ChainCmd.execute prevModel.txSentry (ChainCmd.map CreateMsg updateResult.chainCmd)
             in
-            ( { oldModel
+            ( { prevModel
                 | submodel = CreateModel updateResult.model
                 , txSentry = newTxSentry
               }
@@ -661,15 +696,23 @@ runCmdDown cmdDown oldModel =
                         ++ List.map CmdUp.UserNotice userNotices
                     )
 
+        FetchingRedeployForCreate tradeRef ->
+            case cmdDown of
+                CmdDown.UpdateWallet wallet ->
+                    ( prevModel, Cmd.none )
+
+                CmdDown.CloseAnyDropdownsOrModals ->
+                    ( prevModel, Cmd.none )
+
         TradeModel tradeModel ->
             let
                 updateResult =
                     tradeModel |> Trade.State.runCmdDown cmdDown
 
                 ( newTxSentry, chainCmd, userNotices ) =
-                    ChainCmd.execute oldModel.txSentry (ChainCmd.map TradeMsg updateResult.chainCmd)
+                    ChainCmd.execute prevModel.txSentry (ChainCmd.map TradeMsg updateResult.chainCmd)
             in
-            ( { oldModel
+            ( { prevModel
                 | submodel = TradeModel updateResult.model
                 , txSentry = newTxSentry
               }
@@ -689,9 +732,9 @@ runCmdDown cmdDown oldModel =
                     marketplaceModel |> Marketplace.State.runCmdDown cmdDown
 
                 ( newTxSentry, chainCmd, userNotices ) =
-                    ChainCmd.execute oldModel.txSentry (ChainCmd.map MarketplaceMsg updateResult.chainCmd)
+                    ChainCmd.execute prevModel.txSentry (ChainCmd.map MarketplaceMsg updateResult.chainCmd)
             in
-            ( { oldModel
+            ( { prevModel
                 | submodel = MarketplaceModel updateResult.model
                 , txSentry = newTxSentry
               }
@@ -711,9 +754,9 @@ runCmdDown cmdDown oldModel =
                     agentHistoryModel |> AgentHistory.State.runCmdDown cmdDown
 
                 ( newTxSentry, chainCmd, userNotices ) =
-                    ChainCmd.execute oldModel.txSentry (ChainCmd.map AgentHistoryMsg updateResult.chainCmd)
+                    ChainCmd.execute prevModel.txSentry (ChainCmd.map AgentHistoryMsg updateResult.chainCmd)
             in
-            ( { oldModel
+            ( { prevModel
                 | submodel = AgentHistoryModel updateResult.model
                 , txSentry = newTxSentry
               }
@@ -759,6 +802,9 @@ submodelSubscriptions model =
 
         CreateModel createModel ->
             Sub.map CreateMsg <| Create.State.subscriptions createModel
+
+        FetchingRedeployForCreate tradeRef ->
+            Time.every 300 (always CheckIfRedeployFetchComplete)
 
         TradeModel tradeModel ->
             Sub.map TradeMsg <| Trade.State.subscriptions tradeModel

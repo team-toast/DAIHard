@@ -1,9 +1,10 @@
-module Create.Types exposing (AmountInputType(..), CurrencyType(..), Errors, Inputs, IntervalUnit(..), MarginButtonType(..), Mode(..), Model, Msg(..), TradeType(..), TxChainStatus(..), UpdateResult, UserInterval, currencySymbol, externalCurrencyPrice, getAmountIn, getAmountOut, getTradeAmount, getTradePrice, getUserInterval, initiatorRole, intervalUnitToString, justModelUpdate, marginButtonTypeToString, maybeBuildPaymentMethods, maybeUserParameters, modeToString, noErrors, tradeType, updateAmountIn, updateAmountOut, updateForeignCurrencyType, updateInType, updateOutType, updateUserInterval, userIntervalToPosix, userIntervalToString)
+module Create.Types exposing (AutofillableInput(..), CurrencyType(..), Errors, Inputs, IntervalUnit(..), MarginButtonType(..), Mode(..), ModeOrTrade(..), Model, Msg(..), TradeType(..), TxChainStatus(..), UpdateResult, UserInterval, buildCryptoSwapSellPaymentMethodString, cryptoSwapSellPaymentMethodPrefix, cryptoSwapSellPaymentMethodSuffix, currencySymbol, externalCurrencyPrice, getAmountIn, getAmountOut, getTradeAmount, getTradePrice, getUserInterval, initiatorRole, intervalUnitToString, justModelUpdate, marginButtonTypeToString, maybeBuildPaymentMethods, maybeUserParameters, modeToString, noErrors, tradeType, updateAmountIn, updateAmountOut, updateForeignCurrencyType, updateInType, updateOutType, updateUserInterval, userIntervalToPosix, userIntervalToString)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
 import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
+import Contracts.Generated.DAIHardFactory as DHF
 import Contracts.Types as CTypes
 import Currencies
 import Eth.Types exposing (Address, TxHash, TxReceipt)
@@ -21,7 +22,7 @@ type alias Model =
     , mode : Mode
     , now : Time.Posix
     , prices : List ( Currencies.Symbol, PriceFetch.PriceData )
-    , lastAmountInputChanged : AmountInputType
+    , inputToAutofill : AutofillableInput
     , inputs : Inputs
     , errors : Errors
     , dhTokenType : FactoryType
@@ -95,9 +96,10 @@ type alias Inputs =
     }
 
 
-type AmountInputType
+type AutofillableInput
     = AmountIn
     | AmountOut
+    | Margin
 
 
 type alias Errors =
@@ -117,6 +119,11 @@ type Mode
     = CryptoSwap BuyerOrSeller
     | OnRamp
     | OffRamp
+
+
+type ModeOrTrade
+    = Mode Mode
+    | Trade CTypes.FullTradeInfo
 
 
 modeToString : Mode -> String
@@ -450,14 +457,6 @@ userIntervalToPosix interval =
 getTradeAmount : Model -> Maybe TokenValue
 getTradeAmount model =
     model.dhTokenAmount
-        |> Maybe.map
-            (case initiatorRole model.mode of
-                Seller ->
-                    \f -> f / 1.01
-
-                Buyer ->
-                    identity
-            )
         |> Maybe.map TokenValue.fromFloatWithWarning
 
 
@@ -489,7 +488,7 @@ maybeBuildPaymentMethods model =
                 Just
                     [ PaymentMethod
                         PaymentMethods.Custom
-                        ("Pay to " ++ model.inputs.receiveAddress ++ " immediately upon commitment.")
+                        (buildCryptoSwapSellPaymentMethodString model.inputs.receiveAddress)
                     ]
 
         OffRamp ->
@@ -513,3 +512,16 @@ maybeBuildPaymentMethods model =
                         PaymentMethods.Custom
                         model.inputs.paymentMethod
                     ]
+
+
+buildCryptoSwapSellPaymentMethodString : String -> String
+buildCryptoSwapSellPaymentMethodString receiveAddress =
+    cryptoSwapSellPaymentMethodPrefix ++ receiveAddress ++ cryptoSwapSellPaymentMethodSuffix
+
+
+cryptoSwapSellPaymentMethodPrefix =
+    "Pay to "
+
+
+cryptoSwapSellPaymentMethodSuffix =
+    " immediately upon commitment."
