@@ -379,10 +379,8 @@ submodelElementAndModal screenWidth model =
                             (List.map (Element.map CreateMsg))
 
                 FetchingRedeployForCreate _ ->
-                    ( EH.submodelContainer
+                    ( EH.simpleSubmodelContainer
                         800
-                        Nothing
-                        "Redeploy"
                         (Element.el
                             [ Element.centerX
                             , Element.padding 30

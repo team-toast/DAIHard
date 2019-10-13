@@ -102,6 +102,7 @@ initModel trade eventSentry wallet =
     , chatHistoryModel = Nothing
     , showChatHistory = False
     , showStatsModal = False
+    , showOptions = False
     , eventsWaitingForChatHistory = []
     , secureCommInfo = partialCommInfo
     , eventSentry = eventSentry
@@ -242,6 +243,21 @@ update msg prevModel =
                         [ CmdUp.UserNotice <|
                             UN.web3FetchError "allowance" httpError
                         ]
+
+        ToggleShowOptions flag ->
+            justModelUpdate
+                { prevModel
+                    | showOptions = flag
+                }
+
+        DuplicateClicked tradeRef ->
+            UpdateResult
+                prevModel
+                Cmd.none
+                ChainCmd.none
+                [ CmdUp.GotoRoute <|
+                    Routing.Redeploy tradeRef
+                ]
 
         CreationInfoFetched fetchResult ->
             case fetchResult of
@@ -977,6 +993,7 @@ runCmdDown cmdDown prevModel =
                 { prevModel
                     | showChatHistory = False
                     , showStatsModal = False
+                    , showOptions = False
                 }
 
 

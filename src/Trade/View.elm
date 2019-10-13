@@ -36,14 +36,46 @@ root screenWidth time tradeCaches model =
     ( EH.submodelContainer
         1800
         Nothing
-        ("Trade at "
-            ++ (case CTypes.getCreationInfo model.trade of
-                    Just creationInfo ->
-                        Eth.Utils.addressToString creationInfo.address
+        (Just <|
+            Element.row
+                [ Element.width Element.fill ]
+                [ Element.el
+                    [ Element.centerX ]
+                  <|
+                    Element.text <|
+                        "Trade at "
+                            ++ (case CTypes.getCreationInfo model.trade of
+                                    Just creationInfo ->
+                                        Eth.Utils.addressToString creationInfo.address
+
+                                    _ ->
+                                        "..."
+                               )
+                , case model.trade of
+                    CTypes.LoadedTrade trade ->
+                        Element.el
+                            [ Element.below <|
+                                if model.showOptions then
+                                    EH.modal
+                                        (Element.rgba 0 0 0 0.1)
+                                        NoOp
+                                        (ToggleShowOptions False)
+                                        (optionsMenu trade)
+
+                                else
+                                    Element.none
+                            ]
+                            (Element.el
+                                [ Element.paddingXY 0 5
+                                , Element.pointer
+                                , EH.onClickNoPropagation (ToggleShowOptions True)
+                                ]
+                                EH.optionsDots
+                            )
 
                     _ ->
-                        "..."
-               )
+                        Element.none
+                ]
         )
         (Element.el
             [ Element.padding 30
@@ -86,6 +118,20 @@ root screenWidth time tradeCaches model =
       , getModalOrNone model
       ]
     )
+
+
+optionsMenu : CTypes.FullTradeInfo -> Element Msg
+optionsMenu trade =
+    EH.basicOpenDropdown
+        [ Element.moveDown 5
+        , Element.alignRight
+        , EH.moveToFront
+        ]
+        Nothing
+        [ ( Element.text "Duplicate"
+          , DuplicateClicked trade.reference
+          )
+        ]
 
 
 header : Time.Posix -> FullTradeInfo -> Wallet.State -> List TradeCache -> Bool -> Element Msg
