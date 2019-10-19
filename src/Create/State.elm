@@ -270,9 +270,6 @@ getIntervalsFromUserParameters userParameters =
                 let
                     minutes =
                         Time.posixToMillis posixTime // (1000 * 60)
-
-                    _ =
-                        Debug.log "minutes, div" ( minutes, 60 * 24 )
                 in
                 if modBy (60 * 24 * 7) minutes == 0 && (minutes // (60 * 24 * 7) /= 0) then
                     UserInterval
