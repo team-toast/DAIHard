@@ -46,7 +46,7 @@ root model =
             )
         , Element.row
             [ Element.centerX
-            , Element.padding 20
+            , Element.spacing 20
             ]
             [ subredditButton
             , telegramButton
