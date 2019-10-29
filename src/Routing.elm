@@ -26,13 +26,41 @@ routeParser =
     Url.Parser.s "DAIHard"
         </> Url.Parser.oneOf
                 [ Url.Parser.map CreateFiat Url.Parser.top
-                , Url.Parser.map CreateCrypto (Url.Parser.s "crypto")
+                , Url.Parser.map CreateCrypto (Url.Parser.s "create" </> Url.Parser.s "crypto")
                 , Url.Parser.map Redeploy (Url.Parser.s "redeploy" </> tradeRefParser)
                 , Url.Parser.map Trade (Url.Parser.s "trade" </> tradeRefParser)
                 , Url.Parser.map Marketplace (Url.Parser.s "marketplace")
                 , Url.Parser.map AgentHistory (Url.Parser.s "history" </> addressParser)
                 , Url.Parser.map (\address -> AgentHistory address) (Url.Parser.s "history" </> addressParser)
                 ]
+
+
+routeToString : Route -> String
+routeToString route =
+    case route of
+        InitialBlank ->
+            Url.Builder.absolute [ "DAIHard" ] []
+
+        CreateCrypto ->
+            Url.Builder.absolute [ "DAIHard", "create", "crypto" ] []
+
+        CreateFiat ->
+            Url.Builder.absolute [ "DAIHard" ] []
+
+        Redeploy tradeRef ->
+            Url.Builder.absolute [ "DAIHard", "redeploy", factoryToString tradeRef.factory, String.fromInt tradeRef.id ] []
+
+        Trade tradeRef ->
+            Url.Builder.absolute [ "DAIHard", "trade", factoryToString tradeRef.factory, String.fromInt tradeRef.id ] []
+
+        Marketplace ->
+            Url.Builder.absolute [ "DAIHard", "marketplace" ] []
+
+        AgentHistory address ->
+            Url.Builder.absolute [ "DAIHard", "history", Eth.Utils.addressToString address ] []
+
+        NotFound ->
+            Url.Builder.absolute [] []
 
 
 addressParser : Parser (Address -> a) a
@@ -124,31 +152,3 @@ buyerOrSellerToString buyerOrSeller =
 urlToRoute : Url -> Route
 urlToRoute url =
     Maybe.withDefault NotFound (Url.Parser.parse routeParser url)
-
-
-routeToString : Route -> String
-routeToString route =
-    case route of
-        InitialBlank ->
-            Url.Builder.absolute [ "DAIHard" ] []
-
-        CreateCrypto ->
-            Url.Builder.absolute [ "DAIHard" ] []
-
-        CreateFiat ->
-            Url.Builder.absolute [ "DAIHard", "create", "fiat" ] []
-
-        Redeploy tradeRef ->
-            Url.Builder.absolute [ "DAIHard", "redeploy", factoryToString tradeRef.factory, String.fromInt tradeRef.id ] []
-
-        Trade tradeRef ->
-            Url.Builder.absolute [ "DAIHard", "trade", factoryToString tradeRef.factory, String.fromInt tradeRef.id ] []
-
-        Marketplace ->
-            Url.Builder.absolute [ "DAIHard", "marketplace" ] []
-
-        AgentHistory address ->
-            Url.Builder.absolute [ "DAIHard", "history", Eth.Utils.addressToString address ] []
-
-        NotFound ->
-            Url.Builder.absolute [] []

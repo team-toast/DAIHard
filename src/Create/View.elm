@@ -44,7 +44,13 @@ root model =
                 , body model
                 ]
             )
-        , telegramButton
+        , Element.row
+            [ Element.centerX
+            , Element.spacing 20
+            ]
+            [ subredditButton
+            , telegramButton
+            ]
         ]
     , viewModals model
     )
@@ -70,6 +76,29 @@ telegramButton =
             Element.paragraph
                 [ Element.Font.center ]
                 [ Element.text "Join the Telegram Group" ]
+        }
+
+
+subredditButton : Element Msg
+subredditButton =
+    Element.link
+        [ Element.Border.rounded 4
+        , Element.width Element.fill
+        , Element.pointer
+        , Element.paddingXY 22 15
+        , Element.Background.color EH.blue
+        , Element.Font.color EH.white
+        , Element.Font.semiBold
+        , Element.Font.size 20
+        , Element.centerX
+        , Element.width Element.shrink
+        , Element.height Element.shrink
+        ]
+        { url = "https://reddit.com/r/daihard/"
+        , label =
+            Element.paragraph
+                [ Element.Font.center ]
+                [ Element.text "Check Out Our Subreddit" ]
         }
 
 
