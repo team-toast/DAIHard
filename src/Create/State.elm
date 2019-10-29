@@ -488,7 +488,10 @@ update msg prevModel =
                 newModel
                 Cmd.none
                 ChainCmd.none
-                appCmds
+                (List.append
+                    appCmds
+                    [ CmdUp.gTag "amount in changed" "input" input 0 ]
+                )
 
         InTypeClicked ->
             UpdateResult
@@ -572,7 +575,10 @@ update msg prevModel =
                 newModel
                 Cmd.none
                 ChainCmd.none
-                appCmds
+                (List.append
+                    appCmds
+                    [ CmdUp.gTag "amount out changed" "input" input 0 ]
+                )
 
         OutTypeClicked ->
             UpdateResult
@@ -817,7 +823,7 @@ update msg prevModel =
                         filteredInput =
                             input |> Utils.filterPositiveNumericInput
 
-                        ( newInterval, newErrors ) =
+                        ( newInterval, newErrors, gTagVal ) =
                             let
                                 prevErrors =
                                     prevModel.errors
@@ -833,11 +839,13 @@ update msg prevModel =
                                             )
                                         |> Maybe.withDefault (getUserInterval intervalType prevModel)
                                     , { prevErrors | interval = Nothing }
+                                    , maybeInt |> Maybe.withDefault -1
                                     )
 
                                 Err errStr ->
                                     ( getUserInterval intervalType prevModel
                                     , { prevErrors | interval = Just errStr }
+                                    , -1
                                     )
 
                         newModel =
@@ -851,7 +859,7 @@ update msg prevModel =
                         newModel
                         Cmd.none
                         ChainCmd.none
-                        []
+                        [ CmdUp.gTag "interval int changed" "input" (intervalTypeToString intervalType) gTagVal ]
 
                 Nothing ->
                     let

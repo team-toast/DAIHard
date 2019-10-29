@@ -1,4 +1,4 @@
-module TradeTable.Types exposing (ColType(..), Model, Msg(..), Ordering(..), UpdateResult, flipOrdering, justModelUpdate)
+module TradeTable.Types exposing (ColType(..), Model, Msg(..), Ordering(..), UpdateResult, colTypeToString, flipOrdering, justModelUpdate)
 
 import ChainCmd exposing (ChainCmd)
 import CmdUp exposing (CmdUp)
@@ -33,6 +33,31 @@ type ColType
     | ResponderProfit
     | PaymentWindow
     | BurnWindow
+
+
+colTypeToString : ColType -> String
+colTypeToString colType =
+    case colType of
+        Phase ->
+            "Phase"
+
+        Expires ->
+            "Expires"
+
+        Offer ->
+            "Offer"
+
+        Price ->
+            "Price"
+
+        ResponderProfit ->
+            "ResponderProfit"
+
+        PaymentWindow ->
+            "PaymentWindow"
+
+        BurnWindow ->
+            "BurnWindow"
 
 
 type Ordering

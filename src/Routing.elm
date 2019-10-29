@@ -25,8 +25,8 @@ routeParser : Parser (Route -> a) a
 routeParser =
     Url.Parser.s "DAIHard"
         </> Url.Parser.oneOf
-                [ Url.Parser.map CreateFiat (Url.Parser.s "fiat")
-                , Url.Parser.map CreateCrypto Url.Parser.top
+                [ Url.Parser.map CreateFiat Url.Parser.top
+                , Url.Parser.map CreateCrypto (Url.Parser.s "crypto")
                 , Url.Parser.map Redeploy (Url.Parser.s "redeploy" </> tradeRefParser)
                 , Url.Parser.map Trade (Url.Parser.s "trade" </> tradeRefParser)
                 , Url.Parser.map Marketplace (Url.Parser.s "marketplace")
@@ -82,13 +82,13 @@ factoryToString factory =
             "eth"
 
         Native Kovan ->
-            "keth"
+            "(k)eth"
 
         Token EthDai ->
             "dai"
 
         Token KovanDai ->
-            "kdai"
+            "(k)dai"
 
         Native XDai ->
             "xdai"

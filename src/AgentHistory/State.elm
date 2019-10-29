@@ -90,11 +90,21 @@ update msg prevModel =
                 [ CmdUp.GotoRoute (Routing.Trade tradeRef) ]
 
         FiltersMsg filtersMsg ->
-            justModelUpdate
+            let
+                ( newFilters, cmdUps ) =
+                    prevModel.filters |> Filters.update filtersMsg
+            in
+            UpdateResult
                 { prevModel
                     | filters =
-                        prevModel.filters |> Filters.update filtersMsg
+                        newFilters
                 }
+                Cmd.none
+                ChainCmd.none
+                (List.map
+                    (CmdUp.map FiltersMsg)
+                    cmdUps
+                )
 
         TradeTableMsg tradeTableMsg ->
             let

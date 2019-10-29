@@ -112,13 +112,16 @@ update msg prevModel =
                 { prevModel | inputs = prevModel.inputs |> updateFiatTypeInput (String.toUpper input) }
 
         FiatTypeSelected input ->
-            justModelUpdate
+            UpdateResult
                 ({ prevModel
                     | inputs = prevModel.inputs |> updateFiatTypeInput input
                     , showCurrencyDropdown = False
                  }
                     |> applyInputs
                 )
+                Cmd.none
+                ChainCmd.none
+                [ CmdUp.gTag "fiat type changed" "input" input 0 ]
 
         ShowCurrencyDropdown flag ->
             let
@@ -166,12 +169,22 @@ update msg prevModel =
                 (prevModel |> resetSearch)
 
         FiltersMsg filtersMsg ->
-            justModelUpdate
+            let
+                ( newFilters, cmdUps ) =
+                    prevModel.filters |> Filters.update filtersMsg
+            in
+            UpdateResult
                 ({ prevModel
                     | filters =
-                        prevModel.filters |> Filters.update filtersMsg
+                        newFilters
                  }
                     |> applyInputs
+                )
+                Cmd.none
+                ChainCmd.none
+                (List.map
+                    (CmdUp.map FiltersMsg)
+                    cmdUps
                 )
 
         TradeTableMsg tradeTableMsg ->
