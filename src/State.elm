@@ -49,12 +49,16 @@ init flags url key =
             else
                 Nothing
 
-        wallet =
+        ( wallet, cmdUpsFromNetwork ) =
             if flags.networkId == 0 then
-                Wallet.NoneDetected
+                ( Wallet.NoneDetected
+                , [ CmdUp.gTag "web3 status" "profile" "none" 0 ]
+                )
 
             else
-                Wallet.OnlyNetwork <| Eth.Net.toNetworkId flags.networkId
+                ( Wallet.OnlyNetwork <| Eth.Net.toNetworkId flags.networkId
+                , [ CmdUp.gTag "web3 status" "profile" (Eth.Net.networkIdToString <| Eth.Net.toNetworkId flags.networkId) 0 ]
+                )
 
         providerNotice =
             if wallet == Wallet.NoneDetected then
@@ -90,12 +94,15 @@ init flags url key =
             )
 
         cmdUps =
-            tcCmdUpLists
-                |> List.indexedMap
-                    (\tcId tcCmdUps ->
-                        CmdUp.mapList (TradeCacheMsg tcId) tcCmdUps
-                    )
-                |> List.concat
+            List.append
+                (tcCmdUpLists
+                    |> List.indexedMap
+                        (\tcId tcCmdUps ->
+                            CmdUp.mapList (TradeCacheMsg tcId) tcCmdUps
+                        )
+                    |> List.concat
+                )
+                cmdUpsFromNetwork
 
         tcCmd =
             tcCmds
