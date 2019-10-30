@@ -150,8 +150,11 @@ update msg prevModel =
                 { prevModel | inputs = prevModel.inputs |> updatePaymentMethodInput input }
 
         AddSearchTerm ->
-            justModelUpdate
+            UpdateResult
                 (prevModel |> addPaymentInputTerm)
+                Cmd.none
+                ChainCmd.none
+                [ CmdUp.gTag "search term added" "input" prevModel.inputs.paymentMethod 0 ]
 
         RemoveTerm term ->
             justModelUpdate
