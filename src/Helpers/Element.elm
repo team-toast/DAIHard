@@ -904,6 +904,7 @@ modal overlayColor clickInsideMsg clickOutsideMsg el =
                 Element.none
         , Element.width Element.fill
         , Element.height Element.fill
+        , Element.scrollbarY
         , onClickNoPropagation clickInsideMsg
         ]
         el

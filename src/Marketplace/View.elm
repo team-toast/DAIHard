@@ -415,7 +415,7 @@ currencyTypeDropdown searchInput searchChangedMsg selectedMsg =
                                 )
                             )
                    )
-                ++ (if not (List.member searchInput currenciesList) then
+                ++ (if not (List.member searchInput currenciesList) && searchInput /= "" then
                         [ ( Element.el [ Element.width Element.fill ] (Element.text <| "\"" ++ searchInput ++ "\"")
                           , [ searchInput ]
                           , selectedMsg <| searchInput

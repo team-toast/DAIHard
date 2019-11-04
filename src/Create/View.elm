@@ -1347,7 +1347,7 @@ txChainStatusModal txChainStatus model =
                                       , judgmentWindowEl
                                       , Element.text ", the Seller has the option of burning the trade's full balance of "
                                       , totalBurnableEl
-                                      , Element.text ". He is expected to do this if and only if you failed to send the "
+                                      , Element.text " (your deposit plus the sale amount). He is expected to do this if and only if you failed to send the "
                                       , priceEl
                                       , Element.text " to the address he posted."
                                       ]
@@ -1418,7 +1418,7 @@ txChainStatusModal txChainStatus model =
                                              , judgmentWindowEl
                                              , Element.text " you will have the option to burn the trade's balance of "
                                              , totalBurnableEl
-                                             , Element.text <| ", which you are expected to do if and only if the Buyer has not sent the payment."
+                                             , Element.text <| " (your sale amount plus the buyer's deposit), which you are expected to do if and only if the Buyer has not sent the payment."
                                              ]
                                            , [ Element.text "If the trade has resolved successfully, DAIHard takes the 1% fee of "
                                              , feeAmountEl

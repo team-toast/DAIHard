@@ -133,12 +133,7 @@ update msg prevModel =
                     | showCurrencyDropdown = flag
                     , inputs =
                         prevModel.inputs
-                            |> (if flag then
-                                    updateFiatTypeInput ""
-
-                                else
-                                    identity
-                               )
+                            |> updateFiatTypeInput ""
                 }
 
         FiatTypeLostFocus ->
