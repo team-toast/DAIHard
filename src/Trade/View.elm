@@ -58,6 +58,7 @@ root screenWidth time tradeCaches model =
                                 if model.showOptions then
                                     EH.modal
                                         (Element.rgba 0 0 0 0.1)
+                                        False
                                         NoOp
                                         (ToggleShowOptions False)
                                         (optionsMenu trade)
@@ -1389,6 +1390,7 @@ chatOverlayElement model =
                 (Element.map ChatHistoryMsg chatWindow)
                 NoOp
                 ToggleChat
+                False
 
     else
         Element.none
@@ -1488,6 +1490,7 @@ getModalOrNone model =
                         )
                         NoOp
                         AbortAction
+                        False
 
                 ApproveNeedsSig ->
                     EH.txProcessModal
@@ -1608,6 +1611,7 @@ getModalOrNone model =
                         )
                         NoOp
                         AbortAction
+                        False
 
                 ActionNeedsSig action ->
                     EH.txProcessModal
