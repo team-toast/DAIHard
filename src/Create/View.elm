@@ -331,6 +331,7 @@ marginModal : Float -> String -> Maybe String -> Element Msg
 marginModal margin marginInput maybeError =
     EH.modal
         (Element.rgba 0 0 0 0.1)
+        False
         NoOp
         CloseModals
     <|
@@ -587,6 +588,7 @@ dhTokenTypeDropdown : (FactoryType -> Msg) -> Element Msg
 dhTokenTypeDropdown msgConstructor =
     EH.modal
         (Element.rgba 0 0 0 0.1)
+        False
         NoOp
         CloseModals
     <|
@@ -618,6 +620,7 @@ cryptoTypeDropdown : String -> (String -> Msg) -> (Currencies.Symbol -> Msg) -> 
 cryptoTypeDropdown searchInput searchChangedMsg selectedMsg =
     EH.modal
         (Element.rgba 0 0 0 0.1)
+        False
         NoOp
         CloseModals
     <|
@@ -652,6 +655,7 @@ fiatTypeDropdown : String -> (String -> Msg) -> (Currencies.Symbol -> Msg) -> El
 fiatTypeDropdown searchInput searchChangedMsg selectedMsg =
     EH.modal
         (Element.rgba 0 0 0 0.1)
+        False
         NoOp
         CloseModals
     <|
@@ -899,6 +903,7 @@ intervalModal intervalType userRole value input maybeError =
     in
     EH.modal
         (Element.rgba 0 0 0 0.1)
+        False
         NoOp
         CloseModals
     <|
@@ -1438,6 +1443,7 @@ txChainStatusModal txChainStatus model =
                 )
                 NoOp
                 AbortCreate
+                False
 
         ApproveNeedsSig tokenType ->
             Element.el

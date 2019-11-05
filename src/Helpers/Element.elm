@@ -887,10 +887,10 @@ responderProfitFloatToConciseString f =
            )
 
 
-modal : Element.Color -> msg -> msg -> Element msg -> Element msg
-modal overlayColor clickInsideMsg clickOutsideMsg el =
+modal : Element.Color -> Bool -> msg -> msg -> Element msg -> Element msg
+modal overlayColor includeScrollbarY clickInsideMsg clickOutsideMsg el =
     Element.el
-        [ Element.behindContent <|
+        ([ Element.behindContent <|
             Element.el
                 [ Element.Background.color overlayColor
                 , Element.htmlAttribute <| Html.Attributes.style "position" "fixed"
@@ -902,17 +902,28 @@ modal overlayColor clickInsideMsg clickOutsideMsg el =
                 , Element.Events.onClick clickOutsideMsg
                 ]
                 Element.none
-        , Element.width Element.fill
-        , Element.height Element.fill
-        , Element.scrollbarY
-        , onClickNoPropagation clickInsideMsg
-        ]
+         , Element.width Element.fill
+         , Element.height Element.fill
+         , onClickNoPropagation clickInsideMsg
+         ]
+            ++ (if includeScrollbarY then
+                    [ Element.scrollbarY ]
+
+                else
+                    []
+               )
+        )
         el
 
 
-closeableModal : List (Attribute msg) -> Element msg -> msg -> msg -> Element msg
-closeableModal extraAttributes innerEl clickInsideMsg closeMsg =
-    modal (Element.rgba 0 0 0.3 0.6) clickInsideMsg closeMsg <|
+closeableModal : List (Attribute msg) -> Element msg -> msg -> msg -> Bool -> Element msg
+closeableModal extraAttributes innerEl clickInsideMsg closeMsg includeScrollbarY =
+    modal
+        (Element.rgba 0 0 0.3 0.6)
+        includeScrollbarY
+        clickInsideMsg
+        closeMsg
+    <|
         Element.el
             ([ Element.centerX
              , Element.centerY
@@ -933,7 +944,12 @@ closeableModal extraAttributes innerEl clickInsideMsg closeMsg =
 
 txProcessModal : List (Element msg) -> msg -> msg -> Element msg
 txProcessModal textLines clickInsideMsg closeMsg =
-    modal (Element.rgba 0 0 0.3 0.6) clickInsideMsg closeMsg <|
+    modal
+        (Element.rgba 0 0 0.3 0.6)
+        False
+        clickInsideMsg
+        closeMsg
+    <|
         Element.column
             [ Element.spacing 10
             , Element.centerX

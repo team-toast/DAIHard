@@ -379,6 +379,7 @@ currencyTypeDropdown : String -> (String -> Msg) -> (Currencies.Symbol -> Msg) -
 currencyTypeDropdown searchInput searchChangedMsg selectedMsg =
     EH.modal
         (Element.rgba 0 0 0 0.1)
+        False
         NoOp
         (ShowCurrencyDropdown False)
     <|
