@@ -22,6 +22,7 @@ import Helpers.Element as EH
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
 import Images exposing (Image)
+import Markdown
 import PaymentMethods exposing (PaymentMethod)
 import Time
 import TokenValue exposing (TokenValue)
@@ -688,6 +689,12 @@ phaseElement viewPhase trade wallet expanded currentTime =
 
 paymentMethodElement : List PaymentMethod -> Element Msg
 paymentMethodElement paymentMethods =
+    let
+        maybePmText =
+            paymentMethods
+                |> List.head
+                |> Maybe.map .info
+    in
     Element.column
         [ Element.Border.rounded 12
         , Element.Background.color <| EH.lightGray
@@ -702,7 +709,7 @@ paymentMethodElement paymentMethods =
             , Element.centerX
             ]
             (Element.text "External Payment Method")
-        , Element.paragraph
+        , Element.el
             [ Element.Font.size 18
             , Element.height Element.shrink
             , Element.Background.color <| EH.white
@@ -715,13 +722,13 @@ paymentMethodElement paymentMethods =
             , Element.Border.rounded 3
             , Element.padding 5
             ]
-            [ paymentMethods
-                |> List.head
-                |> Maybe.map .info
-                |> Maybe.map Element.text
+            (maybePmText
+                |> Maybe.map (Markdown.toHtml Nothing)
+                |> Maybe.map (List.map Element.html)
+                |> Maybe.map (Element.paragraph [])
                 |> Maybe.withDefault
                     (Element.el [ Element.Font.color EH.disabledTextColor, Element.Font.italic ] <| Element.text "No payment methods found.")
-            ]
+            )
         ]
 
 
