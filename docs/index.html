@@ -3,14 +3,26 @@
 
 <head>
     <meta charSet="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=0.5, maximum-scale=0.5" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 
     <title>DAIHard</title>
     <link rel="stylesheet" href="https://use.typekit.net/exs6jpb.css">
     <link rel="shortcut icon" type="image/ico" href="/DAIHard/favicon.ico" />
     <style>
         body {
-            background-color: #F7F7FA
+            background-color: #F7F7FA;
+
+        }
+
+        @media (max-width: 700px) {
+            body {
+                -moz-transform: scale(0.25, 0.25);
+                /* Moz-browsers */
+                zoom: 0.25;
+                /* Other non-webkit browsers */
+                zoom: 25%;
+                /* Webkit browsers */
+            }
         }
     </style>
     <meta name="description" content="DAIHard" />
@@ -29,6 +41,6 @@
 
 <body>
     <div id='elm'></div>
-<script type="text/javascript" src="/DAIHard/static/js/main-a93f0f3355d385f423e0.js"></script></body>
+<script type="text/javascript" src="/DAIHard/static/js/main-5126f1387dc605e7ae44.js"></script></body>
 
 </html>
