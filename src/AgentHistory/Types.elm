@@ -38,7 +38,7 @@ type alias Model =
 
 type Msg
     = Poke Address
-    | TradeClicked FactoryType Int
+    | TradeClicked TradeReference
     | FiltersMsg Filters.Msg
     | TradeTableMsg TradeTable.Msg
     | UpdateNow Time.Posix

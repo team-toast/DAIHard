@@ -379,6 +379,7 @@ currencyTypeDropdown : String -> (String -> Msg) -> (Currencies.Symbol -> Msg) -
 currencyTypeDropdown searchInput searchChangedMsg selectedMsg =
     EH.modal
         (Element.rgba 0 0 0 0.1)
+        False
         NoOp
         (ShowCurrencyDropdown False)
     <|
@@ -415,7 +416,7 @@ currencyTypeDropdown searchInput searchChangedMsg selectedMsg =
                                 )
                             )
                    )
-                ++ (if not (List.member searchInput currenciesList) then
+                ++ (if not (List.member searchInput currenciesList) && searchInput /= "" then
                         [ ( Element.el [ Element.width Element.fill ] (Element.text <| "\"" ++ searchInput ++ "\"")
                           , [ searchInput ]
                           , selectedMsg <| searchInput

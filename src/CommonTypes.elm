@@ -1,4 +1,4 @@
-module CommonTypes exposing (BuyerOrSeller(..), FactoryType(..), GTagData, InitiatorOrResponder(..), IntervalType(..), NativeFactoryType(..), TokenFactoryType(..), UserInfo, buyerOrSellerToString, dhTokenList, factoryName, intervalTypeToString, networkNameForFactory, tokenSymbol, tokenUnitName)
+module CommonTypes exposing (BuyerOrSeller(..), FactoryType(..), GTagData, InitiatorOrResponder(..), IntervalType(..), NativeFactoryType(..), TokenFactoryType(..), TradeReference, UserInfo, buyerOrSellerToString, dhTokenList, factoryName, intervalTypeToString, networkNameForFactory, tokenSymbol, tokenUnitName)
 
 import Dict
 import Eth.Net
@@ -18,6 +18,12 @@ type alias GTagData =
 type FactoryType
     = Native NativeFactoryType
     | Token TokenFactoryType
+
+
+type alias TradeReference =
+    { factory : FactoryType
+    , id : Int
+    }
 
 
 type NativeFactoryType

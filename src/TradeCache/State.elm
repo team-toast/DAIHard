@@ -1,8 +1,8 @@
 module TradeCache.State exposing (init, initAndStartCaching, loadedValidTrades, startCaching, subscriptions, update)
 
-import CmdUp exposing (CmdUp)
 import Array exposing (Array)
 import BigInt exposing (BigInt)
+import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Contracts.Types as CTypes
 import Contracts.Wrappers
@@ -95,7 +95,7 @@ update msg prevModel =
 
                         trades =
                             List.range 0 (numTrades - 1)
-                                |> List.map (CTypes.partialTradeInfo prevModel.factory)
+                                |> List.map (CTypes.partialTradeInfo << TradeReference prevModel.factory)
                                 |> Array.fromList
                     in
                     UpdateResult
@@ -133,9 +133,9 @@ update msg prevModel =
                                     _ ->
                                         Just <|
                                             Contracts.Wrappers.getPhaseCmd
-                                                trade.factory
+                                                trade.reference.factory
                                                 trade.creationInfo.address
-                                                (PhaseFetched trade.factory trade.id)
+                                                (PhaseFetched trade.reference.factory trade.reference.id)
                             )
                         |> Maybe.Extra.values
                         |> Cmd.batch
@@ -225,7 +225,7 @@ update msg prevModel =
 
                             additionalTrades =
                                 List.range oldNumTrades (newNumTrades - 1)
-                                    |> List.map (CTypes.partialTradeInfo prevModel.factory)
+                                    |> List.map (CTypes.partialTradeInfo << TradeReference prevModel.factory)
                                     |> Array.fromList
 
                             oldState =

@@ -44,33 +44,9 @@ root model =
                 , body model
                 ]
             )
-        , telegramButton
         ]
     , viewModals model
     )
-
-
-telegramButton : Element Msg
-telegramButton =
-    Element.link
-        [ Element.Border.rounded 4
-        , Element.width Element.fill
-        , Element.pointer
-        , Element.paddingXY 22 15
-        , Element.Background.color EH.blue
-        , Element.Font.color EH.white
-        , Element.Font.semiBold
-        , Element.Font.size 20
-        , Element.centerX
-        , Element.width Element.shrink
-        , Element.height Element.shrink
-        ]
-        { url = "https://t.me/daihardexchange_group"
-        , label =
-            Element.paragraph
-                [ Element.Font.center ]
-                [ Element.text "Join the Telegram Group" ]
-        }
 
 
 header : Mode -> Element Msg
@@ -355,6 +331,7 @@ marginModal : Float -> String -> Maybe String -> Element Msg
 marginModal margin marginInput maybeError =
     EH.modal
         (Element.rgba 0 0 0 0.1)
+        False
         NoOp
         CloseModals
     <|
@@ -444,7 +421,7 @@ marginModal margin marginInput maybeError =
                     ]
                 , if margin < 0 then
                     button
-                        EH.lightRed
+                        EH.softRed
                         EH.white
                         "Loss"
                         Nothing
@@ -525,8 +502,8 @@ profitLossOrEven margin =
 
             else
                 ( "Loss"
-                , EH.lightRed |> EH.addAlpha 0.5
-                , EH.lightRed
+                , EH.softRed |> EH.addAlpha 0.05
+                , EH.softRed
                 )
     in
     Element.el
@@ -611,6 +588,7 @@ dhTokenTypeDropdown : (FactoryType -> Msg) -> Element Msg
 dhTokenTypeDropdown msgConstructor =
     EH.modal
         (Element.rgba 0 0 0 0.1)
+        False
         NoOp
         CloseModals
     <|
@@ -642,6 +620,7 @@ cryptoTypeDropdown : String -> (String -> Msg) -> (Currencies.Symbol -> Msg) -> 
 cryptoTypeDropdown searchInput searchChangedMsg selectedMsg =
     EH.modal
         (Element.rgba 0 0 0 0.1)
+        False
         NoOp
         CloseModals
     <|
@@ -676,6 +655,7 @@ fiatTypeDropdown : String -> (String -> Msg) -> (Currencies.Symbol -> Msg) -> El
 fiatTypeDropdown searchInput searchChangedMsg selectedMsg =
     EH.modal
         (Element.rgba 0 0 0 0.1)
+        False
         NoOp
         CloseModals
     <|
@@ -923,6 +903,7 @@ intervalModal intervalType userRole value input maybeError =
     in
     EH.modal
         (Element.rgba 0 0 0 0.1)
+        False
         NoOp
         CloseModals
     <|
@@ -1371,7 +1352,7 @@ txChainStatusModal txChainStatus model =
                                       , judgmentWindowEl
                                       , Element.text ", the Seller has the option of burning the trade's full balance of "
                                       , totalBurnableEl
-                                      , Element.text ". He is expected to do this if and only if you failed to send the "
+                                      , Element.text " (your deposit plus the sale amount). He is expected to do this if and only if you failed to send the "
                                       , priceEl
                                       , Element.text " to the address he posted."
                                       ]
@@ -1395,15 +1376,13 @@ txChainStatusModal txChainStatus model =
                                            )
 
                                 Seller ->
-                                    [ [ Element.text "Of your "
-                                      , depositAmountEl
-                                      , Element.text ", ~1% ("
-                                      , feeAmountEl
-                                      , Element.text ") will be set aside, and the remaining "
+                                    [ [ Element.text "Your "
                                       , tradeAmountEl
                                       , Element.text " will be listed as selling for "
                                       , priceEl
-                                      , Element.text "."
+                                      , Element.text ", and an additional 1% ("
+                                      , feeAmountEl
+                                      , Element.text ") will be set aside."
                                       ]
                                     , [ Element.text "You can abort the offer at any time before a Buyer commits, and if no Buyer commits within "
                                       , expiryWindowEl
@@ -1444,11 +1423,11 @@ txChainStatusModal txChainStatus model =
                                              , judgmentWindowEl
                                              , Element.text " you will have the option to burn the trade's balance of "
                                              , totalBurnableEl
-                                             , Element.text <| ", which you are expected to do if and only if the Buyer has not sent the payment."
+                                             , Element.text <| " (your sale amount plus the buyer's deposit), which you are expected to do if and only if the Buyer has not sent the payment."
                                              ]
                                            , [ Element.text "If the trade has resolved successfully, DAIHard takes the 1% fee of "
                                              , feeAmountEl
-                                             , Element.text " set aside earlier."
+                                             , Element.text " set aside earlier. Otherwise it is burned with the rest."
                                              ]
                                            ]
                                         ++ (case factoryType of
@@ -1464,6 +1443,7 @@ txChainStatusModal txChainStatus model =
                 )
                 NoOp
                 AbortCreate
+                False
 
         ApproveNeedsSig tokenType ->
             Element.el

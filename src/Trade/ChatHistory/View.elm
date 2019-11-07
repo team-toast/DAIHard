@@ -38,7 +38,7 @@ historyAndCommsElement model =
         , Element.padding 20
         ]
         [ historyElement
-            model.trade.factory
+            model.trade.reference.factory
             model.userRole
             (model.history |> Array.toList |> List.sortBy .blocknum)
         , commInputElement model

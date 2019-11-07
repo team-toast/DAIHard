@@ -22,6 +22,7 @@ import Helpers.Element as EH
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
 import Images exposing (Image)
+import Markdown
 import PaymentMethods exposing (PaymentMethod)
 import Time
 import TokenValue exposing (TokenValue)
@@ -36,14 +37,47 @@ root screenWidth time tradeCaches model =
     ( EH.submodelContainer
         1800
         Nothing
-        ("Trade at "
-            ++ (case CTypes.getCreationInfo model.trade of
-                    Just creationInfo ->
-                        Eth.Utils.addressToString creationInfo.address
+        (Just <|
+            Element.row
+                [ Element.width Element.fill ]
+                [ Element.el
+                    [ Element.centerX ]
+                  <|
+                    Element.text <|
+                        "Trade at "
+                            ++ (case CTypes.getCreationInfo model.trade of
+                                    Just creationInfo ->
+                                        Eth.Utils.addressToString creationInfo.address
+
+                                    _ ->
+                                        "..."
+                               )
+                , case model.trade of
+                    CTypes.LoadedTrade trade ->
+                        Element.el
+                            [ Element.below <|
+                                if model.showOptions then
+                                    EH.modal
+                                        (Element.rgba 0 0 0 0.1)
+                                        False
+                                        NoOp
+                                        (ToggleShowOptions False)
+                                        (optionsMenu trade)
+
+                                else
+                                    Element.none
+                            ]
+                            (Element.el
+                                [ Element.paddingXY 0 5
+                                , Element.pointer
+                                , EH.onClickNoPropagation (ToggleShowOptions True)
+                                ]
+                                EH.optionsDots
+                            )
 
                     _ ->
-                        "..."
-               )
+                        Element.none
+                ]
         )
         (Element.el
             [ Element.padding 30
@@ -86,6 +120,20 @@ root screenWidth time tradeCaches model =
       , getModalOrNone model
       ]
     )
+
+
+optionsMenu : CTypes.FullTradeInfo -> Element Msg
+optionsMenu trade =
+    EH.basicOpenDropdown
+        [ Element.moveDown 5
+        , Element.alignRight
+        , EH.moveToFront
+        ]
+        Nothing
+        [ ( Element.text "Duplicate"
+          , DuplicateClicked trade.reference
+          )
+        ]
 
 
 header : Time.Posix -> FullTradeInfo -> Wallet.State -> List TradeCache -> Bool -> Element Msg
@@ -134,7 +182,7 @@ tradeStatusElement trade =
                 , Element.Font.color EH.blue
                 , Element.Font.underline
                 ]
-                trade.factory
+                trade.reference.factory
                 trade.creationInfo.address
             ]
         )
@@ -322,7 +370,7 @@ statsElement trade tradeCaches showModal =
                     [ Element.moveDown 30
                     , Element.alignRight
                     ]
-                    (statsModal trade.factory trade.parameters.initiatorAddress userStats)
+                    (statsModal trade.reference.factory trade.parameters.initiatorAddress userStats)
                 )
             ]
 
@@ -369,7 +417,7 @@ statsElement trade tradeCaches showModal =
                       , Element.el
                             [ Element.Font.size 24
                             , Element.Font.medium
-                            , Element.Font.color <| EH.lightRed
+                            , Element.Font.color <| EH.softRed
                             ]
                             (Element.text (String.padLeft 2 '0' <| String.fromInt userStats.numBurns))
                       ]
@@ -641,6 +689,12 @@ phaseElement viewPhase trade wallet expanded currentTime =
 
 paymentMethodElement : List PaymentMethod -> Element Msg
 paymentMethodElement paymentMethods =
+    let
+        maybePmText =
+            paymentMethods
+                |> List.head
+                |> Maybe.map .info
+    in
     Element.column
         [ Element.Border.rounded 12
         , Element.Background.color <| EH.lightGray
@@ -655,7 +709,7 @@ paymentMethodElement paymentMethods =
             , Element.centerX
             ]
             (Element.text "External Payment Method")
-        , Element.paragraph
+        , Element.el
             [ Element.Font.size 18
             , Element.height Element.shrink
             , Element.Background.color <| EH.white
@@ -668,13 +722,13 @@ paymentMethodElement paymentMethods =
             , Element.Border.rounded 3
             , Element.padding 5
             ]
-            [ paymentMethods
-                |> List.head
-                |> Maybe.map .info
-                |> Maybe.map Element.text
+            (maybePmText
+                |> Maybe.map (Markdown.toHtml Nothing)
+                |> Maybe.map (List.map Element.html)
+                |> Maybe.map (Element.paragraph [])
                 |> Maybe.withDefault
                     (Element.el [ Element.Font.color EH.disabledTextColor, Element.Font.italic ] <| Element.text "No payment methods found.")
-            ]
+            )
         ]
 
 
@@ -883,16 +937,16 @@ phaseBodyElement viewPhase currentTime trade wallet =
             Element.el [ Element.Font.color emphasizedColor ] << Element.text
 
         scaryText =
-            Element.el [ Element.Font.color EH.lightRed ] << Element.text
+            Element.el [ Element.Font.color EH.softRed ] << Element.text
 
         tradeAmountString =
-            TokenValue.toConciseString trade.parameters.tradeAmount ++ " " ++ tokenUnitName trade.factory
+            TokenValue.toConciseString trade.parameters.tradeAmount ++ " " ++ tokenUnitName trade.reference.factory
 
         priceString =
             Currencies.toString trade.terms.price
 
         buyerDepositString =
-            TokenValue.toConciseString trade.parameters.buyerDeposit ++ " " ++ tokenUnitName trade.factory
+            TokenValue.toConciseString trade.parameters.buyerDeposit ++ " " ++ tokenUnitName trade.reference.factory
 
         tradePlusDepositString =
             (TokenValue.add
@@ -901,7 +955,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
                 |> TokenValue.toConciseString
             )
                 ++ " "
-                ++ tokenUnitName trade.factory
+                ++ tokenUnitName trade.reference.factory
 
         abortPunishment =
             trade.parameters.abortPunishment
@@ -910,7 +964,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
             TokenValue.toConciseString
                 abortPunishment
                 ++ " "
-                ++ tokenUnitName trade.factory
+                ++ tokenUnitName trade.reference.factory
 
         sellerAbortRefundString =
             TokenValue.toConciseString
@@ -919,7 +973,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
                     abortPunishment
                 )
                 ++ " "
-                ++ tokenUnitName trade.factory
+                ++ tokenUnitName trade.reference.factory
 
         buyerAbortRefundString =
             TokenValue.toConciseString
@@ -928,7 +982,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
                     abortPunishment
                 )
                 ++ " "
-                ++ tokenUnitName trade.factory
+                ++ tokenUnitName trade.reference.factory
 
         threeFlames =
             Element.row []
@@ -951,7 +1005,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
                                   , scaryText "Deposit and Commit to Trade"
                                   , Element.text "."
                                   ]
-                                , [ Element.text <| "If the trade is successful, the combined " ++ tokenUnitName trade.factory ++ " balance "
+                                , [ Element.text <| "If the trade is successful, the combined " ++ tokenUnitName trade.reference.factory ++ " balance "
                                   , emphasizedText <| "(" ++ tradePlusDepositString ++ ")"
                                   , Element.text " will be released to you. If anything goes wrong, there are "
                                   , scaryText "burnable punishments "
@@ -982,7 +1036,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
                                   ]
                                 , [ Element.text "When you receive the "
                                   , emphasizedText priceString
-                                  , Element.text <| " from the Buyer, the combined " ++ tokenUnitName trade.factory ++ " balance "
+                                  , Element.text <| " from the Buyer, the combined " ++ tokenUnitName trade.reference.factory ++ " balance "
                                   , emphasizedText <| "(" ++ tradePlusDepositString ++ ")"
                                   , Element.text " will be released to the Buyer. If anything goes wrong, there are "
                                   , scaryText "burnable punishments "
@@ -1241,7 +1295,7 @@ actionButtonsElement : Time.Posix -> FullTradeInfo -> Wallet.State -> Element Ms
 actionButtonsElement currentTime trade wallet =
     case Wallet.userInfo wallet of
         Just userInfo ->
-            if Wallet.networkForFactory trade.factory /= userInfo.network then
+            if Wallet.networkForFactory trade.reference.factory /= userInfo.network then
                 Element.paragraph
                     [ Element.Font.size 18
                     , Element.Font.italic
@@ -1249,7 +1303,7 @@ actionButtonsElement currentTime trade wallet =
                     ]
                     [ Element.text <|
                         "You must connect to the "
-                            ++ networkNameForFactory trade.factory
+                            ++ networkNameForFactory trade.reference.factory
                             ++ " network to interact with this trade."
                     ]
 
@@ -1343,6 +1397,7 @@ chatOverlayElement model =
                 (Element.map ChatHistoryMsg chatWindow)
                 NoOp
                 ToggleChat
+                False
 
     else
         Element.none
@@ -1363,7 +1418,7 @@ getModalOrNone model =
                             Currencies.toString trade.terms.price
 
                         daiAmountString =
-                            TokenValue.toConciseString trade.parameters.tradeAmount ++ " " ++ tokenUnitName trade.factory
+                            TokenValue.toConciseString trade.parameters.tradeAmount ++ " " ++ tokenUnitName trade.reference.factory
 
                         ( buyerOrSellerEl, agreeToWhatTextList ) =
                             case CTypes.getResponderRole trade.parameters of
@@ -1417,16 +1472,16 @@ getModalOrNone model =
                                         ]
                                     )
                                     ([ [ Element.text <| "You will deposit "
-                                       , Element.el [ Element.Font.color EH.blue ] <| Element.text <| depositAmountString ++ " " ++ tokenUnitName trade.factory
+                                       , Element.el [ Element.Font.color EH.blue ] <| Element.text <| depositAmountString ++ " " ++ tokenUnitName trade.reference.factory
                                        , Element.text ", thereby becoming the "
                                        , buyerOrSellerEl
                                        , Element.text " of this trade. By doing so, you are agreeing to "
                                        ]
                                         ++ agreeToWhatTextList
                                      ]
-                                        ++ (case trade.factory of
+                                        ++ (case trade.reference.factory of
                                                 Token _ ->
-                                                    [ [ Element.text <| "(This ususally requires two Metamask signatures. Your " ++ tokenUnitName trade.factory ++ " will not be deposited until the second transaction has been mined.)" ] ]
+                                                    [ [ Element.text <| "(This ususally requires two Metamask signatures. Your " ++ tokenUnitName trade.reference.factory ++ " will not be deposited until the second transaction has been mined.)" ] ]
 
                                                 _ ->
                                                     []
@@ -1442,6 +1497,7 @@ getModalOrNone model =
                         )
                         NoOp
                         AbortAction
+                        False
 
                 ApproveNeedsSig ->
                     EH.txProcessModal
@@ -1456,7 +1512,7 @@ getModalOrNone model =
                     EH.txProcessModal
                         [ Element.text "Mining the initial approve transaction..."
                         , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                            { url = EthHelpers.makeViewTxUrl trade.factory txHash
+                            { url = EthHelpers.makeViewTxUrl trade.reference.factory txHash
                             , label = Element.text "See the transaction on Etherscan"
                             }
                         , Element.text "Funds will not leave your wallet until you sign the next transaction."
@@ -1477,7 +1533,7 @@ getModalOrNone model =
                     EH.txProcessModal
                         [ Element.text "Mining the final commit transaction..."
                         , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                            { url = EthHelpers.makeViewTxUrl trade.factory txHash
+                            { url = EthHelpers.makeViewTxUrl trade.reference.factory txHash
                             , label = Element.text "See the transaction"
                             }
                         ]
@@ -1521,16 +1577,16 @@ getModalOrNone model =
                                             []
 
                                         Claim ->
-                                            [ [ Element.text <| "By clicking \"Confirm Payment\", you are claiming that you've paid the Seller in a way they can verify. Only do this if you are sure the Seller will agree that they have the money--otherwise they may burn the " ++ tokenUnitName trade.factory ++ " rather than release it to you." ] ]
+                                            [ [ Element.text <| "By clicking \"Confirm Payment\", you are claiming that you've paid the Seller in a way they can verify. Only do this if you are sure the Seller will agree that they have the money--otherwise they may burn the " ++ tokenUnitName trade.reference.factory ++ " rather than release it to you." ] ]
 
                                         Abort ->
-                                            [ [ Element.text <| "Aborting will incur a small penalty on both parties, and refund the rest of the " ++ tokenUnitName trade.factory ++ "." ] ]
+                                            [ [ Element.text <| "Aborting will incur a small penalty on both parties, and refund the rest of the " ++ tokenUnitName trade.reference.factory ++ "." ] ]
 
                                         Release ->
                                             [ [ Element.text "Releasing the payment will irreversibly send the trade's balance to the Buyer. Only do this if you are certain you've received the full agreed-upon payment." ] ]
 
                                         Burn ->
-                                            [ [ Element.text <| "This will destroy the " ++ tokenUnitName trade.factory ++ " in the payment. Only do this if the Buyer has attempted to scam you, is nonresponsive, or for some reason has failed the payment." ] ]
+                                            [ [ Element.text <| "This will destroy the " ++ tokenUnitName trade.reference.factory ++ " in the payment. Only do this if the Buyer has attempted to scam you, is nonresponsive, or for some reason has failed the payment." ] ]
                                     )
                                 )
                             , Element.el
@@ -1551,10 +1607,10 @@ getModalOrNone model =
                                         "I understand. Abort the trade."
 
                                     Release ->
-                                        "I understand. Release the " ++ tokenUnitName trade.factory ++ "."
+                                        "I understand. Release the " ++ tokenUnitName trade.reference.factory ++ "."
 
                                     Burn ->
-                                        "I understand. Burn the " ++ tokenUnitName trade.factory ++ "."
+                                        "I understand. Burn the " ++ tokenUnitName trade.reference.factory ++ "."
                                  )
                                     |> (\s -> EH.redButton s (StartContractAction action))
                                 )
@@ -1562,6 +1618,7 @@ getModalOrNone model =
                         )
                         NoOp
                         AbortAction
+                        False
 
                 ActionNeedsSig action ->
                     EH.txProcessModal

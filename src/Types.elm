@@ -48,6 +48,7 @@ type alias Model =
 
 type Submodel
     = InitialBlank
+    | FetchingRedeployForCreate TradeReference
     | CreateModel Create.Types.Model
     | TradeModel Trade.Types.Model
     | MarketplaceModel Marketplace.Types.Model
@@ -58,6 +59,7 @@ type Msg
     = LinkClicked Browser.UrlRequest
     | UrlChanged Url
     | GotoRoute Routing.Route
+    | CheckIfRedeployFetchComplete
     | Tick Time.Posix
     | CmdUp (CmdUp.CmdUp Msg)
     | ConnectToWeb3

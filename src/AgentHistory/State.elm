@@ -11,6 +11,7 @@ import Config exposing (..)
 import Contracts.Generated.DAIHardTrade as DHT
 import Contracts.Types as CTypes
 import Contracts.Wrappers
+import Currencies exposing (Price)
 import Eth
 import Eth.Sentry.Event as EventSentry exposing (EventSentry)
 import Eth.Types exposing (Address)
@@ -22,7 +23,6 @@ import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
 import PaymentMethods exposing (PaymentMethod)
 import PriceFetch
-import Currencies exposing (Price)
 import Routing
 import String.Extra
 import Time
@@ -82,19 +82,29 @@ update msg prevModel =
                 chainCmd
                 []
 
-        TradeClicked factory id ->
+        TradeClicked tradeRef ->
             UpdateResult
                 prevModel
                 Cmd.none
                 ChainCmd.none
-                [ CmdUp.GotoRoute (Routing.Trade factory id) ]
+                [ CmdUp.GotoRoute (Routing.Trade tradeRef) ]
 
         FiltersMsg filtersMsg ->
-            justModelUpdate
+            let
+                ( newFilters, cmdUps ) =
+                    prevModel.filters |> Filters.update filtersMsg
+            in
+            UpdateResult
                 { prevModel
                     | filters =
-                        prevModel.filters |> Filters.update filtersMsg
+                        newFilters
                 }
+                Cmd.none
+                ChainCmd.none
+                (List.map
+                    (CmdUp.map FiltersMsg)
+                    cmdUps
+                )
 
         TradeTableMsg tradeTableMsg ->
             let

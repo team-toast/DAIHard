@@ -25,6 +25,7 @@ import Json.Decode
 import Json.Encode
 import Json.Encode.Extra
 import List.Extra
+import Markdown
 import Maybe.Extra as Maybe
 
 
@@ -249,7 +250,8 @@ previewTextHack pm =
         , Element.clip
         ]
         (Element.paragraph
-            [ Element.Font.size 12
-            ]
-            [ Element.text pm.info ]
+            [ Element.Font.size 12 ]
+            (Markdown.toHtml Nothing pm.info
+                |> List.map Element.html
+            )
         )

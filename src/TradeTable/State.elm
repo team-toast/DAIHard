@@ -1,7 +1,8 @@
 module TradeTable.State exposing (init, update)
 
-import CmdUp exposing (CmdUp)
 import ChainCmd exposing (ChainCmd)
+import CmdUp exposing (CmdUp)
+import CommonTypes exposing (..)
 import Routing
 import TradeTable.Types exposing (..)
 
@@ -14,12 +15,20 @@ init =
 update : Msg -> Model -> UpdateResult
 update msg prevModel =
     case msg of
-        TradeClicked factory id ->
+        TradeClicked tradeRef ->
             UpdateResult
                 prevModel
                 Cmd.none
                 ChainCmd.none
-                [ CmdUp.GotoRoute <| Routing.Trade factory id ]
+                [ CmdUp.GotoRoute <| Routing.Trade tradeRef
+                , CmdUp.gTag
+                    "trade clicked"
+                    "navigation"
+                    (tradeRef.factory
+                        |> factoryName
+                    )
+                    tradeRef.id
+                ]
 
         ChangeSort newOrderCol ->
             let
@@ -30,11 +39,26 @@ update msg prevModel =
 
                     else
                         ( newOrderCol, Ascending )
+
+                gTagVal =
+                    if Tuple.second newOrderBy == Ascending then
+                        1
+
+                    else
+                        0
             in
-            justModelUpdate
+            UpdateResult
                 { prevModel
                     | orderBy = newOrderBy
                 }
+                Cmd.none
+                ChainCmd.none
+                [ CmdUp.gTag
+                    "change sort"
+                    "input"
+                    (colTypeToString newOrderCol)
+                    gTagVal
+                ]
 
         NoOp ->
             justModelUpdate prevModel

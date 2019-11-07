@@ -62,6 +62,7 @@ fiatCharsAndImages =
     , ( "THB", "฿" )
     , ( "ZAR", "R" )
     , ( "VND", "₫" )
+    , ( "ZWL", "$" )
     ]
         |> List.map
             (\( typeString, typeChar ) ->

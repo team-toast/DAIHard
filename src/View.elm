@@ -159,6 +159,18 @@ headerContent model =
                 _ ->
                     Normal
             )
+        , Element.el
+            [ Element.alignRight ]
+          <|
+            headerExternalLink "Blog" "https://medium.com/daihard-buidlers"
+        , Element.el
+            [ Element.alignRight ]
+          <|
+            headerExternalLink "Reddit" "https://reddit.com/r/DAIHard"
+        , Element.el
+            [ Element.alignRight ]
+          <|
+            headerExternalLink "Telegram" "https://t.me/daihardexchange_group"
         , Element.column
             [ Element.alignRight
             , Element.spacing 0
@@ -173,6 +185,32 @@ type HeaderLinkStyle
     = Normal
     | Active
     | Important
+
+
+headerLinkBaseStyles : List (Attribute Msg)
+headerLinkBaseStyles =
+    [ Element.paddingXY 23 12
+    , Element.Font.size 21
+    , Element.Font.semiBold
+    , Element.Font.color EH.white
+    , Element.pointer
+    , Element.spacing 13
+    ]
+
+
+headerExternalLink : String -> String -> Element Msg
+headerExternalLink title url =
+    Element.link
+        headerLinkBaseStyles
+        { url = url
+        , label =
+            Element.el
+                [ Element.centerY
+                , Element.height <| Element.px 26
+                ]
+            <|
+                Element.text title
+        }
 
 
 headerLink : Maybe Image -> String -> Msg -> HeaderLinkStyle -> Element Msg
@@ -194,14 +232,8 @@ headerLink maybeIcon title onClick style =
                     ]
     in
     Element.row
-        ([ Element.paddingXY 23 12
-         , Element.Font.size 21
-         , Element.Font.semiBold
-         , Element.Font.color EH.white
-         , Element.pointer
-         , Element.Events.onClick onClick
-         , Element.spacing 13
-         ]
+        (headerLinkBaseStyles
+            ++ [ Element.Events.onClick onClick ]
             ++ extraStyles
         )
         [ Maybe.map
@@ -377,6 +409,19 @@ submodelElementAndModal screenWidth model =
                         |> Tuple.mapBoth
                             (Element.map CreateMsg)
                             (List.map (Element.map CreateMsg))
+
+                FetchingRedeployForCreate _ ->
+                    ( EH.simpleSubmodelContainer
+                        800
+                        (Element.el
+                            [ Element.centerX
+                            , Element.padding 30
+                            , Element.Font.size 30
+                            ]
+                            (Element.text "Loading trade info...")
+                        )
+                    , []
+                    )
 
                 TradeModel tradeModel ->
                     Trade.View.root screenWidth model.time model.tradeCaches tradeModel

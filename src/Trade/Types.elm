@@ -29,6 +29,7 @@ type alias Model =
     , eventsWaitingForChatHistory : List ( Int, CTypes.DAIHardEvent )
     , showChatHistory : Bool
     , showStatsModal : Bool
+    , showOptions : Bool
     , secureCommInfo : SecureCommInfo
     , eventSentry : EventSentry Msg
     , allowance : Maybe BigInt
@@ -44,6 +45,8 @@ type Msg
     | ParametersFetched (Result Http.Error (Result String CTypes.TradeParameters))
     | PhaseInfoFetched (Result Http.Error (Maybe CTypes.PhaseStartInfo))
     | AllowanceFetched (Result Http.Error BigInt)
+    | ToggleShowOptions Bool
+    | DuplicateClicked TradeReference
     | CommitClicked CTypes.FullTradeInfo UserInfo BigInt
     | AbortAction
     | ConfirmCommit CTypes.FullTradeInfo UserInfo BigInt
