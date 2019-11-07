@@ -5,6 +5,7 @@ import Array exposing (Array)
 import BigInt
 import Browser
 import Browser.Dom
+import Browser.Events
 import Browser.Navigation
 import ChainCmd exposing (ChainCmd)
 import CmdDown
@@ -43,8 +44,8 @@ init : Flags -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init flags url key =
     let
         tooSmallNotice =
-            if flags.width < 1024 then
-                Just UN.screenToSmall
+            if Debug.log "width" flags.width < 1024 then
+                Just <| UN.screenToSmall flags.width
 
             else
                 Nothing
@@ -182,6 +183,13 @@ update msg model =
                     ( model
                     , requestNotifyPermissionPort ()
                     )
+
+        Resize width _ ->
+            ( { model
+                | screenWidth = width
+              }
+            , Cmd.none
+            )
 
         DismissNotice id ->
             ( { model
@@ -796,6 +804,7 @@ subscriptions model =
             |> List.indexedMap
                 (\tcId sub -> Sub.map (TradeCacheMsg tcId) sub)
             |> Sub.batch
+         , Browser.Events.onResize Resize
          ]
             ++ [ submodelSubscriptions model ]
         )

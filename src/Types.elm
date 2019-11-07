@@ -56,7 +56,8 @@ type Submodel
 
 
 type Msg
-    = LinkClicked Browser.UrlRequest
+    = Resize Int Int
+    | LinkClicked Browser.UrlRequest
     | UrlChanged Url
     | GotoRoute Routing.Route
     | CheckIfRedeployFetchComplete
