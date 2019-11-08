@@ -1,4 +1,4 @@
-module Images exposing (Image(..), aborted, addButton, backButton, burned, chatIcon, closeIcon, committedPhase, daiSymbol, downArrow, fiatBag, flame, image, judgmentPhase, loadingArrows, marginSymbol, marketplace, myTrades, newTrade, none, numberOnCircleEl, openPhase, openWindowIcon, pmBank, pmCash, pmCustom, qmarkCircle, release, releaseWindowIcon, released, searchIcon, stopWhite, swapArrows, toElement, upArrow, verticalSwapArrows)
+module Images exposing (Image(..), aborted, addButton, backButton, burned, chatIcon, closeIcon, committedPhaseBlack, committedPhaseWhite, daiSymbol, downArrow, fiatBag, flame, image, judgmentPhaseBlack, judgmentPhaseWhite, loadingArrows, marginSymbol, marketplace, myTrades, newTrade, none, numberOnCircleEl, openPhaseBlack, openPhaseWhite, openWindowIcon, pmBank, pmCash, pmCustom, qmarkCircle, release, releaseWindowIcon, released, searchIcon, stopWhite, swapArrows, toElement, upArrow, verticalSwapArrows)
 
 import Element exposing (Attribute, Element)
 import Time
@@ -224,26 +224,50 @@ burned =
         }
 
 
-openPhase : Image
-openPhase =
+openPhaseWhite : Image
+openPhaseWhite =
     JustImage
-        { src = "/DAIHard/static/img/diamond-give-white.svg"
+        { src = "/DAIHard/static/img/phase-open-white.svg"
         , description = "open phase"
         }
 
 
-committedPhase : Image
-committedPhase =
+committedPhaseWhite : Image
+committedPhaseWhite =
     JustImage
-        { src = "/DAIHard/static/img/phase-committed.svg"
+        { src = "/DAIHard/static/img/phase-committed-white.svg"
         , description = "committed phase"
         }
 
 
-judgmentPhase : Image
-judgmentPhase =
+judgmentPhaseWhite : Image
+judgmentPhaseWhite =
     JustImage
-        { src = "/DAIHard/static/img/time-clock-fire.svg"
+        { src = "/DAIHard/static/img/phase-judgment-white.svg"
+        , description = "judgment phase"
+        }
+
+
+openPhaseBlack : Image
+openPhaseBlack =
+    JustImage
+        { src = "/DAIHard/static/img/phase-open-black.svg"
+        , description = "open phase"
+        }
+
+
+committedPhaseBlack : Image
+committedPhaseBlack =
+    JustImage
+        { src = "/DAIHard/static/img/phase-committed-black.svg"
+        , description = "committed phase"
+        }
+
+
+judgmentPhaseBlack : Image
+judgmentPhaseBlack =
+    JustImage
+        { src = "/DAIHard/static/img/phase-judgment-black.svg"
         , description = "judgment phase"
         }
 

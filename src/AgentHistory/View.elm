@@ -178,7 +178,6 @@ maybeResultsElement time dProfile tcDoneLoading tradeCaches model =
             model.prices
             [ TradeTable.Phase
             , TradeTable.Offer
-            , TradeTable.Price
             , TradeTable.ResponderProfit
             , TradeTable.PaymentWindow
             , TradeTable.BurnWindow

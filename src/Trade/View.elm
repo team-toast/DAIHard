@@ -855,7 +855,7 @@ phaseIconElement viewPhase viewPhaseState =
                 |> Element.html
 
         image =
-            CTypes.phaseIcon viewPhase
+            CTypes.phaseIconWhite viewPhase
     in
     Element.el
         [ Element.centerX

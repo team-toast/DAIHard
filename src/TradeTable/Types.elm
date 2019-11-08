@@ -29,7 +29,7 @@ type ColType
     = Phase
     | Expires
     | Offer
-    | Price
+    | Windows
     | ResponderProfit
     | PaymentWindow
     | BurnWindow
@@ -47,8 +47,8 @@ colTypeToString colType =
         Offer ->
             "Offer"
 
-        Price ->
-            "Price"
+        Windows ->
+            "Windows"
 
         ResponderProfit ->
             "ResponderProfit"

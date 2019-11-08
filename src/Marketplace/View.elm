@@ -255,22 +255,32 @@ maybeResultsElement time dProfile onlyOpenTrades tcDoneLoading tradeCaches model
             )
 
     else
+        let
+            cols =
+                case dProfile of
+                    Desktop ->
+                        [ if onlyOpenTrades then
+                            TradeTable.Expires
+
+                          else
+                            TradeTable.Phase
+                        , TradeTable.Offer
+                        , TradeTable.ResponderProfit
+                        , TradeTable.PaymentWindow
+                        , TradeTable.BurnWindow
+                        ]
+
+                    Mobile ->
+                        [ TradeTable.Offer
+                        , TradeTable.Windows
+                        ]
+        in
         TradeTable.view
             time
             dProfile
             model.tradeTable
             model.prices
-            [ if onlyOpenTrades then
-                TradeTable.Expires
-
-              else
-                TradeTable.Phase
-            , TradeTable.Offer
-            , TradeTable.Price
-            , TradeTable.ResponderProfit
-            , TradeTable.PaymentWindow
-            , TradeTable.BurnWindow
-            ]
+            cols
             visibleTrades
             |> Element.map TradeTableMsg
 

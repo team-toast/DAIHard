@@ -178,14 +178,13 @@ daiValue tv =
 price : Price -> Element msg
 price p =
     Element.row [ Element.spacing 4 ]
-        [ Currencies.icon p.symbol |> Maybe.withDefault Element.none
+        [ Element.text <| Currencies.toStringNoSymbol p
         , Element.el
             [ Element.Font.color <| Element.rgba 0 0 0 0.5
             , Element.Font.medium
-            , Element.width <| Element.px 50
             ]
             (Element.text p.symbol)
-        , Element.text <| Currencies.toString p
+        , Currencies.icon p.symbol |> Maybe.withDefault Element.none
         ]
 
 
