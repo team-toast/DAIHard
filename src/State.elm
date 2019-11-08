@@ -44,8 +44,8 @@ init : Flags -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init flags url key =
     let
         tooSmallNotice =
-            if flags.width < 1024 then
-                Just UN.screenToSmall
+            if Debug.log "width" flags.width < 1024 then
+                Just <| UN.screenToSmall flags.width
 
             else
                 Nothing
@@ -197,6 +197,7 @@ update msg model =
                 |> update NoOp
 
         --|> update (CmdUp (CmdUp.UserNotice <| UN.debugMsg (String.fromInt width)))
+        
         DismissNotice id ->
             ( { model
                 | userNotices =

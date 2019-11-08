@@ -42,12 +42,12 @@ placeholderNotice s =
         [ [ Element.text s ] ]
 
 
-screenToSmall : UserNotice msg
-screenToSmall =
+screenToSmall : Int -> UserNotice msg
+screenToSmall width =
     { label = "screenToSmall"
     , noticeType = Caution
     , mainParagraphs =
-        [ [ Element.text "Your screen is quite small--things may be very broken! We will be addressing this soon." ] ]
+        [ [ Element.text <| "Your screen is quite small (" ++ String.fromInt width ++ "--things may be very broken! We will be addressing this soon." ] ]
     , align = TopLeft
     }
 
