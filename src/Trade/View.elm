@@ -32,8 +32,8 @@ import TradeCache.Types exposing (TradeCache)
 import Wallet
 
 
-root : Int -> Time.Posix -> List TradeCache -> Model -> ( Element Msg, List (Element Msg) )
-root screenWidth time tradeCaches model =
+root : DisplayProfile -> Time.Posix -> List TradeCache -> Model -> ( Element Msg, List (Element Msg) )
+root dProfile time tradeCaches model =
     ( EH.submodelContainer
         1800
         Nothing

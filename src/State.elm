@@ -5,6 +5,7 @@ import Array exposing (Array)
 import BigInt
 import Browser
 import Browser.Dom
+import Browser.Events
 import Browser.Navigation
 import ChainCmd exposing (ChainCmd)
 import CmdDown
@@ -72,9 +73,12 @@ init flags url key =
                     Just _ ->
                         Nothing
 
+        -- userNotices =
+        --     Maybe.Extra.values
+        --         [ tooSmallNotice, providerNotice ]
         userNotices =
             Maybe.Extra.values
-                [ tooSmallNotice, providerNotice ]
+                [ providerNotice ]
 
         txSentry =
             Wallet.httpProvider wallet
@@ -112,6 +116,9 @@ init flags url key =
                     )
                 |> Cmd.batch
 
+        dProfile =
+            screenWidthToDisplayProfile flags.width
+
         ( model, fromUrlCmd ) =
             { key = key
             , wallet = wallet
@@ -122,7 +129,7 @@ init flags url key =
             , submodel = InitialBlank
             , currentRoute = Routing.InitialBlank
             , userNotices = []
-            , screenWidth = flags.width
+            , dProfile = dProfile
             }
                 |> updateFromUrl url
                 |> runCmdUps cmdUps
@@ -183,6 +190,13 @@ update msg model =
                     , requestNotifyPermissionPort ()
                     )
 
+        Resize width _ ->
+            { model
+                | dProfile = screenWidthToDisplayProfile width
+            }
+                |> update NoOp
+
+        --|> update (CmdUp (CmdUp.UserNotice <| UN.debugMsg (String.fromInt width)))
         DismissNotice id ->
             ( { model
                 | userNotices =
@@ -796,6 +810,7 @@ subscriptions model =
             |> List.indexedMap
                 (\tcId sub -> Sub.map (TradeCacheMsg tcId) sub)
             |> Sub.batch
+         , Browser.Events.onResize Resize
          ]
             ++ [ submodelSubscriptions model ]
         )

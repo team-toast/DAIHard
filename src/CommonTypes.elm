@@ -1,10 +1,15 @@
-module CommonTypes exposing (BuyerOrSeller(..), FactoryType(..), GTagData, InitiatorOrResponder(..), IntervalType(..), NativeFactoryType(..), TokenFactoryType(..), TradeReference, UserInfo, buyerOrSellerToString, dhTokenList, factoryName, intervalTypeToString, networkNameForFactory, tokenSymbol, tokenUnitName)
+module CommonTypes exposing (BuyerOrSeller(..), DisplayProfile(..), FactoryType(..), GTagData, InitiatorOrResponder(..), IntervalType(..), NativeFactoryType(..), TokenFactoryType(..), TradeReference, UserInfo, buyerOrSellerToString, changeForMobile, dhTokenList, factoryName, intervalTypeToString, networkNameForFactory, screenWidthToDisplayProfile, tokenSymbol, tokenUnitName)
 
 import Dict
 import Eth.Net
 import Eth.Types exposing (Address)
 import Json.Decode
 import Json.Encode
+
+
+type DisplayProfile
+    = Desktop
+    | Mobile
 
 
 type alias GTagData =
@@ -58,6 +63,25 @@ type IntervalType
     = Expiry
     | Payment
     | Judgment
+
+
+screenWidthToDisplayProfile : Int -> DisplayProfile
+screenWidthToDisplayProfile width =
+    if width >= 1150 then
+        Desktop
+
+    else
+        Mobile
+
+
+changeForMobile : a -> DisplayProfile -> a -> a
+changeForMobile changed dProfile original =
+    case dProfile of
+        Desktop ->
+            original
+
+        Mobile ->
+            changed
 
 
 intervalTypeToString : IntervalType -> String

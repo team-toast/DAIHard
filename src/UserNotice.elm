@@ -1,4 +1,4 @@
-module UserNotice exposing (Alignment(..), NoticeType(..), UserNotice, cantConnectNoWeb3, cantFetchPrices, cantFindTradeWillRetry, fromBadFetchResultMaybe, inputError, invalidUrl, map, noWeb3Provider, oldPriceDataWarning, placeholderNotice, screenToSmall, tradeParametersNotDefault, unexpectedError, walletError, web3FetchError, web3MiningError, web3SigError, wrongWeb3Network)
+module UserNotice exposing (Alignment(..), NoticeType(..), UserNotice, cantConnectNoWeb3, cantFetchPrices, cantFindTradeWillRetry, debugMsg, fromBadFetchResultMaybe, inputError, invalidUrl, map, noWeb3Provider, oldPriceDataWarning, placeholderNotice, screenToSmall, tradeParametersNotDefault, unexpectedError, walletError, web3FetchError, web3MiningError, web3SigError, wrongWeb3Network)
 
 import Element exposing (Attribute, Element)
 import Element.Font
@@ -233,5 +233,15 @@ oldPriceDataWarning =
     , noticeType = Caution
     , mainParagraphs =
         [ [ Element.text "Uh oh, it looks like our price data might be out of date. You might want to double check the math..." ] ]
+    , align = BottomRight
+    }
+
+
+debugMsg : String -> UserNotice msg
+debugMsg s =
+    { label = "debug"
+    , noticeType = Caution
+    , mainParagraphs =
+        [ [ Element.text <| "debug: " ++ s ] ]
     , align = BottomRight
     }

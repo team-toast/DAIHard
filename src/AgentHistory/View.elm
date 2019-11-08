@@ -30,8 +30,8 @@ import TradeTable.View as TradeTable
 import Wallet
 
 
-root : Time.Posix -> List TradeCache -> Model -> Element Msg
-root time tradeCaches model =
+root : Time.Posix -> DisplayProfile -> List TradeCache -> Model -> Element Msg
+root time dProfile tradeCaches model =
     EH.simpleSubmodelContainer
         1800
         (Element.column
@@ -39,14 +39,14 @@ root time tradeCaches model =
             , Element.padding 30
             ]
             [ titleElement model
-            , statusAndFiltersElement tradeCaches model
+            , statusAndFiltersElement dProfile tradeCaches model
             , let
                 tcDoneLoading =
                     List.all
                         (TradeCache.loadingStatus >> (==) TradeCache.AllFetched)
                         tradeCaches
               in
-              maybeResultsElement time tcDoneLoading tradeCaches model
+              maybeResultsElement time dProfile tcDoneLoading tradeCaches model
             ]
         )
 
@@ -85,8 +85,8 @@ titleElement model =
             ]
 
 
-statusAndFiltersElement : List TradeCache -> Model -> Element Msg
-statusAndFiltersElement tradeCaches model =
+statusAndFiltersElement : DisplayProfile -> List TradeCache -> Model -> Element Msg
+statusAndFiltersElement dProfile tradeCaches model =
     let
         statusMsgElement s =
             Element.el
@@ -133,12 +133,12 @@ statusAndFiltersElement tradeCaches model =
         ]
         (Element.el
             [ Element.centerX ]
-            (Element.map FiltersMsg <| Filters.view model.filters)
+            (Element.map FiltersMsg <| Filters.view dProfile model.filters)
         )
 
 
-maybeResultsElement : Time.Posix -> Bool -> List TradeCache -> Model -> Element Msg
-maybeResultsElement time tcDoneLoading tradeCaches model =
+maybeResultsElement : Time.Posix -> DisplayProfile -> Bool -> List TradeCache -> Model -> Element Msg
+maybeResultsElement time dProfile tcDoneLoading tradeCaches model =
     let
         visibleTrades =
             tradeCaches
@@ -173,6 +173,7 @@ maybeResultsElement time tcDoneLoading tradeCaches model =
     else
         TradeTable.view
             time
+            dProfile
             model.tradeTable
             model.prices
             [ TradeTable.Phase

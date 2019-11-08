@@ -32,7 +32,7 @@ root model =
     , body =
         [ let
             ( pageEl, modalEls ) =
-                pageElementAndModal model.screenWidth model
+                pageElementAndModal model.dProfile model
 
             mainElementAttributes =
                 [ Element.width Element.fill
@@ -60,21 +60,21 @@ root model =
     }
 
 
-pageElementAndModal : Int -> Model -> ( Element Msg, List (Element Msg) )
-pageElementAndModal screenWidth model =
+pageElementAndModal : DisplayProfile -> Model -> ( Element Msg, List (Element Msg) )
+pageElementAndModal dProfile model =
     let
         ( submodelEl, modalEls ) =
-            submodelElementAndModal screenWidth model
+            submodelElementAndModal dProfile model
     in
     ( Element.column
-        [ Element.behindContent <| headerBackground
-        , Element.inFront <| headerContent model
+        [ Element.behindContent <| headerBackground dProfile
+        , Element.inFront <| headerContent dProfile model
         , Element.width Element.fill
         , Element.height Element.fill
-        , Element.padding 30
+        , Element.padding (30 |> changeForMobile 10 dProfile)
         ]
         [ Element.el
-            [ Element.height (Element.px 50) ]
+            [ Element.height (Element.px (80 |> changeForMobile 120 dProfile)) ]
             Element.none
         , submodelEl
         ]
@@ -82,8 +82,8 @@ pageElementAndModal screenWidth model =
     )
 
 
-headerBackground : Element Msg
-headerBackground =
+headerBackground : DisplayProfile -> Element Msg
+headerBackground dProfile =
     let
         bottomBackgroundColor =
             Element.rgb255 10 33 108
@@ -98,7 +98,7 @@ headerBackground =
         , Element.inFront <|
             Element.el
                 [ Element.width Element.fill
-                , Element.height <| Element.px 80
+                , Element.height <| Element.px (80 |> changeForMobile 120 dProfile)
                 , Element.Background.color headerColor
                 ]
                 Element.none
@@ -106,78 +106,102 @@ headerBackground =
         Element.none
 
 
-headerContent : Model -> Element Msg
-headerContent model =
+headerContent : DisplayProfile -> Model -> Element Msg
+headerContent dProfile model =
     Element.row
         [ Element.width Element.fill
-        , Element.spacing 30
-        , Element.paddingXY 30 17
+        , Element.spacing (30 |> changeForMobile 10 dProfile)
+        , Element.paddingXY 30 17 |> changeForMobile (Element.padding 10) dProfile
         ]
-        [ headerLink
-            (Just Images.marketplace)
-            "Marketplace"
-            (GotoRoute Routing.Marketplace)
-            (case model.submodel of
-                MarketplaceModel marketplaceModel ->
-                    Active
+        [ (Element.row |> changeForMobile Element.column dProfile)
+            [ Element.spacing (30 |> changeForMobile 10 dProfile)
+            , Element.alignTop
+            ]
+            [ headerLink
+                dProfile
+                (Just Images.marketplace)
+                "Marketplace"
+                (GotoRoute Routing.Marketplace)
+                (case model.submodel of
+                    MarketplaceModel marketplaceModel ->
+                        Active
 
-                _ ->
-                    Normal
-            )
-        , case Wallet.userInfo model.wallet of
-            Just userInfo ->
-                headerLink
-                    (Just Images.myTrades)
-                    "My Trades"
-                    (GotoRoute <| Routing.AgentHistory userInfo.address)
-                    (case model.submodel of
-                        AgentHistoryModel agentHistoryModel ->
-                            if agentHistoryModel.agentAddress == userInfo.address then
-                                Active
+                    _ ->
+                        Normal
+                )
+            , case Wallet.userInfo model.wallet of
+                Just userInfo ->
+                    headerLink
+                        dProfile
+                        (Just Images.myTrades)
+                        "My Trades"
+                        (GotoRoute <| Routing.AgentHistory userInfo.address)
+                        (case model.submodel of
+                            AgentHistoryModel agentHistoryModel ->
+                                if agentHistoryModel.agentAddress == userInfo.address then
+                                    Active
 
-                            else
+                                else
+                                    Normal
+
+                            _ ->
                                 Normal
+                        )
 
-                        _ ->
-                            Normal
-                    )
+                Nothing ->
+                    headerLink
+                        dProfile
+                        Nothing
+                        "Connect to Wallet"
+                        ConnectToWeb3
+                        Important
+            , headerLink
+                dProfile
+                (Just Images.newTrade)
+                "Create New Trade"
+                (GotoRoute <| Routing.CreateFiat)
+                (case model.submodel of
+                    CreateModel _ ->
+                        Active
 
-            Nothing ->
-                headerLink
-                    Nothing
-                    "Connect to Wallet"
-                    ConnectToWeb3
-                    Important
-        , headerLink
-            (Just Images.newTrade)
-            "Create New Trade"
-            (GotoRoute <| Routing.CreateFiat)
-            (case model.submodel of
-                CreateModel _ ->
-                    Active
+                    _ ->
+                        Normal
+                )
+            ]
+        , (Element.row |> changeForMobile Element.column dProfile)
+            [ Element.spacing (30 |> changeForMobile 10 dProfile)
+            , Element.alignTop
+            , Element.alignRight
+            ]
+            (let
+                smLinks =
+                    [ Element.el
+                        [ Element.centerY
+                        , Element.alignRight
+                        ]
+                      <|
+                        headerExternalLink dProfile "Blog" "https://medium.com/daihard-buidlers"
+                    , Element.el
+                        [ Element.centerY
+                        , Element.alignRight
+                        ]
+                      <|
+                        headerExternalLink dProfile "Reddit" "https://reddit.com/r/DAIHard"
+                    , Element.el
+                        [ Element.centerY
+                        , Element.alignRight
+                        ]
+                      <|
+                        headerExternalLink dProfile "Telegram" "https://t.me/daihardexchange_group"
+                    ]
+             in
+             case dProfile of
+                Desktop ->
+                    smLinks ++ [ logoElement dProfile ]
 
-                _ ->
-                    Normal
+                Mobile ->
+                    [ logoElement dProfile ] ++ smLinks
             )
-        , Element.el
-            [ Element.alignRight ]
-          <|
-            headerExternalLink "Blog" "https://medium.com/daihard-buidlers"
-        , Element.el
-            [ Element.alignRight ]
-          <|
-            headerExternalLink "Reddit" "https://reddit.com/r/DAIHard"
-        , Element.el
-            [ Element.alignRight ]
-          <|
-            headerExternalLink "Telegram" "https://t.me/daihardexchange_group"
-        , Element.column
-            [ Element.alignRight
-            , Element.spacing 0
-            , Element.paddingXY 8 0
-            ]
-            [ logoElement
-            ]
         ]
 
 
@@ -187,35 +211,55 @@ type HeaderLinkStyle
     | Important
 
 
-headerLinkBaseStyles : List (Attribute Msg)
-headerLinkBaseStyles =
-    [ Element.paddingXY 23 12
-    , Element.Font.size 21
-    , Element.Font.semiBold
-    , Element.Font.color EH.white
-    , Element.pointer
-    , Element.spacing 13
-    ]
+headerLinkBaseStyles : DisplayProfile -> List (Attribute Msg)
+headerLinkBaseStyles dProfile =
+    (case dProfile of
+        Desktop ->
+            [ Element.paddingXY 23 12
+            , Element.Font.size 21
+            , Element.Font.semiBold
+            , Element.spacing 13
+            ]
+
+        Mobile ->
+            [ Element.paddingXY 10 5
+            , Element.Font.size 16
+            , Element.spacing 6
+            ]
+    )
+        ++ [ Element.Font.color EH.white
+           , Element.pointer
+           , EH.noSelectText
+           ]
 
 
-headerExternalLink : String -> String -> Element Msg
-headerExternalLink title url =
+headerExternalLink : DisplayProfile -> String -> String -> Element Msg
+headerExternalLink dProfile title url =
     Element.link
-        headerLinkBaseStyles
+        [ Element.Font.size (21 |> changeForMobile 16 dProfile)
+        , Element.Font.semiBold
+        , Element.paddingXY 23 12 |> changeForMobile (Element.padding 0) dProfile
+        , Element.Font.color EH.white
+        , Element.pointer
+        , EH.noSelectText
+        ]
         { url = url
         , label =
             Element.el
                 [ Element.centerY
-                , Element.height <| Element.px 26
+                , Element.height <| Element.px (26 |> changeForMobile 14 dProfile)
                 ]
             <|
                 Element.text title
         }
 
 
-headerLink : Maybe Image -> String -> Msg -> HeaderLinkStyle -> Element Msg
-headerLink maybeIcon title onClick style =
+headerLink : DisplayProfile -> Maybe Image -> String -> Msg -> HeaderLinkStyle -> Element Msg
+headerLink dProfile maybeIcon title onClick style =
     let
+        height =
+            26 |> changeForMobile 18 dProfile
+
         extraStyles =
             case style of
                 Normal ->
@@ -232,34 +276,35 @@ headerLink maybeIcon title onClick style =
                     ]
     in
     Element.row
-        (headerLinkBaseStyles
+        (headerLinkBaseStyles dProfile
             ++ [ Element.Events.onClick onClick ]
             ++ extraStyles
         )
         [ Maybe.map
             (Images.toElement
-                [ Element.height <| Element.px 26 ]
+                [ Element.height <| Element.px height ]
             )
             maybeIcon
             |> Maybe.withDefault Element.none
         , Element.el
             [ Element.centerY
-            , Element.height <| Element.px 26
+            , Element.height <| Element.px height
             ]
           <|
             Element.text title
         ]
 
 
-logoElement : Element Msg
-logoElement =
+logoElement : DisplayProfile -> Element Msg
+logoElement dProfile =
     Element.el
-        [ Element.Font.size 29
+        [ Element.Font.size (29 |> changeForMobile 20 dProfile)
         , Element.Font.color EH.white
         , Element.Font.bold
         , Element.centerX
         , Element.pointer
         , Element.Events.onClick <| GotoRoute Routing.CreateFiat
+        , EH.noSelectText
         ]
         (Element.paragraph []
             [ Element.text "DAI"
@@ -394,8 +439,8 @@ headerMenuAttributes =
     ]
 
 
-submodelElementAndModal : Int -> Model -> ( Element Msg, List (Element Msg) )
-submodelElementAndModal screenWidth model =
+submodelElementAndModal : DisplayProfile -> Model -> ( Element Msg, List (Element Msg) )
+submodelElementAndModal dProfile model =
     let
         ( submodelEl, modalEls ) =
             case model.submodel of
@@ -405,7 +450,7 @@ submodelElementAndModal screenWidth model =
                     )
 
                 CreateModel createModel ->
-                    Create.View.root createModel
+                    Create.View.root dProfile createModel
                         |> Tuple.mapBoth
                             (Element.map CreateMsg)
                             (List.map (Element.map CreateMsg))
@@ -424,19 +469,19 @@ submodelElementAndModal screenWidth model =
                     )
 
                 TradeModel tradeModel ->
-                    Trade.View.root screenWidth model.time model.tradeCaches tradeModel
+                    Trade.View.root dProfile model.time model.tradeCaches tradeModel
                         |> Tuple.mapBoth
                             (Element.map TradeMsg)
                             (List.map (Element.map TradeMsg))
 
                 MarketplaceModel marketplaceModel ->
-                    Marketplace.View.root model.time model.tradeCaches marketplaceModel
+                    Marketplace.View.root model.time dProfile model.tradeCaches marketplaceModel
                         |> Tuple.mapBoth
                             (Element.map MarketplaceMsg)
                             (List.map (Element.map MarketplaceMsg))
 
                 AgentHistoryModel agentHistoryModel ->
-                    ( Element.map AgentHistoryMsg (AgentHistory.View.root model.time model.tradeCaches agentHistoryModel)
+                    ( Element.map AgentHistoryMsg (AgentHistory.View.root model.time dProfile model.tradeCaches agentHistoryModel)
                     , []
                     )
     in

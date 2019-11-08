@@ -22,8 +22,8 @@ import TokenValue exposing (TokenValue)
 import Wallet
 
 
-root : Model -> ( Element Msg, List (Element Msg) )
-root model =
+root : DisplayProfile -> Model -> ( Element Msg, List (Element Msg) )
+root dProfile model =
     ( Element.column
         [ Element.width Element.fill
         , Element.paddingEach

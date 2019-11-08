@@ -29,8 +29,8 @@ import TradeTable.Types as TradeTable
 import TradeTable.View as TradeTable
 
 
-root : Time.Posix -> List TradeCache -> Model -> ( Element Msg, List (Element Msg) )
-root time tradeCaches model =
+root : Time.Posix -> DisplayProfile -> List TradeCache -> Model -> ( Element Msg, List (Element Msg) )
+root time dProfile tradeCaches model =
     let
         onlyOpenPhaseChecked =
             let
@@ -59,16 +59,17 @@ root time tradeCaches model =
         (Element.column
             [ Element.width Element.fill
             , Element.height Element.fill
-            , Element.padding 30
+            , Element.padding (30 |> changeForMobile 10 dProfile)
             ]
             [ Element.row
                 [ Element.width Element.fill
                 , Element.spacing 10
                 ]
-                [ statusFiltersAndSearchElement tradeCaches model.filters model.inputs model.errors model.showCurrencyDropdown
+                [ statusFiltersAndSearchElement dProfile tradeCaches model.filters model.inputs model.errors model.showCurrencyDropdown
                 ]
             , maybeResultsElement
                 time
+                dProfile
                 onlyOpenPhaseChecked
                 tcDoneLoading
                 tradeCaches
@@ -79,8 +80,8 @@ root time tradeCaches model =
     )
 
 
-statusFiltersAndSearchElement : List TradeCache -> Filters.Model -> SearchInputs -> Errors -> Bool -> Element Msg
-statusFiltersAndSearchElement tradeCaches filters inputs errors showCurrencyDropdown =
+statusFiltersAndSearchElement : DisplayProfile -> List TradeCache -> Filters.Model -> SearchInputs -> Errors -> Bool -> Element Msg
+statusFiltersAndSearchElement dProfile tradeCaches filters inputs errors showCurrencyDropdown =
     let
         statusMsgElement s =
             Element.el
@@ -116,22 +117,33 @@ statusFiltersAndSearchElement tradeCaches filters inputs errors showCurrencyDrop
                     |> Maybe.Extra.values
                     |> List.map statusMsgElement
     in
-    Element.el
+    Element.column
         [ Element.width Element.fill
-        , Element.inFront <|
-            Element.column
-                [ Element.spacing 5
-                , Element.alignLeft
-                ]
-                statusMessages
+        , Element.padding 10
+        , Element.spacing 10
         ]
-    <|
-        Element.row
+        [ (Element.row |> changeForMobile Element.column dProfile)
             [ Element.centerX
-            , Element.spacing 50
+            , Element.spacing (50 |> changeForMobile 10 dProfile)
             ]
-            [ Element.map FiltersMsg <| Filters.view filters
-            , Element.row
+            [ Element.el
+                [ Element.centerX ]
+                (Element.map FiltersMsg <| Filters.view dProfile filters)
+            , searchAndMoreFilters dProfile inputs errors showCurrencyDropdown
+            ]
+        , Element.column
+            [ Element.spacing 5
+            , Element.centerX
+            ]
+            statusMessages
+        ]
+
+
+searchAndMoreFilters : DisplayProfile -> SearchInputs -> Errors -> Bool -> Element Msg
+searchAndMoreFilters dProfile inputs errors showCurrencyDropdown =
+    case dProfile of
+        Desktop ->
+            Element.row
                 [ Element.width Element.shrink
                 , Element.spacing 10
                 ]
@@ -162,7 +174,19 @@ statusFiltersAndSearchElement tradeCaches filters inputs errors showCurrencyDrop
                     [ applyButton, resetButton ]
                     |> withInputHeader " "
                 ]
-            ]
+
+        Mobile ->
+            Element.column
+                [ Element.centerX
+                , Element.Font.color EH.darkGray
+                , Element.Font.size 16
+                , Element.Font.italic
+                , Element.Font.bold
+                , Element.spacing 4
+                ]
+                [ Element.text "Visit DAIHard on Desktop"
+                , Element.text "for more search options!"
+                ]
 
 
 searchTermsDisplayElement : List String -> Element Msg
@@ -202,8 +226,8 @@ removeSearchTermButton term =
         (Element.text "x")
 
 
-maybeResultsElement : Time.Posix -> Bool -> Bool -> List TradeCache -> Model -> Element Msg
-maybeResultsElement time onlyOpenTrades tcDoneLoading tradeCaches model =
+maybeResultsElement : Time.Posix -> DisplayProfile -> Bool -> Bool -> List TradeCache -> Model -> Element Msg
+maybeResultsElement time dProfile onlyOpenTrades tcDoneLoading tradeCaches model =
     let
         visibleTrades =
             tradeCaches
@@ -233,6 +257,7 @@ maybeResultsElement time onlyOpenTrades tcDoneLoading tradeCaches model =
     else
         TradeTable.view
             time
+            dProfile
             model.tradeTable
             model.prices
             [ if onlyOpenTrades then

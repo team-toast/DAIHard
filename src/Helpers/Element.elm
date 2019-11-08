@@ -1,4 +1,4 @@
-module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, addAlpha, basicOpenDropdown, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredResponderProfit, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, maybeErrorElement, mediumGray, modal, moveToFront, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, optionsDots, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, redButton, releasedIconColor, responderProfitFloatToConciseString, responderProfitSymbol, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, searchableOpenDropdown, simpleSubmodelContainer, softRed, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, thinGrayHRuler, txProcessModal, uncoloredResponderProfit, white, withHeader, withInputHeader, withInputHeaderAndMaybeError, withSelectedUnderline, yellow)
+module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, addAlpha, basicOpenDropdown, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredResponderProfit, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, maybeErrorElement, mediumGray, modal, moveToFront, niceBottomBorderEl, niceFloatingRow, noSelectText, onClickNoPropagation, optionsDots, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, redButton, releasedIconColor, responderProfitFloatToConciseString, responderProfitSymbol, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, searchableOpenDropdown, simpleSubmodelContainer, softRed, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, thinGrayHRuler, txProcessModal, uncoloredResponderProfit, white, withHeader, withInputHeader, withInputHeaderAndMaybeError, withSelectedUnderline, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -625,6 +625,7 @@ button ( bgColor, bgHoverColor, bgPressedColor ) textColor text msg =
         , Element.Background.color bgColor
         , Element.mouseDown [ Element.Background.color bgPressedColor ]
         , Element.mouseOver [ Element.Background.color bgHoverColor ]
+        , noSelectText
         ]
         (Element.text text)
 
@@ -1134,13 +1135,7 @@ scrollbarYEl attrs body =
 simpleSubmodelContainer : Int -> Element msg -> Element msg
 simpleSubmodelContainer maxWidth el =
     Element.el
-        [ Element.paddingEach
-            { top = 60
-            , bottom = 40
-            , right = 0
-            , left = 0
-            }
-        , Element.width Element.fill
+        [ Element.width Element.fill
         ]
     <|
         Element.el
@@ -1413,3 +1408,9 @@ optionsDots =
         [ Element.spacing 7
         ]
         (List.repeat 3 circle)
+
+
+noSelectText : Attribute msg
+noSelectText =
+    Html.Attributes.style "user-select" "none"
+        |> Element.htmlAttribute

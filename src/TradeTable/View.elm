@@ -20,8 +20,8 @@ import TokenValue exposing (TokenValue)
 import TradeTable.Types exposing (..)
 
 
-view : Time.Posix -> Model -> List ( Currencies.Symbol, PriceFetch.PriceData ) -> List ColType -> List CTypes.FullTradeInfo -> Element Msg
-view time model prices colTypes trades =
+view : Time.Posix -> DisplayProfile -> Model -> List ( Currencies.Symbol, PriceFetch.PriceData ) -> List ColType -> List CTypes.FullTradeInfo -> Element Msg
+view time dProfile model prices colTypes trades =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
