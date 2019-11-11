@@ -129,6 +129,18 @@ headerContent dProfile model =
                     _ ->
                         Normal
                 )
+            , headerLink
+                dProfile
+                (Just Images.newTrade)
+                "Create New Trade"
+                (GotoRoute <| Routing.CreateFiat)
+                (case model.submodel of
+                    CreateModel _ ->
+                        Active
+
+                    _ ->
+                        Normal
+                )
             , case Wallet.userInfo model.wallet of
                 Just userInfo ->
                     headerLink
@@ -155,18 +167,6 @@ headerContent dProfile model =
                         "Connect to Wallet"
                         ConnectToWeb3
                         Important
-            , headerLink
-                dProfile
-                (Just Images.newTrade)
-                "Create New Trade"
-                (GotoRoute <| Routing.CreateFiat)
-                (case model.submodel of
-                    CreateModel _ ->
-                        Active
-
-                    _ ->
-                        Normal
-                )
             ]
         , let
             smLinks =
