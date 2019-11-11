@@ -359,11 +359,7 @@ update msg prevModel =
                         appCmds
 
                 Err httpErr ->
-                    UpdateResult
-                        prevModel
-                        Cmd.none
-                        ChainCmd.none
-                        [ CmdUp.UserNotice UN.cantFetchPrices ]
+                    justModelUpdate prevModel
 
         ChangeMode newMode ->
             let
