@@ -1,4 +1,4 @@
-module Images exposing (Image(..), aborted, addButton, backButton, burned, chatIcon, closeIcon, committedPhaseBlack, committedPhaseWhite, daiSymbol, downArrow, fiatBag, flame, image, judgmentPhaseBlack, judgmentPhaseWhite, loadingArrows, marginSymbol, marketplace, myTrades, newTrade, none, numberOnCircleEl, openPhaseBlack, openPhaseWhite, openWindowIcon, pmBank, pmCash, pmCustom, qmarkCircle, release, releaseWindowIcon, released, searchIcon, stopWhite, swapArrows, toElement, upArrow, verticalSwapArrows)
+module Images exposing (Image(..), aborted, addButton, backButton, burned, chatIcon, closeIcon, committedPhaseBlack, committedPhaseWhite, daiSymbol, downArrow, fiatBag, flame, image, judgmentPhaseBlack, judgmentPhaseWhite, loadingArrows, marginSymbol, marketplace, myTrades, newTrade, none, numberOnCircleEl, openPhaseBlack, openPhaseWhite, openWindowIcon, pmBank, pmCash, pmCustom, qmarkCircle, release, releaseWindowIcon, released, searchIcon, stopWhite, swapArrows, threeDotsHorizontal, threeDotsVertical, toElement, upArrow, verticalSwapArrows)
 
 import Element exposing (Attribute, Element)
 import Time
@@ -328,4 +328,20 @@ newTrade =
     JustImage
         { src = "/DAIHard/static/img/add-circle-bold.svg"
         , description = "newTrade"
+        }
+
+
+threeDotsHorizontal : Image
+threeDotsHorizontal =
+    JustImage
+        { src = "/DAIHard/static/img/3-dots-big-horizontal.png"
+        , description = "options"
+        }
+
+
+threeDotsVertical : Image
+threeDotsVertical =
+    JustImage
+        { src = "/DAIHard/static/img/3-dots-small-vertical.svg"
+        , description = "options"
         }

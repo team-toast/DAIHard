@@ -36,22 +36,40 @@ root : DisplayProfile -> Time.Posix -> List TradeCache -> Model -> ( Element Msg
 root dProfile time tradeCaches model =
     ( EH.submodelContainer
         1800
+        dProfile
         Nothing
         (Just <|
             Element.row
                 [ Element.width Element.fill ]
-                [ Element.el
-                    [ Element.centerX ]
-                  <|
-                    Element.text <|
-                        "Trade at "
-                            ++ (case CTypes.getCreationInfo model.trade of
-                                    Just creationInfo ->
-                                        Eth.Utils.addressToString creationInfo.address
+                [ let
+                    addrStr =
+                        case CTypes.getCreationInfo model.trade of
+                            Just creationInfo ->
+                                Eth.Utils.addressToString creationInfo.address
 
-                                    _ ->
-                                        "..."
-                               )
+                            _ ->
+                                "..."
+                  in
+                  case dProfile of
+                    Desktop ->
+                        Element.el
+                            [ Element.centerX
+                            , Element.Font.size 18
+                            ]
+                        <|
+                            Element.text <|
+                                "Trade at "
+                                    ++ addrStr
+
+                    Mobile ->
+                        Element.column
+                            [ Element.centerX
+                            , Element.Font.size 12
+                            , Element.padding 4
+                            ]
+                            [ Element.el [ Element.centerX ] <| Element.text "Trade at"
+                            , Element.el [ Element.centerX ] <| Element.text addrStr
+                            ]
                 , case model.trade of
                     CTypes.LoadedTrade trade ->
                         Element.el
@@ -66,13 +84,17 @@ root dProfile time tradeCaches model =
 
                                 else
                                     Element.none
+                            , Element.alignRight
+                            , Element.centerY
                             ]
                             (Element.el
-                                [ Element.paddingXY 0 5
+                                [ Element.paddingXY 5 5
+                                , Element.centerY
                                 , Element.pointer
                                 , EH.onClickNoPropagation (ToggleShowOptions True)
                                 ]
-                                EH.optionsDots
+                             <|
+                                EH.optionsDots dProfile
                             )
 
                     _ ->

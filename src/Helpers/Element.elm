@@ -1152,16 +1152,10 @@ simpleSubmodelContainer maxWidth el =
             el
 
 
-submodelContainer : Int -> Maybe String -> Maybe (Element msg) -> Element msg -> Element msg
-submodelContainer maxWidth maybeBigTitleText maybeTitleEl el =
+submodelContainer : Int -> DisplayProfile -> Maybe String -> Maybe (Element msg) -> Element msg -> Element msg
+submodelContainer maxWidth dProfile maybeBigTitleText maybeTitleEl el =
     Element.column
-        [ Element.paddingEach
-            { top = 60
-            , bottom = 40
-            , right = 0
-            , left = 0
-            }
-        , Element.spacing 60
+        [ Element.spacing 60
         , Element.width Element.fill
         ]
         [ Maybe.map
@@ -1191,7 +1185,7 @@ submodelContainer maxWidth maybeBigTitleText maybeTitleEl el =
             [ Maybe.map
                 (Element.el
                     [ Element.width Element.fill
-                    , Element.padding 15
+                    , Element.padding (15 |> changeForMobile 5 dProfile)
                     , Element.Background.color white
                     , Element.Border.shadow
                         { offset = ( 0, 0 )
@@ -1392,21 +1386,18 @@ moveToFront =
     Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
 
 
-optionsDots : Element msg
-optionsDots =
-    let
-        circle =
-            Element.el [ Element.width Element.shrink ]
-                (Collage.circle 5
-                    |> Collage.filled (Collage.uniform Color.darkGray)
-                    |> Collage.Render.svg
-                    |> Element.html
-                )
-    in
-    Element.row
-        [ Element.spacing 7
-        ]
-        (List.repeat 3 circle)
+optionsDots : DisplayProfile -> Element msg
+optionsDots dProfile =
+    case dProfile of
+        Desktop ->
+            Images.toElement
+                []
+                Images.threeDotsHorizontal
+
+        Mobile ->
+            Images.toElement
+                [ Element.paddingXY 5 0 ]
+                Images.threeDotsVertical
 
 
 noSelectText : Attribute msg
