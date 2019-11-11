@@ -168,40 +168,49 @@ headerContent dProfile model =
                         Normal
                 )
             ]
-        , (Element.row |> changeForMobile Element.column dProfile)
-            [ Element.spacing (30 |> changeForMobile 10 dProfile)
-            , Element.alignTop
-            , Element.alignRight
-            ]
-            (let
-                smLinks =
-                    [ Element.el
-                        [ Element.centerY
-                        , Element.alignRight
-                        ]
-                      <|
-                        headerExternalLink dProfile "Blog" "https://medium.com/daihard-buidlers"
-                    , Element.el
-                        [ Element.centerY
-                        , Element.alignRight
-                        ]
-                      <|
-                        headerExternalLink dProfile "Reddit" "https://reddit.com/r/DAIHard"
-                    , Element.el
-                        [ Element.centerY
-                        , Element.alignRight
-                        ]
-                      <|
-                        headerExternalLink dProfile "Telegram" "https://t.me/daihardexchange_group"
+        , let
+            smLinks =
+                [ Element.el
+                    [ Element.centerY
+                    , Element.alignRight
                     ]
-             in
-             case dProfile of
-                Desktop ->
-                    smLinks ++ [ logoElement dProfile ]
+                  <|
+                    headerExternalLink dProfile "Blog" "https://medium.com/daihard-buidlers"
+                , Element.el
+                    [ Element.centerY
+                    , Element.alignRight
+                    ]
+                  <|
+                    headerExternalLink dProfile "Reddit" "https://reddit.com/r/DAIHard"
+                , Element.el
+                    [ Element.centerY
+                    , Element.alignRight
+                    ]
+                  <|
+                    headerExternalLink dProfile "Telegram" "https://t.me/daihardexchange_group"
+                ]
+          in
+          case dProfile of
+            Desktop ->
+                Element.column
+                    [ Element.spacing 5
+                    , Element.alignRight
+                    , Element.alignTop
+                    ]
+                    [ Element.el [ Element.alignRight ] <| logoElement dProfile
+                    , Element.row
+                        [ Element.spacing 10
+                        ]
+                        smLinks
+                    ]
 
-                Mobile ->
-                    [ logoElement dProfile ] ++ smLinks
-            )
+            Mobile ->
+                Element.column
+                    [ Element.spacing 10
+                    , Element.alignTop
+                    , Element.alignRight
+                    ]
+                    ([ logoElement dProfile ] ++ smLinks)
         ]
 
 
@@ -236,9 +245,8 @@ headerLinkBaseStyles dProfile =
 headerExternalLink : DisplayProfile -> String -> String -> Element Msg
 headerExternalLink dProfile title url =
     Element.link
-        [ Element.Font.size (21 |> changeForMobile 16 dProfile)
+        [ Element.Font.size 16
         , Element.Font.semiBold
-        , Element.paddingXY 23 12 |> changeForMobile (Element.padding 0) dProfile
         , Element.Font.color EH.white
         , Element.pointer
         , EH.noSelectText
