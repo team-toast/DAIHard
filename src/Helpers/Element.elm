@@ -1170,7 +1170,7 @@ submodelContainer maxWidth dProfile maybeBigTitleText maybeTitleEl el =
             |> Maybe.withDefault Element.none
         , Element.column
             [ Element.Background.color <| submodelBackgroundColor
-            , Element.spacing 20
+            , Element.spacing (20 |> changeForMobile 5 dProfile)
             , Element.Border.rounded 8
             , Element.clip
             , Element.centerX

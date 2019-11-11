@@ -102,7 +102,7 @@ root dProfile time tradeCaches model =
                 ]
         )
         (Element.el
-            [ Element.padding 30
+            [ Element.padding (30 |> changeForMobile 10 dProfile)
             , Element.width Element.fill
             ]
             (case model.trade of
@@ -112,13 +112,13 @@ root dProfile time tradeCaches model =
                         , Element.height Element.fill
                         , Element.spacing 40
                         ]
-                        [ header time tradeInfo model.wallet tradeCaches model.showStatsModal
+                        [ header time dProfile tradeInfo model.wallet tradeCaches model.showStatsModal
                         , Element.el
                             [ Element.width Element.fill
-                            , Element.paddingXY 40 0
+                            , Element.paddingXY 40 0 |> changeForMobile (Element.paddingXY 10 0) dProfile
                             , Element.spacing 40
                             ]
-                            (phasesElement tradeInfo model.expandedPhase model.wallet time)
+                            (phasesElement dProfile tradeInfo model.expandedPhase model.wallet time)
                         ]
 
                 CTypes.PartiallyLoadedTrade partialTradeInfo ->
@@ -158,17 +158,29 @@ optionsMenu trade =
         ]
 
 
-header : Time.Posix -> FullTradeInfo -> Wallet.State -> List TradeCache -> Bool -> Element Msg
-header currentTime trade wallet tradeCaches showStatsModal =
-    Element.row
-        [ Element.width Element.fill
-        , Element.spaceEvenly
-        ]
-        [ tradeStatusElement trade
-        , daiAmountElement trade wallet
-        , fiatElement trade
-        , statsElement trade tradeCaches showStatsModal
-        ]
+header : Time.Posix -> DisplayProfile -> FullTradeInfo -> Wallet.State -> List TradeCache -> Bool -> Element Msg
+header currentTime dProfile trade wallet tradeCaches showStatsModal =
+    case dProfile of
+        Desktop ->
+            Element.row
+                [ Element.width Element.fill
+                , Element.spaceEvenly
+                ]
+                [ tradeStatusElement trade
+                , daiAmountElement trade wallet
+                , fiatElement trade
+                , statsElement dProfile trade tradeCaches showStatsModal
+                ]
+
+        Mobile ->
+            Element.row
+                [ Element.width Element.fill
+                ]
+                [ Element.el [ Element.alignLeft, Element.alignTop ] <|
+                    offerElement trade
+                , Element.el [ Element.alignRight, Element.alignTop ] <|
+                    statsElement dProfile trade tradeCaches showStatsModal
+                ]
 
 
 tradeStatusElement : FullTradeInfo -> Element Msg
@@ -208,6 +220,54 @@ tradeStatusElement trade =
                 trade.creationInfo.address
             ]
         )
+
+
+offerElement : FullTradeInfo -> Element Msg
+offerElement trade =
+    let
+        preDaiText =
+            case trade.parameters.initiatorRole of
+                Buyer ->
+                    "Buying"
+
+                Seller ->
+                    "Selling"
+    in
+    Element.column
+        [ Element.spacing 5
+        , Element.alignTop
+        ]
+        [ Element.el
+            [ Element.Font.size 18
+            , Element.Font.bold
+            , Element.centerX
+            ]
+            (Element.text "Offer")
+        , Element.row
+            [ Element.spacing 7
+            , Element.Font.size 16
+            ]
+            [ Element.column
+                [ Element.spacing 5
+                ]
+                [ Element.el [ Element.alignRight ] <|
+                    Element.text preDaiText
+                , Element.el [ Element.alignRight ] <|
+                    Element.text "for"
+                ]
+            , Element.column
+                [ Element.spacing 5 ]
+                [ Element.el [ Element.alignLeft ] <|
+                    Element.text <|
+                        TokenValue.toConciseString trade.parameters.tradeAmount
+                            ++ " "
+                            ++ tokenUnitName trade.reference.factory
+                , Element.el [ Element.alignLeft ] <|
+                    Element.text <|
+                        Currencies.toString trade.terms.price
+                ]
+            ]
+        ]
 
 
 daiAmountElement : FullTradeInfo -> Wallet.State -> Element Msg
@@ -374,8 +434,8 @@ generateUserStats tradeCaches forRole userAddress =
     }
 
 
-statsElement : FullTradeInfo -> List TradeCache -> Bool -> Element Msg
-statsElement trade tradeCaches showModal =
+statsElement : DisplayProfile -> FullTradeInfo -> List TradeCache -> Bool -> Element Msg
+statsElement dProfile trade tradeCaches showModal =
     let
         userStats =
             trade.parameters.initiatorAddress
@@ -384,72 +444,101 @@ statsElement trade tradeCaches showModal =
         headerText =
             buyerOrSellerToString trade.parameters.initiatorRole
                 ++ " Stats"
-    in
-    Element.el
-        (if showModal then
-            [ Element.below
-                (Element.el
-                    [ Element.moveDown 30
-                    , Element.alignRight
-                    ]
-                    (statsModal trade.reference.factory trade.parameters.initiatorAddress userStats)
-                )
-            ]
 
-         else
-            []
-        )
-    <|
-        EH.withHeader
-            headerText
-            (Element.row
+        statsEl =
+            let
+                ( fontSize, imageHeight ) =
+                    case dProfile of
+                        Desktop ->
+                            ( 24, 28 )
+
+                        Mobile ->
+                            ( 18, 22 )
+            in
+            Element.row
                 [ Element.width Element.fill
-                , Element.spacing 20
+                , Element.spacing (20 |> changeForMobile 10 dProfile)
+                , Element.padding (0 |> changeForMobile 7 dProfile)
                 , Element.pointer
                 , EH.onClickNoPropagation ToggleStatsModal
+                , Element.Font.size fontSize
                 ]
                 (List.map
                     (Element.row [ Element.spacing 5 ])
                     [ [ Images.toElement
-                            [ Element.height <| Element.px 28
+                            [ Element.height <| Element.px imageHeight
                             ]
                             Images.released
                       , Element.el
-                            [ Element.Font.size 24
-                            , Element.Font.medium
+                            [ Element.Font.medium
                             , Element.Font.color <| EH.releasedIconColor
                             ]
                             (Element.text (String.padLeft 2 '0' <| String.fromInt userStats.numReleases))
                       ]
                     , [ Images.toElement
-                            [ Element.height <| Element.px 28
+                            [ Element.height <| Element.px imageHeight
                             ]
                             Images.aborted
                       , Element.el
-                            [ Element.Font.size 24
-                            , Element.Font.medium
+                            [ Element.Font.medium
                             , Element.Font.color <| EH.abortedIconColor
                             ]
                             (Element.text (String.padLeft 2 '0' <| String.fromInt userStats.numAborts))
                       ]
                     , [ Images.toElement
-                            [ Element.height <| Element.px 28
+                            [ Element.height <| Element.px imageHeight
                             ]
                             Images.burned
                       , Element.el
-                            [ Element.Font.size 24
-                            , Element.Font.medium
+                            [ Element.Font.medium
                             , Element.Font.color <| EH.softRed
                             ]
                             (Element.text (String.padLeft 2 '0' <| String.fromInt userStats.numBurns))
                       ]
                     ]
                 )
-            )
+    in
+    Element.el
+        ([ Element.alignTop ]
+            ++ (if showModal then
+                    [ Element.below
+                        (Element.el
+                            [ Element.moveDown (30 |> changeForMobile 10 dProfile)
+                            , Element.alignRight
+                            ]
+                            (statsModal dProfile trade.reference.factory trade.parameters.initiatorAddress userStats)
+                        )
+                    ]
+
+                else
+                    []
+               )
+        )
+        (case dProfile of
+            Desktop ->
+                EH.withHeader
+                    headerText
+                    statsEl
+
+            Mobile ->
+                Element.column
+                    [ Element.spacing 5
+                    , Element.alignTop
+                    ]
+                    [ Element.el
+                        [ Element.Font.size 18
+                        , Element.Font.bold
+                        , Element.centerX
+                        , Element.alignTop
+                        ]
+                        (Element.text headerText)
+                    , statsEl
+                    ]
+        )
 
 
-statsModal : FactoryType -> Address -> Stats -> Element Msg
-statsModal factoryType address stats =
+statsModal : DisplayProfile -> FactoryType -> Address -> Stats -> Element Msg
+statsModal dProfile factoryType address stats =
     let
         statEl titleString statString =
             Element.column
@@ -542,8 +631,8 @@ statsModal factoryType address stats =
         ]
 
 
-phasesElement : FullTradeInfo -> CTypes.Phase -> Wallet.State -> Time.Posix -> Element Msg
-phasesElement trade expandedPhase wallet currentTime =
+phasesElement : DisplayProfile -> FullTradeInfo -> CTypes.Phase -> Wallet.State -> Time.Posix -> Element Msg
+phasesElement dProfile trade expandedPhase wallet currentTime =
     case trade.state.phase of
         CTypes.Closed ->
             Element.row
@@ -561,21 +650,34 @@ phasesElement trade expandedPhase wallet currentTime =
                 ]
 
         _ ->
-            Element.column
-                [ Element.width Element.fill
-                , Element.spacing 10
-                ]
-                [ Element.row
-                    [ Element.width Element.fill
-                    , Element.height Element.shrink
-                    , Element.spacing 20
-                    ]
-                    [ phaseElement CTypes.Open trade wallet (expandedPhase == CTypes.Open) currentTime
-                    , phaseElement CTypes.Committed trade wallet (expandedPhase == CTypes.Committed) currentTime
-                    , phaseElement CTypes.Judgment trade wallet (expandedPhase == CTypes.Judgment) currentTime
-                    ]
-                , paymentMethodElement trade.terms.paymentMethods
-                ]
+            case dProfile of
+                Desktop ->
+                    Element.column
+                        [ Element.width Element.fill
+                        , Element.spacing 10
+                        ]
+                        [ Element.row
+                            [ Element.width Element.fill
+                            , Element.height Element.shrink
+                            , Element.spacing 20
+                            ]
+                            [ phaseElement dProfile CTypes.Open trade wallet (expandedPhase == CTypes.Open) currentTime
+                            , phaseElement dProfile CTypes.Committed trade wallet (expandedPhase == CTypes.Committed) currentTime
+                            , phaseElement dProfile CTypes.Judgment trade wallet (expandedPhase == CTypes.Judgment) currentTime
+                            ]
+                        , paymentMethodElement trade.terms.paymentMethods
+                        ]
+
+                Mobile ->
+                    Element.column
+                        [ Element.width Element.fill
+                        , Element.spacing 10
+                        ]
+                        [ phaseElement dProfile CTypes.Open trade wallet True currentTime
+                        , phaseElement dProfile CTypes.Committed trade wallet True currentTime
+                        , phaseElement dProfile CTypes.Judgment trade wallet True currentTime
+                        , paymentMethodElement trade.terms.paymentMethods
+                        ]
 
 
 activePhaseAttributes =
@@ -607,13 +709,12 @@ phaseState trade phase =
         Finished
 
 
-phaseElement : CTypes.Phase -> FullTradeInfo -> Wallet.State -> Bool -> Time.Posix -> Element Msg
-phaseElement viewPhase trade wallet expanded currentTime =
+phaseElement : DisplayProfile -> CTypes.Phase -> FullTradeInfo -> Wallet.State -> Bool -> Time.Posix -> Element Msg
+phaseElement dProfile viewPhase trade wallet expanded currentTime =
     let
         commonPhaseAttributes =
-            [ Element.Border.rounded 12
+            [ Element.Border.rounded (12 |> changeForMobile 8 dProfile)
             , Element.alignTop
-            , Element.height (Element.shrink |> Element.minimum 380)
             , Element.Border.shadow
                 { offset = ( 0, 0 )
                 , size = 0
@@ -621,6 +722,13 @@ phaseElement viewPhase trade wallet expanded currentTime =
                 , color = Element.rgba 0 0 0 0.2
                 }
             ]
+                ++ (case dProfile of
+                        Desktop ->
+                            [ Element.height (Element.shrink |> Element.minimum 380) ]
+
+                        Mobile ->
+                            []
+                   )
 
         viewPhaseState =
             phaseState trade viewPhase
@@ -654,6 +762,7 @@ phaseElement viewPhase trade wallet expanded currentTime =
 
         firstEl =
             phaseStatusElement
+                dProfile
                 viewPhase
                 trade
                 currentTime
@@ -668,20 +777,30 @@ phaseElement viewPhase trade wallet expanded currentTime =
 
         borderEl =
             Element.el
-                [ Element.height Element.fill
-                , Element.width <| Element.px 1
-                , Element.Background.color <|
-                    case viewPhaseState of
-                        Active ->
-                            Element.rgb 0 0 1
+                ((case dProfile of
+                    Desktop ->
+                        [ Element.height Element.fill
+                        , Element.width <| Element.px 1
+                        ]
 
-                        _ ->
-                            EH.lightGray
-                ]
+                    Mobile ->
+                        [ Element.width Element.fill
+                        , Element.height <| Element.px 1
+                        ]
+                 )
+                    ++ [ Element.Background.color <|
+                            case viewPhaseState of
+                                Active ->
+                                    Element.rgb 0 0 1
+
+                                _ ->
+                                    EH.lightGray
+                       ]
+                )
                 Element.none
     in
     if expanded then
-        Element.row
+        (Element.row |> changeForMobile Element.column dProfile)
             (commonPhaseAttributes
                 ++ (if viewPhaseState == Active then
                         activePhaseAttributes
@@ -754,8 +873,8 @@ paymentMethodElement paymentMethods =
         ]
 
 
-phaseStatusElement : CTypes.Phase -> CTypes.FullTradeInfo -> Time.Posix -> Element Msg
-phaseStatusElement viewPhase trade currentTime =
+phaseStatusElement : DisplayProfile -> CTypes.Phase -> CTypes.FullTradeInfo -> Time.Posix -> Element Msg
+phaseStatusElement dProfile viewPhase trade currentTime =
     let
         viewPhaseState =
             phaseState trade viewPhase
@@ -773,7 +892,6 @@ phaseStatusElement viewPhase trade currentTime =
                 [ Element.Font.color titleColor
                 , Element.Font.size 20
                 , Element.Font.semiBold
-                , Element.centerX
                 ]
                 (Element.text <|
                     case viewPhase of
@@ -825,35 +943,57 @@ phaseStatusElement viewPhase trade currentTime =
                         Finished ->
                             Element.el [ Element.height <| Element.px 1 ] Element.none
     in
-    Element.column
-        [ Element.padding 20
-        , Element.spacing 10
-        , Element.height Element.fill
-        ]
-        [ Element.el
-            [ Element.alignTop
-            , Element.centerX
-            ]
-            titleElement
-        , Element.el
-            [ Element.height Element.fill
-            , Element.centerX
-            ]
-          <|
-            Element.el
-                [ Element.centerY
+    case dProfile of
+        Desktop ->
+            Element.column
+                [ Element.padding 20
+                , Element.spacing 10
+                , Element.height Element.fill
                 ]
-            <|
-                phaseIconElement viewPhase viewPhaseState
-        , Element.column
-            [ Element.spacing 10
-            , Element.alignBottom
-            , Element.centerX
-            ]
-            [ Element.el [ Element.centerX ] <| phaseStateElement viewPhaseState
-            , intervalElement
-            ]
-        ]
+                [ Element.el
+                    [ Element.alignTop
+                    , Element.centerX
+                    ]
+                    titleElement
+                , Element.el
+                    [ Element.height Element.fill
+                    , Element.centerX
+                    ]
+                  <|
+                    Element.el
+                        [ Element.centerY
+                        ]
+                    <|
+                        phaseIconElement viewPhase viewPhaseState
+                , Element.column
+                    [ Element.spacing 10
+                    , Element.alignBottom
+                    , Element.centerX
+                    ]
+                    [ Element.el [ Element.centerX ] <| phaseStateElement viewPhaseState
+                    , intervalElement
+                    ]
+                ]
+
+        Mobile ->
+            Element.row
+                [ Element.paddingXY 40 20
+                , Element.spaceEvenly
+                , Element.width Element.fill
+                ]
+                [ Element.el
+                    [ Element.centerY ]
+                  <|
+                    phaseIconElement viewPhase viewPhaseState
+                , Element.column
+                    [ Element.spacing 10
+                    , Element.centerY
+                    ]
+                    [ Element.el [ Element.centerX ] titleElement
+                    , Element.el [ Element.centerX ] <| phaseStateElement viewPhaseState
+                    , intervalElement
+                    ]
+                ]
 
 
 phaseIconElement : CTypes.Phase -> PhaseState -> Element Msg
