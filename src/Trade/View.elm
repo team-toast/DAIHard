@@ -1305,9 +1305,9 @@ phaseBodyElement dProfile viewPhase currentTime trade wallet =
                 ( CTypes.Committed, Just Seller ) ->
                     ( "Time to Get Paid"
                     , List.map makeParagraph
-                        [ [ Element.text "Work and communicate with the Buyer to receive "
+                        [ [ Element.text "Work with the Buyer to receive "
                           , emphasizedText priceString
-                          , Element.text " as described in External Payment Method. Then, the Buyer should confirm the payment, moving the trade to the final phase."
+                          , Element.text " as described in External Payment Method, using the DAIHard encrypted chat as necessary. Then, the Buyer should confirm the payment, moving the trade to the final phase."
                           ]
                         , [ Element.text "If the Buyer aborts the trade, or doesn't confirm payment before this time is up, "
                           , emphasizedText abortPunishmentString
@@ -1334,6 +1334,7 @@ phaseBodyElement dProfile viewPhase currentTime trade wallet =
                           , scaryText "Confirm the Payment "
                           , Element.text " before the payment window runs out. This would move the trade to the final phase."
                           ]
+                        , [ Element.text "DAIHard encrypted chat will be available to the Buyer and Seller, for coordination." ]
                         , [ Element.text "If the Buyer aborts the trade, or doesn't confirm payment before this time is up, "
                           , emphasizedText abortPunishmentString
                           , Element.text " (1/4 of the "
