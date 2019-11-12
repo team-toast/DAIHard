@@ -191,7 +191,7 @@ intervalUnitToString : IntervalUnit -> String
 intervalUnitToString intervalUnit =
     case intervalUnit of
         Minute ->
-            "Minute"
+            "Min"
 
         Hour ->
             "Hour"
@@ -208,7 +208,7 @@ userIntervalToString interval =
     String.fromInt interval.num
         ++ " "
         ++ intervalUnitToString interval.unit
-        ++ (if interval.num /= 1 then
+        ++ (if interval.num /= 1 && interval.unit /= Minute then
                 "s"
 
             else

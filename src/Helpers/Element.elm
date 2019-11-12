@@ -617,7 +617,7 @@ button dProfile ( bgColor, bgHoverColor, bgPressedColor ) textColor text msg =
         [ Element.Border.rounded 4
         , Element.pointer
         , Element.Events.onClick msg
-        , Element.paddingXY 25 17 |> changeForMobile (Element.paddingXY 10 10) dProfile
+        , Element.paddingXY 25 17 |> changeForMobile (Element.padding 10) dProfile
         , Element.Font.color textColor
         , Element.Font.size (18 |> changeForMobile 16 dProfile)
         , Element.Font.semiBold
@@ -1202,23 +1202,23 @@ submodelContainer maxWidth dProfile maybeBigTitleText maybeTitleEl el =
         ]
 
 
-withInputHeader : List (Attribute msg) -> String -> Element msg -> Element msg
-withInputHeader attributes titleStr el =
-    withInputHeaderAndMaybeError attributes titleStr Nothing el
+withInputHeader : DisplayProfile -> List (Attribute msg) -> String -> Element msg -> Element msg
+withInputHeader dProfile attributes titleStr el =
+    withInputHeaderAndMaybeError dProfile attributes titleStr Nothing el
 
 
-withInputHeaderAndMaybeError : List (Attribute msg) -> String -> Maybe String -> Element msg -> Element msg
-withInputHeaderAndMaybeError attributes titleStr maybeError el =
+withInputHeaderAndMaybeError : DisplayProfile -> List (Attribute msg) -> String -> Maybe String -> Element msg -> Element msg
+withInputHeaderAndMaybeError dProfile attributes titleStr maybeError el =
     Element.column
         (attributes
             ++ [ Element.spacing 10
                ]
         )
         [ Element.row
-            [ Element.spacing 20
+            [ Element.spacing (20 |> changeForMobile 10 dProfile)
             ]
             [ Element.el
-                [ Element.Font.size 18
+                [ Element.Font.size (18 |> changeForMobile 16 dProfile)
                 , Element.Font.semiBold
                 , Element.Font.color <| Element.rgb255 1 31 52
                 , Element.alignLeft
@@ -1227,7 +1227,7 @@ withInputHeaderAndMaybeError attributes titleStr maybeError el =
             , case maybeError of
                 Just error ->
                     Element.el
-                        [ Element.Font.size 12
+                        [ Element.Font.size (12 |> changeForMobile 10 dProfile)
                         , Element.Font.color softRed
                         ]
                         (Element.text error)

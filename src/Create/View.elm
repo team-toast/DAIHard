@@ -37,11 +37,11 @@ root dProfile model =
             800
             (Element.column
                 [ Element.width Element.fill
-                , Element.spacing 20
+                , Element.spacing (20 |> changeForMobile 10 dProfile)
                 ]
-                [ header model.mode
+                [ header dProfile model.mode
                 , EH.thinGrayHRuler
-                , body model
+                , body dProfile model
                 ]
             )
         ]
@@ -49,8 +49,8 @@ root dProfile model =
     )
 
 
-header : Mode -> Element Msg
-header mode =
+header : DisplayProfile -> Mode -> Element Msg
+header dProfile mode =
     let
         descriptionText =
             case mode of
@@ -69,24 +69,26 @@ header mode =
     Element.column
         [ Element.width Element.fill
         , Element.spacing 20
-        , Element.padding 30
+        , Element.padding (30 |> changeForMobile 10 dProfile)
         ]
         [ Element.row
-            [ Element.spacing 40
+            [ Element.spacing (40 |> changeForMobile 20 dProfile)
             , Element.centerX
             ]
-            [ modeHeader (mode == CryptoSwap Seller || mode == CryptoSwap Buyer) (CryptoSwap Seller)
-            , modeHeader (mode == OffRamp) OffRamp
-            , modeHeader (mode == OnRamp) OnRamp
+            [ modeHeader dProfile (mode == CryptoSwap Seller || mode == CryptoSwap Buyer) (CryptoSwap Seller)
+            , modeHeader dProfile (mode == OffRamp) OffRamp
+            , modeHeader dProfile (mode == OnRamp) OnRamp
             ]
         , Element.paragraph
-            [ Element.Font.size 16 ]
+            [ Element.Font.size (16 |> changeForMobile 12 dProfile)
+            , Element.spacing 2
+            ]
             [ Element.text descriptionText ]
         ]
 
 
-modeHeader : Bool -> Mode -> Element Msg
-modeHeader selected mode =
+modeHeader : DisplayProfile -> Bool -> Mode -> Element Msg
+modeHeader dProfile selected mode =
     let
         fontAlpha =
             if selected then
@@ -107,7 +109,7 @@ modeHeader selected mode =
                     "Get More Dai"
     in
     Element.el
-        [ Element.Font.size 28
+        [ Element.Font.size (28 |> changeForMobile 18 dProfile)
         , Element.Font.semiBold
         , Element.Font.color <| Element.rgba 0 0 0 fontAlpha
         , Element.pointer
@@ -116,34 +118,34 @@ modeHeader selected mode =
         (Element.text text)
 
 
-body : Model -> Element Msg
-body model =
+body : DisplayProfile -> Model -> Element Msg
+body dProfile model =
     Element.column
         [ Element.width Element.fill
         , Element.padding 20
         , Element.spacing 25
         ]
-        [ amountAndTypeIn model
+        [ amountAndTypeIn dProfile model
         , case model.mode of
             CryptoSwap _ ->
                 Element.el [ Element.centerX ] swapButton
 
             _ ->
                 Element.none
-        , amountOutRow model
-        , moreInfoInput model
-        , intervalsRow model
-        , placeOrderButton model
+        , amountOutRow dProfile model
+        , moreInfoInput dProfile model
+        , intervalsRow dProfile model
+        , placeOrderButton dProfile model
         ]
 
 
-amountAndTypeIn : Model -> Element Msg
-amountAndTypeIn model =
-    EH.withInputHeaderAndMaybeError
+amountAndTypeIn : DisplayProfile -> Model -> Element Msg
+amountAndTypeIn dProfile model =
+    EH.withInputHeaderAndMaybeError dProfile
         [ Element.width Element.fill ]
         "I want to Sell"
         model.errors.amountIn
-        (inputContainer
+        (inputContainer dProfile
             [ Element.width Element.fill ]
             [ Element.Input.text
                 [ Element.width Element.fill
@@ -171,6 +173,7 @@ amountAndTypeIn model =
                        )
                 )
                 (typeDropdownButton
+                    dProfile
                     model.showInTypeDropdown
                     model.inputs.inType
                     InTypeClicked
@@ -193,14 +196,14 @@ swapButton =
         )
 
 
-amountOutRow : Model -> Element Msg
-amountOutRow model =
+amountOutRow : DisplayProfile -> Model -> Element Msg
+amountOutRow dProfile model =
     Element.row
         [ Element.width Element.fill
         , Element.spacing 25
         ]
         ([ Element.el [ Element.width <| Element.fillPortion 2 ]
-            (amountAndTypeOut model)
+            (amountAndTypeOut dProfile model)
          ]
             ++ (case model.mode of
                     CryptoSwap _ ->
@@ -221,13 +224,13 @@ amountOutRow model =
                             [ Element.width <| Element.fillPortion 1
                             , Element.above
                                 (if model.showMarginModal then
-                                    marginModal model.margin model.inputs.margin model.errors.margin
+                                    marginModal dProfile model.margin model.inputs.margin model.errors.margin
 
                                  else
                                     Element.none
                                 )
                             ]
-                            (marginBox model)
+                            (marginBox dProfile model)
                         ]
 
                     _ ->
@@ -236,13 +239,13 @@ amountOutRow model =
         )
 
 
-moreInfoInput : Model -> Element Msg
-moreInfoInput model =
+moreInfoInput : DisplayProfile -> Model -> Element Msg
+moreInfoInput dProfile model =
     case model.mode of
         CryptoSwap Seller ->
             case model.inputs.outType of
                 External cryptoSymbol ->
-                    cryptoAddressInput cryptoSymbol model.inputs.receiveAddress
+                    cryptoAddressInput dProfile cryptoSymbol model.inputs.receiveAddress
 
                 _ ->
                     let
@@ -255,19 +258,19 @@ moreInfoInput model =
             Element.none
 
         OffRamp ->
-            paymentMethodInput Seller model.inputs.paymentMethod
+            paymentMethodInput dProfile Seller model.inputs.paymentMethod
 
         OnRamp ->
-            paymentMethodInput Buyer model.inputs.paymentMethod
+            paymentMethodInput dProfile Buyer model.inputs.paymentMethod
 
 
-amountAndTypeOut : Model -> Element Msg
-amountAndTypeOut model =
-    EH.withInputHeaderAndMaybeError
+amountAndTypeOut : DisplayProfile -> Model -> Element Msg
+amountAndTypeOut dProfile model =
+    EH.withInputHeaderAndMaybeError dProfile
         [ Element.width Element.fill ]
         "In Exchange for"
         model.errors.amountOut
-        (inputContainer
+        (inputContainer dProfile
             [ Element.width Element.fill ]
             [ Element.Input.text
                 [ Element.width Element.fill
@@ -295,6 +298,7 @@ amountAndTypeOut model =
                        )
                 )
                 (typeDropdownButton
+                    dProfile
                     model.showOutTypeDropdown
                     model.inputs.outType
                     OutTypeClicked
@@ -303,12 +307,12 @@ amountAndTypeOut model =
         )
 
 
-marginBox : Model -> Element Msg
-marginBox model =
-    EH.withInputHeader
+marginBox : DisplayProfile -> Model -> Element Msg
+marginBox dProfile model =
+    EH.withInputHeader dProfile
         [ Element.width Element.fill ]
         "Margin"
-        (inputContainer
+        (inputContainer dProfile
             [ Element.width Element.fill
             , Element.pointer
             , EH.onClickNoPropagation MarginBoxClicked
@@ -327,8 +331,8 @@ marginBox model =
         )
 
 
-marginModal : Float -> String -> Maybe String -> Element Msg
-marginModal margin marginInput maybeError =
+marginModal : DisplayProfile -> Float -> String -> Maybe String -> Element Msg
+marginModal dProfile margin marginInput maybeError =
     EH.modal
         (Element.rgba 0 0 0 0.1)
         False
@@ -383,7 +387,7 @@ marginModal margin marginInput maybeError =
                 , Element.paddingXY 23 18
                 , Element.spacing 12
                 ]
-                [ inputContainer
+                [ inputContainer dProfile
                     [ Element.width <| Element.px 140
                     , Element.above <|
                         case maybeError of
@@ -686,21 +690,25 @@ fiatTypeDropdown searchInput searchChangedMsg selectedMsg =
             searchChangedMsg
 
 
-typeDropdownButton : Bool -> CurrencyType -> Msg -> Element Msg
-typeDropdownButton dropdownOpen currencyType onClick =
+typeDropdownButton : DisplayProfile -> Bool -> CurrencyType -> Msg -> Element Msg
+typeDropdownButton dProfile dropdownOpen currencyType onClick =
     Element.row
         [ Element.Background.color <| Element.rgb 0.98 0.98 0.98
         , Element.height Element.fill
-        , Element.padding 13
-        , Element.spacing 13
+        , Element.padding (13 |> changeForMobile 8 dProfile)
+        , Element.spacing (13 |> changeForMobile 10 dProfile)
         , Element.pointer
         , EH.onClickNoPropagation onClick
         ]
-        [ Currencies.icon (currencySymbol currencyType)
+        [ Currencies.image (currencySymbol currencyType)
+            |> Maybe.map
+                (Images.toElement
+                    [ Element.height <| Element.px (26 |> changeForMobile 18 dProfile) ]
+                )
             |> Maybe.withDefault Element.none
         , Element.text <| currencySymbol currencyType
         , Images.toElement
-            [ Element.width <| Element.px 12 ]
+            [ Element.width <| Element.px (12 |> changeForMobile 9 dProfile) ]
           <|
             if dropdownOpen then
                 Images.upArrow
@@ -710,13 +718,13 @@ typeDropdownButton dropdownOpen currencyType onClick =
         ]
 
 
-cryptoAddressInput : Currencies.Symbol -> String -> Element Msg
-cryptoAddressInput symbol input =
-    EH.withInputHeader
+cryptoAddressInput : DisplayProfile -> Currencies.Symbol -> String -> Element Msg
+cryptoAddressInput dProfile symbol input =
+    EH.withInputHeader dProfile
         [ Element.width Element.fill ]
         (symbol ++ " Receive Address")
     <|
-        inputContainer
+        inputContainer dProfile
             [ Element.width Element.fill
             ]
             [ Element.Input.text
@@ -732,9 +740,9 @@ cryptoAddressInput symbol input =
             ]
 
 
-paymentMethodInput : BuyerOrSeller -> String -> Element Msg
-paymentMethodInput initiatorRole input =
-    EH.withInputHeader
+paymentMethodInput : DisplayProfile -> BuyerOrSeller -> String -> Element Msg
+paymentMethodInput dProfile initiatorRole input =
+    EH.withInputHeader dProfile
         [ Element.width Element.fill ]
         (case initiatorRole of
             Buyer ->
@@ -744,7 +752,7 @@ paymentMethodInput initiatorRole input =
                 "Accepting the Payment"
         )
     <|
-        inputContainer
+        inputContainer dProfile
             [ Element.height <| Element.px 134
             , Element.width Element.fill
             ]
@@ -761,20 +769,26 @@ paymentMethodInput initiatorRole input =
                         Element.Input.placeholder
                             [ Element.Font.color EH.placeholderTextColor ]
                         <|
-                            Element.column [ Element.spacing 5 ] <|
+                            Element.column
+                                [ Element.spacing 5
+                                , Element.Font.size (16 |> changeForMobile 12 dProfile)
+                                ]
+                            <|
                                 case initiatorRole of
                                     Buyer ->
-                                        [ Element.text "Indicate here how you will send payment to the Seller. Some examples:"
+                                        [ Element.text "Indicate here how you will send payment to the Seller."
+                                        , Element.text "Some examples:"
                                         , Element.text "\"I can send to any EU bank\""
-                                        , Element.text "\"I'll reveal a hidden cash drop within 10 km of Grand Central Station\""
+                                        , Element.text "\"I'll reveal a hidden cash drop in St. James Park, London\""
                                         , Element.text "\"Can send via ecocash\""
                                         ]
 
                                     Seller ->
-                                        [ Element.text "Indicate here how you will send payment to the Buyer. Some examples:"
+                                        [ Element.text "Indicate here how you will send payment to the Buyer."
+                                        , Element.text "Some examples:"
                                         , Element.text "\"I have TransferWise\""
-                                        , Element.text "\"I can pick up a cash drop within 10 km of Grand Central Station\""
-                                        , Element.text "\"I can pick up a WorldRemit payment to Zimbabwe\""
+                                        , Element.text "\"I can pick up a cash drop in St. James Park, London\""
+                                        , Element.text "\"I can receive a WorldRemit payment to Zimbabwe\""
                                         ]
                 , label = Element.Input.labelHidden "payment method"
                 , spellcheck = True
@@ -782,20 +796,20 @@ paymentMethodInput initiatorRole input =
             ]
 
 
-intervalsRow : Model -> Element Msg
-intervalsRow model =
+intervalsRow : DisplayProfile -> Model -> Element Msg
+intervalsRow dProfile model =
     Element.row
         [ Element.width Element.fill
         , Element.spacing 23
         ]
-        [ phaseWindowBoxAndMaybeModal Expiry model
-        , phaseWindowBoxAndMaybeModal Payment model
-        , phaseWindowBoxAndMaybeModal Judgment model
+        [ phaseWindowBoxAndMaybeModal dProfile Expiry model
+        , phaseWindowBoxAndMaybeModal dProfile Payment model
+        , phaseWindowBoxAndMaybeModal dProfile Judgment model
         ]
 
 
-phaseWindowBoxAndMaybeModal : IntervalType -> Model -> Element Msg
-phaseWindowBoxAndMaybeModal intervalType model =
+phaseWindowBoxAndMaybeModal : DisplayProfile -> IntervalType -> Model -> Element Msg
+phaseWindowBoxAndMaybeModal dProfile intervalType model =
     let
         showModal =
             model.showIntervalModal == Just intervalType
@@ -805,6 +819,7 @@ phaseWindowBoxAndMaybeModal intervalType model =
         , Element.above <|
             if showModal then
                 intervalModal
+                    dProfile
                     intervalType
                     (initiatorRole model.mode)
                     (getUserInterval intervalType model)
@@ -816,14 +831,15 @@ phaseWindowBoxAndMaybeModal intervalType model =
         ]
     <|
         phaseWindowBox
+            dProfile
             intervalType
             (getUserInterval intervalType model)
             showModal
 
 
-phaseWindowBox : IntervalType -> UserInterval -> Bool -> Element Msg
-phaseWindowBox intervalType interval modalIsOpen =
-    EH.withInputHeader
+phaseWindowBox : DisplayProfile -> IntervalType -> UserInterval -> Bool -> Element Msg
+phaseWindowBox dProfile intervalType interval modalIsOpen =
+    EH.withInputHeader dProfile
         [ Element.width Element.fill ]
         (case intervalType of
             Expiry ->
@@ -836,7 +852,7 @@ phaseWindowBox intervalType interval modalIsOpen =
                 "Burn Window"
         )
     <|
-        inputContainer
+        inputContainer dProfile
             [ Element.width Element.fill
             , Element.pointer
             , EH.onClickNoPropagation (WindowBoxClicked intervalType)
@@ -845,18 +861,20 @@ phaseWindowBox intervalType interval modalIsOpen =
                 [ Element.height Element.fill
                 , Element.width Element.fill
                 , Element.Background.color EH.white
-                , Element.paddingXY 15 17
+                , Element.paddingXY 15 17 |> changeForMobile (Element.padding 3) dProfile
                 ]
-                (userInterval interval)
+                (userInterval dProfile interval)
             , dropdownArrow modalIsOpen
             ]
 
 
-userInterval : UserInterval -> Element Msg
-userInterval interval =
+userInterval : DisplayProfile -> UserInterval -> Element Msg
+userInterval dProfile interval =
     Element.el
-        [ Element.Font.size 20
+        [ Element.Font.size (20 |> changeForMobile 16 dProfile)
         , Element.Font.medium
+        , Element.centerX
+        , Element.centerY
         ]
     <|
         Element.text <|
@@ -871,8 +889,8 @@ userInterval interval =
                    )
 
 
-intervalModal : IntervalType -> BuyerOrSeller -> UserInterval -> String -> Maybe String -> Element Msg
-intervalModal intervalType userRole value input maybeError =
+intervalModal : DisplayProfile -> IntervalType -> BuyerOrSeller -> UserInterval -> String -> Maybe String -> Element Msg
+intervalModal dProfile intervalType userRole value input maybeError =
     let
         ( title, text ) =
             case intervalType of
@@ -980,7 +998,7 @@ intervalModal intervalType userRole value input maybeError =
                 , Element.Background.color EH.white
                 , Element.spacing 12
                 ]
-                [ inputContainer
+                [ inputContainer dProfile
                     [ Element.width <| Element.px 140
                     , Element.above <|
                         case maybeError of
@@ -1043,28 +1061,35 @@ dropdownArrow pointUp =
             )
 
 
-inputContainer : List (Element.Attribute Msg) -> List (Element Msg) -> Element Msg
-inputContainer attributes =
+inputContainer : DisplayProfile -> List (Element.Attribute Msg) -> List (Element Msg) -> Element Msg
+inputContainer dProfile attributes =
     Element.row <|
         [ Element.Background.color EH.lightGray
-        , Element.height <| Element.px 55
+        , Element.height <| Element.px (55 |> changeForMobile 40 dProfile)
         , Element.Border.rounded 4
         , Element.Border.width 1
         , Element.Border.color EH.lightGray
         , Element.spacing 1
         ]
             ++ attributes
+            ++ (case dProfile of
+                    Desktop ->
+                        []
+
+                    Mobile ->
+                        [ Element.Font.size 14 ]
+               )
 
 
-placeOrderButton : Model -> Element Msg
-placeOrderButton model =
+placeOrderButton : DisplayProfile -> Model -> Element Msg
+placeOrderButton dProfile model =
     let
         buttonBuilder bgColor textColor text maybeOnClick maybeError =
             Element.el
                 ([ Element.width Element.fill
-                 , Element.padding 17
+                 , Element.padding (17 |> changeForMobile 10 dProfile)
                  , Element.Border.rounded 4
-                 , Element.Font.size 20
+                 , Element.Font.size (20 |> changeForMobile 16 dProfile)
                  , Element.Font.semiBold
                  , Element.Font.center
                  , Element.Background.color bgColor
@@ -1073,7 +1098,7 @@ placeOrderButton model =
                     case maybeError of
                         Just error ->
                             Element.el
-                                [ Element.Font.size 12
+                                [ Element.Font.size (12 |> changeForMobile 10 dProfile)
                                 , Element.Font.color EH.softRed
                                 , Element.moveUp 16
                                 , Element.centerX
