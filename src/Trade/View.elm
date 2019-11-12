@@ -139,7 +139,7 @@ root dProfile time tradeCaches model =
             )
         )
     , [ chatOverlayElement model
-      , getModalOrNone model
+      , getModalOrNone dProfile model
       ]
     )
 
@@ -592,7 +592,7 @@ statsModal dProfile factoryType address stats =
                       )
                     ]
                     ++ [ Element.el [ Element.centerX ]
-                            (EH.blueButton "View User History" (ViewUserHistory stats.asRole))
+                            (EH.blueButton dProfile "View User History" (ViewUserHistory stats.asRole))
                        ]
                 )
 
@@ -665,7 +665,7 @@ phasesElement dProfile trade expandedPhase wallet currentTime =
                             , phaseElement dProfile CTypes.Committed trade wallet (expandedPhase == CTypes.Committed) currentTime
                             , phaseElement dProfile CTypes.Judgment trade wallet (expandedPhase == CTypes.Judgment) currentTime
                             ]
-                        , paymentMethodElement trade.terms.paymentMethods
+                        , paymentMethodElement dProfile trade.terms.paymentMethods
                         ]
 
                 Mobile ->
@@ -675,8 +675,8 @@ phasesElement dProfile trade expandedPhase wallet currentTime =
                         ]
                         [ phaseElement dProfile CTypes.Open trade wallet True currentTime
                         , phaseElement dProfile CTypes.Committed trade wallet True currentTime
+                        , paymentMethodElement dProfile trade.terms.paymentMethods
                         , phaseElement dProfile CTypes.Judgment trade wallet True currentTime
-                        , paymentMethodElement trade.terms.paymentMethods
                         ]
 
 
@@ -773,7 +773,7 @@ phaseElement dProfile viewPhase trade wallet expanded currentTime =
                 , Element.width Element.fill
                 , Element.height Element.fill
                 ]
-                (phaseBodyElement viewPhase currentTime trade wallet)
+                (phaseBodyElement dProfile viewPhase currentTime trade wallet)
 
         borderEl =
             Element.el
@@ -828,8 +828,8 @@ phaseElement dProfile viewPhase trade wallet expanded currentTime =
             [ firstEl ]
 
 
-paymentMethodElement : List PaymentMethod -> Element Msg
-paymentMethodElement paymentMethods =
+paymentMethodElement : DisplayProfile -> List PaymentMethod -> Element Msg
+paymentMethodElement dProfile paymentMethods =
     let
         maybePmText =
             paymentMethods
@@ -844,14 +844,14 @@ paymentMethodElement paymentMethods =
         , Element.centerX
         ]
         [ Element.el
-            [ Element.Font.size 24
+            [ Element.Font.size (24 |> changeForMobile 20 dProfile)
             , Element.Font.semiBold
             , Element.Font.italic
             , Element.centerX
             ]
             (Element.text "External Payment Method")
         , Element.el
-            [ Element.Font.size 18
+            [ Element.Font.size (18 |> changeForMobile 12 dProfile)
             , Element.height Element.shrink
             , Element.Background.color <| EH.white
             , Element.Border.shadow
@@ -866,7 +866,7 @@ paymentMethodElement paymentMethods =
             (maybePmText
                 |> Maybe.map (Markdown.toHtml Nothing)
                 |> Maybe.map (List.map Element.html)
-                |> Maybe.map (Element.paragraph [])
+                |> Maybe.map (Element.paragraph [ Element.spacing 2 ])
                 |> Maybe.withDefault
                     (Element.el [ Element.Font.color EH.disabledTextColor, Element.Font.italic ] <| Element.text "No payment methods found.")
             )
@@ -918,7 +918,9 @@ phaseStatusElement dProfile viewPhase trade currentTime =
                         NotStarted ->
                             EH.interval
                                 [ Element.centerX ]
-                                [ Element.Font.size 22, Element.Font.medium ]
+                                [ Element.Font.size (22 |> changeForMobile 14 dProfile)
+                                , Element.Font.medium
+                                ]
                                 ( EH.black, EH.lightGray )
                                 (CTypes.getPhaseInterval viewPhase trade)
 
@@ -927,7 +929,9 @@ phaseStatusElement dProfile viewPhase trade currentTime =
                                 CTypes.TimeLeft timeoutInfo ->
                                     EH.intervalWithElapsedBar
                                         [ Element.centerX ]
-                                        [ Element.Font.size 22, Element.Font.medium ]
+                                        [ Element.Font.size (22 |> changeForMobile 14 dProfile)
+                                        , Element.Font.medium
+                                        ]
                                         ( EH.white, EH.lightGray )
                                         timeoutInfo
 
@@ -937,7 +941,7 @@ phaseStatusElement dProfile viewPhase trade currentTime =
                                         , Element.spacing 10
                                         ]
                                         [ Element.el [ Element.centerX ] <| Element.text (CTypes.getPokeText viewPhase)
-                                        , EH.blueButton "Poke" (StartContractAction Poke)
+                                        , EH.blueButton dProfile "Poke" (StartContractAction Poke)
                                         ]
 
                         Finished ->
@@ -964,13 +968,13 @@ phaseStatusElement dProfile viewPhase trade currentTime =
                         [ Element.centerY
                         ]
                     <|
-                        phaseIconElement viewPhase viewPhaseState
+                        phaseIconElement dProfile viewPhase viewPhaseState
                 , Element.column
                     [ Element.spacing 10
                     , Element.alignBottom
                     , Element.centerX
                     ]
-                    [ Element.el [ Element.centerX ] <| phaseStateElement viewPhaseState
+                    [ Element.el [ Element.centerX ] <| phaseStateElement dProfile viewPhaseState
                     , intervalElement
                     ]
                 ]
@@ -984,20 +988,25 @@ phaseStatusElement dProfile viewPhase trade currentTime =
                 [ Element.el
                     [ Element.centerY ]
                   <|
-                    phaseIconElement viewPhase viewPhaseState
+                    phaseIconElement dProfile viewPhase viewPhaseState
                 , Element.column
                     [ Element.spacing 10
                     , Element.centerY
                     ]
                     [ Element.el [ Element.centerX ] titleElement
-                    , Element.el [ Element.centerX ] <| phaseStateElement viewPhaseState
-                    , intervalElement
+                    , Element.row
+                        [ Element.spacing 10
+                        , Element.centerX
+                        ]
+                        [ phaseStateElement dProfile viewPhaseState
+                        , intervalElement
+                        ]
                     ]
                 ]
 
 
-phaseIconElement : CTypes.Phase -> PhaseState -> Element Msg
-phaseIconElement viewPhase viewPhaseState =
+phaseIconElement : DisplayProfile -> CTypes.Phase -> PhaseState -> Element Msg
+phaseIconElement dProfile viewPhase viewPhaseState =
     let
         circleColor =
             case viewPhaseState of
@@ -1011,7 +1020,7 @@ phaseIconElement viewPhase viewPhaseState =
                     Element.rgb255 1 129 104
 
         circleElement =
-            Collage.circle 50
+            Collage.circle (50 |> changeForMobile 35 dProfile)
                 |> Collage.filled (Collage.uniform (EH.elementColorToAvh4Color circleColor))
                 |> Collage.Render.svg
                 |> Element.html
@@ -1025,7 +1034,7 @@ phaseIconElement viewPhase viewPhaseState =
             (Images.toElement
                 [ Element.centerX
                 , Element.centerY
-                , Element.height <| Element.px 60
+                , Element.height <| Element.px (60 |> changeForMobile 40 dProfile)
                 ]
                 image
             )
@@ -1033,13 +1042,13 @@ phaseIconElement viewPhase viewPhaseState =
         circleElement
 
 
-phaseStateElement : PhaseState -> Element Msg
-phaseStateElement pState =
+phaseStateElement : DisplayProfile -> PhaseState -> Element Msg
+phaseStateElement dProfile pState =
     let
         commonAttributes =
             [ Element.Font.italic
             , Element.Font.semiBold
-            , Element.Font.size 20
+            , Element.Font.size (20 |> changeForMobile 14 dProfile)
             ]
     in
     case pState of
@@ -1063,8 +1072,8 @@ phaseStateElement pState =
                 (Element.text "Finished")
 
 
-phaseBodyElement : CTypes.Phase -> Time.Posix -> CTypes.FullTradeInfo -> Wallet.State -> Element Msg
-phaseBodyElement viewPhase currentTime trade wallet =
+phaseBodyElement : DisplayProfile -> CTypes.Phase -> Time.Posix -> CTypes.FullTradeInfo -> Wallet.State -> Element Msg
+phaseBodyElement dProfile viewPhase currentTime trade wallet =
     let
         phaseIsActive =
             viewPhase == trade.state.phase
@@ -1084,8 +1093,9 @@ phaseBodyElement viewPhase currentTime trade wallet =
         makeParagraph =
             Element.paragraph
                 [ Element.Font.color mainFontColor
-                , Element.Font.size 18
+                , Element.Font.size (18 |> changeForMobile 12 dProfile)
                 , Element.Font.semiBold
+                , Element.spacing 2
                 ]
 
         emphasizedColor =
@@ -1148,7 +1158,12 @@ phaseBodyElement viewPhase currentTime trade wallet =
 
         threeFlames =
             Element.row []
-                (List.repeat 3 (Images.toElement [ Element.height <| Element.px 18 ] Images.flame))
+                (List.repeat 3
+                    (Images.toElement
+                        [ Element.height <| Element.px (18 |> changeForMobile 12 dProfile) ]
+                        Images.flame
+                    )
+                )
 
         ( titleString, paragraphEls ) =
             case ( viewPhase, maybeBuyerOrSeller ) of
@@ -1407,23 +1422,20 @@ phaseBodyElement viewPhase currentTime trade wallet =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
-        , Element.padding 20
-        , Element.spacing 30
+        , Element.padding (20 |> changeForMobile 10 dProfile)
+        , Element.spacing (30 |> changeForMobile 20 dProfile)
         ]
-        [ Element.row
-            [ Element.width Element.fill ]
-            [ Element.el
-                [ Element.Font.size 24
-                , Element.Font.semiBold
-                , Element.Font.color emphasizedColor
-                , Element.alignLeft
-                ]
-                (Element.text titleString)
+        [ Element.el
+            [ Element.Font.size (24 |> changeForMobile 16 dProfile)
+            , Element.Font.semiBold
+            , Element.Font.color emphasizedColor
+            , Element.alignLeft
             ]
+            (Element.text titleString)
         , Element.column
             [ Element.width Element.fill
             , Element.centerY
-            , Element.spacing 13
+            , Element.spacing (13 |> changeForMobile 10 dProfile)
             ]
             paragraphEls
         , Element.el
@@ -1431,7 +1443,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
             ]
             (case phaseState trade viewPhase of
                 Active ->
-                    actionButtonsElement currentTime trade wallet
+                    actionButtonsElement dProfile currentTime trade wallet
 
                 NotStarted ->
                     Element.el
@@ -1453,8 +1465,8 @@ phaseBodyElement viewPhase currentTime trade wallet =
         ]
 
 
-actionButtonsElement : Time.Posix -> FullTradeInfo -> Wallet.State -> Element Msg
-actionButtonsElement currentTime trade wallet =
+actionButtonsElement : DisplayProfile -> Time.Posix -> FullTradeInfo -> Wallet.State -> Element Msg
+actionButtonsElement dProfile currentTime trade wallet =
     case Wallet.userInfo wallet of
         Just userInfo ->
             if Wallet.networkForFactory trade.reference.factory /= userInfo.network then
@@ -1484,7 +1496,7 @@ actionButtonsElement currentTime trade wallet =
                                 )
                              of
                                 ( CTypes.Open, Just Initiator, _ ) ->
-                                    [ Element.map StartContractAction <| EH.blueButton "Remove and Refund this Trade" Recall ]
+                                    [ Element.map StartContractAction <| EH.blueButton dProfile "Remove and Refund this Trade" Recall ]
 
                                 ( CTypes.Open, Nothing, _ ) ->
                                     let
@@ -1492,11 +1504,11 @@ actionButtonsElement currentTime trade wallet =
                                             CTypes.responderDeposit trade.parameters
                                                 |> TokenValue.getEvmValue
                                     in
-                                    [ EH.redButton "Deposit and Commit to Trade" <| CommitClicked trade userInfo depositAmount ]
+                                    [ EH.redButton dProfile "Deposit and Commit to Trade" <| CommitClicked trade userInfo depositAmount ]
 
                                 ( CTypes.Committed, _, Just Buyer ) ->
-                                    [ Element.map ContractActionClicked <| EH.orangeButton "Abort Trade" Abort
-                                    , Element.map ContractActionClicked <| EH.redButton "Confirm Payment" Claim
+                                    [ Element.map ContractActionClicked <| EH.orangeButton dProfile "Abort Trade" Abort
+                                    , Element.map ContractActionClicked <| EH.redButton dProfile "Confirm Payment" Claim
                                     , chatHistoryButton
                                     ]
 
@@ -1504,8 +1516,8 @@ actionButtonsElement currentTime trade wallet =
                                     [ chatHistoryButton ]
 
                                 ( CTypes.Judgment, _, Just Seller ) ->
-                                    [ Element.map ContractActionClicked <| EH.redButton "Burn it All!" Burn
-                                    , Element.map ContractActionClicked <| EH.blueButton "Release Everything" Release
+                                    [ Element.map ContractActionClicked <| EH.redButton dProfile "Burn it All!" Burn
+                                    , Element.map ContractActionClicked <| EH.blueButton dProfile "Release Everything" Release
                                     , chatHistoryButton
                                     ]
 
@@ -1517,7 +1529,7 @@ actionButtonsElement currentTime trade wallet =
                             )
 
         Nothing ->
-            EH.redButton "Connect to Wallet" Web3Connect
+            EH.redButton dProfile "Connect to Wallet" Web3Connect
 
 
 chatHistoryButton : Element Msg
@@ -1565,8 +1577,8 @@ chatOverlayElement model =
         Element.none
 
 
-getModalOrNone : Model -> Element Msg
-getModalOrNone model =
+getModalOrNone : DisplayProfile -> Model -> Element Msg
+getModalOrNone dProfile model =
     case ( model.txChainStatus, model.trade ) of
         ( Just txChainStatus, CTypes.LoadedTrade trade ) ->
             case txChainStatus of
@@ -1654,7 +1666,7 @@ getModalOrNone model =
                                 [ Element.alignBottom
                                 , Element.centerX
                                 ]
-                                (EH.redButton "Yes, I definitely want to commit to this trade." (ConfirmCommit trade userInfo deposit))
+                                (EH.redButton dProfile "Yes, I definitely want to commit to this trade." (ConfirmCommit trade userInfo deposit))
                             ]
                         )
                         NoOp
@@ -1774,7 +1786,7 @@ getModalOrNone model =
                                     Burn ->
                                         "I understand. Burn the " ++ tokenUnitName trade.reference.factory ++ "."
                                  )
-                                    |> (\s -> EH.redButton s (StartContractAction action))
+                                    |> (\s -> EH.redButton dProfile s (StartContractAction action))
                                 )
                             ]
                         )

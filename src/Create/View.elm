@@ -45,7 +45,7 @@ root dProfile model =
                 ]
             )
         ]
-    , viewModals model
+    , viewModals dProfile model
     )
 
 
@@ -1139,8 +1139,8 @@ placeOrderButton model =
                 Nothing
 
 
-txChainStatusModal : TxChainStatus -> Model -> Element Msg
-txChainStatusModal txChainStatus model =
+txChainStatusModal : DisplayProfile -> TxChainStatus -> Model -> Element Msg
+txChainStatusModal dProfile txChainStatus model =
     case txChainStatus of
         Confirm factoryType createParameters ->
             let
@@ -1165,7 +1165,7 @@ txChainStatusModal txChainStatus model =
                             in
                             ( blueText depositAmountText
                             , blueText totalBurnableText
-                            , EH.redButton
+                            , EH.redButton dProfile
                                 ("Understood. Deposit "
                                     ++ depositAmountText
                                     ++ " and open this trade."
@@ -1176,7 +1176,7 @@ txChainStatusModal txChainStatus model =
                         Nothing ->
                             ( blueText "??"
                             , blueText "??"
-                            , EH.disabledButton "(loading exact fees...)" Nothing
+                            , EH.disabledButton dProfile "(loading exact fees...)" Nothing
                             )
 
                 feeAmountEl =
@@ -1519,11 +1519,11 @@ txChainStatusModal txChainStatus model =
                     NoOp
 
 
-viewModals : Model -> List (Element Msg)
-viewModals model =
+viewModals : DisplayProfile -> Model -> List (Element Msg)
+viewModals dProfile model =
     case model.txChainStatus of
         Just txChainStatus ->
-            [ txChainStatusModal txChainStatus model ]
+            [ txChainStatusModal dProfile txChainStatus model ]
 
         Nothing ->
             []

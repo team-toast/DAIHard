@@ -611,15 +611,15 @@ dropdownSelector itemsAndMsgs =
 -- BUTTONS
 
 
-button : ( Element.Color, Element.Color, Element.Color ) -> Element.Color -> String -> msg -> Element msg
-button ( bgColor, bgHoverColor, bgPressedColor ) textColor text msg =
+button : DisplayProfile -> ( Element.Color, Element.Color, Element.Color ) -> Element.Color -> String -> msg -> Element msg
+button dProfile ( bgColor, bgHoverColor, bgPressedColor ) textColor text msg =
     Element.el
         [ Element.Border.rounded 4
         , Element.pointer
         , Element.Events.onClick msg
-        , Element.paddingXY 25 17
+        , Element.paddingXY 25 17 |> changeForMobile (Element.paddingXY 10 10) dProfile
         , Element.Font.color textColor
-        , Element.Font.size 18
+        , Element.Font.size (18 |> changeForMobile 16 dProfile)
         , Element.Font.semiBold
         , Element.Background.color bgColor
         , Element.mouseDown [ Element.Background.color bgPressedColor ]
@@ -662,9 +662,9 @@ pokeButton pokeMsg =
         }
 
 
-blueButton : String -> msg -> Element msg
-blueButton text msg =
-    button
+blueButton : DisplayProfile -> String -> msg -> Element msg
+blueButton dProfile text msg =
+    button dProfile
         ( Element.rgba 0 0 1 1
         , Element.rgba 0 0 1 0.8
         , Element.rgba 0 0 1 0.6
@@ -674,9 +674,9 @@ blueButton text msg =
         msg
 
 
-inverseBlueButton : String -> msg -> Element msg
-inverseBlueButton text msg =
-    button
+inverseBlueButton : DisplayProfile -> String -> msg -> Element msg
+inverseBlueButton dProfile text msg =
+    button dProfile
         ( Element.rgba 0 0 1 0.05
         , Element.rgba 0 0 1 0.1
         , Element.rgba 0 0 1 0.2
@@ -686,9 +686,9 @@ inverseBlueButton text msg =
         msg
 
 
-redButton : String -> msg -> Element msg
-redButton text msg =
-    button
+redButton : DisplayProfile -> String -> msg -> Element msg
+redButton dProfile text msg =
+    button dProfile
         ( Element.rgba 1 0 0 1
         , Element.rgba 1 0 0 0.8
         , Element.rgba 1 0 0 0.6
@@ -698,12 +698,12 @@ redButton text msg =
         msg
 
 
-disabledButton : String -> Maybe String -> Element msg
-disabledButton text maybeTipText =
+disabledButton : DisplayProfile -> String -> Maybe String -> Element msg
+disabledButton dProfile text maybeTipText =
     Element.el
         [ Element.Border.rounded 4
-        , Element.paddingXY 25 17
-        , Element.Font.size 18
+        , Element.paddingXY 25 17 |> changeForMobile (Element.paddingXY 10 5) dProfile
+        , Element.Font.size (18 |> changeForMobile 16 dProfile)
         , Element.Font.semiBold
         , Element.Background.color lightGray
         , Element.above <|
@@ -714,9 +714,9 @@ disabledButton text maybeTipText =
         (Element.text text)
 
 
-orangeButton : String -> msg -> Element msg
-orangeButton text msg =
-    button
+orangeButton : DisplayProfile -> String -> msg -> Element msg
+orangeButton dProfile text msg =
+    button dProfile
         ( Element.rgba 1 0.6 0.2 1
         , Element.rgba 1 0.6 0.2 0.8
         , Element.rgba 1 0.6 0.2 0.6
