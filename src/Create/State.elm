@@ -478,7 +478,13 @@ update msg prevModel =
                         , inputToAutofill = AmountOut
                     }
                         |> updateAmountIn newMaybeAmountIn
-                        |> tryAutofillAmountOut
+                        |> (case prevModel.mode of
+                                CryptoSwap _ ->
+                                    tryAutofillAmountOut
+
+                                _ ->
+                                    \m -> ( m, [] )
+                           )
             in
             UpdateResult
                 newModel
@@ -565,7 +571,13 @@ update msg prevModel =
                         , inputToAutofill = AmountIn
                     }
                         |> updateAmountOut newMaybeAmountOut
-                        |> tryAutofillAmountIn
+                        |> (case prevModel.mode of
+                                CryptoSwap _ ->
+                                    tryAutofillAmountIn
+
+                                _ ->
+                                    \m -> ( m, [] )
+                           )
             in
             UpdateResult
                 newModel
