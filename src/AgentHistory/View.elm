@@ -36,9 +36,9 @@ root time dProfile tradeCaches model =
         1800
         (Element.column
             [ Element.width Element.fill
-            , Element.padding 30
+            , Element.padding (30 |> changeForMobile 10 dProfile)
             ]
-            [ titleElement model
+            [ titleElement dProfile model
             , statusAndFiltersElement dProfile tradeCaches model
             , let
                 tcDoneLoading =
@@ -51,8 +51,8 @@ root time dProfile tradeCaches model =
         )
 
 
-titleElement : Model -> Element Msg
-titleElement model =
+titleElement : DisplayProfile -> Model -> Element Msg
+titleElement dProfile model =
     let
         viewingOwnHistory =
             case Wallet.userInfo model.wallet of
@@ -66,7 +66,7 @@ titleElement model =
         Element.none
 
     else
-        Element.row
+        (Element.row |> changeForMobile Element.column dProfile)
             [ Element.spacing 10
             , Element.centerX
             , Element.paddingEach
@@ -77,11 +77,12 @@ titleElement model =
                 }
             ]
             [ Element.el
-                [ Element.Font.size 24
+                [ Element.Font.size (24 |> changeForMobile 18 dProfile)
+                , Element.centerX
                 , Element.Font.semiBold
                 ]
                 (Element.text "Trade History for User")
-            , EH.ethAddress 18 model.agentAddress
+            , EH.ethAddress (18 |> changeForMobile 12 dProfile) model.agentAddress
             ]
 
 
@@ -122,19 +123,21 @@ statusAndFiltersElement dProfile tradeCaches model =
                     |> Maybe.Extra.values
                     |> List.map statusMsgElement
     in
-    Element.el
+    Element.column
         [ Element.width Element.fill
-        , Element.inFront <|
-            Element.column
-                [ Element.spacing 5
-                , Element.alignLeft
-                ]
-                statusMessages
+        , Element.padding 10
+        , Element.spacing 10
         ]
-        (Element.el
+        [ Element.el
             [ Element.centerX ]
             (Element.map FiltersMsg <| Filters.view dProfile model.filters)
-        )
+        , Element.column
+            [ Element.spacing 5
+            , Element.alignLeft
+            , Element.centerX
+            ]
+            statusMessages
+        ]
 
 
 maybeResultsElement : Time.Posix -> DisplayProfile -> Bool -> List TradeCache -> Model -> Element Msg
@@ -171,17 +174,28 @@ maybeResultsElement time dProfile tcDoneLoading tradeCaches model =
             )
 
     else
+        let
+            cols =
+                case dProfile of
+                    Desktop ->
+                        [ TradeTable.Phase
+                        , TradeTable.Offer
+                        , TradeTable.ResponderProfit
+                        , TradeTable.PaymentWindow
+                        , TradeTable.BurnWindow
+                        ]
+
+                    Mobile ->
+                        [ TradeTable.Offer
+                        , TradeTable.Windows
+                        ]
+        in
         TradeTable.view
             time
             dProfile
             model.tradeTable
             model.prices
-            [ TradeTable.Phase
-            , TradeTable.Offer
-            , TradeTable.ResponderProfit
-            , TradeTable.PaymentWindow
-            , TradeTable.BurnWindow
-            ]
+            cols
             visibleTrades
             |> Element.map TradeTableMsg
 
