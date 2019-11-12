@@ -542,8 +542,8 @@ statsModal dProfile factoryType address stats =
     let
         statEl titleString statString =
             Element.column
-                [ Element.Font.size 18
-                , Element.spacing 6
+                [ Element.Font.size (18 |> changeForMobile 14 dProfile)
+                , Element.spacing (6 |> changeForMobile 3 dProfile)
                 ]
                 [ Element.el
                     [ Element.Font.bold ]
@@ -555,7 +555,7 @@ statsModal dProfile factoryType address stats =
 
         statsBody =
             Element.column
-                [ Element.spacing 23
+                [ Element.spacing (23 |> changeForMobile 16 dProfile)
                 , Element.width Element.fill
                 ]
                 (List.map
@@ -619,9 +619,9 @@ statsModal dProfile factoryType address stats =
         [ Element.el
             [ Element.width Element.fill
             , Element.Background.color EH.white
-            , Element.padding 17
+            , Element.padding (17 |> changeForMobile 10 dProfile)
             ]
-            (EH.ethAddress 18 address)
+            (EH.ethAddress (18 |> changeForMobile 14 dProfile) address)
         , Element.el
             [ Element.width Element.fill
             , Element.Background.color EH.white
