@@ -861,7 +861,7 @@ phaseWindowBox dProfile intervalType interval modalIsOpen =
                 [ Element.height Element.fill
                 , Element.width Element.fill
                 , Element.Background.color EH.white
-                , Element.paddingXY 15 17 |> changeForMobile (Element.padding 3) dProfile
+                , Element.paddingXY 15 17 |> changeForMobile (Element.padding 6) dProfile
                 ]
                 (userInterval dProfile interval)
             , dropdownArrow modalIsOpen
@@ -873,7 +873,6 @@ userInterval dProfile interval =
     Element.el
         [ Element.Font.size (20 |> changeForMobile 16 dProfile)
         , Element.Font.medium
-        , Element.centerX
         , Element.centerY
         ]
     <|
