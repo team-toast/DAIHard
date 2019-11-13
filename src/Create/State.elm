@@ -336,21 +336,30 @@ update msg prevModel =
                                 |> List.map (Tuple.mapSecond (PriceFetch.checkAgainstTime prevModel.now))
 
                         ( newModel, appCmds ) =
-                            { prevModel
-                                | prices = newPrices
-                            }
-                                |> (case prevModel.inputToAutofill of
-                                        AmountIn ->
-                                            tryAutofillAmountIn
+                            case prevModel.mode of
+                                CryptoSwap _ ->
+                                    { prevModel
+                                        | prices = newPrices
+                                    }
+                                        |> (case prevModel.inputToAutofill of
+                                                AmountIn ->
+                                                    tryAutofillAmountIn
 
-                                        AmountOut ->
-                                            tryAutofillAmountOut
+                                                AmountOut ->
+                                                    tryAutofillAmountOut
 
-                                        Margin ->
-                                            \m ->
-                                                { m | inputToAutofill = AmountOut }
-                                                    |> tryAutofillMargin
-                                   )
+                                                Margin ->
+                                                    \m ->
+                                                        { m | inputToAutofill = AmountOut }
+                                                            |> tryAutofillMargin
+                                           )
+
+                                _ ->
+                                    ( { prevModel
+                                        | prices = newPrices
+                                      }
+                                    , []
+                                    )
                     in
                     UpdateResult
                         newModel
