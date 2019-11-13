@@ -196,8 +196,6 @@ update msg model =
             }
                 |> update NoOp
 
-        --|> update (CmdUp (CmdUp.UserNotice <| UN.debugMsg (String.fromInt width)))
-        
         DismissNotice id ->
             ( { model
                 | userNotices =
