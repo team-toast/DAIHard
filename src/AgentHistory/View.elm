@@ -157,7 +157,7 @@ maybeResultsElement time dProfile tcDoneLoading tradeCaches model =
     if visibleTrades == [] then
         Element.el
             [ Element.centerX
-            , Element.Font.size 24
+            , Element.Font.size (24 |> changeForMobile 16 dProfile)
             , Element.paddingEach
                 { top = 30
                 , left = 0
