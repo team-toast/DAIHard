@@ -98,15 +98,14 @@ init flags url key =
             )
 
         cmdUps =
-            List.append
-                (tcCmdUpLists
-                    |> List.indexedMap
-                        (\tcId tcCmdUps ->
-                            CmdUp.mapList (TradeCacheMsg tcId) tcCmdUps
-                        )
-                    |> List.concat
-                )
-                cmdUpsFromNetwork
+            (tcCmdUpLists
+                |> List.indexedMap
+                    (\tcId tcCmdUps ->
+                        CmdUp.mapList (TradeCacheMsg tcId) tcCmdUps
+                    )
+                |> List.concat
+            )
+                ++ cmdUpsFromNetwork
 
         tcCmd =
             tcCmds
