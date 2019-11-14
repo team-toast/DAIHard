@@ -15,38 +15,38 @@ import Trade.ChatHistory.Types exposing (..)
 import Wallet
 
 
-window : Model -> Element Msg
-window model =
+window : DisplayProfile -> Model -> Element Msg
+window dProfile model =
     Element.el
         [ Element.Background.color EH.white
-        , Element.Border.rounded 8
+        , Element.Border.rounded (8 |> changeForMobile 0 dProfile)
         , EH.subtleShadow
         , Element.width Element.fill
         , Element.height Element.fill
         ]
-        (historyAndCommsElement model)
+        (historyAndCommsElement dProfile model)
 
 
-historyAndCommsElement : Model -> Element.Element Msg
-historyAndCommsElement model =
+historyAndCommsElement : DisplayProfile -> Model -> Element.Element Msg
+historyAndCommsElement dProfile model =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
         , Element.spacing 10
         , Element.Border.width 1
         , Element.Border.rounded 5
-        , Element.padding 20
+        , Element.padding (20 |> changeForMobile 10 dProfile)
         ]
-        [ historyElement
+        [ historyElement dProfile
             model.trade.reference.factory
             model.userRole
             (model.history |> Array.toList |> List.sortBy .blocknum)
-        , commInputElement model
+        , commInputElement dProfile model
         ]
 
 
-historyElement : FactoryType -> BuyerOrSeller -> List Event -> Element.Element Msg
-historyElement factoryType userRole messages =
+historyElement : DisplayProfile -> FactoryType -> BuyerOrSeller -> List Event -> Element.Element Msg
+historyElement dProfile factoryType userRole messages =
     case messages of
         [] ->
             Element.el
@@ -76,13 +76,14 @@ historyElement factoryType userRole messages =
                     , Element.height Element.fill
                     , Element.spacing 10
                     ]
-                    (messageList
-                        |> List.map (renderEvent factoryType userRole)
+                    (List.map
+                        (renderEvent dProfile factoryType userRole)
+                        messageList
                     )
 
 
-renderEvent : FactoryType -> BuyerOrSeller -> Event -> Element.Element Msg
-renderEvent factoryType userRole event =
+renderEvent : DisplayProfile -> FactoryType -> BuyerOrSeller -> Event -> Element.Element Msg
+renderEvent dProfile factoryType userRole event =
     let
         userMessageAttributes =
             [ Element.alignRight
@@ -120,6 +121,7 @@ renderEvent factoryType userRole event =
             in
             Element.el
                 ([ Element.padding 7
+                 , Element.Font.size (18 |> changeForMobile 12 dProfile)
                  ]
                     ++ roleDependentAttributes
                 )
@@ -173,7 +175,7 @@ renderEvent factoryType userRole event =
                             Just ( Element.rgb 1 0 0, EH.white, "Buyer aborted the trade" )
 
                         Claimed ->
-                            Just ( Element.rgb 0 1 0, EH.white, "Buyer marked the external payment complete" )
+                            Just ( Element.rgb 0 1 0, EH.white, "Buyer marked the payment complete" )
 
                         Released ->
                             Just ( Element.rgb 0 0 1, EH.white, "Seller released the " ++ tokenUnitName factoryType ++ " and closed the contract" )
@@ -192,6 +194,7 @@ renderEvent factoryType userRole event =
                         , Element.Border.color (Element.rgb 1 0 1)
                         , Element.centerX
                         , Element.Background.color bgColor
+                        , Element.Font.size (18 |> changeForMobile 12 dProfile)
                         ]
                         (Element.paragraph
                             [ Element.Font.color textColor ]
@@ -199,8 +202,8 @@ renderEvent factoryType userRole event =
                         )
 
 
-commInputElement : Model -> Element.Element Msg
-commInputElement model =
+commInputElement : DisplayProfile -> Model -> Element.Element Msg
+commInputElement dProfile model =
     Element.column
         [ Element.width Element.fill
         , Element.spacing 10
