@@ -125,7 +125,7 @@ root dProfile time tradeCaches model =
                     Element.el
                         [ Element.centerX
                         , Element.centerY
-                        , Element.Font.size 30
+                        , Element.Font.size (30 |> changeForMobile 20 dProfile)
                         ]
                         (Element.text "Loading trade info...")
 
@@ -133,7 +133,7 @@ root dProfile time tradeCaches model =
                     Element.el
                         [ Element.centerX
                         , Element.centerY
-                        , Element.Font.size 30
+                        , Element.Font.size (30 |> changeForMobile 20 dProfile)
                         ]
                         (Element.text "Invalid trade")
             )
@@ -592,7 +592,7 @@ statsModal dProfile factoryType address stats =
                       )
                     ]
                     ++ [ Element.el [ Element.centerX ]
-                            (EH.blueButton dProfile "View User History" (ViewUserHistory stats.asRole))
+                            (EH.blueButton dProfile [ "View User History" ] (ViewUserHistory stats.asRole))
                        ]
                 )
 
@@ -941,7 +941,7 @@ phaseStatusElement dProfile viewPhase trade currentTime =
                                         , Element.spacing 10
                                         ]
                                         [ Element.el [ Element.centerX ] <| Element.text (CTypes.getPokeText viewPhase)
-                                        , EH.blueButton dProfile "Poke" (StartContractAction Poke)
+                                        , EH.blueButton dProfile [ "Poke" ] (StartContractAction Poke)
                                         ]
 
                         Finished ->
@@ -981,7 +981,7 @@ phaseStatusElement dProfile viewPhase trade currentTime =
 
         Mobile ->
             Element.row
-                [ Element.paddingXY 40 20
+                [ Element.padding 10
                 , Element.spaceEvenly
                 , Element.width Element.fill
                 ]
@@ -1440,7 +1440,7 @@ phaseBodyElement dProfile viewPhase currentTime trade wallet =
             ]
             paragraphEls
         , Element.el
-            [ Element.alignRight
+            [ Element.alignRight |> changeForMobile Element.centerX dProfile
             ]
             (case phaseState trade viewPhase of
                 Active ->
@@ -1488,7 +1488,7 @@ actionButtonsElement dProfile currentTime trade wallet =
                         Element.none
 
                     CTypes.TimeLeft _ ->
-                        Element.row
+                        (Element.row |> changeForMobile Element.column dProfile)
                             [ Element.spacing 8 ]
                             (case
                                 ( trade.state.phase
@@ -1497,7 +1497,7 @@ actionButtonsElement dProfile currentTime trade wallet =
                                 )
                              of
                                 ( CTypes.Open, Just Initiator, _ ) ->
-                                    [ Element.map StartContractAction <| EH.blueButton dProfile "Remove and Refund this Trade" Recall ]
+                                    [ Element.map StartContractAction <| EH.blueButton dProfile [ "Remove and Refund this Trade" ] Recall ]
 
                                 ( CTypes.Open, Nothing, _ ) ->
                                     let
@@ -1505,11 +1505,11 @@ actionButtonsElement dProfile currentTime trade wallet =
                                             CTypes.responderDeposit trade.parameters
                                                 |> TokenValue.getEvmValue
                                     in
-                                    [ EH.redButton dProfile "Deposit and Commit to Trade" <| CommitClicked trade userInfo depositAmount ]
+                                    [ EH.redButton dProfile [ "Deposit and Commit to Trade" ] <| CommitClicked trade userInfo depositAmount ]
 
                                 ( CTypes.Committed, _, Just Buyer ) ->
-                                    [ Element.map ContractActionClicked <| EH.orangeButton dProfile "Abort Trade" Abort
-                                    , Element.map ContractActionClicked <| EH.redButton dProfile "Confirm Payment" Claim
+                                    [ Element.map ContractActionClicked <| EH.orangeButton dProfile [ "Abort Trade" ] Abort
+                                    , Element.map ContractActionClicked <| EH.redButton dProfile [ "Confirm Payment" ] Claim
                                     , chatHistoryButton
                                     ]
 
@@ -1517,8 +1517,8 @@ actionButtonsElement dProfile currentTime trade wallet =
                                     [ chatHistoryButton ]
 
                                 ( CTypes.Judgment, _, Just Seller ) ->
-                                    [ Element.map ContractActionClicked <| EH.redButton dProfile "Burn it All!" Burn
-                                    , Element.map ContractActionClicked <| EH.blueButton dProfile "Release Everything" Release
+                                    [ Element.map ContractActionClicked <| EH.redButton dProfile [ "Burn it All!" ] Burn
+                                    , Element.map ContractActionClicked <| EH.blueButton dProfile [ "Release Everything" ] Release
                                     , chatHistoryButton
                                     ]
 
@@ -1530,7 +1530,7 @@ actionButtonsElement dProfile currentTime trade wallet =
                             )
 
         Nothing ->
-            EH.redButton dProfile "Connect to Wallet" Web3Connect
+            EH.redButton dProfile [ "Connect to Wallet" ] Web3Connect
 
 
 chatHistoryButton : Element Msg
@@ -1620,30 +1620,31 @@ getModalOrNone dProfile model =
                     EH.closeableModal
                         []
                         (Element.column
-                            [ Element.spacing 20
-                            , Element.padding 20
+                            [ Element.spacing (20 |> changeForMobile 10 dProfile)
+                            , Element.padding (20 |> changeForMobile 10 dProfile)
                             , Element.centerX
                             , Element.height Element.fill
                             , Element.Font.center
                             ]
                             [ Element.el
-                                [ Element.Font.size 26
+                                [ Element.Font.size (26 |> changeForMobile 22 dProfile)
                                 , Element.Font.semiBold
                                 , Element.centerX
                                 , Element.centerY
                                 ]
                                 (Element.text "Just to Confirm...")
                             , Element.column
-                                [ Element.spacing 20
+                                [ Element.spacing (20 |> changeForMobile 10 dProfile)
                                 , Element.centerX
                                 , Element.centerY
                                 ]
                                 (List.map
                                     (Element.paragraph
                                         [ Element.centerX
-                                        , Element.Font.size 18
+                                        , Element.Font.size (18 |> changeForMobile 16 dProfile)
                                         , Element.Font.medium
                                         , Element.Font.color EH.permanentTextColor
+                                        , Element.spacing 2
                                         ]
                                     )
                                     ([ [ Element.text <| "You will deposit "
@@ -1667,7 +1668,17 @@ getModalOrNone dProfile model =
                                 [ Element.alignBottom
                                 , Element.centerX
                                 ]
-                                (EH.redButton dProfile "Yes, I definitely want to commit to this trade." (ConfirmCommit trade userInfo deposit))
+                                (EH.redButton
+                                    dProfile
+                                    (case dProfile of
+                                        Desktop ->
+                                            [ "Yes, I definitely want to commit to this trade." ]
+
+                                        Mobile ->
+                                            [ "Yes, I definitely want", "to commit to this trade." ]
+                                    )
+                                    (ConfirmCommit trade userInfo deposit)
+                                )
                             ]
                         )
                         NoOp
@@ -1732,16 +1743,17 @@ getModalOrNone dProfile model =
                                 ]
                                 (Element.text "Just to Confirm...")
                             , Element.column
-                                [ Element.spacing 20
+                                [ Element.spacing (20 |> changeForMobile 10 dProfile)
                                 , Element.centerX
                                 , Element.centerY
                                 ]
                                 (List.map
                                     (Element.paragraph
                                         [ Element.centerX
-                                        , Element.Font.size 18
+                                        , Element.Font.size (18 |> changeForMobile 16 dProfile)
                                         , Element.Font.medium
                                         , Element.Font.color EH.permanentTextColor
+                                        , Element.spacing 2
                                         ]
                                     )
                                     (case action of
@@ -1787,7 +1799,7 @@ getModalOrNone dProfile model =
                                     Burn ->
                                         "I understand. Burn the " ++ tokenUnitName trade.reference.factory ++ "."
                                  )
-                                    |> (\s -> EH.redButton dProfile s (StartContractAction action))
+                                    |> (\s -> EH.redButton dProfile [ s ] (StartContractAction action))
                                 )
                             ]
                         )

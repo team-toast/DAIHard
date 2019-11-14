@@ -1299,9 +1299,18 @@ txChainStatusModal dProfile txChainStatus model =
                             ( blueText depositAmountText
                             , blueText totalBurnableText
                             , EH.redButton dProfile
-                                ("Understood. Deposit "
-                                    ++ depositAmountText
-                                    ++ " and open this trade."
+                                (case dProfile of
+                                    Desktop ->
+                                        [ "Understood. Deposit "
+                                            ++ depositAmountText
+                                            ++ " and open this trade."
+                                        ]
+
+                                    Mobile ->
+                                        [ "Understood. Deposit "
+                                            ++ depositAmountText
+                                        , "and open this trade."
+                                        ]
                                 )
                                 (ConfirmCreate factoryType createParameters depositAmount)
                             )

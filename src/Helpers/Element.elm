@@ -611,10 +611,11 @@ dropdownSelector itemsAndMsgs =
 -- BUTTONS
 
 
-button : DisplayProfile -> ( Element.Color, Element.Color, Element.Color ) -> Element.Color -> String -> msg -> Element msg
-button dProfile ( bgColor, bgHoverColor, bgPressedColor ) textColor text msg =
-    Element.el
+button : DisplayProfile -> ( Element.Color, Element.Color, Element.Color ) -> Element.Color -> List String -> msg -> Element msg
+button dProfile ( bgColor, bgHoverColor, bgPressedColor ) textColor lines msg =
+    Element.column
         [ Element.Border.rounded 4
+        , Element.spacing (8 |> changeForMobile 5 dProfile)
         , Element.pointer
         , Element.Events.onClick msg
         , Element.paddingXY 25 17 |> changeForMobile (Element.padding 10) dProfile
@@ -626,7 +627,10 @@ button dProfile ( bgColor, bgHoverColor, bgPressedColor ) textColor text msg =
         , Element.mouseOver [ Element.Background.color bgHoverColor ]
         , noSelectText
         ]
-        (Element.text text)
+        (List.map
+            (Element.el [ Element.centerX ] << Element.text)
+            lines
+        )
 
 
 closeButton : msg -> Element msg
@@ -662,7 +666,7 @@ pokeButton pokeMsg =
         }
 
 
-blueButton : DisplayProfile -> String -> msg -> Element msg
+blueButton : DisplayProfile -> List String -> msg -> Element msg
 blueButton dProfile text msg =
     button dProfile
         ( Element.rgba 0 0 1 1
@@ -674,7 +678,7 @@ blueButton dProfile text msg =
         msg
 
 
-inverseBlueButton : DisplayProfile -> String -> msg -> Element msg
+inverseBlueButton : DisplayProfile -> List String -> msg -> Element msg
 inverseBlueButton dProfile text msg =
     button dProfile
         ( Element.rgba 0 0 1 0.05
@@ -686,7 +690,7 @@ inverseBlueButton dProfile text msg =
         msg
 
 
-redButton : DisplayProfile -> String -> msg -> Element msg
+redButton : DisplayProfile -> List String -> msg -> Element msg
 redButton dProfile text msg =
     button dProfile
         ( Element.rgba 1 0 0 1
@@ -714,7 +718,7 @@ disabledButton dProfile text maybeTipText =
         (Element.text text)
 
 
-orangeButton : DisplayProfile -> String -> msg -> Element msg
+orangeButton : DisplayProfile -> List String -> msg -> Element msg
 orangeButton dProfile text msg =
     button dProfile
         ( Element.rgba 1 0.6 0.2 1
