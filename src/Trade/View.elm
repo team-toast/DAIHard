@@ -139,7 +139,7 @@ root dProfile time tradeCaches model =
             )
         )
     , [ chatOverlayElement dProfile model
-      , getModalOrNone dProfile model
+      , getTxModalOrNone dProfile model
       ]
     )
 
@@ -1551,285 +1551,291 @@ chatHistoryButton =
 
 chatOverlayElement : DisplayProfile -> Model -> Element Msg
 chatOverlayElement dProfile model =
-    if model.showChatHistory then
-        let
-            chatWindow =
-                model.chatHistoryModel
-                    |> Maybe.map (ChatHistory.window dProfile)
-                    |> Maybe.withDefault Element.none
-        in
-        Element.el
-            [ Element.height Element.fill
-            , Element.width <| (Element.px 500 |> changeForMobile Element.fill dProfile)
-            , Element.padding (20 |> changeForMobile 0 dProfile)
-            , Element.alignRight
-            ]
-        <|
-            EH.closeableModal
-                [ Element.height Element.fill
-                , Element.width Element.fill
-                ]
-                (Element.map ChatHistoryMsg chatWindow)
-                NoOp
-                ToggleChat
-                False
+    case ( model.showChatHistory, model.chatHistoryModel ) of
+        ( True, Just chatHistoryModel ) ->
+            case dProfile of
+                Mobile ->
+                    EH.closeableModal
+                        [ Element.width Element.fill
+                        , Element.height Element.fill
+                        ]
+                        (Element.map
+                            ChatHistoryMsg
+                            (ChatHistory.window dProfile chatHistoryModel)
+                        )
+                        NoOp
+                        ToggleChat
+                        False
 
-    else
-        Element.none
-
-
-getModalOrNone : DisplayProfile -> Model -> Element Msg
-getModalOrNone dProfile model =
-    case ( dProfile, model.showChatHistory, model.chatHistoryModel ) of
-        ( Mobile, True, Just chatHistoryModel ) ->
-            Element.map
-                ChatHistoryMsg
-                (ChatHistory.window dProfile chatHistoryModel)
+                Desktop ->
+                    Element.el
+                        [ Element.height Element.fill
+                        , Element.width <| Element.px 500
+                        , Element.padding 20
+                        , Element.alignRight
+                        ]
+                    <|
+                        EH.closeableModal
+                            [ Element.height Element.fill
+                            , Element.width Element.fill
+                            ]
+                            (Element.map
+                                ChatHistoryMsg
+                                (ChatHistory.window dProfile chatHistoryModel)
+                            )
+                            NoOp
+                            ToggleChat
+                            False
 
         _ ->
-            case ( model.txChainStatus, model.trade ) of
-                ( Just txChainStatus, CTypes.LoadedTrade trade ) ->
-                    case txChainStatus of
-                        ConfirmingCommit userInfo deposit ->
-                            let
-                                depositAmountString =
-                                    TokenValue.tokenValue deposit
-                                        |> TokenValue.toConciseString
+            Element.none
 
-                                priceString =
-                                    Currencies.toString trade.terms.price
 
-                                daiAmountString =
-                                    TokenValue.toConciseString trade.parameters.tradeAmount ++ " " ++ tokenUnitName trade.reference.factory
+getTxModalOrNone : DisplayProfile -> Model -> Element Msg
+getTxModalOrNone dProfile model =
+    case ( model.txChainStatus, model.trade ) of
+        ( Just txChainStatus, CTypes.LoadedTrade trade ) ->
+            case txChainStatus of
+                ConfirmingCommit userInfo deposit ->
+                    let
+                        depositAmountString =
+                            TokenValue.tokenValue deposit
+                                |> TokenValue.toConciseString
 
-                                ( buyerOrSellerEl, agreeToWhatTextList ) =
-                                    case CTypes.getResponderRole trade.parameters of
-                                        Buyer ->
-                                            ( Element.el [ Element.Font.medium, Element.Font.color EH.black ] <| Element.text "buyer"
-                                            , [ Element.text "pay the seller "
-                                              , Element.el [ Element.Font.color EH.blue ] <| Element.text priceString
-                                              , Element.text " in exchange for the "
-                                              , Element.el [ Element.Font.color EH.blue ] <| Element.text daiAmountString
-                                              , Element.text " held in this contract."
-                                              ]
-                                            )
+                        priceString =
+                            Currencies.toString trade.terms.price
 
-                                        Seller ->
-                                            ( Element.el [ Element.Font.medium, Element.Font.color EH.black ] <| Element.text "seller"
-                                            , [ Element.text "accept "
-                                              , Element.el [ Element.Font.color EH.blue ] <| Element.text priceString
-                                              , Element.text " from the buyer in exchange for the "
-                                              , Element.el [ Element.Font.color EH.blue ] <| Element.text daiAmountString
-                                              , Element.text " held in this contract."
-                                              ]
-                                            )
-                            in
-                            EH.closeableModal
-                                []
-                                (Element.column
-                                    [ Element.spacing (20 |> changeForMobile 10 dProfile)
-                                    , Element.padding (20 |> changeForMobile 10 dProfile)
-                                    , Element.centerX
-                                    , Element.height Element.fill
-                                    , Element.Font.center
-                                    ]
-                                    [ Element.el
-                                        [ Element.Font.size (26 |> changeForMobile 22 dProfile)
-                                        , Element.Font.semiBold
-                                        , Element.centerX
-                                        , Element.centerY
-                                        ]
-                                        (Element.text "Just to Confirm...")
-                                    , Element.column
-                                        [ Element.spacing (20 |> changeForMobile 10 dProfile)
-                                        , Element.centerX
-                                        , Element.centerY
-                                        ]
-                                        (List.map
-                                            (Element.paragraph
-                                                [ Element.centerX
-                                                , Element.Font.size (18 |> changeForMobile 16 dProfile)
-                                                , Element.Font.medium
-                                                , Element.Font.color EH.permanentTextColor
-                                                , Element.spacing 2
-                                                ]
-                                            )
-                                            ([ [ Element.text <| "You will deposit "
-                                               , Element.el [ Element.Font.color EH.blue ] <| Element.text <| depositAmountString ++ " " ++ tokenUnitName trade.reference.factory
-                                               , Element.text ", thereby becoming the "
-                                               , buyerOrSellerEl
-                                               , Element.text " of this trade. By doing so, you are agreeing to "
-                                               ]
-                                                ++ agreeToWhatTextList
-                                             ]
-                                                ++ (case trade.reference.factory of
-                                                        Token _ ->
-                                                            [ [ Element.text <| "(This ususally requires two Metamask signatures. Your " ++ tokenUnitName trade.reference.factory ++ " will not be deposited until the second transaction has been mined.)" ] ]
+                        daiAmountString =
+                            TokenValue.toConciseString trade.parameters.tradeAmount ++ " " ++ tokenUnitName trade.reference.factory
 
-                                                        _ ->
-                                                            []
-                                                   )
-                                            )
-                                        )
-                                    , Element.el
-                                        [ Element.alignBottom
-                                        , Element.centerX
-                                        ]
-                                        (EH.redButton
-                                            dProfile
-                                            (case dProfile of
-                                                Desktop ->
-                                                    [ "Yes, I definitely want to commit to this trade." ]
+                        ( buyerOrSellerEl, agreeToWhatTextList ) =
+                            case CTypes.getResponderRole trade.parameters of
+                                Buyer ->
+                                    ( Element.el [ Element.Font.medium, Element.Font.color EH.black ] <| Element.text "buyer"
+                                    , [ Element.text "pay the seller "
+                                      , Element.el [ Element.Font.color EH.blue ] <| Element.text priceString
+                                      , Element.text " in exchange for the "
+                                      , Element.el [ Element.Font.color EH.blue ] <| Element.text daiAmountString
+                                      , Element.text " held in this contract."
+                                      ]
+                                    )
 
-                                                Mobile ->
-                                                    [ "Yes, I definitely want", "to commit to this trade." ]
-                                            )
-                                            (ConfirmCommit trade userInfo deposit)
-                                        )
-                                    ]
-                                )
-                                NoOp
-                                AbortAction
-                                False
-
-                        ApproveNeedsSig ->
-                            EH.txProcessModal
-                                [ Element.text "Waiting for user signature for the approve call."
-                                , Element.text "(check Metamask!)"
-                                , Element.text "Note that there will be a second transaction to sign after this."
+                                Seller ->
+                                    ( Element.el [ Element.Font.medium, Element.Font.color EH.black ] <| Element.text "seller"
+                                    , [ Element.text "accept "
+                                      , Element.el [ Element.Font.color EH.blue ] <| Element.text priceString
+                                      , Element.text " from the buyer in exchange for the "
+                                      , Element.el [ Element.Font.color EH.blue ] <| Element.text daiAmountString
+                                      , Element.text " held in this contract."
+                                      ]
+                                    )
+                    in
+                    EH.closeableModal
+                        []
+                        (Element.column
+                            [ Element.spacing (20 |> changeForMobile 10 dProfile)
+                            , Element.padding (20 |> changeForMobile 10 dProfile)
+                            , Element.centerX
+                            , Element.height Element.fill
+                            , Element.Font.center
+                            ]
+                            [ Element.el
+                                [ Element.Font.size (26 |> changeForMobile 22 dProfile)
+                                , Element.Font.semiBold
+                                , Element.centerX
+                                , Element.centerY
                                 ]
-                                NoOp
-                                NoOp
-
-                        ApproveMining txHash ->
-                            EH.txProcessModal
-                                [ Element.text "Mining the initial approve transaction..."
-                                , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                                    { url = EthHelpers.makeViewTxUrl trade.reference.factory txHash
-                                    , label = Element.text "See the transaction on Etherscan"
-                                    }
-                                , Element.text "Funds will not leave your wallet until you sign the next transaction."
+                                (Element.text "Just to Confirm...")
+                            , Element.column
+                                [ Element.spacing (20 |> changeForMobile 10 dProfile)
+                                , Element.centerX
+                                , Element.centerY
                                 ]
-                                NoOp
-                                NoOp
-
-                        CommitNeedsSig ->
-                            EH.txProcessModal
-                                [ Element.text "Waiting for user signature for the final commit call."
-                                , Element.text "(check Metamask!)"
-                                , Element.text "This will make the deposit and commit you to the trade."
-                                ]
-                                NoOp
-                                NoOp
-
-                        CommitMining txHash ->
-                            EH.txProcessModal
-                                [ Element.text "Mining the final commit transaction..."
-                                , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                                    { url = EthHelpers.makeViewTxUrl trade.reference.factory txHash
-                                    , label = Element.text "See the transaction"
-                                    }
-                                ]
-                                NoOp
-                                NoOp
-
-                        ConfirmingAction action ->
-                            EH.closeableModal []
-                                (Element.column
-                                    [ Element.spacing 20
-                                    , Element.padding 20
-                                    , Element.centerX
-                                    , Element.height Element.fill
-                                    , Element.Font.center
-                                    ]
-                                    [ Element.el
-                                        [ Element.Font.size 26
-                                        , Element.Font.semiBold
-                                        , Element.centerX
-                                        , Element.centerY
+                                (List.map
+                                    (Element.paragraph
+                                        [ Element.centerX
+                                        , Element.Font.size (18 |> changeForMobile 16 dProfile)
+                                        , Element.Font.medium
+                                        , Element.Font.color EH.permanentTextColor
+                                        , Element.spacing 2
                                         ]
-                                        (Element.text "Just to Confirm...")
-                                    , Element.column
-                                        [ Element.spacing (20 |> changeForMobile 10 dProfile)
-                                        , Element.centerX
-                                        , Element.centerY
-                                        ]
-                                        (List.map
-                                            (Element.paragraph
-                                                [ Element.centerX
-                                                , Element.Font.size (18 |> changeForMobile 16 dProfile)
-                                                , Element.Font.medium
-                                                , Element.Font.color EH.permanentTextColor
-                                                , Element.spacing 2
-                                                ]
-                                            )
-                                            (case action of
-                                                Poke ->
+                                    )
+                                    ([ [ Element.text <| "You will deposit "
+                                       , Element.el [ Element.Font.color EH.blue ] <| Element.text <| depositAmountString ++ " " ++ tokenUnitName trade.reference.factory
+                                       , Element.text ", thereby becoming the "
+                                       , buyerOrSellerEl
+                                       , Element.text " of this trade. By doing so, you are agreeing to "
+                                       ]
+                                        ++ agreeToWhatTextList
+                                     ]
+                                        ++ (case trade.reference.factory of
+                                                Token _ ->
+                                                    [ [ Element.text <| "(This ususally requires two Metamask signatures. Your " ++ tokenUnitName trade.reference.factory ++ " will not be deposited until the second transaction has been mined.)" ] ]
+
+                                                _ ->
                                                     []
-
-                                                Recall ->
-                                                    []
-
-                                                Claim ->
-                                                    [ [ Element.text <| "By clicking \"Confirm Payment\", you are claiming that you've paid the Seller in a way they can verify. Only do this if you are sure the Seller will agree that they have the money--otherwise they may burn the " ++ tokenUnitName trade.reference.factory ++ " rather than release it to you." ] ]
-
-                                                Abort ->
-                                                    [ [ Element.text <| "Aborting will incur a small penalty on both parties, and refund the rest of the " ++ tokenUnitName trade.reference.factory ++ "." ] ]
-
-                                                Release ->
-                                                    [ [ Element.text "Releasing the payment will irreversibly send the trade's balance to the Buyer. Only do this if you are certain you've received the full agreed-upon payment." ] ]
-
-                                                Burn ->
-                                                    [ [ Element.text <| "This will destroy the " ++ tokenUnitName trade.reference.factory ++ " in the payment. Only do this if the Buyer has attempted to scam you, is nonresponsive, or for some reason has failed the payment." ] ]
-                                            )
-                                        )
-                                    , Element.el
-                                        [ Element.alignBottom
-                                        , Element.centerX
-                                        ]
-                                        ((case action of
-                                            Poke ->
-                                                "Poke"
-
-                                            Recall ->
-                                                "Recall"
-
-                                            Claim ->
-                                                "I understand. Confirm Payment"
-
-                                            Abort ->
-                                                "I understand. Abort the trade."
-
-                                            Release ->
-                                                "I understand. Release the " ++ tokenUnitName trade.reference.factory ++ "."
-
-                                            Burn ->
-                                                "I understand. Burn the " ++ tokenUnitName trade.reference.factory ++ "."
-                                         )
-                                            |> (\s -> EH.redButton dProfile [ s ] (StartContractAction action))
-                                        )
-                                    ]
+                                           )
+                                    )
                                 )
-                                NoOp
-                                AbortAction
-                                False
-
-                        ActionNeedsSig action ->
-                            EH.txProcessModal
-                                [ Element.text <| "Waiting for user signature for the " ++ actionName action ++ " call."
-                                , Element.text "(check Metamask!)"
+                            , Element.el
+                                [ Element.alignBottom
+                                , Element.centerX
                                 ]
-                                NoOp
-                                NoOp
+                                (EH.redButton
+                                    dProfile
+                                    (case dProfile of
+                                        Desktop ->
+                                            [ "Yes, I definitely want to commit to this trade." ]
 
-                        ActionMining action txHash ->
-                            Element.none
+                                        Mobile ->
+                                            [ "Yes, I definitely want", "to commit to this trade." ]
+                                    )
+                                    (ConfirmCommit trade userInfo deposit)
+                                )
+                            ]
+                        )
+                        NoOp
+                        AbortAction
+                        False
 
-                ( Nothing, _ ) ->
+                ApproveNeedsSig ->
+                    EH.txProcessModal
+                        [ Element.text "Waiting for user signature for the approve call."
+                        , Element.text "(check Metamask!)"
+                        , Element.text "Note that there will be a second transaction to sign after this."
+                        ]
+                        NoOp
+                        NoOp
+
+                ApproveMining txHash ->
+                    EH.txProcessModal
+                        [ Element.text "Mining the initial approve transaction..."
+                        , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
+                            { url = EthHelpers.makeViewTxUrl trade.reference.factory txHash
+                            , label = Element.text "See the transaction on Etherscan"
+                            }
+                        , Element.text "Funds will not leave your wallet until you sign the next transaction."
+                        ]
+                        NoOp
+                        NoOp
+
+                CommitNeedsSig ->
+                    EH.txProcessModal
+                        [ Element.text "Waiting for user signature for the final commit call."
+                        , Element.text "(check Metamask!)"
+                        , Element.text "This will make the deposit and commit you to the trade."
+                        ]
+                        NoOp
+                        NoOp
+
+                CommitMining txHash ->
+                    EH.txProcessModal
+                        [ Element.text "Mining the final commit transaction..."
+                        , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
+                            { url = EthHelpers.makeViewTxUrl trade.reference.factory txHash
+                            , label = Element.text "See the transaction"
+                            }
+                        ]
+                        NoOp
+                        NoOp
+
+                ConfirmingAction action ->
+                    EH.closeableModal []
+                        (Element.column
+                            [ Element.spacing 20
+                            , Element.padding 20
+                            , Element.centerX
+                            , Element.height Element.fill
+                            , Element.Font.center
+                            ]
+                            [ Element.el
+                                [ Element.Font.size 26
+                                , Element.Font.semiBold
+                                , Element.centerX
+                                , Element.centerY
+                                ]
+                                (Element.text "Just to Confirm...")
+                            , Element.column
+                                [ Element.spacing (20 |> changeForMobile 10 dProfile)
+                                , Element.centerX
+                                , Element.centerY
+                                ]
+                                (List.map
+                                    (Element.paragraph
+                                        [ Element.centerX
+                                        , Element.Font.size (18 |> changeForMobile 16 dProfile)
+                                        , Element.Font.medium
+                                        , Element.Font.color EH.permanentTextColor
+                                        , Element.spacing 2
+                                        ]
+                                    )
+                                    (case action of
+                                        Poke ->
+                                            []
+
+                                        Recall ->
+                                            []
+
+                                        Claim ->
+                                            [ [ Element.text <| "By clicking \"Confirm Payment\", you are claiming that you've paid the Seller in a way they can verify. Only do this if you are sure the Seller will agree that they have the money--otherwise they may burn the " ++ tokenUnitName trade.reference.factory ++ " rather than release it to you." ] ]
+
+                                        Abort ->
+                                            [ [ Element.text <| "Aborting will incur a small penalty on both parties, and refund the rest of the " ++ tokenUnitName trade.reference.factory ++ "." ] ]
+
+                                        Release ->
+                                            [ [ Element.text "Releasing the payment will irreversibly send the trade's balance to the Buyer. Only do this if you are certain you've received the full agreed-upon payment." ] ]
+
+                                        Burn ->
+                                            [ [ Element.text <| "This will destroy the " ++ tokenUnitName trade.reference.factory ++ " in the payment. Only do this if the Buyer has attempted to scam you, is nonresponsive, or for some reason has failed the payment." ] ]
+                                    )
+                                )
+                            , Element.el
+                                [ Element.alignBottom
+                                , Element.centerX
+                                ]
+                                ((case action of
+                                    Poke ->
+                                        "Poke"
+
+                                    Recall ->
+                                        "Recall"
+
+                                    Claim ->
+                                        "I understand. Confirm Payment"
+
+                                    Abort ->
+                                        "I understand. Abort the trade."
+
+                                    Release ->
+                                        "I understand. Release the " ++ tokenUnitName trade.reference.factory ++ "."
+
+                                    Burn ->
+                                        "I understand. Burn the " ++ tokenUnitName trade.reference.factory ++ "."
+                                 )
+                                    |> (\s -> EH.redButton dProfile [ s ] (StartContractAction action))
+                                )
+                            ]
+                        )
+                        NoOp
+                        AbortAction
+                        False
+
+                ActionNeedsSig action ->
+                    EH.txProcessModal
+                        [ Element.text <| "Waiting for user signature for the " ++ actionName action ++ " call."
+                        , Element.text "(check Metamask!)"
+                        ]
+                        NoOp
+                        NoOp
+
+                ActionMining action txHash ->
                     Element.none
 
-                ( _, _ ) ->
-                    Element.none
+        ( Nothing, _ ) ->
+            Element.none
+
+        ( _, _ ) ->
+            Element.none
 
 
 closedReasonToText : CTypes.ClosedReason -> String
