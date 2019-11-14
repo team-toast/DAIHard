@@ -259,7 +259,7 @@ viewTradeCell time dProfile prices colType trade =
             Offer ->
                 (Element.column |> changeForMobile Element.column dProfile)
                     [ Element.spacing 5
-                    , Element.Font.size 18
+                    , Element.Font.size (18 |> changeForMobile 14 dProfile)
                     ]
                     [ Element.row
                         [ Element.spacing 5 ]
