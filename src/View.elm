@@ -78,7 +78,7 @@ pageElementAndModal dProfile model =
             Element.none
         , submodelEl
         ]
-    , modalEls ++ userNoticeEls model.userNotices
+    , modalEls ++ userNoticeEls dProfile model.userNotices
     )
 
 
@@ -321,45 +321,45 @@ logoElement dProfile =
         )
 
 
-userNoticeEls : List (UserNotice Msg) -> List (Element Msg)
-userNoticeEls notices =
+userNoticeEls : DisplayProfile -> List (UserNotice Msg) -> List (Element Msg)
+userNoticeEls dProfile notices =
     if notices == [] then
         []
 
     else
         [ Element.column
-            [ Element.moveLeft 20
-            , Element.moveUp 20
-            , Element.spacing 10
+            [ Element.moveLeft (20 |> changeForMobile 5 dProfile)
+            , Element.moveUp (20 |> changeForMobile 5 dProfile)
+            , Element.spacing (10 |> changeForMobile 5 dProfile)
             , Element.alignRight
             , Element.alignBottom
-            , Element.width <| Element.px 300
-            , Element.Font.size 15
+            , Element.width <| Element.px (300 |> changeForMobile 150 dProfile)
+            , Element.Font.size (15 |> changeForMobile 10 dProfile)
             ]
             (notices
                 |> List.indexedMap (\id notice -> ( id, notice ))
                 |> List.filter (\( _, notice ) -> notice.align == UN.BottomRight)
-                |> List.map userNotice
+                |> List.map (userNotice dProfile)
             )
         , Element.column
-            [ Element.moveRight 20
+            [ Element.moveRight (20 |> changeForMobile 5 dProfile)
             , Element.moveDown 100
-            , Element.spacing 10
+            , Element.spacing (10 |> changeForMobile 5 dProfile)
             , Element.alignLeft
             , Element.alignTop
-            , Element.width <| Element.px 300
-            , Element.Font.size 15
+            , Element.width <| Element.px (300 |> changeForMobile 150 dProfile)
+            , Element.Font.size (15 |> changeForMobile 10 dProfile)
             ]
             (notices
                 |> List.indexedMap (\id notice -> ( id, notice ))
                 |> List.filter (\( _, notice ) -> notice.align == UN.TopLeft)
-                |> List.map userNotice
+                |> List.map (userNotice dProfile)
             )
         ]
 
 
-userNotice : ( Int, UserNotice Msg ) -> Element Msg
-userNotice ( id, notice ) =
+userNotice : DisplayProfile -> ( Int, UserNotice Msg ) -> Element Msg
+userNotice dProfile ( id, notice ) =
     let
         color =
             case notice.noticeType of
@@ -394,8 +394,8 @@ userNotice ( id, notice ) =
     in
     Element.el
         [ Element.Background.color color
-        , Element.Border.rounded 10
-        , Element.padding 8
+        , Element.Border.rounded (10 |> changeForMobile 5 dProfile)
+        , Element.padding (8 |> changeForMobile 3 dProfile)
         , Element.width Element.fill
         , Element.Border.width 1
         , Element.Border.color <| Element.rgba 0 0 0 0.15
@@ -407,6 +407,7 @@ userNotice ( id, notice ) =
                     Element.paragraph
                         [ Element.width Element.fill
                         , Element.Font.color textColor
+                        , Element.spacing 1
                         ]
                         (if pNum == 0 then
                             closeElement :: paragraphLines
