@@ -198,45 +198,63 @@ swapButton =
 
 amountOutRow : DisplayProfile -> Model -> Element Msg
 amountOutRow dProfile model =
-    Element.row
-        [ Element.width Element.fill
-        , Element.spacing 25
-        ]
-        ([ Element.el [ Element.width <| Element.fillPortion 2 ]
-            (amountAndTypeOut dProfile model)
-         ]
-            ++ (case model.mode of
-                    CryptoSwap _ ->
-                        [ Element.el
-                            [ Element.Font.size 28
-                            , Element.Font.color <| Element.rgba 0.05 0.1 0.3 0.25
-                            , Element.Font.semiBold
-                            , Element.alignBottom
-                            , Element.paddingEach
-                                { bottom = 14
-                                , top = 0
-                                , right = 0
-                                , left = 0
-                                }
-                            ]
-                            (Element.text "@")
-                        , Element.el
-                            [ Element.width <| Element.fillPortion 1
-                            , Element.above
-                                (if model.showMarginModal then
-                                    marginModal dProfile model.margin model.inputs.margin model.errors.margin
-
-                                 else
-                                    Element.none
-                                )
-                            ]
-                            (marginBox dProfile model)
+    let
+        marginEls =
+            case model.mode of
+                CryptoSwap _ ->
+                    [ Element.el
+                        [ Element.Font.size (28 |> changeForMobile 22 dProfile)
+                        , Element.Font.color <| Element.rgba 0.05 0.1 0.3 0.25
+                        , Element.Font.semiBold
+                        , Element.alignBottom
+                        , Element.paddingEach
+                            { bottom = 14 |> changeForMobile 12 dProfile
+                            , top = 0
+                            , right = 0
+                            , left = 0
+                            }
                         ]
+                        (Element.text "@")
+                    , Element.el
+                        [ Element.width <| Element.fillPortion 1
+                        , Element.above
+                            (if model.showMarginModal then
+                                marginModal dProfile model.margin model.inputs.margin model.errors.margin
 
-                    _ ->
-                        []
-               )
-        )
+                             else
+                                Element.none
+                            )
+                        ]
+                        (marginBox dProfile model)
+                    ]
+
+                _ ->
+                    []
+    in
+    case dProfile of
+        Desktop ->
+            Element.row
+                [ Element.width Element.fill
+                , Element.spacing 25
+                ]
+                ([ Element.el [ Element.width <| Element.fillPortion 2 ]
+                    (amountAndTypeOut dProfile model)
+                 ]
+                    ++ marginEls
+                )
+
+        Mobile ->
+            Element.column
+                [ Element.width Element.fill
+                , Element.spacing 10
+                ]
+                [ amountAndTypeOut dProfile model
+                , Element.row
+                    [ Element.width Element.fill
+                    , Element.spacing 10
+                    ]
+                    marginEls
+                ]
 
 
 moreInfoInput : DisplayProfile -> Model -> Element Msg
@@ -309,9 +327,15 @@ amountAndTypeOut dProfile model =
 
 marginBox : DisplayProfile -> Model -> Element Msg
 marginBox dProfile model =
-    EH.withInputHeader dProfile
-        [ Element.width Element.fill ]
-        "Margin"
+    (case dProfile of
+        Desktop ->
+            EH.withInputHeader dProfile
+                [ Element.width Element.fill ]
+                "Margin"
+
+        Mobile ->
+            identity
+    )
         (inputContainer dProfile
             [ Element.width Element.fill
             , Element.pointer
@@ -323,8 +347,8 @@ marginBox dProfile model =
                 , Element.Background.color EH.white
                 , Element.spacing 13
                 ]
-                [ profitLossOrEven model.margin
-                , absMarginPercentage model.margin
+                [ profitLossOrEven dProfile model.margin
+                , absMarginPercentage dProfile model.margin
                 ]
             , dropdownArrow model.showMarginModal
             ]
@@ -488,8 +512,8 @@ button dProfile bgColor textColor text maybeOnClick =
         (Element.text text)
 
 
-profitLossOrEven : Float -> Element Msg
-profitLossOrEven margin =
+profitLossOrEven : DisplayProfile -> Float -> Element Msg
+profitLossOrEven dProfile margin =
     let
         ( text, bgColor, textColor ) =
             if margin == 0 then
@@ -511,23 +535,23 @@ profitLossOrEven margin =
                 )
     in
     Element.el
-        [ Element.padding 7 ]
+        [ Element.padding (7 |> changeForMobile 4 dProfile) ]
     <|
         Element.el
             [ Element.paddingXY 15 9
             , Element.Background.color bgColor
             , Element.Border.rounded 4
             , Element.Font.color textColor
-            , Element.Font.size 20
+            , Element.Font.size (20 |> changeForMobile 16 dProfile)
             , Element.Font.semiBold
             ]
             (Element.text text)
 
 
-absMarginPercentage : Float -> Element Msg
-absMarginPercentage margin =
+absMarginPercentage : DisplayProfile -> Float -> Element Msg
+absMarginPercentage dProfile margin =
     Element.el
-        [ Element.Font.size 20
+        [ Element.Font.size (20 |> changeForMobile 16 dProfile)
         , Element.Font.semiBold
         ]
         (Element.text
