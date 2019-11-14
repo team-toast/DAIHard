@@ -424,40 +424,40 @@ marginModal dProfile margin marginInput maybeError =
                         }
                     ]
                 , if margin < 0 then
-                    button
+                    button dProfile
                         EH.softRed
                         EH.white
                         "Loss"
                         Nothing
 
                   else
-                    button
+                    button dProfile
                         inactiveBgColor
                         inactiveTextColor
                         "Loss"
                         (Just <| MarginButtonClicked Loss)
                 , if margin == 0 then
-                    button
+                    button dProfile
                         (Element.rgb255 16 7 234)
                         EH.white
                         "Even"
                         Nothing
 
                   else
-                    button
+                    button dProfile
                         inactiveBgColor
                         inactiveTextColor
                         "Even"
                         (Just <| MarginButtonClicked Even)
                 , if margin > 0 then
-                    button
+                    button dProfile
                         (Element.rgb255 0 188 137)
                         EH.white
                         "Profit"
                         Nothing
 
                   else
-                    button
+                    button dProfile
                         inactiveBgColor
                         inactiveTextColor
                         "Profit"
@@ -466,14 +466,14 @@ marginModal dProfile margin marginInput maybeError =
             ]
 
 
-button : Element.Color -> Element.Color -> String -> Maybe Msg -> Element Msg
-button bgColor textColor text maybeOnClick =
+button : DisplayProfile -> Element.Color -> Element.Color -> String -> Maybe Msg -> Element Msg
+button dProfile bgColor textColor text maybeOnClick =
     Element.el
         ([ Element.Background.color bgColor
          , Element.Border.rounded 4
-         , Element.paddingXY 22 16
+         , Element.paddingXY 22 16 |> changeForMobile (Element.padding 10) dProfile
          , Element.Font.color textColor
-         , Element.Font.size 20
+         , Element.Font.size (20 |> changeForMobile 16 dProfile)
          ]
             ++ (case maybeOnClick of
                     Just onClick ->
@@ -930,6 +930,7 @@ intervalModal dProfile intervalType userRole value input maybeError =
             , Element.Background.color EH.lightGray
             , Element.spacing 1
             , Element.clip
+            , EH.moveToFront
             , Element.Border.shadow
                 { offset = ( 0, 3 )
                 , size = 0
@@ -943,7 +944,7 @@ intervalModal dProfile intervalType userRole value input maybeError =
                 Element.alignLeft
             ]
             [ Element.el
-                [ Element.paddingXY 23 18
+                [ Element.paddingXY 23 18 |> changeForMobile (Element.paddingXY 18 16) dProfile
                 , Element.Background.color EH.white
                 , Element.width Element.fill
                 ]
@@ -953,13 +954,13 @@ intervalModal dProfile intervalType userRole value input maybeError =
                     , Element.spacing 10
                     ]
                     [ Element.el
-                        [ Element.Font.size 20
+                        [ Element.Font.size (20 |> changeForMobile 18 dProfile)
                         , Element.Font.semiBold
                         , Element.Font.color <| Element.rgb255 16 7 234
                         ]
                         (Element.text title)
                     , Element.paragraph
-                        [ Element.Font.size 16
+                        [ Element.Font.size (16 |> changeForMobile 14 dProfile)
                         , Element.Font.color <| Element.rgba 0 0 0 0.75
                         ]
                         [ Element.text text ]
@@ -967,7 +968,7 @@ intervalModal dProfile intervalType userRole value input maybeError =
             , let
                 timeUnitButton : IntervalUnit -> Bool -> Element Msg
                 timeUnitButton unit selected =
-                    button
+                    button dProfile
                         (if selected then
                             Element.rgb255 16 7 234
 
@@ -998,7 +999,7 @@ intervalModal dProfile intervalType userRole value input maybeError =
                 , Element.spacing 12
                 ]
                 [ inputContainer dProfile
-                    [ Element.width <| Element.px 140
+                    [ Element.width <| Element.px 70
                     , Element.above <|
                         case maybeError of
                             Just error ->
