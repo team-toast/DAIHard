@@ -10,7 +10,7 @@ import Filters.Types exposing (..)
 view : DisplayProfile -> Model -> Element Msg
 view dProfile filterSets =
     Element.row
-        [ Element.spacing 40 ]
+        [ Element.spacing (40 |> changeForMobile 20 dProfile) ]
     <|
         List.map (viewFilterSet dProfile) filterSets
 
