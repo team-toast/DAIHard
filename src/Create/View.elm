@@ -592,10 +592,12 @@ inTypeDropdown dProfile model =
     case model.mode of
         CryptoSwap Seller ->
             dhTokenTypeDropdown dProfile
+                model.testMode
                 (InTypeSelected << DHToken)
 
         OffRamp ->
             dhTokenTypeDropdown dProfile
+                model.testMode
                 (InTypeSelected << DHToken)
 
         CryptoSwap Buyer ->
@@ -622,6 +624,7 @@ outTypeDropdown dProfile model =
 
         CryptoSwap Buyer ->
             dhTokenTypeDropdown dProfile
+                model.testMode
                 (OutTypeSelected << DHToken)
 
         OffRamp ->
@@ -632,11 +635,12 @@ outTypeDropdown dProfile model =
 
         OnRamp ->
             dhTokenTypeDropdown dProfile
+                model.testMode
                 (OutTypeSelected << DHToken)
 
 
-dhTokenTypeDropdown : DisplayProfile -> (FactoryType -> Msg) -> Element Msg
-dhTokenTypeDropdown dProfile msgConstructor =
+dhTokenTypeDropdown : DisplayProfile -> Bool -> (FactoryType -> Msg) -> Element Msg
+dhTokenTypeDropdown dProfile testMode msgConstructor =
     EH.modal
         (Element.rgba 0 0 0 0.1)
         False
@@ -649,7 +653,7 @@ dhTokenTypeDropdown dProfile msgConstructor =
             , Element.alignRight |> changeForMobile Element.centerX dProfile
             ]
             Nothing
-            (dhTokenList
+            (dhTokenList testMode
                 |> List.map
                     (\tokenType ->
                         ( Element.row

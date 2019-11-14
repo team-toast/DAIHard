@@ -1,4 +1,4 @@
-module Routing exposing (Route(..), routeToString, urlToRoute)
+module Routing exposing (FullRoute, PageRoute(..), routeToString, urlToRoute)
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -10,7 +10,13 @@ import Url.Builder
 import Url.Parser exposing ((</>), (<?>), Parser)
 
 
-type Route
+type alias FullRoute =
+    { testing : Bool
+    , pageRoute : PageRoute
+    }
+
+
+type PageRoute
     = InitialBlank
     | CreateCrypto
     | CreateFiat
@@ -21,46 +27,63 @@ type Route
     | NotFound
 
 
-routeParser : Parser (Route -> a) a
-routeParser =
-    Url.Parser.s "DAIHard"
-        </> Url.Parser.oneOf
-                [ Url.Parser.map CreateFiat Url.Parser.top
-                , Url.Parser.map CreateCrypto (Url.Parser.s "create" </> Url.Parser.s "crypto")
-                , Url.Parser.map Redeploy (Url.Parser.s "redeploy" </> tradeRefParser)
-                , Url.Parser.map Trade (Url.Parser.s "trade" </> tradeRefParser)
-                , Url.Parser.map Marketplace (Url.Parser.s "marketplace")
-                , Url.Parser.map AgentHistory (Url.Parser.s "history" </> addressParser)
-                , Url.Parser.map (\address -> AgentHistory address) (Url.Parser.s "history" </> addressParser)
-                ]
+fullRouteParser : Parser (FullRoute -> a) a
+fullRouteParser =
+    Url.Parser.oneOf
+        [ Url.Parser.s "DAIHard" </> Url.Parser.s "test" </> Url.Parser.map (FullRoute True) pageRouteParser
+        , Url.Parser.s "DAIHard" </> Url.Parser.map (FullRoute False) pageRouteParser
+        ]
 
 
-routeToString : Route -> String
-routeToString route =
-    case route of
-        InitialBlank ->
-            Url.Builder.absolute [ "DAIHard" ] []
+pageRouteParser : Parser (PageRoute -> a) a
+pageRouteParser =
+    Url.Parser.oneOf
+        [ Url.Parser.map CreateFiat Url.Parser.top
+        , Url.Parser.map CreateCrypto (Url.Parser.s "create" </> Url.Parser.s "crypto")
+        , Url.Parser.map Redeploy (Url.Parser.s "redeploy" </> tradeRefParser)
+        , Url.Parser.map Trade (Url.Parser.s "trade" </> tradeRefParser)
+        , Url.Parser.map Marketplace (Url.Parser.s "marketplace")
+        , Url.Parser.map AgentHistory (Url.Parser.s "history" </> addressParser)
+        , Url.Parser.map (\address -> AgentHistory address) (Url.Parser.s "history" </> addressParser)
+        ]
 
-        CreateCrypto ->
-            Url.Builder.absolute [ "DAIHard", "create", "crypto" ] []
 
-        CreateFiat ->
-            Url.Builder.absolute [ "DAIHard" ] []
+routeToString : FullRoute -> String
+routeToString fullRoute =
+    Url.Builder.absolute
+        ((if fullRoute.testing then
+            [ "DAIHard", "test" ]
 
-        Redeploy tradeRef ->
-            Url.Builder.absolute [ "DAIHard", "redeploy", factoryToString tradeRef.factory, String.fromInt tradeRef.id ] []
+          else
+            [ "DAIHard" ]
+         )
+            ++ (case fullRoute.pageRoute of
+                    InitialBlank ->
+                        []
 
-        Trade tradeRef ->
-            Url.Builder.absolute [ "DAIHard", "trade", factoryToString tradeRef.factory, String.fromInt tradeRef.id ] []
+                    CreateCrypto ->
+                        [ "create", "crypto" ]
 
-        Marketplace ->
-            Url.Builder.absolute [ "DAIHard", "marketplace" ] []
+                    CreateFiat ->
+                        []
 
-        AgentHistory address ->
-            Url.Builder.absolute [ "DAIHard", "history", Eth.Utils.addressToString address ] []
+                    Redeploy tradeRef ->
+                        [ "redeploy", factoryToString tradeRef.factory, String.fromInt tradeRef.id ]
 
-        NotFound ->
-            Url.Builder.absolute [] []
+                    Trade tradeRef ->
+                        [ "trade", factoryToString tradeRef.factory, String.fromInt tradeRef.id ]
+
+                    Marketplace ->
+                        [ "marketplace" ]
+
+                    AgentHistory address ->
+                        [ "history", Eth.Utils.addressToString address ]
+
+                    NotFound ->
+                        []
+               )
+        )
+        []
 
 
 addressParser : Parser (Address -> a) a
@@ -110,13 +133,13 @@ factoryToString factory =
             "eth"
 
         Native Kovan ->
-            "(k)eth"
+            "keth"
 
         Token EthDai ->
             "dai"
 
         Token KovanDai ->
-            "(k)dai"
+            "kdai"
 
         Native XDai ->
             "xdai"
@@ -149,6 +172,6 @@ buyerOrSellerToString buyerOrSeller =
             "seller"
 
 
-urlToRoute : Url -> Route
+urlToRoute : Url -> FullRoute
 urlToRoute url =
-    Maybe.withDefault NotFound (Url.Parser.parse routeParser url)
+    Maybe.withDefault (FullRoute False NotFound) (Url.Parser.parse fullRouteParser url)

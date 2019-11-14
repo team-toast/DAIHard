@@ -25,8 +25,8 @@ import Utils
 import Wallet
 
 
-init : Wallet.State -> ModeOrTrade -> UpdateResult
-init wallet modeOrTrade =
+init : Bool -> Wallet.State -> ModeOrTrade -> UpdateResult
+init testMode wallet modeOrTrade =
     case modeOrTrade of
         Trade trade ->
             let
@@ -107,6 +107,7 @@ init wallet modeOrTrade =
                     }
             in
             { wallet = wallet
+            , testMode = testMode
             , mode = mode
             , now = Time.millisToPosix 0
             , prices = []
@@ -133,6 +134,7 @@ init wallet modeOrTrade =
 
         Mode mode ->
             { wallet = wallet
+            , testMode = testMode
             , mode = mode
             , now = Time.millisToPosix 0
             , prices = []
@@ -142,7 +144,10 @@ init wallet modeOrTrade =
             , margin = 0
             , dhTokenType =
                 Wallet.factory wallet
-                    |> Maybe.withDefault (Native XDai)
+                    |> Maybe.withDefault
+                        (List.head (dhTokenList testMode)
+                            |> Maybe.withDefault (Native XDai)
+                        )
             , dhTokenAmount = Nothing
             , foreignCurrencyType =
                 defaultExternalCurrency mode

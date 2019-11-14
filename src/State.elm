@@ -43,6 +43,9 @@ import Wallet
 init : Flags -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init flags url key =
     let
+        fullRoute =
+            Routing.urlToRoute url
+
         tooSmallNotice =
             if flags.width < 1024 then
                 Just <| UN.screenToSmall flags.width
@@ -88,7 +91,7 @@ init flags url key =
                     )
 
         tcInitResults =
-            Config.activeFactories
+            Config.activeFactories fullRoute.testing
                 |> List.map TradeCache.initAndStartCaching
 
         ( tradeCaches, tcCmds, tcCmdUpLists ) =
@@ -120,17 +123,18 @@ init flags url key =
 
         ( model, fromUrlCmd ) =
             { key = key
+            , testMode = fullRoute.testing
             , wallet = wallet
             , userAddress = Nothing
             , time = Time.millisToPosix 0
             , txSentry = txSentry
             , tradeCaches = tradeCaches
             , submodel = InitialBlank
-            , currentRoute = Routing.InitialBlank
+            , pageRoute = Routing.InitialBlank
             , userNotices = []
             , dProfile = dProfile
             }
-                |> updateFromUrl url
+                |> updateFromPageRoute fullRoute.pageRoute
                 |> runCmdUps cmdUps
     in
     ( model
@@ -216,11 +220,11 @@ update msg model =
             ( model, cmd )
 
         UrlChanged url ->
-            model |> updateFromUrl url
+            model |> updateFromPageRoute (url |> Routing.urlToRoute |> .pageRoute)
 
-        GotoRoute route ->
+        GotoRoute pageRoute ->
             model
-                |> gotoRoute route
+                |> gotoPageRoute pageRoute
                 |> Tuple.mapSecond
                     (\cmd ->
                         Cmd.batch
@@ -230,9 +234,15 @@ update msg model =
                                     GTagData
                                         "GotoRoute"
                                         "navigation"
-                                        (Routing.routeToString route)
+                                        (Routing.routeToString
+                                            (Routing.FullRoute model.testMode pageRoute)
+                                        )
                                         0
-                            , Browser.Navigation.pushUrl model.key (Routing.routeToString route)
+                            , Browser.Navigation.pushUrl
+                                model.key
+                                (Routing.routeToString
+                                    (Routing.FullRoute model.testMode pageRoute)
+                                )
                             ]
                     )
 
@@ -553,22 +563,22 @@ encodeGenPrivkeyArgs address signMsg =
         ]
 
 
-updateFromUrl : Url -> Model -> ( Model, Cmd Msg )
-updateFromUrl url model =
-    if Routing.routeToString model.currentRoute == url.path then
+updateFromPageRoute : Routing.PageRoute -> Model -> ( Model, Cmd Msg )
+updateFromPageRoute pageRoute model =
+    if model.pageRoute == pageRoute then
         ( model
         , Cmd.none
         )
 
     else
-        gotoRoute (Routing.urlToRoute url) model
+        gotoPageRoute pageRoute model
 
 
 initCreate : Create.ModeOrTrade -> Model -> ( Model, Cmd Msg )
 initCreate modeOrTrade prevModel =
     let
         updateResult =
-            Create.State.init prevModel.wallet modeOrTrade
+            Create.State.init prevModel.testMode prevModel.wallet modeOrTrade
 
         ( newTxSentry, chainCmd, userNotices ) =
             ChainCmd.execute prevModel.txSentry (ChainCmd.map CreateMsg updateResult.chainCmd)
@@ -588,8 +598,8 @@ initCreate modeOrTrade prevModel =
             )
 
 
-gotoRoute : Routing.Route -> Model -> ( Model, Cmd Msg )
-gotoRoute route prevModel =
+gotoPageRoute : Routing.PageRoute -> Model -> ( Model, Cmd Msg )
+gotoPageRoute route prevModel =
     (case route of
         Routing.InitialBlank ->
             ( prevModel
@@ -676,7 +686,7 @@ gotoRoute route prevModel =
             )
     )
         |> Tuple.mapFirst
-            (\model -> { model | currentRoute = route })
+            (\model -> { model | pageRoute = route })
 
 
 getTradeFromCaches : TradeReference -> List TradeCache -> Maybe CTypes.Trade

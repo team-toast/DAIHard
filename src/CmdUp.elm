@@ -7,7 +7,7 @@ import UserNotice as UN exposing (UserNotice)
 
 type CmdUp msg
     = Web3Connect
-    | GotoRoute Routing.Route
+    | GotoRoute Routing.PageRoute
     | GTag GTagData
     | UserNotice (UserNotice msg)
     | BrowserNotification String (Maybe String) (Maybe String)

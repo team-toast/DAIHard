@@ -65,6 +65,20 @@ pageElementAndModal dProfile model =
     let
         ( submodelEl, modalEls ) =
             submodelElementAndModal dProfile model
+
+        maybeTestnetIndicator =
+            if model.testMode then
+                Element.el
+                    [ Element.centerX
+                    , Element.Font.size (24 |> changeForMobile 16 dProfile)
+                    , Element.Font.bold
+                    , Element.Font.italic
+                    , Element.Font.color EH.softRed
+                    ]
+                    (Element.text "Using DAIHard on Testnet mode")
+
+            else
+                Element.none
     in
     ( Element.column
         [ Element.behindContent <| headerBackground dProfile
@@ -72,10 +86,12 @@ pageElementAndModal dProfile model =
         , Element.width Element.fill
         , Element.height Element.fill
         , Element.padding (30 |> changeForMobile 10 dProfile)
+        , Element.spacing (20 |> changeForMobile 10 dProfile)
         ]
         [ Element.el
-            [ Element.height (Element.px (80 |> changeForMobile 120 dProfile)) ]
+            [ Element.height (Element.px (60 |> changeForMobile 110 dProfile)) ]
             Element.none
+        , maybeTestnetIndicator
         , submodelEl
         ]
     , modalEls ++ userNoticeEls dProfile model.userNotices

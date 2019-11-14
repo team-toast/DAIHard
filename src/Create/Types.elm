@@ -19,6 +19,7 @@ import Wallet
 
 type alias Model =
     { wallet : Wallet.State
+    , testMode : Bool
     , mode : Mode
     , now : Time.Posix
     , prices : List ( Currencies.Symbol, PriceFetch.PriceData )

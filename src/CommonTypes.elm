@@ -133,13 +133,13 @@ tokenUnitName factoryType =
             "Dai"
 
         Token KovanDai ->
-            "(k)Dai"
+            "kDai"
 
         Native Eth ->
             "ETH"
 
         Native Kovan ->
-            "(k)ETH"
+            "kETH"
 
         Native XDai ->
             "xDai"
@@ -152,13 +152,13 @@ tokenSymbol factoryType =
             "DAI"
 
         Token KovanDai ->
-            "DAI"
+            "KDAI"
 
         Native Eth ->
             "ETH"
 
         Native Kovan ->
-            "ETH"
+            "KETH"
 
         Native XDai ->
             "XDAI"
@@ -183,8 +183,12 @@ networkNameForFactory factoryType =
             "xDai"
 
 
-dhTokenList : List FactoryType
-dhTokenList =
-    [ Native XDai
-    , Token EthDai
-    ]
+dhTokenList : Bool -> List FactoryType
+dhTokenList testMode =
+    if testMode then
+        [ Token KovanDai ]
+
+    else
+        [ Native XDai
+        , Token EthDai
+        ]
