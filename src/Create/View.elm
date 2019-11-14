@@ -378,7 +378,7 @@ marginModal dProfile margin marginInput maybeError =
                 }
             ]
             [ Element.el
-                [ Element.paddingXY 23 18
+                [ Element.paddingXY 23 18 |> changeForMobile (Element.paddingXY 18 16) dProfile
                 , Element.Background.color EH.white
                 ]
               <|
@@ -387,14 +387,15 @@ marginModal dProfile margin marginInput maybeError =
                     , Element.spacing 10
                     ]
                     [ Element.el
-                        [ Element.Font.size 20
+                        [ Element.Font.size (20 |> changeForMobile 18 dProfile)
                         , Element.Font.semiBold
                         , Element.Font.color <| Element.rgb255 16 7 234
                         ]
                         (Element.text "Margin")
                     , Element.paragraph
-                        [ Element.Font.size 16
+                        [ Element.Font.size (16 |> changeForMobile 14 dProfile)
                         , Element.Font.color <| Element.rgba 0 0 0 0.75
+                        , Element.spacing 2
                         ]
                         [ Element.text "This is how much you want to either make as a profit or loss from this trade. Trading at a loss can help to find a buyer fast, but it's possible to trade at a profit if your payment method is highly convenient to the other party." ]
                     ]
@@ -404,89 +405,111 @@ marginModal dProfile margin marginInput maybeError =
 
                 inactiveTextColor =
                     Element.rgb255 10 33 108
-              in
-              Element.row
-                [ Element.width Element.shrink
-                , Element.Background.color EH.white
-                , Element.paddingXY 23 18
-                , Element.spacing 12
-                ]
-                [ inputContainer dProfile
-                    [ Element.width <| Element.px 140
-                    , Element.above <|
-                        case maybeError of
-                            Just error ->
-                                Element.el
-                                    [ Element.Font.size 12
-                                    , Element.Font.color EH.softRed
-                                    , Element.moveUp 16
-                                    , Element.alignLeft
-                                    , Element.Background.color EH.white
-                                    , Element.Border.widthEach
-                                        { top = 0
-                                        , bottom = 0
-                                        , right = 1
-                                        , left = 1
-                                        }
-                                    , Element.paddingXY 5 0
-                                    , Element.Border.color EH.lightGray
-                                    ]
-                                    (Element.text error)
 
-                            Nothing ->
-                                Element.none
-                    ]
-                    [ Element.Input.text
-                        [ Element.Border.width 0
-                        , Element.width Element.fill
-                        , Element.height Element.fill
+                inputEl =
+                    inputContainer dProfile
+                        [ Element.width <| Element.px 140
+                        , Element.above <|
+                            case maybeError of
+                                Just error ->
+                                    Element.el
+                                        [ Element.Font.size 12
+                                        , Element.Font.color EH.softRed
+                                        , Element.moveUp 16
+                                        , Element.alignLeft
+                                        , Element.Background.color EH.white
+                                        , Element.Border.widthEach
+                                            { top = 0
+                                            , bottom = 0
+                                            , right = 1
+                                            , left = 1
+                                            }
+                                        , Element.paddingXY 5 0
+                                        , Element.Border.color EH.lightGray
+                                        ]
+                                        (Element.text error)
+
+                                Nothing ->
+                                    Element.none
                         ]
-                        { onChange = MarginInputChanged
-                        , text = marginInput ++ "%"
-                        , placeholder = Nothing
-                        , label = Element.Input.labelHidden "margin"
-                        }
+                        [ Element.Input.text
+                            [ Element.Border.width 0
+                            , Element.width Element.fill
+                            , Element.height Element.fill
+                            ]
+                            { onChange = MarginInputChanged
+                            , text = marginInput ++ "%"
+                            , placeholder = Nothing
+                            , label = Element.Input.labelHidden "margin"
+                            }
+                        ]
+
+                profitLossEvenButtons =
+                    [ if margin < 0 then
+                        button dProfile
+                            EH.softRed
+                            EH.white
+                            "Loss"
+                            Nothing
+
+                      else
+                        button dProfile
+                            inactiveBgColor
+                            inactiveTextColor
+                            "Loss"
+                            (Just <| MarginButtonClicked Loss)
+                    , if margin == 0 then
+                        button dProfile
+                            (Element.rgb255 16 7 234)
+                            EH.white
+                            "Even"
+                            Nothing
+
+                      else
+                        button dProfile
+                            inactiveBgColor
+                            inactiveTextColor
+                            "Even"
+                            (Just <| MarginButtonClicked Even)
+                    , if margin > 0 then
+                        button dProfile
+                            (Element.rgb255 0 188 137)
+                            EH.white
+                            "Profit"
+                            Nothing
+
+                      else
+                        button dProfile
+                            inactiveBgColor
+                            inactiveTextColor
+                            "Profit"
+                            (Just <| MarginButtonClicked Profit)
                     ]
-                , if margin < 0 then
-                    button dProfile
-                        EH.softRed
-                        EH.white
-                        "Loss"
-                        Nothing
+              in
+              case dProfile of
+                Desktop ->
+                    Element.row
+                        [ Element.width Element.shrink
+                        , Element.Background.color EH.white
+                        , Element.paddingXY 23 18
+                        , Element.spacing 12
+                        ]
+                        ([ inputEl ] ++ profitLossEvenButtons)
 
-                  else
-                    button dProfile
-                        inactiveBgColor
-                        inactiveTextColor
-                        "Loss"
-                        (Just <| MarginButtonClicked Loss)
-                , if margin == 0 then
-                    button dProfile
-                        (Element.rgb255 16 7 234)
-                        EH.white
-                        "Even"
-                        Nothing
-
-                  else
-                    button dProfile
-                        inactiveBgColor
-                        inactiveTextColor
-                        "Even"
-                        (Just <| MarginButtonClicked Even)
-                , if margin > 0 then
-                    button dProfile
-                        (Element.rgb255 0 188 137)
-                        EH.white
-                        "Profit"
-                        Nothing
-
-                  else
-                    button dProfile
-                        inactiveBgColor
-                        inactiveTextColor
-                        "Profit"
-                        (Just <| MarginButtonClicked Profit)
-                ]
+                Mobile ->
+                    Element.column
+                        [ Element.spacing 5
+                        , Element.width Element.fill
+                        , Element.paddingXY 18 16
+                        , Element.Background.color EH.white
+                        ]
+                        [ Element.el [ Element.centerX ] inputEl
+                        , Element.row
+                            [ Element.centerX
+                            , Element.spacing 5
+                            ]
+                            profitLossEvenButtons
+                        ]
             ]
 
 
