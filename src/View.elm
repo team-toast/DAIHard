@@ -75,7 +75,7 @@ pageElementAndModal dProfile model =
                     , Element.Font.italic
                     , Element.Font.color EH.softRed
                     ]
-                    (Element.text "Using DAIHard on Testnet mode")
+                    (Element.text "Using DAIHard in Testnet mode")
 
             else
                 Element.none
