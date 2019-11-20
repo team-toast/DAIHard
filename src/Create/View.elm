@@ -55,16 +55,16 @@ header dProfile mode =
         descriptionText =
             case mode of
                 CryptoSwap Seller ->
-                    "Trade Dai/xDai for another crypto. Choose the amounts and types of crypto, and fill in your crypto receive address. Advanced users may wish to change the three trade windows."
+                    "Trade Sai/xDai for another crypto. Choose the amounts and types of crypto, and fill in your crypto receive address. Advanced users may wish to change the three trade windows."
 
                 CryptoSwap Buyer ->
-                    "Trade another crypto for Dai/xDai. Choose the amounts and types of crypto, and advanced users may wish to change the three trade windows."
+                    "Trade another crypto for Sai/xDai. Choose the amounts and types of crypto, and advanced users may wish to change the three trade windows."
 
                 OffRamp ->
-                    "Turn your Dai/xDai into any local currency. Choose your amounts and fiat type, describe how you can accept the fiat payment from a Buyer, and if necessary edit the three trade windows."
+                    "Turn your Sai/xDai into any local currency. Choose your amounts and fiat type, describe how you can accept the fiat payment from a Buyer, and if necessary edit the three trade windows."
 
                 OnRamp ->
-                    "Deposit Dai/xDai to begin a fiat purchase to get 3X more Dai/xDai than your deposit. Choose your amounts and fiat type, describe how you can make the fiat payment to a Seller, and if necessary edit the three trade windows."
+                    "Deposit Sai/xDai to begin a fiat purchase to get 3X more Sai/xDai than your deposit. Choose your amounts and fiat type, describe how you can make the fiat payment to a Seller, and if necessary edit the three trade windows."
     in
     Element.column
         [ Element.width Element.fill
@@ -106,7 +106,7 @@ modeHeader dProfile selected mode =
                     "Get Fiat"
 
                 OnRamp ->
-                    "Get More Dai"
+                    "Get More Sai"
     in
     Element.el
         [ Element.Font.size (28 |> changeForMobile 14 dProfile)
@@ -997,10 +997,10 @@ intervalModal dProfile intervalType userRole value input maybeError =
                     ( "Burn Window"
                     , case userRole of
                         Buyer ->
-                            "Once you confirm payment, this is how long the Seller will have the option to burn the entire Dai/xDai balance (or manually release early). If the Seller makes no decision before this timer expires, the Dai/xDai balance is yours to claim."
+                            "Once you confirm payment, this is how long the Seller will have the option to burn the entire Sai/xDai balance (or manually release early). If the Seller makes no decision before this timer expires, the Sai/xDai balance is yours to claim."
 
                         Seller ->
-                            "Once the Buyer confirms payment, this is how long you will have the option to burn the entire Dai/xDai balance (or manually release early). If you don't make a decision before this timer expires, the Buyer can then claim the Dai/xDai balance."
+                            "Once the Buyer confirms payment, this is how long you will have the option to burn the entire Sai/xDai balance (or manually release early). If you don't make a decision before this timer expires, the Buyer can then claim the Sai/xDai balance."
                     )
     in
     EH.modal
