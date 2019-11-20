@@ -87,13 +87,13 @@ factoryName : FactoryType -> String
 factoryName factoryType =
     case factoryType of
         Token EthDai ->
-            "Dai"
+            "Sai"
 
         Native Eth ->
             "Ether"
 
         Token KovanDai ->
-            "Kovan Dai"
+            "Kovan Sai"
 
         Native Kovan ->
             "Kovan Ether"
@@ -106,10 +106,10 @@ tokenUnitName : FactoryType -> String
 tokenUnitName factoryType =
     case factoryType of
         Token EthDai ->
-            "Dai"
+            "Sai"
 
         Token KovanDai ->
-            "(k)Dai"
+            "(k)Sai"
 
         Native Eth ->
             "ETH"
@@ -125,10 +125,10 @@ tokenSymbol : FactoryType -> String
 tokenSymbol factoryType =
     case factoryType of
         Token EthDai ->
-            "DAI"
+            "SAI"
 
         Token KovanDai ->
-            "DAI"
+            "SAI"
 
         Native Eth ->
             "ETH"
