@@ -152,7 +152,7 @@ tokenSymbol factoryType =
             "SAI"
 
         Token KovanDai ->
-            "SAI"
+            "(K)SAI"
 
         Native Eth ->
             "ETH"
