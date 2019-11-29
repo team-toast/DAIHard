@@ -592,7 +592,7 @@ statsModal dProfile factoryType address stats =
                       )
                     ]
                     ++ [ Element.el [ Element.centerX ]
-                            (EH.blueButton dProfile [ "View User History" ] (ViewUserHistory stats.asRole))
+                            (EH.blueButton dProfile [] [ "View User History" ] (ViewUserHistory stats.asRole))
                        ]
                 )
 
@@ -941,7 +941,7 @@ phaseStatusElement dProfile viewPhase trade currentTime =
                                         , Element.spacing 10
                                         ]
                                         [ Element.el [ Element.centerX ] <| Element.text (CTypes.getPokeText viewPhase)
-                                        , EH.blueButton dProfile [ "Poke" ] (StartContractAction Poke)
+                                        , EH.blueButton dProfile [] [ "Poke" ] (StartContractAction Poke)
                                         ]
 
                         Finished ->
@@ -1497,7 +1497,7 @@ actionButtonsElement dProfile currentTime trade wallet =
                                 )
                              of
                                 ( CTypes.Open, Just Initiator, _ ) ->
-                                    [ Element.map StartContractAction <| EH.blueButton dProfile [ "Remove and Refund this Trade" ] Recall ]
+                                    [ Element.map StartContractAction <| EH.blueButton dProfile [] [ "Remove and Refund this Trade" ] Recall ]
 
                                 ( CTypes.Open, Nothing, _ ) ->
                                     let
@@ -1505,11 +1505,11 @@ actionButtonsElement dProfile currentTime trade wallet =
                                             CTypes.responderDeposit trade.parameters
                                                 |> TokenValue.getEvmValue
                                     in
-                                    [ EH.redButton dProfile [ "Deposit and Commit to Trade" ] <| CommitClicked trade userInfo depositAmount ]
+                                    [ EH.redButton dProfile [] [ "Deposit and Commit to Trade" ] <| CommitClicked trade userInfo depositAmount ]
 
                                 ( CTypes.Committed, _, Just Buyer ) ->
-                                    [ Element.map ContractActionClicked <| EH.orangeButton dProfile [ "Abort Trade" ] Abort
-                                    , Element.map ContractActionClicked <| EH.redButton dProfile [ "Confirm Payment" ] Claim
+                                    [ Element.map ContractActionClicked <| EH.orangeButton dProfile [] [ "Abort Trade" ] Abort
+                                    , Element.map ContractActionClicked <| EH.redButton dProfile [] [ "Confirm Payment" ] Claim
                                     , chatHistoryButton
                                     ]
 
@@ -1517,8 +1517,8 @@ actionButtonsElement dProfile currentTime trade wallet =
                                     [ chatHistoryButton ]
 
                                 ( CTypes.Judgment, _, Just Seller ) ->
-                                    [ Element.map ContractActionClicked <| EH.redButton dProfile [ "Burn it All!" ] Burn
-                                    , Element.map ContractActionClicked <| EH.blueButton dProfile [ "Release Everything" ] Release
+                                    [ Element.map ContractActionClicked <| EH.redButton dProfile [] [ "Burn it All!" ] Burn
+                                    , Element.map ContractActionClicked <| EH.blueButton dProfile [] [ "Release Everything" ] Release
                                     , chatHistoryButton
                                     ]
 
@@ -1530,7 +1530,7 @@ actionButtonsElement dProfile currentTime trade wallet =
                             )
 
         Nothing ->
-            EH.redButton dProfile [ "Connect to Wallet" ] Web3Connect
+            EH.redButton dProfile [] [ "Connect to Wallet" ] Web3Connect
 
 
 chatHistoryButton : Element Msg
@@ -1555,7 +1555,7 @@ chatOverlayElement dProfile model =
         ( True, Just chatHistoryModel ) ->
             case dProfile of
                 Mobile ->
-                    EH.closeableModal
+                    EH.closeableModalBlackX
                         [ Element.width Element.fill
                         , Element.height Element.fill
                         ]
@@ -1575,7 +1575,7 @@ chatOverlayElement dProfile model =
                         , Element.alignRight
                         ]
                     <|
-                        EH.closeableModal
+                        EH.closeableModalBlackX
                             [ Element.height Element.fill
                             , Element.width Element.fill
                             ]
@@ -1630,7 +1630,7 @@ getTxModalOrNone dProfile model =
                                       ]
                                     )
                     in
-                    EH.closeableModal
+                    EH.closeableModalBlackX
                         []
                         (Element.column
                             [ Element.spacing (20 |> changeForMobile 10 dProfile)
@@ -1683,6 +1683,7 @@ getTxModalOrNone dProfile model =
                                 ]
                                 (EH.redButton
                                     dProfile
+                                    []
                                     (case dProfile of
                                         Desktop ->
                                             [ "Yes, I definitely want to commit to this trade." ]
@@ -1740,7 +1741,7 @@ getTxModalOrNone dProfile model =
                         NoOp
 
                 ConfirmingAction action ->
-                    EH.closeableModal []
+                    EH.closeableModalBlackX []
                         (Element.column
                             [ Element.spacing 20
                             , Element.padding 20
@@ -1812,7 +1813,7 @@ getTxModalOrNone dProfile model =
                                     Burn ->
                                         "I understand. Burn the " ++ tokenUnitName trade.reference.factory ++ "."
                                  )
-                                    |> (\s -> EH.redButton dProfile [ s ] (StartContractAction action))
+                                    |> (\s -> EH.redButton dProfile [] [ s ] (StartContractAction action))
                                 )
                             ]
                         )

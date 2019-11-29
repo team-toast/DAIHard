@@ -1240,7 +1240,7 @@ placeOrderButton dProfile model =
                         buttonBuilder
                             (Element.rgb255 255 0 110)
                             EH.white
-                            "Review Terms and Place Order"
+                            "Confirm Details and Create Offer"
                             (Just <| PlaceOrderClicked model.dhTokenType userInfo userParameters)
                             Nothing
 
@@ -1248,7 +1248,7 @@ placeOrderButton dProfile model =
                         buttonBuilder
                             EH.lightGray
                             EH.black
-                            "Review Terms and Place Order"
+                            "Confirm Details and Create Offer"
                             Nothing
                             Nothing
 
@@ -1280,316 +1280,7 @@ txChainStatusModal : DisplayProfile -> TxChainStatus -> Model -> Element Msg
 txChainStatusModal dProfile txChainStatus model =
     case txChainStatus of
         Confirm factoryType createParameters ->
-            let
-                ( depositAmountEl, totalBurnableEl, confirmButton ) =
-                    case model.depositAmount of
-                        Just depositAmount ->
-                            let
-                                depositAmountText =
-                                    TokenValue.toConciseString depositAmount
-                                        ++ " "
-                                        ++ tokenUnitName factoryType
-
-                                totalBurnableText =
-                                    TokenValue.toConciseString
-                                        (TokenValue.add
-                                            depositAmount
-                                            (CTypes.getResponderDeposit createParameters)
-                                            |> TokenValue.add (CTypes.calculateDHFee createParameters)
-                                        )
-                                        ++ " "
-                                        ++ tokenUnitName factoryType
-                            in
-                            ( blueText depositAmountText
-                            , blueText totalBurnableText
-                            , EH.redButton dProfile
-                                (case dProfile of
-                                    Desktop ->
-                                        [ "Understood. Deposit "
-                                            ++ depositAmountText
-                                            ++ " and open this trade."
-                                        ]
-
-                                    Mobile ->
-                                        [ "Understood. Deposit "
-                                            ++ depositAmountText
-                                        , "and open this trade."
-                                        ]
-                                )
-                                (ConfirmCreate factoryType createParameters depositAmount)
-                            )
-
-                        Nothing ->
-                            ( blueText "??"
-                            , blueText "??"
-                            , EH.disabledButton dProfile "(loading exact fees...)" Nothing
-                            )
-
-                feeAmountEl =
-                    blueText <|
-                        TokenValue.toConciseString (CTypes.calculateDHFee createParameters)
-                            ++ " "
-                            ++ tokenUnitName factoryType
-
-                tradeAmountEl =
-                    blueText <|
-                        TokenValue.toConciseString createParameters.tradeAmount
-                            ++ " "
-                            ++ tokenUnitName factoryType
-
-                notYetButton =
-                    Element.el
-                        [ Element.pointer
-                        , Element.Events.onClick AbortCreate
-                        , Element.paddingXY 25 17
-                        , Element.Font.color EH.white
-                        , Element.Font.size 18
-                        , Element.Font.semiBold
-                        ]
-                        (Element.text "I'm not ready yet. Go back.")
-
-                buyerDepositEl =
-                    blueText <|
-                        TokenValue.toConciseString createParameters.buyerDeposit
-                            ++ " "
-                            ++ tokenUnitName factoryType
-
-                totalReleaseableEl =
-                    blueText <|
-                        TokenValue.toConciseString (TokenValue.add createParameters.tradeAmount createParameters.buyerDeposit)
-                            ++ " "
-                            ++ tokenUnitName factoryType
-
-                expiryWindowEl =
-                    emphasizedText <|
-                        userIntervalToString <|
-                            getUserInterval Expiry model
-
-                paymentWindowEl =
-                    emphasizedText <|
-                        userIntervalToString <|
-                            getUserInterval Payment model
-
-                judgmentWindowEl =
-                    emphasizedText <|
-                        userIntervalToString <|
-                            getUserInterval Judgment model
-
-                priceEl =
-                    blueText <| Currencies.toString createParameters.price
-
-                emphasizedText =
-                    Element.el
-                        [ Element.Font.bold
-                        , Element.Font.color EH.black
-                        ]
-                        << Element.text
-
-                blueText =
-                    Element.el
-                        [ Element.Font.semiBold
-                        , Element.Font.color EH.blue
-                        ]
-                        << Element.text
-            in
-            EH.closeableModal
-                [ Element.width <| Element.px 1200 ]
-                (Element.row
-                    [ Element.width Element.fill ]
-                    [ Element.column
-                        [ Element.padding 90
-                        , Element.height Element.fill
-                        , Element.Background.color <| Element.rgb255 10 33 108
-                        ]
-                        [ Element.column
-                            [ Element.width Element.fill
-                            , Element.spacing 18
-                            , Element.Font.color EH.white
-                            ]
-                            [ Element.el
-                                [ Element.Font.size 38
-                                , Element.Font.semiBold
-                                ]
-                                (Element.text "Are you Ready?")
-                            , Element.paragraph
-                                [ Element.Font.size 16
-                                , Element.Font.medium
-                                ]
-                                [ Element.text "DAIHard is different than other exchanges. If this is your first trade here, carefully read the details to the right before proceeding with opening this trade." ]
-                            , Element.paragraph
-                                [ Element.Font.size 16
-                                , Element.Font.medium
-                                ]
-                                [ Element.text "You can't edit a trade once it's live (but you can abort and re-deploy, as described in point 2)." ]
-                            ]
-                        , Element.column
-                            [ Element.centerX
-                            , Element.spacing 15
-                            , Element.alignBottom
-                            ]
-                            [ Element.el [ Element.centerX ] confirmButton
-                            , Element.el [ Element.centerX ] notYetButton
-                            ]
-                        ]
-                    , Element.column
-                        [ Element.spacing 23
-                        , Element.padding 40
-                        , Element.width Element.fill
-                        ]
-                        (List.map
-                            (\lines ->
-                                Element.row
-                                    [ Element.width Element.fill
-                                    , Element.height Element.fill
-                                    , Element.Border.width 2
-                                    , Element.Border.color EH.lightGray
-                                    , Element.padding 16
-                                    , Element.spacing 20
-                                    ]
-                                    [ Element.el
-                                        [ Element.Font.size 40
-                                        , Element.centerY
-                                        ]
-                                        (Element.text EH.bulletPointString)
-                                    , Element.paragraph
-                                        [ Element.Font.size 16 ]
-                                        lines
-                                    ]
-                            )
-                            (case createParameters.initiatorRole of
-                                Buyer ->
-                                    [ [ Element.text "To open this offer, you must deposit "
-                                      , depositAmountEl
-                                      , Element.text ". Your offer to buy "
-                                      , tradeAmountEl
-                                      , Element.text " for "
-                                      , priceEl
-                                      , Element.text " will then be listed on the marketplace."
-                                      ]
-                                    , [ Element.text "You can abort the offer any time before a Seller commits for a full refund. If no Seller commits within "
-                                      , expiryWindowEl
-                                      , Element.text " your offer will automatically expire. In both these cases, the full "
-                                      , depositAmountEl
-                                      , Element.text " is returned to you."
-                                      ]
-                                    , [ Element.text "A Seller can commit to the trade by depositing the full "
-                                      , tradeAmountEl
-                                      , Element.text " into the contract, and is expected to immediately post his "
-                                      , blueText <| createParameters.price.symbol
-                                      , Element.text " address in the DAIHard chat."
-                                      ]
-                                    , case model.mode of
-                                        CryptoSwap _ ->
-                                            [ Element.text "You will then have "
-                                            , paymentWindowEl
-                                            , Element.text " to send "
-                                            , priceEl
-                                            , Element.text " to that address and click \"Confirm Payment\"."
-                                            ]
-
-                                        _ ->
-                                            [ Element.text "You are then expected to send "
-                                            , priceEl
-                                            , Element.text " and click \"Confirm Payment\" within "
-                                            , paymentWindowEl
-                                            , Element.text "."
-                                            ]
-                                    , [ Element.text "Once you've confirmed payment, for "
-                                      , judgmentWindowEl
-                                      , Element.text ", the Seller has the option of burning the trade's full balance of "
-                                      , totalBurnableEl
-                                      , Element.text " (your deposit plus the sale amount). He is expected to do this if and only if you failed to send the "
-                                      , priceEl
-                                      , Element.text " to the address he posted."
-                                      ]
-                                    , [ Element.text "If the Seller has not burned the "
-                                      , Element.text <| tokenUnitName factoryType
-                                      , Element.text " within the "
-                                      , judgmentWindowEl
-                                      , Element.text ", "
-                                      , totalReleaseableEl
-                                      , Element.text " is yours to claim and we take a 1% fee ("
-                                      , feeAmountEl
-                                      , Element.text ")."
-                                      ]
-                                    ]
-                                        ++ (case factoryType of
-                                                Token _ ->
-                                                    [ [ Element.text <| "(Trade creation ususally requires two Metamask signatures. Your " ++ tokenUnitName factoryType ++ " will not be deposited until the final transaction has been mined.)" ] ]
-
-                                                Native _ ->
-                                                    []
-                                           )
-
-                                Seller ->
-                                    [ [ Element.text "Your "
-                                      , tradeAmountEl
-                                      , Element.text " will be listed as selling for "
-                                      , priceEl
-                                      , Element.text ", and an additional 1% ("
-                                      , feeAmountEl
-                                      , Element.text ") will be set aside."
-                                      ]
-                                    , [ Element.text "You can abort the offer at any time before a Buyer commits, and if no Buyer commits within "
-                                      , expiryWindowEl
-                                      , Element.text " your offer will automatically expire. In both these cases, the full "
-                                      , depositAmountEl
-                                      , Element.text " is returned to you."
-                                      ]
-                                    ]
-                                        ++ (case model.mode of
-                                                CryptoSwap _ ->
-                                                    [ [ Element.text "A Buyer must deposit "
-                                                      , buyerDepositEl
-                                                      , Element.text <| " into this contract to commit. He is then expected to send the "
-                                                      , priceEl
-                                                      , Element.text <| " to your receive address "
-                                                      , blueText model.inputs.receiveAddress
-                                                      , Element.text ", and mark the payment as complete, all within "
-                                                      , paymentWindowEl
-                                                      , Element.text "."
-                                                      ]
-                                                    , [ emphasizedText "Make sure the above address is correct! DAIHard does not do refunds!" ]
-                                                    ]
-
-                                                _ ->
-                                                    [ [ Element.text "A Buyer must deposit "
-                                                      , buyerDepositEl
-                                                      , Element.text <| " into this contract to commit. He is then expected to pay the "
-                                                      , priceEl
-                                                      , Element.text " to you, via the method you've descried in your "
-                                                      , emphasizedText "Payment Methods"
-                                                      , Element.text ", and mark the payment as complete, all within "
-                                                      , paymentWindowEl
-                                                      , Element.text "."
-                                                      ]
-                                                    ]
-                                           )
-                                        ++ [ [ Element.text <| "When the Buyer marks the payment complete, for "
-                                             , judgmentWindowEl
-                                             , Element.text " you will have the option to burn the trade's balance of "
-                                             , totalBurnableEl
-                                             , Element.text <| " (your sale amount plus the buyer's deposit), which you are expected to do if and only if the Buyer has not sent the payment."
-                                             ]
-                                           , [ Element.text "If the trade has resolved successfully, DAIHard takes the 1% fee of "
-                                             , feeAmountEl
-                                             , Element.text " set aside earlier. Otherwise it is burned with the rest."
-                                             ]
-                                           ]
-                                        ++ (case factoryType of
-                                                Token _ ->
-                                                    [ [ Element.text <| "(Trade creation ususally requires two Metamask signatures. Your " ++ tokenUnitName factoryType ++ " will not be deposited until the final transaction has been mined.)" ] ]
-
-                                                Native _ ->
-                                                    []
-                                           )
-                            )
-                        )
-                    ]
-                )
-                NoOp
-                AbortCreate
-                False
+            createConfirmModal dProfile model factoryType createParameters
 
         ApproveNeedsSig tokenType ->
             Element.el
@@ -1663,6 +1354,470 @@ txChainStatusModal dProfile txChainStatus model =
                     ]
                     NoOp
                     NoOp
+
+
+createConfirmModal : DisplayProfile -> Model -> FactoryType -> CTypes.CreateParameters -> Element Msg
+createConfirmModal dProfile model factoryType createParameters =
+    let
+        ( depositAmountEl, totalBurnableEl, confirmButton ) =
+            case model.depositAmount of
+                Just depositAmount ->
+                    let
+                        depositAmountText =
+                            TokenValue.toConciseString depositAmount
+                                ++ " "
+                                ++ tokenUnitName factoryType
+
+                        totalBurnableText =
+                            TokenValue.toConciseString
+                                (TokenValue.add
+                                    depositAmount
+                                    (CTypes.getResponderDeposit createParameters)
+                                    |> TokenValue.add (CTypes.calculateDHFee createParameters)
+                                )
+                                ++ " "
+                                ++ tokenUnitName factoryType
+                    in
+                    ( emphasizedText depositAmountText
+                    , emphasizedText totalBurnableText
+                    , EH.redButton dProfile
+                        [ Element.width Element.fill ]
+                        (case dProfile of
+                            Desktop ->
+                                [ "Deposit "
+                                    ++ depositAmountText
+                                    ++ " and create this offer."
+                                ]
+
+                            Mobile ->
+                                [ "Deposit "
+                                    ++ depositAmountText
+                                , "and create this offer."
+                                ]
+                        )
+                        (ConfirmCreate factoryType createParameters depositAmount)
+                    )
+
+                Nothing ->
+                    ( emphasizedText "??"
+                    , emphasizedText "??"
+                    , EH.disabledButton dProfile [] "(loading exact fees...)" Nothing
+                    )
+
+        feeAmountEl =
+            emphasizedText <|
+                TokenValue.toConciseString (CTypes.calculateDHFee createParameters)
+                    ++ " "
+                    ++ tokenUnitName factoryType
+
+        tradeAmountEl =
+            emphasizedText <|
+                TokenValue.toConciseString createParameters.tradeAmount
+                    ++ " "
+                    ++ tokenUnitName factoryType
+
+        notYetButton =
+            Element.el
+                [ Element.pointer
+                , Element.Events.onClick AbortCreate
+                , Element.paddingXY 25 17
+                , Element.Font.color EH.white
+                , Element.Font.size 18
+                , Element.Font.semiBold
+                ]
+                (Element.text "I'm not ready yet. Go back.")
+
+        buyerDepositEl =
+            emphasizedText <|
+                TokenValue.toConciseString createParameters.buyerDeposit
+                    ++ " "
+                    ++ tokenUnitName factoryType
+
+        totalReleaseableEl =
+            emphasizedText <|
+                TokenValue.toConciseString (TokenValue.add createParameters.tradeAmount createParameters.buyerDeposit)
+                    ++ " "
+                    ++ tokenUnitName factoryType
+
+        expiryWindowEl =
+            emphasizedText <|
+                userIntervalToString <|
+                    getUserInterval Expiry model
+
+        paymentWindowEl =
+            emphasizedText <|
+                userIntervalToString <|
+                    getUserInterval Payment model
+
+        judgmentWindowEl =
+            emphasizedText <|
+                userIntervalToString <|
+                    getUserInterval Judgment model
+
+        priceEl =
+            emphasizedText <| Currencies.toString createParameters.price
+
+        emphasizedText =
+            Element.el
+                [ Element.Font.extraBold
+                , Element.Font.color EH.white
+                ]
+                << Element.text
+
+        counterpartyRoleText =
+            case createParameters.initiatorRole of
+                Buyer ->
+                    "seller"
+
+                Seller ->
+                    "buyer"
+
+        ( abortPunishmentEl, abortSellerReturnEl, abortBuyerReturnEl ) =
+            let
+                abortPunishment =
+                    CTypes.defaultAbortPunishment createParameters.tradeAmount
+            in
+            TupleHelpers.mapTuple3
+                (TokenValue.toConciseString
+                    >> (\s -> s ++ " " ++ tokenUnitName factoryType)
+                    >> emphasizedText
+                )
+                ( abortPunishment
+                , TokenValue.sub createParameters.tradeAmount abortPunishment
+                , TokenValue.sub createParameters.buyerDeposit abortPunishment
+                )
+
+        title =
+            Element.el
+                [ Element.centerX
+                , Element.Font.size (24 |> changeForMobile 20 dProfile)
+                , Element.Font.semiBold
+                ]
+            <|
+                Element.text <|
+                    case model.extraConfirmInfoPlace of
+                        0 ->
+                            "Are you Ready?"
+
+                        1 ->
+                            "1. Offer Creation"
+
+                        2 ->
+                            "2. Commitment or Recall"
+
+                        3 ->
+                            case createParameters.initiatorRole of
+                                Buyer ->
+                                    "3. Send Payment"
+
+                                Seller ->
+                                    "3. Receive Payment"
+
+                        4 ->
+                            "4. Judgment"
+
+                        5 ->
+                            "5. Resolution and Reputation"
+
+                        _ ->
+                            ""
+
+        arrows =
+            let
+                maybeLeftArrow =
+                    if model.extraConfirmInfoPlace <= 0 then
+                        Element.none
+
+                    else
+                        Images.toElement
+                            [ Element.pointer
+                            , Element.Events.onClick TradeTermsLeft
+                            , Element.width Element.fill
+                            ]
+                            Images.navigateLeft
+
+                maybeRightArrow =
+                    if model.extraConfirmInfoPlace >= 5 then
+                        Element.none
+
+                    else
+                        Images.toElement
+                            [ Element.pointer
+                            , Element.Events.onClick TradeTermsRight
+                            , Element.width Element.fill
+                            ]
+                            Images.navigateRight
+            in
+            Element.row
+                [ Element.spacing 80
+                , Element.centerX
+                , Element.height <| Element.px 23
+                ]
+                [ Element.el [ Element.width <| Element.px 46 ]
+                    maybeLeftArrow
+                , Element.el [ Element.width <| Element.px 46 ]
+                    maybeRightArrow
+                ]
+
+        infoBody =
+            Element.column
+                [ Element.centerX
+                , Element.spacing 10
+                , Element.width Element.fill
+                , Element.height <| Element.px 180
+                ]
+                (List.map
+                    (Element.paragraph
+                        [ Element.Font.size 16
+                        , Element.Font.color (Element.rgba 1 1 1 0.85)
+                        , Element.spacing 2
+                        ]
+                    )
+                    (case model.extraConfirmInfoPlace of
+                        0 ->
+                            [ [ Element.text "DAIHard is different than other exchanges. If this is your first trade here, click the right arrow above to get an idea of how a DAIHard trade works." ]
+                            , [ Element.text "Once someone commits to your trade, there's no going back!" ]
+                            ]
+
+                        1 ->
+                            (case createParameters.initiatorRole of
+                                Buyer ->
+                                    [ [ Element.text "Your offer to buy "
+                                      , tradeAmountEl
+                                      , Element.text " for "
+                                      , priceEl
+                                      , Element.text " will be listed on the marketplace. This requires a Buyer Deposit of "
+                                      , depositAmountEl
+                                      , Element.text "."
+                                      ]
+                                    ]
+
+                                Seller ->
+                                    [ [ Element.text "Your "
+                                      , tradeAmountEl
+                                      , Element.text " will be listed as selling for "
+                                      , priceEl
+                                      , Element.text ", and an additional "
+                                      , feeAmountEl
+                                      , Element.text " will be set aside. This requires a total deposit of "
+                                      , depositAmountEl
+                                      , Element.text "."
+                                      ]
+                                    ]
+                            )
+                                ++ [ [ Element.text "If no one commits within "
+                                     , expiryWindowEl
+                                     , Element.text ", your offer will expire, and you can reclaim your "
+                                     , depositAmountEl
+                                     , Element.text "."
+                                     ]
+                                   ]
+
+                        2 ->
+                            [ [ Element.text "Until the offer expires, another DAIHard user can "
+                              , emphasizedText "commit"
+                              , Element.text " to the trade by depositing "
+                              ]
+                                ++ (case createParameters.initiatorRole of
+                                        Buyer ->
+                                            [ Element.text "the full sell amount of "
+                                            , tradeAmountEl
+                                            ]
+
+                                        Seller ->
+                                            [ buyerDepositEl
+                                            ]
+                                   )
+                                ++ [ Element.text ". This immediately moves the trade to the "
+                                   , emphasizedText "Payment Phase"
+                                   , Element.text ", with the other user as the "
+                                   , emphasizedText counterpartyRoleText
+                                   , Element.text "."
+                                   ]
+                            , [ Element.text <| "At any point before a " ++ counterpartyRoleText ++ " commits, you can "
+                              , emphasizedText "recall"
+                              , Element.text " the offer for a full refund of the "
+                              , depositAmountEl
+                              , Element.text " you deposited."
+                              ]
+                            ]
+
+                        3 ->
+                            case createParameters.initiatorRole of
+                                Buyer ->
+                                    [ [ Element.text "Here you are expected to send the full "
+                                      , priceEl
+                                      , Element.text " to the seller as you've described in your "
+                                      , emphasizedText "payment methods."
+                                      , Element.text " Encrypted chat will be available to help coordinate. Once you're sure the seller has received the "
+                                      , priceEl
+                                      , Element.text ", you are expected to "
+                                      , emphasizedText "claim payment"
+                                      , Element.text ". This moves the trade to the "
+                                      , emphasizedText "Judgment Phase"
+                                      , Element.text "."
+                                      ]
+                                    , [ Element.text "If you do not claim payment within "
+                                      , paymentWindowEl
+                                      , Element.text ", the trade will automatically "
+                                      , emphasizedText "abort"
+                                      , Element.text ", burning "
+                                      , abortPunishmentEl
+                                      , Element.text " from each party and returning the remainder ("
+                                      , abortBuyerReturnEl
+                                      , Element.text " to you and "
+                                      , abortSellerReturnEl
+                                      , Element.text " to the seller)."
+                                      ]
+                                    ]
+
+                                Seller ->
+                                    [ [ Element.text "Here, the buyer is expected to send the full "
+                                      , priceEl
+                                      , Element.text " to you as you've described in your "
+                                      , emphasizedText "payment methods."
+                                      , Element.text " Encrypted chat will be available to help coordinate. Once you've received the "
+                                      , priceEl
+                                      , Element.text ", the buyer is expected to "
+                                      , emphasizedText "claim payment"
+                                      , Element.text ". This moves the trade to the "
+                                      , emphasizedText "Judgment Phase"
+                                      , Element.text "."
+                                      ]
+                                    , [ Element.text "If the buyer does not claim payment within "
+                                      , paymentWindowEl
+                                      , Element.text ", the trade will automatically "
+                                      , emphasizedText "abort"
+                                      , Element.text ", burning "
+                                      , abortPunishmentEl
+                                      , Element.text " from each party and returning the remainder ("
+                                      , abortSellerReturnEl
+                                      , Element.text " to you and "
+                                      , abortBuyerReturnEl
+                                      , Element.text " to the buyer)."
+                                      ]
+                                    ]
+
+                        4 ->
+                            case createParameters.initiatorRole of
+                                Buyer ->
+                                    [ [ Element.text "In this phase, the seller is the the judge and executioner. If the "
+                                      , priceEl
+                                      , Element.text " was received, the seller is expected to "
+                                      , emphasizedText "release"
+                                      , Element.text ", sending the full "
+                                      , totalReleaseableEl
+                                      , Element.text " ("
+                                      , buyerDepositEl
+                                      , Element.text " from you + "
+                                      , tradeAmountEl
+                                      , Element.text " from the seller) to you. Otherwise, the seller is expected to "
+                                      , emphasizedText "burn it all."
+                                      ]
+                                    , [ Element.text "If the seller doesn't make a decision within this burn window of "
+                                      , judgmentWindowEl
+                                      , Element.text ", the trade automatically concludes and the "
+                                      , totalReleaseableEl
+                                      , Element.text " is yours to claim."
+                                      ]
+                                    ]
+
+                                Seller ->
+                                    [ [ Element.text "In this phase, you are the judge and executioner. If you received the "
+                                      , priceEl
+                                      , Element.text ", you are expected to "
+                                      , emphasizedText "release"
+                                      , Element.text ", sending the full "
+                                      , totalReleaseableEl
+                                      , Element.text " ("
+                                      , buyerDepositEl
+                                      , Element.text " from the buyer + "
+                                      , tradeAmountEl
+                                      , Element.text " from you) to the buyer. Otherwise, you are expected to "
+                                      , emphasizedText "burn it all."
+                                      ]
+                                    , [ Element.text "If you don't make a decision within this burn window of "
+                                      , judgmentWindowEl
+                                      , Element.text ", the trade automatically concludes and the buyer can withdraw the full "
+                                      , totalReleaseableEl
+                                      , Element.text "."
+                                      ]
+                                    ]
+
+                        5 ->
+                            case createParameters.initiatorRole of
+                                Buyer ->
+                                    [ [ Element.text "The trade has concluded. If it was successful, DAIHard takes 1% of the trade amount ("
+                                      , feeAmountEl
+                                      , Element.text ") from your initial deposit. If the trade was burned, then this fee is burned as well."
+                                      ]
+                                    , [ Element.text "The result of this trade is recorded for both users. Future offers will display how many burns, releases, and aborts the offer creator has tallied." ]
+                                    ]
+
+                                Seller ->
+                                    [ [ Element.text "The trade has concluded. If it was successful, DAIHard takes the 1% fee ("
+                                      , feeAmountEl
+                                      , Element.text ") set aside earlier. If the trade was burned, then this fee is burned as well."
+                                      ]
+                                    , [ Element.text "The result of this trade is recorded for both users. Future offers will display how many burns, releases, and aborts the offer creator has tallied." ]
+                                    ]
+
+                        _ ->
+                            []
+                    )
+                )
+
+        placeDots =
+            let
+                smallDot color =
+                    Element.el
+                        [ Element.width <| Element.px 8
+                        , Element.height <| Element.px 8
+                        , Element.Border.rounded 4
+                        , Element.Background.color color
+                        ]
+                        Element.none
+            in
+            Element.row
+                [ Element.centerX
+                , Element.spacing 6
+                ]
+                (List.range 0 5
+                    |> List.map
+                        (\i ->
+                            if i == model.extraConfirmInfoPlace then
+                                smallDot <| Element.rgba 1 1 1 1
+
+                            else
+                                smallDot <| Element.rgba 1 1 1 0.25
+                        )
+                )
+    in
+    EH.closeableModalWhiteX
+        [ Element.width <| Element.px (540 |> changeForMobile 320 dProfile)
+        , Element.Background.color <| Element.rgb255 10 33 108
+        , Element.padding (60 |> changeForMobile 30 dProfile)
+        ]
+        (Element.column
+            [ Element.spacing 15
+            , Element.width Element.fill
+            , Element.Font.color EH.white
+            ]
+            [ Images.toElement
+                [ Element.height <| Element.px 70
+                , Element.centerX
+                ]
+                (Images.confirmExtraInfoIcon model.extraConfirmInfoPlace)
+            , title
+            , placeDots
+            , arrows
+            , infoBody
+            , confirmButton
+            ]
+        )
+        NoOp
+        AbortCreate
+        False
 
 
 viewModals : DisplayProfile -> Model -> List (Element Msg)

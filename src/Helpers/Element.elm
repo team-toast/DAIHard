@@ -1,4 +1,4 @@
-module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, addAlpha, basicOpenDropdown, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredResponderProfit, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, maybeErrorElement, mediumGray, modal, moveToFront, niceBottomBorderEl, niceFloatingRow, noSelectText, onClickNoPropagation, optionsDots, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, redButton, releasedIconColor, responderProfitFloatToConciseString, responderProfitSymbol, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, searchableOpenDropdown, simpleSubmodelContainer, softRed, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, thinGrayHRuler, txProcessModal, uncoloredResponderProfit, white, withHeader, withInputHeader, withInputHeaderAndMaybeError, withSelectedUnderline, yellow)
+module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, addAlpha, basicOpenDropdown, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModalBlackX, closeableModalWhiteX, coloredResponderProfit, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, maybeErrorElement, mediumGray, modal, moveToFront, niceBottomBorderEl, niceFloatingRow, noSelectText, onClickNoPropagation, optionsDots, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, redButton, releasedIconColor, responderProfitFloatToConciseString, responderProfitSymbol, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, searchableOpenDropdown, simpleSubmodelContainer, softRed, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, thinGrayHRuler, txProcessModal, uncoloredResponderProfit, white, withHeader, withInputHeader, withInputHeaderAndMaybeError, withSelectedUnderline, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -611,37 +611,44 @@ dropdownSelector itemsAndMsgs =
 -- BUTTONS
 
 
-button : DisplayProfile -> ( Element.Color, Element.Color, Element.Color ) -> Element.Color -> List String -> msg -> Element msg
-button dProfile ( bgColor, bgHoverColor, bgPressedColor ) textColor lines msg =
+button : DisplayProfile -> List (Attribute msg) -> ( Element.Color, Element.Color, Element.Color ) -> Element.Color -> List String -> msg -> Element msg
+button dProfile attributes ( bgColor, bgHoverColor, bgPressedColor ) textColor lines msg =
     Element.column
-        [ Element.Border.rounded 4
-        , Element.spacing (8 |> changeForMobile 5 dProfile)
-        , Element.pointer
-        , Element.Events.onClick msg
-        , Element.paddingXY 25 17 |> changeForMobile (Element.padding 10) dProfile
-        , Element.Font.color textColor
-        , Element.Font.size (18 |> changeForMobile 16 dProfile)
-        , Element.Font.semiBold
-        , Element.Background.color bgColor
-        , Element.mouseDown [ Element.Background.color bgPressedColor ]
-        , Element.mouseOver [ Element.Background.color bgHoverColor ]
-        , noSelectText
-        ]
+        (attributes
+            ++ [ Element.Border.rounded 4
+               , Element.spacing (8 |> changeForMobile 5 dProfile)
+               , Element.pointer
+               , Element.Events.onClick msg
+               , Element.paddingXY 25 17 |> changeForMobile (Element.padding 10) dProfile
+               , Element.Font.color textColor
+               , Element.Font.size (18 |> changeForMobile 16 dProfile)
+               , Element.Font.semiBold
+               , Element.Background.color bgColor
+               , Element.mouseDown [ Element.Background.color bgPressedColor ]
+               , Element.mouseOver [ Element.Background.color bgHoverColor ]
+               , noSelectText
+               ]
+        )
         (List.map
             (Element.el [ Element.centerX ] << Element.text)
             lines
         )
 
 
-closeButton : msg -> Element msg
-closeButton msg =
+closeButton : Bool -> msg -> Element msg
+closeButton isBlack msg =
     Element.el
         [ Element.padding 10
         , Element.Events.onClick msg
         , Element.pointer
         ]
         (Images.toElement [ Element.width <| Element.px 22 ]
-            Images.closeIcon
+            (if isBlack then
+                Images.closeIconBlack
+
+             else
+                Images.closeIconWhite
+            )
         )
 
 
@@ -666,9 +673,10 @@ pokeButton pokeMsg =
         }
 
 
-blueButton : DisplayProfile -> List String -> msg -> Element msg
-blueButton dProfile text msg =
+blueButton : DisplayProfile -> List (Attribute msg) -> List String -> msg -> Element msg
+blueButton dProfile attributes text msg =
     button dProfile
+        attributes
         ( Element.rgba 0 0 1 1
         , Element.rgba 0 0 1 0.8
         , Element.rgba 0 0 1 0.6
@@ -678,9 +686,10 @@ blueButton dProfile text msg =
         msg
 
 
-inverseBlueButton : DisplayProfile -> List String -> msg -> Element msg
-inverseBlueButton dProfile text msg =
+inverseBlueButton : DisplayProfile -> List (Attribute msg) -> List String -> msg -> Element msg
+inverseBlueButton dProfile attributes text msg =
     button dProfile
+        attributes
         ( Element.rgba 0 0 1 0.05
         , Element.rgba 0 0 1 0.1
         , Element.rgba 0 0 1 0.2
@@ -690,9 +699,10 @@ inverseBlueButton dProfile text msg =
         msg
 
 
-redButton : DisplayProfile -> List String -> msg -> Element msg
-redButton dProfile text msg =
+redButton : DisplayProfile -> List (Attribute msg) -> List String -> msg -> Element msg
+redButton dProfile attributes text msg =
     button dProfile
+        attributes
         ( Element.rgba 1 0 0 1
         , Element.rgba 1 0 0 0.8
         , Element.rgba 1 0 0 0.6
@@ -702,25 +712,28 @@ redButton dProfile text msg =
         msg
 
 
-disabledButton : DisplayProfile -> String -> Maybe String -> Element msg
-disabledButton dProfile text maybeTipText =
+disabledButton : DisplayProfile -> List (Attribute msg) -> String -> Maybe String -> Element msg
+disabledButton dProfile attributes text maybeTipText =
     Element.el
-        [ Element.Border.rounded 4
-        , Element.paddingXY 25 17 |> changeForMobile (Element.paddingXY 10 5) dProfile
-        , Element.Font.size (18 |> changeForMobile 16 dProfile)
-        , Element.Font.semiBold
-        , Element.Background.color lightGray
-        , Element.above <|
-            maybeErrorElement
-                [ Element.moveUp 5 ]
-                maybeTipText
-        ]
+        (attributes
+            ++ [ Element.Border.rounded 4
+               , Element.paddingXY 25 17 |> changeForMobile (Element.paddingXY 10 5) dProfile
+               , Element.Font.size (18 |> changeForMobile 16 dProfile)
+               , Element.Font.semiBold
+               , Element.Background.color lightGray
+               , Element.above <|
+                    maybeErrorElement
+                        [ Element.moveUp 5 ]
+                        maybeTipText
+               ]
+        )
         (Element.text text)
 
 
-orangeButton : DisplayProfile -> List String -> msg -> Element msg
-orangeButton dProfile text msg =
+orangeButton : DisplayProfile -> List (Attribute msg) -> List String -> msg -> Element msg
+orangeButton dProfile attributes text msg =
     button dProfile
+        attributes
         ( Element.rgba 1 0.6 0.2 1
         , Element.rgba 1 0.6 0.2 0.8
         , Element.rgba 1 0.6 0.2 0.6
@@ -920,8 +933,8 @@ modal overlayColor includeScrollbarY clickInsideMsg clickOutsideMsg el =
         el
 
 
-closeableModal : List (Attribute msg) -> Element msg -> msg -> msg -> Bool -> Element msg
-closeableModal extraAttributes innerEl clickInsideMsg closeMsg includeScrollbarY =
+closeableModal : Bool -> List (Attribute msg) -> Element msg -> msg -> msg -> Bool -> Element msg
+closeableModal isBlack extraAttributes innerEl clickInsideMsg closeMsg includeScrollbarY =
     modal
         (Element.rgba 0 0 0.3 0.6)
         includeScrollbarY
@@ -939,11 +952,19 @@ closeableModal extraAttributes innerEl clickInsideMsg closeMsg includeScrollbarY
                     [ Element.alignRight
                     , Element.alignTop
                     ]
-                    (closeButton closeMsg)
+                    (closeButton isBlack closeMsg)
              ]
                 ++ extraAttributes
             )
             innerEl
+
+
+closeableModalBlackX =
+    closeableModal True
+
+
+closeableModalWhiteX =
+    closeableModal False
 
 
 txProcessModal : List (Element msg) -> msg -> msg -> Element msg

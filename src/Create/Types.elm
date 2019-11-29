@@ -39,6 +39,7 @@ type alias Model =
     , userAllowance : Maybe BigInt
     , depositAmount : Maybe TokenValue
     , txChainStatus : Maybe TxChainStatus
+    , extraConfirmInfoPlace : Int
     }
 
 
@@ -74,6 +75,8 @@ type Msg
     | CloseModals
     | PlaceOrderClicked FactoryType UserInfo CTypes.UserParameters
     | AbortCreate
+    | TradeTermsRight
+    | TradeTermsLeft
     | ConfirmCreate FactoryType CTypes.CreateParameters TokenValue
     | AllowanceFetched TokenFactoryType (Result Http.Error BigInt)
     | ApproveSigned TokenFactoryType CTypes.CreateParameters (Result String TxHash)

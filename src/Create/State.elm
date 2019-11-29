@@ -129,6 +129,7 @@ init testMode wallet modeOrTrade =
             , userAllowance = Nothing
             , depositAmount = Nothing
             , txChainStatus = Nothing
+            , extraConfirmInfoPlace = 0
             }
                 |> update Refresh
 
@@ -160,6 +161,7 @@ init testMode wallet modeOrTrade =
             , userAllowance = Nothing
             , depositAmount = Nothing
             , txChainStatus = Nothing
+            , extraConfirmInfoPlace = 0
             }
                 |> update Refresh
 
@@ -938,10 +940,29 @@ update msg prevModel =
                     | txChainStatus = Just <| Confirm factoryType createParameters
                     , depositAmount =
                         Just <| CTypes.calculateFullInitialDeposit createParameters
+                    , extraConfirmInfoPlace = 0
                 }
                 Cmd.none
                 ChainCmd.none
                 [ CmdUp.gTag "place order clicked" "txchain" prevModel.inputs.paymentMethod (createParameters.tradeAmount |> TokenValue.getFloatValueWithWarning |> floor) ]
+
+        TradeTermsRight ->
+            justModelUpdate
+                { prevModel
+                    | extraConfirmInfoPlace =
+                        prevModel.extraConfirmInfoPlace
+                            + 1
+                            |> clamp 0 5
+                }
+
+        TradeTermsLeft ->
+            justModelUpdate
+                { prevModel
+                    | extraConfirmInfoPlace =
+                        prevModel.extraConfirmInfoPlace
+                            - 1
+                            |> clamp 0 5
+                }
 
         AbortCreate ->
             UpdateResult

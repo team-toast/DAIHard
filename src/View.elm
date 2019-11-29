@@ -406,7 +406,7 @@ userNotice dProfile ( id, notice ) =
                 , Element.moveUp 5
                 , Element.moveRight 5
                 ]
-                (EH.closeButton (DismissNotice id))
+                (EH.closeButton True (DismissNotice id))
     in
     Element.el
         [ Element.Background.color color
