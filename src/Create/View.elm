@@ -1381,7 +1381,9 @@ createConfirmModal dProfile model factoryType createParameters =
                     ( emphasizedText depositAmountText
                     , emphasizedText totalBurnableText
                     , EH.redButton dProfile
-                        [ Element.width Element.fill ]
+                        [ Element.width Element.fill
+                        , Element.alignBottom
+                        ]
                         (case dProfile of
                             Desktop ->
                                 [ "Deposit "
@@ -1401,7 +1403,12 @@ createConfirmModal dProfile model factoryType createParameters =
                 Nothing ->
                     ( emphasizedText "??"
                     , emphasizedText "??"
-                    , EH.disabledButton dProfile [] "(loading exact fees...)" Nothing
+                    , EH.disabledButton dProfile
+                        [ Element.width Element.fill
+                        , Element.alignBottom
+                        ]
+                        "(loading exact fees...)"
+                        Nothing
                     )
 
         feeAmountEl =
@@ -1794,14 +1801,16 @@ createConfirmModal dProfile model factoryType createParameters =
                 )
     in
     EH.closeableModalWhiteX
-        [ Element.width <| Element.px (540 |> changeForMobile 320 dProfile)
+        [ Element.width (Element.px 540 |> changeForMobile Element.fill dProfile)
         , Element.Background.color <| Element.rgb255 10 33 108
-        , Element.padding (60 |> changeForMobile 30 dProfile)
+        , Element.padding (60 |> changeForMobile 20 dProfile)
+        , Element.height (Element.shrink |> changeForMobile Element.fill dProfile)
         ]
         (Element.column
             [ Element.spacing 15
             , Element.width Element.fill
             , Element.Font.color EH.white
+            , Element.height (Element.shrink |> changeForMobile Element.fill dProfile)
             ]
             [ Images.toElement
                 [ Element.height <| Element.px 70
