@@ -1278,18 +1278,74 @@ placeOrderButton dProfile model =
 
 txChainStatusModal : DisplayProfile -> TxChainStatus -> Model -> Element Msg
 txChainStatusModal dProfile txChainStatus model =
-    case txChainStatus of
+    let
+        confirmAbortAttributes =
+            if txChainStatus.confirmingAbort then
+                let
+                    message =
+                        case txChainStatus.mode of
+                            Confirm _ _ ->
+                                ""
+
+                            ApproveNeedsSig _ ->
+                                ""
+
+                            ApproveMining _ _ _ ->
+                                "If you abort now, your deposit will not complete and the offer won't be created."
+
+                            CreateNeedsSig _ ->
+                                "If you abort now, your deposit will not complete and the offer won't be created."
+
+                            CreateMining _ _ ->
+                                "Aborting now will return you to the Create form, but WILL NOT cancel the offer creation call. To manage the call, check your web3 wallet."
+                in
+                [ Element.inFront <|
+                    Element.column
+                        [ Element.centerX
+                        , Element.centerY
+                        , Element.padding 10
+                        , Element.spacing 10
+                        , Element.Border.rounded 5
+                        , Element.Background.color EH.white
+                        ]
+                        [ Element.paragraph
+                            [ Element.width Element.fill ]
+                            [ Element.text message ]
+                        , Element.row
+                            [ Element.centerX
+                            , Element.spacing 10
+                            ]
+                            [ EH.redButton
+                                dProfile
+                                []
+                                [ "Abort" ]
+                                ConfirmCloseTxModalClicked
+                            , EH.blueButton
+                                dProfile
+                                []
+                                [ "Nevermind" ]
+                                NevermindCloseTxModalClicked
+                            ]
+                        ]
+                ]
+
+            else
+                []
+    in
+    case txChainStatus.mode of
         Confirm factoryType createParameters ->
             createConfirmModal dProfile model factoryType createParameters
 
         ApproveNeedsSig tokenType ->
             Element.el
-                [ Element.centerX
-                , Element.centerY
-                , Element.Events.onClick <|
-                    CmdUp <|
-                        CmdUp.gTag "txChainModal clicked" "misclick" "ApproveNeedsSig" 0
-                ]
+                (confirmAbortAttributes
+                    ++ [ Element.centerX
+                       , Element.centerY
+                       , Element.Events.onClick <|
+                            CmdUp <|
+                                CmdUp.gTag "txChainModal clicked" "misclick" "ApproveNeedsSig" 0
+                       ]
+                )
             <|
                 EH.txProcessModal
                     [ Element.text "Waiting for user signature for the approve call."
@@ -1297,16 +1353,19 @@ txChainStatusModal dProfile txChainStatus model =
                     , Element.text "Note that there will be a second transaction to sign after this."
                     ]
                     NoOp
+                    CloseTxModalClicked
                     NoOp
 
         ApproveMining tokenType createParameters txHash ->
             Element.el
-                [ Element.centerX
-                , Element.centerY
-                , Element.Events.onClick <|
-                    CmdUp <|
-                        CmdUp.gTag "txChainModal clicked" "misclick" "ApproveMining" 0
-                ]
+                (confirmAbortAttributes
+                    ++ [ Element.centerX
+                       , Element.centerY
+                       , Element.Events.onClick <|
+                            CmdUp <|
+                                CmdUp.gTag "txChainModal clicked" "misclick" "ApproveMining" 0
+                       ]
+                )
             <|
                 EH.txProcessModal
                     [ Element.text "Mining the initial approve transaction..."
@@ -1317,32 +1376,38 @@ txChainStatusModal dProfile txChainStatus model =
                     , Element.text "Funds will not leave your wallet until you sign the next transaction."
                     ]
                     NoOp
+                    CloseTxModalClicked
                     NoOp
 
         CreateNeedsSig _ ->
             Element.el
-                [ Element.centerX
-                , Element.centerY
-                , Element.Events.onClick <|
-                    CmdUp <|
-                        CmdUp.gTag "txChainModal clicked" "misclick" "CreateNeedsSig" 0
-                ]
+                (confirmAbortAttributes
+                    ++ [ Element.centerX
+                       , Element.centerY
+                       , Element.Events.onClick <|
+                            CmdUp <|
+                                CmdUp.gTag "txChainModal clicked" "misclick" "CreateNeedsSig" 0
+                       ]
+                )
             <|
                 EH.txProcessModal
                     [ Element.text "Waiting for user signature for the create call."
                     , Element.text "(check Metamask!)"
                     ]
                     NoOp
+                    CloseTxModalClicked
                     NoOp
 
         CreateMining factoryType txHash ->
             Element.el
-                [ Element.centerX
-                , Element.centerY
-                , Element.Events.onClick <|
-                    CmdUp <|
-                        CmdUp.gTag "txChainModal clicked" "misclick" "CreateMining" 0
-                ]
+                (confirmAbortAttributes
+                    ++ [ Element.centerX
+                       , Element.centerY
+                       , Element.Events.onClick <|
+                            CmdUp <|
+                                CmdUp.gTag "txChainModal clicked" "misclick" "CreateMining" 0
+                       ]
+                )
             <|
                 EH.txProcessModal
                     [ Element.text "Mining the final create call..."
@@ -1353,6 +1418,7 @@ txChainStatusModal dProfile txChainStatus model =
                     , Element.text "You will be redirected when it's mined."
                     ]
                     NoOp
+                    CloseTxModalClicked
                     NoOp
 
 

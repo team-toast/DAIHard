@@ -1,4 +1,4 @@
-module Create.Types exposing (AutofillableInput(..), CurrencyType(..), Errors, Inputs, IntervalUnit(..), MarginButtonType(..), Mode(..), ModeOrTrade(..), Model, Msg(..), TradeType(..), TxChainStatus(..), UpdateResult, UserInterval, buildCryptoSwapSellPaymentMethodString, cryptoSwapSellPaymentMethodPrefix, cryptoSwapSellPaymentMethodSuffix, currencySymbol, externalCurrencyPrice, getAmountIn, getAmountOut, getTradeAmount, getTradePrice, getUserInterval, initiatorRole, intervalUnitToString, justModelUpdate, marginButtonTypeToString, maybeBuildPaymentMethods, maybeUserParameters, modeToString, noErrors, tradeType, updateAmountIn, updateAmountOut, updateForeignCurrencyType, updateInType, updateOutType, updateUserInterval, userIntervalToPosix, userIntervalToString)
+module Create.Types exposing (AutofillableInput(..), CurrencyType(..), Errors, Inputs, IntervalUnit(..), MarginButtonType(..), Mode(..), ModeOrTrade(..), Model, Msg(..), TradeType(..), TxChainMode(..), TxChainStatus, UpdateResult, UserInterval, buildCryptoSwapSellPaymentMethodString, cryptoSwapSellPaymentMethodPrefix, cryptoSwapSellPaymentMethodSuffix, currencySymbol, externalCurrencyPrice, getAmountIn, getAmountOut, getTradeAmount, getTradePrice, getUserInterval, initiatorRole, intervalUnitToString, justModelUpdate, marginButtonTypeToString, maybeBuildPaymentMethods, maybeUserParameters, modeToString, noErrors, tradeType, updateAmountIn, updateAmountOut, updateForeignCurrencyType, updateInType, updateOutType, updateUserInterval, userIntervalToPosix, userIntervalToString)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -43,7 +43,13 @@ type alias Model =
     }
 
 
-type TxChainStatus
+type alias TxChainStatus =
+    { mode : TxChainMode
+    , confirmingAbort : Bool
+    }
+
+
+type TxChainMode
     = Confirm FactoryType CTypes.CreateParameters
     | ApproveNeedsSig TokenFactoryType
     | ApproveMining TokenFactoryType CTypes.CreateParameters TxHash
@@ -73,6 +79,9 @@ type Msg
     | IntervalInputChanged String
     | IntervalUnitChanged IntervalUnit
     | CloseModals
+    | CloseTxModalClicked
+    | ConfirmCloseTxModalClicked
+    | NevermindCloseTxModalClicked
     | PlaceOrderClicked FactoryType UserInfo CTypes.UserParameters
     | AbortCreate
     | TradeTermsRight

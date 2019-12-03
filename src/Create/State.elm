@@ -930,6 +930,50 @@ update msg prevModel =
                         { oldInputs | currencySearch = "" }
                 }
 
+        CloseTxModalClicked ->
+            case prevModel.txChainStatus of
+                Nothing ->
+                    justModelUpdate prevModel
+
+                Just oldTxChainStatus ->
+                    let
+                        newMaybeTxStatus =
+                            case oldTxChainStatus.mode of
+                                Confirm _ _ ->
+                                    Nothing
+
+                                ApproveNeedsSig _ ->
+                                    Nothing
+
+                                _ ->
+                                    Just <|
+                                        { oldTxChainStatus
+                                            | confirmingAbort = True
+                                        }
+                    in
+                    justModelUpdate
+                        { prevModel
+                            | txChainStatus = newMaybeTxStatus
+                        }
+
+        ConfirmCloseTxModalClicked ->
+            justModelUpdate
+                { prevModel
+                    | txChainStatus = Nothing
+                }
+
+        NevermindCloseTxModalClicked ->
+            case prevModel.txChainStatus of
+                Nothing ->
+                    justModelUpdate prevModel
+
+                Just txChainStatus ->
+                    justModelUpdate
+                        { prevModel
+                            | txChainStatus =
+                                Just { txChainStatus | confirmingAbort = False }
+                        }
+
         PlaceOrderClicked factoryType userInfo userParameters ->
             let
                 createParameters =
@@ -937,7 +981,11 @@ update msg prevModel =
             in
             UpdateResult
                 { prevModel
-                    | txChainStatus = Just <| Confirm factoryType createParameters
+                    | txChainStatus =
+                        Just <|
+                            TxChainStatus
+                                (Confirm factoryType createParameters)
+                                False
                     , depositAmount =
                         Just <| CTypes.calculateFullInitialDeposit createParameters
                     , extraConfirmInfoPlace = 0
@@ -1003,10 +1051,20 @@ update msg prevModel =
                                         initiateCreateCall factoryType createParameters
 
                                     else
-                                        ( Just (ApproveNeedsSig tokenType), approveChainCmd )
+                                        ( Just <|
+                                            TxChainStatus
+                                                (ApproveNeedsSig tokenType)
+                                                False
+                                        , approveChainCmd
+                                        )
 
                                 Nothing ->
-                                    ( Just (ApproveNeedsSig tokenType), approveChainCmd )
+                                    ( Just <|
+                                        TxChainStatus
+                                            (ApproveNeedsSig tokenType)
+                                            False
+                                    , approveChainCmd
+                                    )
             in
             UpdateResult
                 { prevModel | txChainStatus = txChainStatus }
@@ -1018,7 +1076,13 @@ update msg prevModel =
             case result of
                 Ok txHash ->
                     UpdateResult
-                        { prevModel | txChainStatus = Just <| ApproveMining tokenType createParameters txHash }
+                        { prevModel
+                            | txChainStatus =
+                                Just <|
+                                    TxChainStatus
+                                        (ApproveMining tokenType createParameters txHash)
+                                        False
+                        }
                         Cmd.none
                         ChainCmd.none
                         [ CmdUp.gTag "approve signed" "txchain" "" 0 ]
@@ -1039,7 +1103,7 @@ update msg prevModel =
                                 | userAllowance = Just allowance
                             }
                     in
-                    case ( newModel.txChainStatus, newModel.depositAmount ) of
+                    case ( Maybe.map .mode newModel.txChainStatus, newModel.depositAmount ) of
                         ( Just (ApproveMining _ createParameters _), Just depositAmount ) ->
                             if BigInt.compare allowance (TokenValue.getEvmValue depositAmount) /= LT then
                                 let
@@ -1069,7 +1133,13 @@ update msg prevModel =
             case result of
                 Ok txHash ->
                     UpdateResult
-                        { prevModel | txChainStatus = Just <| CreateMining factoryType txHash }
+                        { prevModel
+                            | txChainStatus =
+                                Just <|
+                                    TxChainStatus
+                                        (CreateMining factoryType txHash)
+                                        False
+                        }
                         Cmd.none
                         ChainCmd.none
                         [ CmdUp.gTag "create signed" "txchain" "" 0 ]
@@ -1379,7 +1449,10 @@ initiateCreateCall factoryType parameters =
             , onBroadcast = Nothing
             }
     in
-    ( Just (CreateNeedsSig factoryType)
+    ( Just <|
+        TxChainStatus
+            (CreateNeedsSig factoryType)
+            False
     , ChainCmd.custom customSend txParams
     )
 

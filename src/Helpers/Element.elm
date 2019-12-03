@@ -967,13 +967,13 @@ closeableModalWhiteX =
     closeableModal False
 
 
-txProcessModal : List (Element msg) -> msg -> msg -> Element msg
-txProcessModal textLines clickInsideMsg closeMsg =
+txProcessModal : List (Element msg) -> msg -> msg -> msg -> Element msg
+txProcessModal textLines clickInsideMsg closeMsg clickOutsideMsg =
     modal
         (Element.rgba 0 0 0.3 0.6)
         False
         clickInsideMsg
-        closeMsg
+        clickOutsideMsg
     <|
         Element.column
             [ Element.spacing 10
@@ -982,6 +982,12 @@ txProcessModal textLines clickInsideMsg closeMsg =
             , Element.Background.color <| Element.rgba 0 0 0 0.5
             , Element.Border.rounded 8
             , Element.padding 20
+            , Element.inFront <|
+                Element.el
+                    [ Element.alignRight
+                    , Element.alignTop
+                    ]
+                    (closeButton False closeMsg)
             ]
             (textLines
                 |> List.map
