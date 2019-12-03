@@ -21,7 +21,16 @@ var commonModule = (function () {
     };
 
     pub.requestPermission = function (callback) {
-        var permission = Notification.permission;
+        try {
+            var permission = Notification.permission;
+        }
+        catch (e) {
+            // For some reason, the above line just fails on web3 mobile browsers
+            // Further it seems to break lots of other stuff
+            // I fucking hate javascript man
+            callback("failed");
+            return;
+        }
         if (permission != "default") {
             callback(permission);
         } else {

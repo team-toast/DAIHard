@@ -1,4 +1,4 @@
-module Currencies exposing (Price, Symbol, charAndImage, compare, cryptoImages, encodePrice, fiatChar, fiatCharsAndImages, fiatList, foreignCryptoList, icon, image, priceDecoder, toString, usd)
+module Currencies exposing (Price, Symbol, charAndImage, compare, cryptoImages, encodePrice, fiatChar, fiatCharsAndImages, fiatList, foreignCryptoList, icon, image, priceDecoder, toString, toStringNoSymbol, usd)
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -149,13 +149,17 @@ image symbol =
 
 toString : Price -> String
 toString p =
+    toStringNoSymbol p
+        ++ " "
+        ++ p.symbol
+
+
+toStringNoSymbol : Price -> String
+toStringNoSymbol p =
     (fiatChar p.symbol
         |> Maybe.withDefault ""
     )
-        ++ (formatFloat 8 p.amount
-                ++ " "
-                ++ p.symbol
-           )
+        ++ formatFloat 8 p.amount
 
 
 icon : Symbol -> Maybe (Element msg)

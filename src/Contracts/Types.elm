@@ -1,4 +1,4 @@
-module Contracts.Types exposing (ClosedReason(..), CreateParameters, DAIHardEvent(..), DerivedValues, FullTradeInfo, PartialTradeInfo, Phase(..), PhaseStartInfo, State, Terms, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToClosedReason, bigIntToPhase, buildCreateParameters, calculateDHFee, calculateFullInitialDeposit, checkIfTradeLoaded, createParametersToTradeParameters, createParametersToUserParameters, decodeParameters, decodePhaseStartInfo, decodeState, decodeTerms, defaultAbortPunishment, defaultBuyerDeposit, deriveValues, encodeTerms, eventDecoder, eventSigDecoder, getBuyerOrSeller, getCreationInfo, getCurrentPhaseTimeoutInfo, getDevFee, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderDeposit, getResponderRole, getUserParameters, initiatorOrResponderToBuyerOrSeller, partialTradeInfo, phaseIcon, phaseToInt, phaseToString, responderDeposit, tradeAddress, tradeFactory, tradeHasDefaultParameters, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePhaseStartInfo, updateState, updateTerms)
+module Contracts.Types exposing (ClosedReason(..), CreateParameters, DAIHardEvent(..), DerivedValues, FullTradeInfo, PartialTradeInfo, Phase(..), PhaseStartInfo, State, Terms, TimeoutInfo(..), Trade(..), TradeCreationInfo, TradeParameters, UserParameters, bigIntToClosedReason, bigIntToPhase, buildCreateParameters, calculateDHFee, calculateFullInitialDeposit, checkIfTradeLoaded, createParametersToTradeParameters, createParametersToUserParameters, decodeParameters, decodePhaseStartInfo, decodeState, decodeTerms, defaultAbortPunishment, defaultBuyerDeposit, deriveValues, encodeTerms, eventDecoder, eventSigDecoder, getBuyerOrSeller, getCreationInfo, getCurrentPhaseTimeoutInfo, getDevFee, getInitiatorOrResponder, getPhaseInterval, getPokeText, getResponderDeposit, getResponderRole, getUserParameters, initiatorOrResponderToBuyerOrSeller, partialTradeInfo, phaseIconBlack, phaseIconWhite, phaseToInt, phaseToString, responderDeposit, tradeAddress, tradeFactory, tradeHasDefaultParameters, txReceiptToCreatedTradeSellId, updateCreationInfo, updateParameters, updatePhaseStartInfo, updateState, updateTerms)
 
 import Abi.Decode
 import BigInt exposing (BigInt)
@@ -797,17 +797,33 @@ initiatorOrResponderToBuyerOrSeller initiatorRole initiatorOrResponder =
             Buyer
 
 
-phaseIcon : Phase -> Image
-phaseIcon phase =
+phaseIconWhite : Phase -> Image
+phaseIconWhite phase =
     case phase of
         Open ->
-            Images.openPhase
+            Images.openPhaseWhite
 
         Committed ->
-            Images.committedPhase
+            Images.committedPhaseWhite
 
         Judgment ->
-            Images.judgmentPhase
+            Images.judgmentPhaseWhite
+
+        Closed ->
+            Images.none
+
+
+phaseIconBlack : Phase -> Image
+phaseIconBlack phase =
+    case phase of
+        Open ->
+            Images.openPhaseBlack
+
+        Committed ->
+            Images.committedPhaseBlack
+
+        Judgment ->
+            Images.judgmentPhaseBlack
 
         Closed ->
             Images.none

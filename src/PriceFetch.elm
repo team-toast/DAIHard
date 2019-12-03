@@ -75,10 +75,14 @@ dataToPriceTupleDecoder =
 
 getPriceData : Currencies.Symbol -> List ( Currencies.Symbol, PriceData ) -> Maybe PriceData
 getPriceData symbol prices =
-    prices
-        |> List.filter (Tuple.first >> (==) symbol)
-        |> List.head
-        |> Maybe.map Tuple.second
+    if symbol == "USD" then
+        Just <| Ok 1.0
+
+    else
+        prices
+            |> List.filter (Tuple.first >> (==) symbol)
+            |> List.head
+            |> Maybe.map Tuple.second
 
 
 priceDataToMaybe : PriceData -> Maybe Float

@@ -216,7 +216,7 @@ update msg prevModel =
                                 | allowance = Just allowance
                             }
                     in
-                    case ( newModel.txChainStatus, newModel.trade, newModel.wallet ) of
+                    case ( Maybe.map .mode newModel.txChainStatus, newModel.trade, newModel.wallet ) of
                         ( Just (ApproveMining _), CTypes.LoadedTrade trade, Wallet.Active userInfo ) ->
                             if BigInt.compare allowance (CTypes.responderDeposit trade.parameters |> TokenValue.getEvmValue) /= LT then
                                 let
@@ -578,10 +578,62 @@ update msg prevModel =
                         ]
 
         CommitClicked trade userInfo depositAmount ->
-            justModelUpdate { prevModel | txChainStatus = Just <| ConfirmingCommit userInfo depositAmount }
+            justModelUpdate
+                { prevModel
+                    | txChainStatus =
+                        Just <|
+                            TxChainStatus
+                                (ConfirmingCommit userInfo depositAmount)
+                                False
+                }
 
-        AbortAction ->
-            justModelUpdate { prevModel | txChainStatus = Nothing }
+        CloseTxModalClicked ->
+            case prevModel.txChainStatus of
+                Nothing ->
+                    justModelUpdate prevModel
+
+                Just txChainStatus ->
+                    let
+                        newMaybeTxChainStatus =
+                            case txChainStatus.mode of
+                                ConfirmingCommit _ _ ->
+                                    Nothing
+
+                                ApproveNeedsSig ->
+                                    Nothing
+
+                                ConfirmingAction _ ->
+                                    Nothing
+
+                                ActionNeedsSig _ ->
+                                    Nothing
+
+                                _ ->
+                                    Just <|
+                                        { txChainStatus | confirmingAbort = True }
+                    in
+                    justModelUpdate
+                        { prevModel
+                            | txChainStatus = newMaybeTxChainStatus
+                        }
+
+        ConfirmCloseTxModalClicked ->
+            justModelUpdate
+                { prevModel
+                    | txChainStatus = Nothing
+                }
+
+        NevermindCloseTxModalClicked ->
+            case prevModel.txChainStatus of
+                Nothing ->
+                    justModelUpdate prevModel
+
+                Just txChainStatus ->
+                    justModelUpdate
+                        { prevModel
+                            | txChainStatus =
+                                Just { txChainStatus | confirmingAbort = False }
+                        }
 
         ConfirmCommit trade userInfo depositAmount ->
             let
@@ -615,10 +667,10 @@ update msg prevModel =
                                         initiateCommitCall trade userInfo.address userInfo.commPubkey
 
                                     else
-                                        ( Just ApproveNeedsSig, approveChainCmd )
+                                        ( Just <| TxChainStatus ApproveNeedsSig False, approveChainCmd )
 
                                 _ ->
-                                    ( Just ApproveNeedsSig, approveChainCmd )
+                                    ( Just <| TxChainStatus ApproveNeedsSig False, approveChainCmd )
             in
             UpdateResult
                 { prevModel | txChainStatus = txChainStatus }
@@ -632,7 +684,13 @@ update msg prevModel =
 
             else
                 justModelUpdate
-                    { prevModel | txChainStatus = Just <| ConfirmingAction action }
+                    { prevModel
+                        | txChainStatus =
+                            Just <|
+                                TxChainStatus
+                                    (ConfirmingAction action)
+                                    False
+                    }
 
         StartContractAction actionMsg ->
             let
@@ -646,7 +704,10 @@ update msg prevModel =
                                             DHT.recall tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
-                                    ( Just <| ActionNeedsSig Recall
+                                    ( Just <|
+                                        TxChainStatus
+                                            (ActionNeedsSig Recall)
+                                            False
                                     , ChainCmd.custom (contractActionSend Recall) txParams
                                     , []
                                     )
@@ -657,7 +718,10 @@ update msg prevModel =
                                             DHT.claim tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
-                                    ( Just <| ActionNeedsSig Claim
+                                    ( Just <|
+                                        TxChainStatus
+                                            (ActionNeedsSig Claim)
+                                            False
                                     , ChainCmd.custom (contractActionSend Claim) txParams
                                     , []
                                     )
@@ -668,7 +732,10 @@ update msg prevModel =
                                             DHT.abort tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
-                                    ( Just <| ActionNeedsSig Abort
+                                    ( Just <|
+                                        TxChainStatus
+                                            (ActionNeedsSig Abort)
+                                            False
                                     , ChainCmd.custom (contractActionSend Abort) txParams
                                     , []
                                     )
@@ -679,7 +746,10 @@ update msg prevModel =
                                             DHT.release tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
-                                    ( Just <| ActionNeedsSig Release
+                                    ( Just <|
+                                        TxChainStatus
+                                            (ActionNeedsSig Release)
+                                            False
                                     , ChainCmd.custom (contractActionSend Release) txParams
                                     , []
                                     )
@@ -690,7 +760,10 @@ update msg prevModel =
                                             DHT.burn tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
-                                    ( Just <| ActionNeedsSig Burn
+                                    ( Just <|
+                                        TxChainStatus
+                                            (ActionNeedsSig Burn)
+                                            False
                                     , ChainCmd.custom (contractActionSend Burn) txParams
                                     , []
                                     )
@@ -701,7 +774,10 @@ update msg prevModel =
                                             DHT.poke tradeInfo.creationInfo.address
                                                 |> Eth.toSend
                                     in
-                                    ( Just <| ActionNeedsSig Poke
+                                    ( Just <|
+                                        TxChainStatus
+                                            (ActionNeedsSig Poke)
+                                            False
                                     , ChainCmd.custom (contractActionSend Poke) txParams
                                     , []
                                     )
@@ -725,7 +801,14 @@ update msg prevModel =
         ApproveSigned txHashResult ->
             case txHashResult of
                 Ok txHash ->
-                    justModelUpdate { prevModel | txChainStatus = Just <| ApproveMining txHash }
+                    justModelUpdate
+                        { prevModel
+                            | txChainStatus =
+                                Just <|
+                                    TxChainStatus
+                                        (ApproveMining txHash)
+                                        False
+                        }
 
                 Err s ->
                     UpdateResult
@@ -739,7 +822,14 @@ update msg prevModel =
         CommitSigned txHashResult ->
             case txHashResult of
                 Ok txHash ->
-                    justModelUpdate { prevModel | txChainStatus = Just <| CommitMining txHash }
+                    justModelUpdate
+                        { prevModel
+                            | txChainStatus =
+                                Just <|
+                                    TxChainStatus
+                                        (CommitMining txHash)
+                                        False
+                        }
 
                 Err s ->
                     UpdateResult
@@ -756,7 +846,14 @@ update msg prevModel =
         ActionSigned action txHashResult ->
             case txHashResult of
                 Ok txHash ->
-                    justModelUpdate { prevModel | txChainStatus = Just <| ActionMining action txHash }
+                    justModelUpdate
+                        { prevModel
+                            | txChainStatus =
+                                Just <|
+                                    TxChainStatus
+                                        (ActionMining action txHash)
+                                        False
+                        }
 
                 Err s ->
                     UpdateResult
@@ -954,7 +1051,10 @@ initiateCommitCall trade userAddress commPubkey =
                    )
                 |> Eth.toSend
     in
-    ( Just CommitNeedsSig
+    ( Just <|
+        TxChainStatus
+            CommitNeedsSig
+            False
     , ChainCmd.custom
         { onMined = Just ( CommitMined, Nothing )
         , onSign = Just CommitSigned

@@ -22,8 +22,8 @@ import TokenValue exposing (TokenValue)
 import Wallet
 
 
-root : Model -> ( Element Msg, List (Element Msg) )
-root model =
+root : DisplayProfile -> Model -> ( Element Msg, List (Element Msg) )
+root dProfile model =
     ( Element.column
         [ Element.width Element.fill
         , Element.paddingEach
@@ -37,20 +37,20 @@ root model =
             800
             (Element.column
                 [ Element.width Element.fill
-                , Element.spacing 20
+                , Element.spacing (20 |> changeForMobile 10 dProfile)
                 ]
-                [ header model.mode
+                [ header dProfile model.mode
                 , EH.thinGrayHRuler
-                , body model
+                , body dProfile model
                 ]
             )
         ]
-    , viewModals model
+    , viewModals dProfile model
     )
 
 
-header : Mode -> Element Msg
-header mode =
+header : DisplayProfile -> Mode -> Element Msg
+header dProfile mode =
     let
         descriptionText =
             case mode of
@@ -69,24 +69,26 @@ header mode =
     Element.column
         [ Element.width Element.fill
         , Element.spacing 20
-        , Element.padding 30
+        , Element.padding (30 |> changeForMobile 10 dProfile)
         ]
         [ Element.row
-            [ Element.spacing 40
+            [ Element.spacing (40 |> changeForMobile 10 dProfile)
             , Element.centerX
             ]
-            [ modeHeader (mode == CryptoSwap Seller || mode == CryptoSwap Buyer) (CryptoSwap Seller)
-            , modeHeader (mode == OffRamp) OffRamp
-            , modeHeader (mode == OnRamp) OnRamp
+            [ modeHeader dProfile (mode == CryptoSwap Seller || mode == CryptoSwap Buyer) (CryptoSwap Seller)
+            , modeHeader dProfile (mode == OffRamp) OffRamp
+            , modeHeader dProfile (mode == OnRamp) OnRamp
             ]
         , Element.paragraph
-            [ Element.Font.size 16 ]
+            [ Element.Font.size (16 |> changeForMobile 12 dProfile)
+            , Element.spacing 2
+            ]
             [ Element.text descriptionText ]
         ]
 
 
-modeHeader : Bool -> Mode -> Element Msg
-modeHeader selected mode =
+modeHeader : DisplayProfile -> Bool -> Mode -> Element Msg
+modeHeader dProfile selected mode =
     let
         fontAlpha =
             if selected then
@@ -107,7 +109,7 @@ modeHeader selected mode =
                     "Get More Sai"
     in
     Element.el
-        [ Element.Font.size 28
+        [ Element.Font.size (28 |> changeForMobile 14 dProfile)
         , Element.Font.semiBold
         , Element.Font.color <| Element.rgba 0 0 0 fontAlpha
         , Element.pointer
@@ -116,35 +118,44 @@ modeHeader selected mode =
         (Element.text text)
 
 
-body : Model -> Element Msg
-body model =
+body : DisplayProfile -> Model -> Element Msg
+body dProfile model =
     Element.column
         [ Element.width Element.fill
         , Element.padding 20
         , Element.spacing 25
         ]
-        [ amountAndTypeIn model
+        [ amountAndTypeIn dProfile model
         , case model.mode of
             CryptoSwap _ ->
                 Element.el [ Element.centerX ] swapButton
 
             _ ->
                 Element.none
-        , amountOutRow model
-        , moreInfoInput model
-        , intervalsRow model
-        , placeOrderButton model
+        , amountOutRow dProfile model
+        , moreInfoInput dProfile model
+        , intervalsElement dProfile model
+        , placeOrderButton dProfile model
         ]
 
 
-amountAndTypeIn : Model -> Element Msg
-amountAndTypeIn model =
-    EH.withInputHeaderAndMaybeError
+amountAndTypeIn : DisplayProfile -> Model -> Element Msg
+amountAndTypeIn dProfile model =
+    EH.withInputHeaderAndMaybeError dProfile
         [ Element.width Element.fill ]
         "I want to Sell"
         model.errors.amountIn
-        (inputContainer
-            [ Element.width Element.fill ]
+        (inputContainer dProfile
+            ([ Element.width Element.fill ]
+                ++ (if model.showInTypeDropdown then
+                        [ Element.below
+                            (inTypeDropdown dProfile model)
+                        ]
+
+                    else
+                        []
+                   )
+            )
             [ Element.Input.text
                 [ Element.width Element.fill
                 , Element.height Element.fill
@@ -160,17 +171,9 @@ amountAndTypeIn model =
                 , label = Element.Input.labelHidden "amount in"
                 }
             , Element.el
-                ([ Element.height Element.fill ]
-                    ++ (if model.showInTypeDropdown then
-                            [ Element.below
-                                (inTypeDropdown model)
-                            ]
-
-                        else
-                            []
-                       )
-                )
+                [ Element.height Element.fill ]
                 (typeDropdownButton
+                    dProfile
                     model.showInTypeDropdown
                     model.inputs.inType
                     InTypeClicked
@@ -193,56 +196,74 @@ swapButton =
         )
 
 
-amountOutRow : Model -> Element Msg
-amountOutRow model =
-    Element.row
-        [ Element.width Element.fill
-        , Element.spacing 25
-        ]
-        ([ Element.el [ Element.width <| Element.fillPortion 2 ]
-            (amountAndTypeOut model)
-         ]
-            ++ (case model.mode of
-                    CryptoSwap _ ->
-                        [ Element.el
-                            [ Element.Font.size 28
-                            , Element.Font.color <| Element.rgba 0.05 0.1 0.3 0.25
-                            , Element.Font.semiBold
-                            , Element.alignBottom
-                            , Element.paddingEach
-                                { bottom = 14
-                                , top = 0
-                                , right = 0
-                                , left = 0
-                                }
-                            ]
-                            (Element.text "@")
-                        , Element.el
-                            [ Element.width <| Element.fillPortion 1
-                            , Element.above
-                                (if model.showMarginModal then
-                                    marginModal model.margin model.inputs.margin model.errors.margin
-
-                                 else
-                                    Element.none
-                                )
-                            ]
-                            (marginBox model)
+amountOutRow : DisplayProfile -> Model -> Element Msg
+amountOutRow dProfile model =
+    let
+        marginEls =
+            case model.mode of
+                CryptoSwap _ ->
+                    [ Element.el
+                        [ Element.Font.size (28 |> changeForMobile 22 dProfile)
+                        , Element.Font.color <| Element.rgba 0.05 0.1 0.3 0.25
+                        , Element.Font.semiBold
+                        , Element.alignBottom
+                        , Element.paddingEach
+                            { bottom = 14 |> changeForMobile 12 dProfile
+                            , top = 0
+                            , right = 0
+                            , left = 0
+                            }
                         ]
+                        (Element.text "@")
+                    , Element.el
+                        [ Element.width <| Element.fillPortion 1
+                        , Element.above
+                            (if model.showMarginModal then
+                                marginModal dProfile model.margin model.inputs.margin model.errors.margin
 
-                    _ ->
-                        []
-               )
-        )
+                             else
+                                Element.none
+                            )
+                        ]
+                        (marginBox dProfile model)
+                    ]
+
+                _ ->
+                    []
+    in
+    case dProfile of
+        Desktop ->
+            Element.row
+                [ Element.width Element.fill
+                , Element.spacing 25
+                ]
+                ([ Element.el [ Element.width <| Element.fillPortion 2 ]
+                    (amountAndTypeOut dProfile model)
+                 ]
+                    ++ marginEls
+                )
+
+        Mobile ->
+            Element.column
+                [ Element.width Element.fill
+                , Element.spacing 10
+                ]
+                [ amountAndTypeOut dProfile model
+                , Element.row
+                    [ Element.width Element.fill
+                    , Element.spacing 10
+                    ]
+                    marginEls
+                ]
 
 
-moreInfoInput : Model -> Element Msg
-moreInfoInput model =
+moreInfoInput : DisplayProfile -> Model -> Element Msg
+moreInfoInput dProfile model =
     case model.mode of
         CryptoSwap Seller ->
             case model.inputs.outType of
                 External cryptoSymbol ->
-                    cryptoAddressInput cryptoSymbol model.inputs.receiveAddress
+                    cryptoAddressInput dProfile cryptoSymbol model.inputs.receiveAddress
 
                 _ ->
                     let
@@ -255,20 +276,29 @@ moreInfoInput model =
             Element.none
 
         OffRamp ->
-            paymentMethodInput Seller model.inputs.paymentMethod
+            paymentMethodInput dProfile Seller model.inputs.paymentMethod
 
         OnRamp ->
-            paymentMethodInput Buyer model.inputs.paymentMethod
+            paymentMethodInput dProfile Buyer model.inputs.paymentMethod
 
 
-amountAndTypeOut : Model -> Element Msg
-amountAndTypeOut model =
-    EH.withInputHeaderAndMaybeError
+amountAndTypeOut : DisplayProfile -> Model -> Element Msg
+amountAndTypeOut dProfile model =
+    EH.withInputHeaderAndMaybeError dProfile
         [ Element.width Element.fill ]
         "In Exchange for"
         model.errors.amountOut
-        (inputContainer
-            [ Element.width Element.fill ]
+        (inputContainer dProfile
+            ([ Element.width Element.fill ]
+                ++ (if model.showOutTypeDropdown then
+                        [ Element.below
+                            (outTypeDropdown dProfile model)
+                        ]
+
+                    else
+                        []
+                   )
+            )
             [ Element.Input.text
                 [ Element.width Element.fill
                 , Element.height Element.fill
@@ -284,17 +314,9 @@ amountAndTypeOut model =
                 , label = Element.Input.labelHidden "amount out"
                 }
             , Element.el
-                ([ Element.height Element.fill ]
-                    ++ (if model.showOutTypeDropdown then
-                            [ Element.below
-                                (outTypeDropdown model)
-                            ]
-
-                        else
-                            []
-                       )
-                )
+                [ Element.height Element.fill ]
                 (typeDropdownButton
+                    dProfile
                     model.showOutTypeDropdown
                     model.inputs.outType
                     OutTypeClicked
@@ -303,12 +325,18 @@ amountAndTypeOut model =
         )
 
 
-marginBox : Model -> Element Msg
-marginBox model =
-    EH.withInputHeader
-        [ Element.width Element.fill ]
-        "Margin"
-        (inputContainer
+marginBox : DisplayProfile -> Model -> Element Msg
+marginBox dProfile model =
+    (case dProfile of
+        Desktop ->
+            EH.withInputHeader dProfile
+                [ Element.width Element.fill ]
+                "Margin"
+
+        Mobile ->
+            identity
+    )
+        (inputContainer dProfile
             [ Element.width Element.fill
             , Element.pointer
             , EH.onClickNoPropagation MarginBoxClicked
@@ -319,16 +347,16 @@ marginBox model =
                 , Element.Background.color EH.white
                 , Element.spacing 13
                 ]
-                [ profitLossOrEven model.margin
-                , absMarginPercentage model.margin
+                [ profitLossOrEven dProfile model.margin
+                , absMarginPercentage dProfile model.margin
                 ]
             , dropdownArrow model.showMarginModal
             ]
         )
 
 
-marginModal : Float -> String -> Maybe String -> Element Msg
-marginModal margin marginInput maybeError =
+marginModal : DisplayProfile -> Float -> String -> Maybe String -> Element Msg
+marginModal dProfile margin marginInput maybeError =
     EH.modal
         (Element.rgba 0 0 0 0.1)
         False
@@ -350,7 +378,7 @@ marginModal margin marginInput maybeError =
                 }
             ]
             [ Element.el
-                [ Element.paddingXY 23 18
+                [ Element.paddingXY 23 18 |> changeForMobile (Element.paddingXY 18 16) dProfile
                 , Element.Background.color EH.white
                 ]
               <|
@@ -359,14 +387,15 @@ marginModal margin marginInput maybeError =
                     , Element.spacing 10
                     ]
                     [ Element.el
-                        [ Element.Font.size 20
+                        [ Element.Font.size (20 |> changeForMobile 18 dProfile)
                         , Element.Font.semiBold
                         , Element.Font.color <| Element.rgb255 16 7 234
                         ]
                         (Element.text "Margin")
                     , Element.paragraph
-                        [ Element.Font.size 16
+                        [ Element.Font.size (16 |> changeForMobile 14 dProfile)
                         , Element.Font.color <| Element.rgba 0 0 0 0.75
+                        , Element.spacing 2
                         ]
                         [ Element.text "This is how much you want to either make as a profit or loss from this trade. Trading at a loss can help to find a buyer fast, but it's possible to trade at a profit if your payment method is highly convenient to the other party." ]
                     ]
@@ -376,100 +405,122 @@ marginModal margin marginInput maybeError =
 
                 inactiveTextColor =
                     Element.rgb255 10 33 108
-              in
-              Element.row
-                [ Element.width Element.shrink
-                , Element.Background.color EH.white
-                , Element.paddingXY 23 18
-                , Element.spacing 12
-                ]
-                [ inputContainer
-                    [ Element.width <| Element.px 140
-                    , Element.above <|
-                        case maybeError of
-                            Just error ->
-                                Element.el
-                                    [ Element.Font.size 12
-                                    , Element.Font.color EH.softRed
-                                    , Element.moveUp 16
-                                    , Element.alignLeft
-                                    , Element.Background.color EH.white
-                                    , Element.Border.widthEach
-                                        { top = 0
-                                        , bottom = 0
-                                        , right = 1
-                                        , left = 1
-                                        }
-                                    , Element.paddingXY 5 0
-                                    , Element.Border.color EH.lightGray
-                                    ]
-                                    (Element.text error)
 
-                            Nothing ->
-                                Element.none
-                    ]
-                    [ Element.Input.text
-                        [ Element.Border.width 0
-                        , Element.width Element.fill
-                        , Element.height Element.fill
+                inputEl =
+                    inputContainer dProfile
+                        [ Element.width <| Element.px 140
+                        , Element.above <|
+                            case maybeError of
+                                Just error ->
+                                    Element.el
+                                        [ Element.Font.size 12
+                                        , Element.Font.color EH.softRed
+                                        , Element.moveUp 16
+                                        , Element.alignLeft
+                                        , Element.Background.color EH.white
+                                        , Element.Border.widthEach
+                                            { top = 0
+                                            , bottom = 0
+                                            , right = 1
+                                            , left = 1
+                                            }
+                                        , Element.paddingXY 5 0
+                                        , Element.Border.color EH.lightGray
+                                        ]
+                                        (Element.text error)
+
+                                Nothing ->
+                                    Element.none
                         ]
-                        { onChange = MarginInputChanged
-                        , text = marginInput ++ "%"
-                        , placeholder = Nothing
-                        , label = Element.Input.labelHidden "margin"
-                        }
+                        [ Element.Input.text
+                            [ Element.Border.width 0
+                            , Element.width Element.fill
+                            , Element.height Element.fill
+                            ]
+                            { onChange = MarginInputChanged
+                            , text = marginInput ++ "%"
+                            , placeholder = Nothing
+                            , label = Element.Input.labelHidden "margin"
+                            }
+                        ]
+
+                profitLossEvenButtons =
+                    [ if margin < 0 then
+                        button dProfile
+                            EH.softRed
+                            EH.white
+                            "Loss"
+                            Nothing
+
+                      else
+                        button dProfile
+                            inactiveBgColor
+                            inactiveTextColor
+                            "Loss"
+                            (Just <| MarginButtonClicked Loss)
+                    , if margin == 0 then
+                        button dProfile
+                            (Element.rgb255 16 7 234)
+                            EH.white
+                            "Even"
+                            Nothing
+
+                      else
+                        button dProfile
+                            inactiveBgColor
+                            inactiveTextColor
+                            "Even"
+                            (Just <| MarginButtonClicked Even)
+                    , if margin > 0 then
+                        button dProfile
+                            (Element.rgb255 0 188 137)
+                            EH.white
+                            "Profit"
+                            Nothing
+
+                      else
+                        button dProfile
+                            inactiveBgColor
+                            inactiveTextColor
+                            "Profit"
+                            (Just <| MarginButtonClicked Profit)
                     ]
-                , if margin < 0 then
-                    button
-                        EH.softRed
-                        EH.white
-                        "Loss"
-                        Nothing
+              in
+              case dProfile of
+                Desktop ->
+                    Element.row
+                        [ Element.width Element.shrink
+                        , Element.Background.color EH.white
+                        , Element.paddingXY 23 18
+                        , Element.spacing 12
+                        ]
+                        ([ inputEl ] ++ profitLossEvenButtons)
 
-                  else
-                    button
-                        inactiveBgColor
-                        inactiveTextColor
-                        "Loss"
-                        (Just <| MarginButtonClicked Loss)
-                , if margin == 0 then
-                    button
-                        (Element.rgb255 16 7 234)
-                        EH.white
-                        "Even"
-                        Nothing
-
-                  else
-                    button
-                        inactiveBgColor
-                        inactiveTextColor
-                        "Even"
-                        (Just <| MarginButtonClicked Even)
-                , if margin > 0 then
-                    button
-                        (Element.rgb255 0 188 137)
-                        EH.white
-                        "Profit"
-                        Nothing
-
-                  else
-                    button
-                        inactiveBgColor
-                        inactiveTextColor
-                        "Profit"
-                        (Just <| MarginButtonClicked Profit)
-                ]
+                Mobile ->
+                    Element.column
+                        [ Element.spacing 5
+                        , Element.width Element.fill
+                        , Element.paddingXY 18 16
+                        , Element.Background.color EH.white
+                        ]
+                        [ Element.el [ Element.centerX ] inputEl
+                        , Element.row
+                            [ Element.centerX
+                            , Element.spacing 5
+                            ]
+                            profitLossEvenButtons
+                        ]
             ]
 
 
-button : Element.Color -> Element.Color -> String -> Maybe Msg -> Element Msg
-button bgColor textColor text maybeOnClick =
+button : DisplayProfile -> Element.Color -> Element.Color -> String -> Maybe Msg -> Element Msg
+button dProfile bgColor textColor text maybeOnClick =
     Element.el
         ([ Element.Background.color bgColor
          , Element.Border.rounded 4
-         , Element.paddingXY 22 16
+         , Element.paddingXY 22 16 |> changeForMobile (Element.padding 10) dProfile
          , Element.Font.color textColor
-         , Element.Font.size 20
+         , Element.Font.size (20 |> changeForMobile 16 dProfile)
          ]
             ++ (case maybeOnClick of
                     Just onClick ->
@@ -484,8 +535,8 @@ button bgColor textColor text maybeOnClick =
         (Element.text text)
 
 
-profitLossOrEven : Float -> Element Msg
-profitLossOrEven margin =
+profitLossOrEven : DisplayProfile -> Float -> Element Msg
+profitLossOrEven dProfile margin =
     let
         ( text, bgColor, textColor ) =
             if margin == 0 then
@@ -507,23 +558,23 @@ profitLossOrEven margin =
                 )
     in
     Element.el
-        [ Element.padding 7 ]
+        [ Element.padding (7 |> changeForMobile 4 dProfile) ]
     <|
         Element.el
             [ Element.paddingXY 15 9
             , Element.Background.color bgColor
             , Element.Border.rounded 4
             , Element.Font.color textColor
-            , Element.Font.size 20
+            , Element.Font.size (20 |> changeForMobile 16 dProfile)
             , Element.Font.semiBold
             ]
             (Element.text text)
 
 
-absMarginPercentage : Float -> Element Msg
-absMarginPercentage margin =
+absMarginPercentage : DisplayProfile -> Float -> Element Msg
+absMarginPercentage dProfile margin =
     Element.el
-        [ Element.Font.size 20
+        [ Element.Font.size (20 |> changeForMobile 16 dProfile)
         , Element.Font.semiBold
         ]
         (Element.text
@@ -536,56 +587,60 @@ absMarginPercentage margin =
         )
 
 
-inTypeDropdown : Model -> Element Msg
-inTypeDropdown model =
+inTypeDropdown : DisplayProfile -> Model -> Element Msg
+inTypeDropdown dProfile model =
     case model.mode of
         CryptoSwap Seller ->
-            dhTokenTypeDropdown
+            dhTokenTypeDropdown dProfile
+                model.testMode
                 (InTypeSelected << DHToken)
 
         OffRamp ->
-            dhTokenTypeDropdown
+            dhTokenTypeDropdown dProfile
+                model.testMode
                 (InTypeSelected << DHToken)
 
         CryptoSwap Buyer ->
-            cryptoTypeDropdown
+            cryptoTypeDropdown dProfile
                 model.inputs.currencySearch
                 SearchInputChanged
                 (InTypeSelected << External)
 
         OnRamp ->
-            fiatTypeDropdown
+            fiatTypeDropdown dProfile
                 model.inputs.currencySearch
                 SearchInputChanged
                 (InTypeSelected << External)
 
 
-outTypeDropdown : Model -> Element Msg
-outTypeDropdown model =
+outTypeDropdown : DisplayProfile -> Model -> Element Msg
+outTypeDropdown dProfile model =
     case model.mode of
         CryptoSwap Seller ->
-            cryptoTypeDropdown
+            cryptoTypeDropdown dProfile
                 model.inputs.currencySearch
                 SearchInputChanged
                 (OutTypeSelected << External)
 
         CryptoSwap Buyer ->
-            dhTokenTypeDropdown
+            dhTokenTypeDropdown dProfile
+                model.testMode
                 (OutTypeSelected << DHToken)
 
         OffRamp ->
-            fiatTypeDropdown
+            fiatTypeDropdown dProfile
                 model.inputs.currencySearch
                 SearchInputChanged
                 (OutTypeSelected << External)
 
         OnRamp ->
-            dhTokenTypeDropdown
+            dhTokenTypeDropdown dProfile
+                model.testMode
                 (OutTypeSelected << DHToken)
 
 
-dhTokenTypeDropdown : (FactoryType -> Msg) -> Element Msg
-dhTokenTypeDropdown msgConstructor =
+dhTokenTypeDropdown : DisplayProfile -> Bool -> (FactoryType -> Msg) -> Element Msg
+dhTokenTypeDropdown dProfile testMode msgConstructor =
     EH.modal
         (Element.rgba 0 0 0 0.1)
         False
@@ -595,10 +650,10 @@ dhTokenTypeDropdown msgConstructor =
         EH.basicOpenDropdown
             [ Element.width <| Element.px 300
             , Element.moveDown 10
-            , Element.alignRight
+            , Element.alignRight |> changeForMobile Element.centerX dProfile
             ]
             Nothing
-            (dhTokenList
+            (dhTokenList testMode
                 |> List.map
                     (\tokenType ->
                         ( Element.row
@@ -616,8 +671,8 @@ dhTokenTypeDropdown msgConstructor =
             )
 
 
-cryptoTypeDropdown : String -> (String -> Msg) -> (Currencies.Symbol -> Msg) -> Element Msg
-cryptoTypeDropdown searchInput searchChangedMsg selectedMsg =
+cryptoTypeDropdown : DisplayProfile -> String -> (String -> Msg) -> (Currencies.Symbol -> Msg) -> Element Msg
+cryptoTypeDropdown dProfile searchInput searchChangedMsg selectedMsg =
     EH.modal
         (Element.rgba 0 0 0 0.1)
         False
@@ -627,7 +682,7 @@ cryptoTypeDropdown searchInput searchChangedMsg selectedMsg =
         EH.searchableOpenDropdown
             [ Element.width <| Element.px 300
             , Element.moveDown 18
-            , Element.alignRight
+            , Element.alignRight |> changeForMobile Element.centerX dProfile
             ]
             "search cryptocurrencies"
             (Currencies.foreignCryptoList
@@ -651,8 +706,8 @@ cryptoTypeDropdown searchInput searchChangedMsg selectedMsg =
             searchChangedMsg
 
 
-fiatTypeDropdown : String -> (String -> Msg) -> (Currencies.Symbol -> Msg) -> Element Msg
-fiatTypeDropdown searchInput searchChangedMsg selectedMsg =
+fiatTypeDropdown : DisplayProfile -> String -> (String -> Msg) -> (Currencies.Symbol -> Msg) -> Element Msg
+fiatTypeDropdown dProfile searchInput searchChangedMsg selectedMsg =
     EH.modal
         (Element.rgba 0 0 0 0.1)
         False
@@ -662,7 +717,7 @@ fiatTypeDropdown searchInput searchChangedMsg selectedMsg =
         EH.searchableOpenDropdown
             [ Element.width <| Element.px 300
             , Element.moveDown 18
-            , Element.alignRight
+            , Element.alignRight |> changeForMobile Element.centerX dProfile
             ]
             "search currencies"
             (Currencies.fiatList
@@ -686,21 +741,25 @@ fiatTypeDropdown searchInput searchChangedMsg selectedMsg =
             searchChangedMsg
 
 
-typeDropdownButton : Bool -> CurrencyType -> Msg -> Element Msg
-typeDropdownButton dropdownOpen currencyType onClick =
+typeDropdownButton : DisplayProfile -> Bool -> CurrencyType -> Msg -> Element Msg
+typeDropdownButton dProfile dropdownOpen currencyType onClick =
     Element.row
         [ Element.Background.color <| Element.rgb 0.98 0.98 0.98
         , Element.height Element.fill
-        , Element.padding 13
-        , Element.spacing 13
+        , Element.padding (13 |> changeForMobile 8 dProfile)
+        , Element.spacing (13 |> changeForMobile 10 dProfile)
         , Element.pointer
         , EH.onClickNoPropagation onClick
         ]
-        [ Currencies.icon (currencySymbol currencyType)
+        [ Currencies.image (currencySymbol currencyType)
+            |> Maybe.map
+                (Images.toElement
+                    [ Element.height <| Element.px (26 |> changeForMobile 18 dProfile) ]
+                )
             |> Maybe.withDefault Element.none
         , Element.text <| currencySymbol currencyType
         , Images.toElement
-            [ Element.width <| Element.px 12 ]
+            [ Element.width <| Element.px (12 |> changeForMobile 9 dProfile) ]
           <|
             if dropdownOpen then
                 Images.upArrow
@@ -710,13 +769,13 @@ typeDropdownButton dropdownOpen currencyType onClick =
         ]
 
 
-cryptoAddressInput : Currencies.Symbol -> String -> Element Msg
-cryptoAddressInput symbol input =
-    EH.withInputHeader
+cryptoAddressInput : DisplayProfile -> Currencies.Symbol -> String -> Element Msg
+cryptoAddressInput dProfile symbol input =
+    EH.withInputHeader dProfile
         [ Element.width Element.fill ]
         (symbol ++ " Receive Address")
     <|
-        inputContainer
+        inputContainer dProfile
             [ Element.width Element.fill
             ]
             [ Element.Input.text
@@ -732,9 +791,9 @@ cryptoAddressInput symbol input =
             ]
 
 
-paymentMethodInput : BuyerOrSeller -> String -> Element Msg
-paymentMethodInput initiatorRole input =
-    EH.withInputHeader
+paymentMethodInput : DisplayProfile -> BuyerOrSeller -> String -> Element Msg
+paymentMethodInput dProfile initiatorRole input =
+    EH.withInputHeader dProfile
         [ Element.width Element.fill ]
         (case initiatorRole of
             Buyer ->
@@ -744,7 +803,7 @@ paymentMethodInput initiatorRole input =
                 "Accepting the Payment"
         )
     <|
-        inputContainer
+        inputContainer dProfile
             [ Element.height <| Element.px 134
             , Element.width Element.fill
             ]
@@ -760,42 +819,63 @@ paymentMethodInput initiatorRole input =
                     Just <|
                         Element.Input.placeholder
                             [ Element.Font.color EH.placeholderTextColor ]
-                        <|
-                            Element.column [ Element.spacing 5 ] <|
-                                case initiatorRole of
-                                    Buyer ->
-                                        [ Element.text "Indicate here how you will send payment to the Seller. Some examples:"
-                                        , Element.text "\"I can send to any EU bank\""
-                                        , Element.text "\"I'll reveal a hidden cash drop within 10 km of Grand Central Station\""
-                                        , Element.text "\"Can send via ecocash\""
+                            (Element.column
+                                [ Element.spacing 5 ]
+                             <|
+                                List.map
+                                    (Element.paragraph
+                                        [ Element.spacing 0
+                                        , Element.Font.size (16 |> changeForMobile 12 dProfile)
                                         ]
+                                    )
+                                    (case initiatorRole of
+                                        Buyer ->
+                                            [ [ Element.text "Indicate here how you will send payment to the Seller. Some examples:" ]
+                                            , [ Element.text "\"I can send to any EU bank\"" ]
+                                            , [ Element.text "\"I'll reveal a hidden cash drop in St. James Park, London\"" ]
+                                            , [ Element.text "\"Can send via ecocash\"" ]
+                                            ]
 
-                                    Seller ->
-                                        [ Element.text "Indicate here how you will send payment to the Buyer. Some examples:"
-                                        , Element.text "\"I have TransferWise\""
-                                        , Element.text "\"I can pick up a cash drop within 10 km of Grand Central Station\""
-                                        , Element.text "\"I can pick up a WorldRemit payment to Zimbabwe\""
-                                        ]
+                                        Seller ->
+                                            [ [ Element.text "Indicate here how you will send payment to the Buyer. Some examples:" ]
+                                            , [ Element.text "\"I have TransferWise\"" ]
+                                            , [ Element.text "\"I can pick up a cash drop in St. James Park, London\"" ]
+                                            , [ Element.text "\"I can receive a WorldRemit payment to Zimbabwe\"" ]
+                                            ]
+                                    )
+                            )
                 , label = Element.Input.labelHidden "payment method"
                 , spellcheck = True
                 }
             ]
 
 
-intervalsRow : Model -> Element Msg
-intervalsRow model =
-    Element.row
-        [ Element.width Element.fill
-        , Element.spacing 23
-        ]
-        [ phaseWindowBoxAndMaybeModal Expiry model
-        , phaseWindowBoxAndMaybeModal Payment model
-        , phaseWindowBoxAndMaybeModal Judgment model
-        ]
+intervalsElement : DisplayProfile -> Model -> Element Msg
+intervalsElement dProfile model =
+    case dProfile of
+        Desktop ->
+            Element.row
+                [ Element.width Element.fill
+                , Element.spacing 23
+                ]
+                [ phaseWindowBoxAndMaybeModal dProfile Expiry model
+                , phaseWindowBoxAndMaybeModal dProfile Payment model
+                , phaseWindowBoxAndMaybeModal dProfile Judgment model
+                ]
+
+        Mobile ->
+            Element.column
+                [ Element.width Element.fill
+                , Element.spacing 18
+                ]
+                [ phaseWindowBoxAndMaybeModal dProfile Expiry model
+                , phaseWindowBoxAndMaybeModal dProfile Payment model
+                , phaseWindowBoxAndMaybeModal dProfile Judgment model
+                ]
 
 
-phaseWindowBoxAndMaybeModal : IntervalType -> Model -> Element Msg
-phaseWindowBoxAndMaybeModal intervalType model =
+phaseWindowBoxAndMaybeModal : DisplayProfile -> IntervalType -> Model -> Element Msg
+phaseWindowBoxAndMaybeModal dProfile intervalType model =
     let
         showModal =
             model.showIntervalModal == Just intervalType
@@ -805,6 +885,7 @@ phaseWindowBoxAndMaybeModal intervalType model =
         , Element.above <|
             if showModal then
                 intervalModal
+                    dProfile
                     intervalType
                     (initiatorRole model.mode)
                     (getUserInterval intervalType model)
@@ -816,47 +897,68 @@ phaseWindowBoxAndMaybeModal intervalType model =
         ]
     <|
         phaseWindowBox
+            dProfile
             intervalType
             (getUserInterval intervalType model)
             showModal
 
 
-phaseWindowBox : IntervalType -> UserInterval -> Bool -> Element Msg
-phaseWindowBox intervalType interval modalIsOpen =
-    EH.withInputHeader
-        [ Element.width Element.fill ]
-        (case intervalType of
-            Expiry ->
-                "Offer Expiry"
+phaseWindowBox : DisplayProfile -> IntervalType -> UserInterval -> Bool -> Element Msg
+phaseWindowBox dProfile intervalType interval modalIsOpen =
+    let
+        titleText =
+            case intervalType of
+                Expiry ->
+                    "Offer Expiry"
 
-            Payment ->
-                "Payment Due"
+                Payment ->
+                    "Payment Due"
 
-            Judgment ->
-                "Burn Window"
-        )
-    <|
-        inputContainer
-            [ Element.width Element.fill
-            , Element.pointer
-            , EH.onClickNoPropagation (WindowBoxClicked intervalType)
-            ]
-            [ Element.el
-                [ Element.height Element.fill
-                , Element.width Element.fill
-                , Element.Background.color EH.white
-                , Element.paddingXY 15 17
+                Judgment ->
+                    "Burn Window"
+
+        phaseBox =
+            inputContainer dProfile
+                [ Element.width Element.fill
+                , Element.pointer
+                , EH.onClickNoPropagation (WindowBoxClicked intervalType)
                 ]
-                (userInterval interval)
-            , dropdownArrow modalIsOpen
-            ]
+                [ Element.el
+                    [ Element.height Element.fill
+                    , Element.width Element.fill
+                    , Element.Background.color EH.white
+                    , Element.paddingXY 15 17 |> changeForMobile (Element.padding 6) dProfile
+                    ]
+                    (userInterval dProfile interval)
+                , dropdownArrow modalIsOpen
+                ]
+    in
+    case dProfile of
+        Desktop ->
+            EH.withInputHeader dProfile
+                [ Element.width Element.fill ]
+                titleText
+                phaseBox
+
+        Mobile ->
+            Element.row
+                [ Element.width Element.fill ]
+                [ Element.el
+                    [ Element.Font.size 16
+                    , Element.Font.bold
+                    , Element.width Element.fill
+                    ]
+                    (Element.text titleText)
+                , phaseBox
+                ]
 
 
-userInterval : UserInterval -> Element Msg
-userInterval interval =
+userInterval : DisplayProfile -> UserInterval -> Element Msg
+userInterval dProfile interval =
     Element.el
-        [ Element.Font.size 20
+        [ Element.Font.size (20 |> changeForMobile 16 dProfile)
         , Element.Font.medium
+        , Element.centerY
         ]
     <|
         Element.text <|
@@ -871,8 +973,8 @@ userInterval interval =
                    )
 
 
-intervalModal : IntervalType -> BuyerOrSeller -> UserInterval -> String -> Maybe String -> Element Msg
-intervalModal intervalType userRole value input maybeError =
+intervalModal : DisplayProfile -> IntervalType -> BuyerOrSeller -> UserInterval -> String -> Maybe String -> Element Msg
+intervalModal dProfile intervalType userRole value input maybeError =
     let
         ( title, text ) =
             case intervalType of
@@ -913,20 +1015,23 @@ intervalModal intervalType userRole value input maybeError =
             , Element.Background.color EH.lightGray
             , Element.spacing 1
             , Element.clip
+            , EH.moveToFront
             , Element.Border.shadow
                 { offset = ( 0, 3 )
                 , size = 0
                 , blur = 20
                 , color = Element.rgba 0 0 0 0.08
                 }
-            , if intervalType == Judgment then
+            , (if intervalType == Judgment then
                 Element.alignRight
 
-              else
+               else
                 Element.alignLeft
+              )
+                |> changeForMobile Element.centerX dProfile
             ]
             [ Element.el
-                [ Element.paddingXY 23 18
+                [ Element.paddingXY 23 18 |> changeForMobile (Element.paddingXY 18 16) dProfile
                 , Element.Background.color EH.white
                 , Element.width Element.fill
                 ]
@@ -936,21 +1041,22 @@ intervalModal intervalType userRole value input maybeError =
                     , Element.spacing 10
                     ]
                     [ Element.el
-                        [ Element.Font.size 20
+                        [ Element.Font.size (20 |> changeForMobile 18 dProfile)
                         , Element.Font.semiBold
                         , Element.Font.color <| Element.rgb255 16 7 234
                         ]
                         (Element.text title)
                     , Element.paragraph
-                        [ Element.Font.size 16
+                        [ Element.Font.size (16 |> changeForMobile 14 dProfile)
                         , Element.Font.color <| Element.rgba 0 0 0 0.75
+                        , Element.spacing 2
                         ]
                         [ Element.text text ]
                     ]
             , let
                 timeUnitButton : IntervalUnit -> Bool -> Element Msg
                 timeUnitButton unit selected =
-                    button
+                    button dProfile
                         (if selected then
                             Element.rgb255 16 7 234
 
@@ -974,53 +1080,77 @@ intervalModal intervalType userRole value input maybeError =
                             Just <|
                                 IntervalUnitChanged unit
                         )
-              in
-              Element.row
-                [ Element.paddingXY 23 18
-                , Element.Background.color EH.white
-                , Element.spacing 12
-                ]
-                [ inputContainer
-                    [ Element.width <| Element.px 140
-                    , Element.above <|
-                        case maybeError of
-                            Just error ->
-                                Element.el
-                                    [ Element.Font.size 12
-                                    , Element.Font.color EH.softRed
-                                    , Element.moveUp 16
-                                    , Element.alignLeft
-                                    , Element.Background.color EH.white
-                                    , Element.Border.widthEach
-                                        { top = 0
-                                        , bottom = 0
-                                        , right = 1
-                                        , left = 1
-                                        }
-                                    , Element.paddingXY 5 0
-                                    , Element.Border.color EH.lightGray
-                                    ]
-                                    (Element.text error)
 
-                            Nothing ->
-                                Element.none
-                    ]
-                    [ Element.Input.text
-                        [ Element.Border.width 0
-                        , Element.width Element.fill
-                        , Element.height Element.fill
+                phaseBox =
+                    inputContainer dProfile
+                        [ Element.width <| Element.px 70
+                        , Element.above <|
+                            case maybeError of
+                                Just error ->
+                                    Element.el
+                                        [ Element.Font.size 12
+                                        , Element.Font.color EH.softRed
+                                        , Element.moveUp 16
+                                        , Element.alignLeft
+                                        , Element.Background.color EH.white
+                                        , Element.Border.widthEach
+                                            { top = 0
+                                            , bottom = 0
+                                            , right = 1
+                                            , left = 1
+                                            }
+                                        , Element.paddingXY 5 0
+                                        , Element.Border.color EH.lightGray
+                                        ]
+                                        (Element.text error)
+
+                                Nothing ->
+                                    Element.none
                         ]
-                        { onChange = IntervalInputChanged
-                        , text = input
-                        , placeholder = Nothing
-                        , label = Element.Input.labelHidden (title ++ " input")
-                        }
-                    ]
-                , timeUnitButton Minute (value.unit == Minute)
-                , timeUnitButton Hour (value.unit == Hour)
-                , timeUnitButton Day (value.unit == Day)
-                , timeUnitButton Week (value.unit == Week)
-                ]
+                        [ Element.Input.text
+                            [ Element.Border.width 0
+                            , Element.width Element.fill
+                            , Element.height Element.fill
+                            ]
+                            { onChange = IntervalInputChanged
+                            , text = input
+                            , placeholder = Nothing
+                            , label = Element.Input.labelHidden (title ++ " input")
+                            }
+                        ]
+              in
+              case dProfile of
+                Desktop ->
+                    Element.row
+                        [ Element.paddingXY 23 18
+                        , Element.Background.color EH.white
+                        , Element.spacing 12
+                        ]
+                        [ phaseBox
+                        , timeUnitButton Minute (value.unit == Minute)
+                        , timeUnitButton Hour (value.unit == Hour)
+                        , timeUnitButton Day (value.unit == Day)
+                        , timeUnitButton Week (value.unit == Week)
+                        ]
+
+                Mobile ->
+                    Element.row
+                        [ Element.paddingXY 18 15
+                        , Element.Background.color EH.white
+                        , Element.spacing 7
+                        , Element.centerX
+                        ]
+                        [ phaseBox
+                        , Element.wrappedRow
+                            [ Element.spacing 8
+                            , Element.width Element.fill
+                            ]
+                            [ timeUnitButton Minute (value.unit == Minute)
+                            , timeUnitButton Hour (value.unit == Hour)
+                            , timeUnitButton Day (value.unit == Day)
+                            , timeUnitButton Week (value.unit == Week)
+                            ]
+                        ]
             ]
 
 
@@ -1043,28 +1173,35 @@ dropdownArrow pointUp =
             )
 
 
-inputContainer : List (Element.Attribute Msg) -> List (Element Msg) -> Element Msg
-inputContainer attributes =
+inputContainer : DisplayProfile -> List (Element.Attribute Msg) -> List (Element Msg) -> Element Msg
+inputContainer dProfile attributes =
     Element.row <|
         [ Element.Background.color EH.lightGray
-        , Element.height <| Element.px 55
+        , Element.height <| Element.px (55 |> changeForMobile 40 dProfile)
         , Element.Border.rounded 4
         , Element.Border.width 1
         , Element.Border.color EH.lightGray
         , Element.spacing 1
         ]
             ++ attributes
+            ++ (case dProfile of
+                    Desktop ->
+                        []
+
+                    Mobile ->
+                        [ Element.Font.size 14 ]
+               )
 
 
-placeOrderButton : Model -> Element Msg
-placeOrderButton model =
+placeOrderButton : DisplayProfile -> Model -> Element Msg
+placeOrderButton dProfile model =
     let
         buttonBuilder bgColor textColor text maybeOnClick maybeError =
             Element.el
                 ([ Element.width Element.fill
-                 , Element.padding 17
+                 , Element.padding (17 |> changeForMobile 10 dProfile)
                  , Element.Border.rounded 4
-                 , Element.Font.size 20
+                 , Element.Font.size (20 |> changeForMobile 16 dProfile)
                  , Element.Font.semiBold
                  , Element.Font.center
                  , Element.Background.color bgColor
@@ -1073,7 +1210,7 @@ placeOrderButton model =
                     case maybeError of
                         Just error ->
                             Element.el
-                                [ Element.Font.size 12
+                                [ Element.Font.size (12 |> changeForMobile 10 dProfile)
                                 , Element.Font.color EH.softRed
                                 , Element.moveUp 16
                                 , Element.centerX
@@ -1103,7 +1240,7 @@ placeOrderButton model =
                         buttonBuilder
                             (Element.rgb255 255 0 110)
                             EH.white
-                            "Review Terms and Place Order"
+                            "Proceed With This Offer"
                             (Just <| PlaceOrderClicked model.dhTokenType userInfo userParameters)
                             Nothing
 
@@ -1111,7 +1248,7 @@ placeOrderButton model =
                         buttonBuilder
                             EH.lightGray
                             EH.black
-                            "Review Terms and Place Order"
+                            "Proceed With This Offer"
                             Nothing
                             Nothing
 
@@ -1139,320 +1276,76 @@ placeOrderButton model =
                 Nothing
 
 
-txChainStatusModal : TxChainStatus -> Model -> Element Msg
-txChainStatusModal txChainStatus model =
-    case txChainStatus of
-        Confirm factoryType createParameters ->
-            let
-                ( depositAmountEl, totalBurnableEl, confirmButton ) =
-                    case model.depositAmount of
-                        Just depositAmount ->
-                            let
-                                depositAmountText =
-                                    TokenValue.toConciseString depositAmount
-                                        ++ " "
-                                        ++ tokenUnitName factoryType
+txChainStatusModal : DisplayProfile -> TxChainStatus -> Model -> Element Msg
+txChainStatusModal dProfile txChainStatus model =
+    let
+        confirmAbortAttributes =
+            if txChainStatus.confirmingAbort then
+                let
+                    message =
+                        case txChainStatus.mode of
+                            Confirm _ _ ->
+                                ""
 
-                                totalBurnableText =
-                                    TokenValue.toConciseString
-                                        (TokenValue.add
-                                            depositAmount
-                                            (CTypes.getResponderDeposit createParameters)
-                                            |> TokenValue.add (CTypes.calculateDHFee createParameters)
-                                        )
-                                        ++ " "
-                                        ++ tokenUnitName factoryType
-                            in
-                            ( blueText depositAmountText
-                            , blueText totalBurnableText
-                            , EH.redButton
-                                ("Understood. Deposit "
-                                    ++ depositAmountText
-                                    ++ " and open this trade."
-                                )
-                                (ConfirmCreate factoryType createParameters depositAmount)
-                            )
+                            ApproveNeedsSig _ ->
+                                ""
 
-                        Nothing ->
-                            ( blueText "??"
-                            , blueText "??"
-                            , EH.disabledButton "(loading exact fees...)" Nothing
-                            )
+                            ApproveMining _ _ _ ->
+                                "If you abort now, your deposit will not complete and the offer won't be created."
 
-                feeAmountEl =
-                    blueText <|
-                        TokenValue.toConciseString (CTypes.calculateDHFee createParameters)
-                            ++ " "
-                            ++ tokenUnitName factoryType
+                            CreateNeedsSig _ ->
+                                "If you abort now, your deposit will not complete and the offer won't be created."
 
-                tradeAmountEl =
-                    blueText <|
-                        TokenValue.toConciseString createParameters.tradeAmount
-                            ++ " "
-                            ++ tokenUnitName factoryType
-
-                notYetButton =
-                    Element.el
-                        [ Element.pointer
-                        , Element.Events.onClick AbortCreate
-                        , Element.paddingXY 25 17
-                        , Element.Font.color EH.white
-                        , Element.Font.size 18
-                        , Element.Font.semiBold
+                            CreateMining _ _ ->
+                                "Aborting now will return you to the Create form, but WILL NOT cancel the offer creation call. To manage the call, check your web3 wallet."
+                in
+                [ Element.inFront <|
+                    Element.column
+                        [ Element.centerX
+                        , Element.centerY
+                        , Element.padding 10
+                        , Element.spacing 10
+                        , Element.Border.rounded 5
+                        , Element.Background.color EH.white
                         ]
-                        (Element.text "I'm not ready yet. Go back.")
-
-                buyerDepositEl =
-                    blueText <|
-                        TokenValue.toConciseString createParameters.buyerDeposit
-                            ++ " "
-                            ++ tokenUnitName factoryType
-
-                totalReleaseableEl =
-                    blueText <|
-                        TokenValue.toConciseString (TokenValue.add createParameters.tradeAmount createParameters.buyerDeposit)
-                            ++ " "
-                            ++ tokenUnitName factoryType
-
-                expiryWindowEl =
-                    emphasizedText <|
-                        userIntervalToString <|
-                            getUserInterval Expiry model
-
-                paymentWindowEl =
-                    emphasizedText <|
-                        userIntervalToString <|
-                            getUserInterval Payment model
-
-                judgmentWindowEl =
-                    emphasizedText <|
-                        userIntervalToString <|
-                            getUserInterval Judgment model
-
-                priceEl =
-                    blueText <| Currencies.toString createParameters.price
-
-                emphasizedText =
-                    Element.el
-                        [ Element.Font.bold
-                        , Element.Font.color EH.black
-                        ]
-                        << Element.text
-
-                blueText =
-                    Element.el
-                        [ Element.Font.semiBold
-                        , Element.Font.color EH.blue
-                        ]
-                        << Element.text
-            in
-            EH.closeableModal
-                [ Element.width <| Element.px 1200 ]
-                (Element.row
-                    [ Element.width Element.fill ]
-                    [ Element.column
-                        [ Element.padding 90
-                        , Element.height Element.fill
-                        , Element.Background.color <| Element.rgb255 10 33 108
-                        ]
-                        [ Element.column
-                            [ Element.width Element.fill
-                            , Element.spacing 18
-                            , Element.Font.color EH.white
-                            ]
-                            [ Element.el
-                                [ Element.Font.size 38
-                                , Element.Font.semiBold
-                                ]
-                                (Element.text "Are you Ready?")
-                            , Element.paragraph
-                                [ Element.Font.size 16
-                                , Element.Font.medium
-                                ]
-                                [ Element.text "DAIHard is different than other exchanges. If this is your first trade here, carefully read the details to the right before proceeding with opening this trade." ]
-                            , Element.paragraph
-                                [ Element.Font.size 16
-                                , Element.Font.medium
-                                ]
-                                [ Element.text "You can't edit a trade once it's live (but you can abort and re-deploy, as described in point 2)." ]
-                            ]
-                        , Element.column
+                        [ Element.paragraph
+                            [ Element.width Element.fill ]
+                            [ Element.text message ]
+                        , Element.row
                             [ Element.centerX
-                            , Element.spacing 15
-                            , Element.alignBottom
+                            , Element.spacing 10
                             ]
-                            [ Element.el [ Element.centerX ] confirmButton
-                            , Element.el [ Element.centerX ] notYetButton
+                            [ EH.redButton
+                                dProfile
+                                []
+                                [ "Abort" ]
+                                ConfirmCloseTxModalClicked
+                            , EH.blueButton
+                                dProfile
+                                []
+                                [ "Nevermind" ]
+                                NevermindCloseTxModalClicked
                             ]
                         ]
-                    , Element.column
-                        [ Element.spacing 23
-                        , Element.padding 40
-                        , Element.width Element.fill
-                        ]
-                        (List.map
-                            (\lines ->
-                                Element.row
-                                    [ Element.width Element.fill
-                                    , Element.height Element.fill
-                                    , Element.Border.width 2
-                                    , Element.Border.color EH.lightGray
-                                    , Element.padding 16
-                                    , Element.spacing 20
-                                    ]
-                                    [ Element.el
-                                        [ Element.Font.size 40
-                                        , Element.centerY
-                                        ]
-                                        (Element.text EH.bulletPointString)
-                                    , Element.paragraph
-                                        [ Element.Font.size 16 ]
-                                        lines
-                                    ]
-                            )
-                            (case createParameters.initiatorRole of
-                                Buyer ->
-                                    [ [ Element.text "To open this offer, you must deposit "
-                                      , depositAmountEl
-                                      , Element.text ". Your offer to buy "
-                                      , tradeAmountEl
-                                      , Element.text " for "
-                                      , priceEl
-                                      , Element.text " will then be listed on the marketplace."
-                                      ]
-                                    , [ Element.text "You can abort the offer any time before a Seller commits for a full refund. If no Seller commits within "
-                                      , expiryWindowEl
-                                      , Element.text " your offer will automatically expire. In both these cases, the full "
-                                      , depositAmountEl
-                                      , Element.text " is returned to you."
-                                      ]
-                                    , [ Element.text "A Seller can commit to the trade by depositing the full "
-                                      , tradeAmountEl
-                                      , Element.text " into the contract, and is expected to immediately post his "
-                                      , blueText <| createParameters.price.symbol
-                                      , Element.text " address in the DAIHard chat."
-                                      ]
-                                    , case model.mode of
-                                        CryptoSwap _ ->
-                                            [ Element.text "You will then have "
-                                            , paymentWindowEl
-                                            , Element.text " to send "
-                                            , priceEl
-                                            , Element.text " to that address and click \"Confirm Payment\"."
-                                            ]
+                ]
 
-                                        _ ->
-                                            [ Element.text "You are then expected to send "
-                                            , priceEl
-                                            , Element.text " and click \"Confirm Payment\" within "
-                                            , paymentWindowEl
-                                            , Element.text "."
-                                            ]
-                                    , [ Element.text "Once you've confirmed payment, for "
-                                      , judgmentWindowEl
-                                      , Element.text ", the Seller has the option of burning the trade's full balance of "
-                                      , totalBurnableEl
-                                      , Element.text " (your deposit plus the sale amount). He is expected to do this if and only if you failed to send the "
-                                      , priceEl
-                                      , Element.text " to the address he posted."
-                                      ]
-                                    , [ Element.text "If the Seller has not burned the "
-                                      , Element.text <| tokenUnitName factoryType
-                                      , Element.text " within the "
-                                      , judgmentWindowEl
-                                      , Element.text ", "
-                                      , totalReleaseableEl
-                                      , Element.text " is yours to claim and we take a 1% fee ("
-                                      , feeAmountEl
-                                      , Element.text ")."
-                                      ]
-                                    ]
-                                        ++ (case factoryType of
-                                                Token _ ->
-                                                    [ [ Element.text <| "(Trade creation ususally requires two Metamask signatures. Your " ++ tokenUnitName factoryType ++ " will not be deposited until the final transaction has been mined.)" ] ]
-
-                                                Native _ ->
-                                                    []
-                                           )
-
-                                Seller ->
-                                    [ [ Element.text "Your "
-                                      , tradeAmountEl
-                                      , Element.text " will be listed as selling for "
-                                      , priceEl
-                                      , Element.text ", and an additional 1% ("
-                                      , feeAmountEl
-                                      , Element.text ") will be set aside."
-                                      ]
-                                    , [ Element.text "You can abort the offer at any time before a Buyer commits, and if no Buyer commits within "
-                                      , expiryWindowEl
-                                      , Element.text " your offer will automatically expire. In both these cases, the full "
-                                      , depositAmountEl
-                                      , Element.text " is returned to you."
-                                      ]
-                                    ]
-                                        ++ (case model.mode of
-                                                CryptoSwap _ ->
-                                                    [ [ Element.text "A Buyer must deposit "
-                                                      , buyerDepositEl
-                                                      , Element.text <| " into this contract to commit. He is then expected to send the "
-                                                      , priceEl
-                                                      , Element.text <| " to your receive address "
-                                                      , blueText model.inputs.receiveAddress
-                                                      , Element.text ", and mark the payment as complete, all within "
-                                                      , paymentWindowEl
-                                                      , Element.text "."
-                                                      ]
-                                                    , [ emphasizedText "Make sure the above address is correct! DAIHard does not do refunds!" ]
-                                                    ]
-
-                                                _ ->
-                                                    [ [ Element.text "A Buyer must deposit "
-                                                      , buyerDepositEl
-                                                      , Element.text <| " into this contract to commit. He is then expected to pay the "
-                                                      , priceEl
-                                                      , Element.text " to you, via the method you've descried in your "
-                                                      , emphasizedText "Payment Methods"
-                                                      , Element.text ", and mark the payment as complete, all within "
-                                                      , paymentWindowEl
-                                                      , Element.text "."
-                                                      ]
-                                                    ]
-                                           )
-                                        ++ [ [ Element.text <| "When the Buyer marks the payment complete, for "
-                                             , judgmentWindowEl
-                                             , Element.text " you will have the option to burn the trade's balance of "
-                                             , totalBurnableEl
-                                             , Element.text <| " (your sale amount plus the buyer's deposit), which you are expected to do if and only if the Buyer has not sent the payment."
-                                             ]
-                                           , [ Element.text "If the trade has resolved successfully, DAIHard takes the 1% fee of "
-                                             , feeAmountEl
-                                             , Element.text " set aside earlier. Otherwise it is burned with the rest."
-                                             ]
-                                           ]
-                                        ++ (case factoryType of
-                                                Token _ ->
-                                                    [ [ Element.text <| "(Trade creation ususally requires two Metamask signatures. Your " ++ tokenUnitName factoryType ++ " will not be deposited until the final transaction has been mined.)" ] ]
-
-                                                Native _ ->
-                                                    []
-                                           )
-                            )
-                        )
-                    ]
-                )
-                NoOp
-                AbortCreate
-                False
+            else
+                []
+    in
+    case txChainStatus.mode of
+        Confirm factoryType createParameters ->
+            createConfirmModal dProfile model factoryType createParameters
 
         ApproveNeedsSig tokenType ->
             Element.el
-                [ Element.centerX
-                , Element.centerY
-                , Element.Events.onClick <|
-                    CmdUp <|
-                        CmdUp.gTag "txChainModal clicked" "misclick" "ApproveNeedsSig" 0
-                ]
+                (confirmAbortAttributes
+                    ++ [ Element.centerX
+                       , Element.centerY
+                       , Element.Events.onClick <|
+                            CmdUp <|
+                                CmdUp.gTag "txChainModal clicked" "misclick" "ApproveNeedsSig" 0
+                       ]
+                )
             <|
                 EH.txProcessModal
                     [ Element.text "Waiting for user signature for the approve call."
@@ -1460,16 +1353,19 @@ txChainStatusModal txChainStatus model =
                     , Element.text "Note that there will be a second transaction to sign after this."
                     ]
                     NoOp
+                    CloseTxModalClicked
                     NoOp
 
         ApproveMining tokenType createParameters txHash ->
             Element.el
-                [ Element.centerX
-                , Element.centerY
-                , Element.Events.onClick <|
-                    CmdUp <|
-                        CmdUp.gTag "txChainModal clicked" "misclick" "ApproveMining" 0
-                ]
+                (confirmAbortAttributes
+                    ++ [ Element.centerX
+                       , Element.centerY
+                       , Element.Events.onClick <|
+                            CmdUp <|
+                                CmdUp.gTag "txChainModal clicked" "misclick" "ApproveMining" 0
+                       ]
+                )
             <|
                 EH.txProcessModal
                     [ Element.text "Mining the initial approve transaction..."
@@ -1480,32 +1376,38 @@ txChainStatusModal txChainStatus model =
                     , Element.text "Funds will not leave your wallet until you sign the next transaction."
                     ]
                     NoOp
+                    CloseTxModalClicked
                     NoOp
 
         CreateNeedsSig _ ->
             Element.el
-                [ Element.centerX
-                , Element.centerY
-                , Element.Events.onClick <|
-                    CmdUp <|
-                        CmdUp.gTag "txChainModal clicked" "misclick" "CreateNeedsSig" 0
-                ]
+                (confirmAbortAttributes
+                    ++ [ Element.centerX
+                       , Element.centerY
+                       , Element.Events.onClick <|
+                            CmdUp <|
+                                CmdUp.gTag "txChainModal clicked" "misclick" "CreateNeedsSig" 0
+                       ]
+                )
             <|
                 EH.txProcessModal
                     [ Element.text "Waiting for user signature for the create call."
                     , Element.text "(check Metamask!)"
                     ]
                     NoOp
+                    CloseTxModalClicked
                     NoOp
 
         CreateMining factoryType txHash ->
             Element.el
-                [ Element.centerX
-                , Element.centerY
-                , Element.Events.onClick <|
-                    CmdUp <|
-                        CmdUp.gTag "txChainModal clicked" "misclick" "CreateMining" 0
-                ]
+                (confirmAbortAttributes
+                    ++ [ Element.centerX
+                       , Element.centerY
+                       , Element.Events.onClick <|
+                            CmdUp <|
+                                CmdUp.gTag "txChainModal clicked" "misclick" "CreateMining" 0
+                       ]
+                )
             <|
                 EH.txProcessModal
                     [ Element.text "Mining the final create call..."
@@ -1516,14 +1418,430 @@ txChainStatusModal txChainStatus model =
                     , Element.text "You will be redirected when it's mined."
                     ]
                     NoOp
+                    CloseTxModalClicked
                     NoOp
 
 
-viewModals : Model -> List (Element Msg)
-viewModals model =
+createConfirmModal : DisplayProfile -> Model -> FactoryType -> CTypes.CreateParameters -> Element Msg
+createConfirmModal dProfile model factoryType createParameters =
+    let
+        ( depositAmountStr, totalBurnableStr, confirmButton ) =
+            case model.depositAmount of
+                Just depositAmount ->
+                    let
+                        depositAmountText =
+                            TokenValue.toConciseString depositAmount
+                                ++ " "
+                                ++ tokenUnitName factoryType
+                    in
+                    ( depositAmountText
+                    , TokenValue.toConciseString
+                        (TokenValue.add
+                            depositAmount
+                            (CTypes.getResponderDeposit createParameters)
+                            |> TokenValue.add (CTypes.calculateDHFee createParameters)
+                        )
+                        ++ " "
+                        ++ tokenUnitName factoryType
+                    , EH.redButton dProfile
+                        [ Element.width Element.fill
+                        , Element.alignBottom
+                        ]
+                        (case dProfile of
+                            Desktop ->
+                                [ "Deposit "
+                                    ++ depositAmountText
+                                    ++ " and create this offer."
+                                ]
+
+                            Mobile ->
+                                [ "Deposit "
+                                    ++ depositAmountText
+                                , "and create this offer."
+                                ]
+                        )
+                        (ConfirmCreate factoryType createParameters depositAmount)
+                    )
+
+                Nothing ->
+                    ( "??"
+                    , "??"
+                    , EH.disabledButton dProfile
+                        [ Element.width Element.fill
+                        , Element.alignBottom
+                        ]
+                        "(loading exact fees...)"
+                        Nothing
+                    )
+
+        feeAmountStr =
+            TokenValue.toConciseString (CTypes.calculateDHFee createParameters)
+                ++ " "
+                ++ tokenUnitName factoryType
+
+        tradeAmountStr =
+            TokenValue.toConciseString createParameters.tradeAmount
+                ++ " "
+                ++ tokenUnitName factoryType
+
+        -- notYetButton =
+        --     Element.el
+        --         [ Element.pointer
+        --         , Element.Events.onClick AbortCreate
+        --         , Element.paddingXY 25 17
+        --         , Element.Font.color EH.white
+        --         , Element.Font.size 18
+        --         , Element.Font.semiBold
+        --         ]
+        --         (Element.text "I'm not ready yet. Go back.")
+        buyerDepositStr =
+            TokenValue.toConciseString createParameters.buyerDeposit
+                ++ " "
+                ++ tokenUnitName factoryType
+
+        totalReleaseableStr =
+            TokenValue.toConciseString (TokenValue.add createParameters.tradeAmount createParameters.buyerDeposit)
+                ++ " "
+                ++ tokenUnitName factoryType
+
+        expiryWindowStr =
+            userIntervalToString <|
+                getUserInterval Expiry model
+
+        paymentWindowStr =
+            userIntervalToString <|
+                getUserInterval Payment model
+
+        judgmentWindowStr =
+            userIntervalToString <|
+                getUserInterval Judgment model
+
+        priceStr =
+            Currencies.toString createParameters.price
+
+        emphasizedText =
+            Element.el
+                [ Element.Font.extraBold
+                , Element.Font.color EH.white
+                ]
+                << Element.text
+
+        counterpartyRoleText =
+            case createParameters.initiatorRole of
+                Buyer ->
+                    "seller"
+
+                Seller ->
+                    "buyer"
+
+        ( abortPunishmentStr, abortSellerReturnStr, abortBuyerReturnStr ) =
+            let
+                abortPunishment =
+                    CTypes.defaultAbortPunishment createParameters.tradeAmount
+            in
+            TupleHelpers.mapTuple3
+                (TokenValue.toConciseString
+                    >> (\s -> s ++ " " ++ tokenUnitName factoryType)
+                )
+                ( abortPunishment
+                , TokenValue.sub createParameters.tradeAmount abortPunishment
+                , TokenValue.sub createParameters.buyerDeposit abortPunishment
+                )
+
+        title =
+            Element.el
+                [ Element.centerX
+                , Element.Font.size (24 |> changeForMobile 20 dProfile)
+                , Element.Font.semiBold
+                ]
+            <|
+                Element.text <|
+                    case model.extraConfirmInfoPlace of
+                        0 ->
+                            "Are you Ready?"
+
+                        1 ->
+                            "1. Offer Creation"
+
+                        2 ->
+                            "2. Commitment or Recall"
+
+                        3 ->
+                            case createParameters.initiatorRole of
+                                Buyer ->
+                                    "3. Send Payment"
+
+                                Seller ->
+                                    "3. Receive Payment"
+
+                        4 ->
+                            "4. Judgment"
+
+                        5 ->
+                            "5. Resolution and Reputation"
+
+                        _ ->
+                            ""
+
+        arrows =
+            let
+                maybeLeftArrow =
+                    if model.extraConfirmInfoPlace <= 0 then
+                        Element.none
+
+                    else
+                        Images.toElement
+                            [ Element.pointer
+                            , Element.Events.onClick TradeTermsLeft
+                            , Element.width Element.fill
+                            ]
+                            Images.navigateLeft
+
+                maybeRightArrow =
+                    if model.extraConfirmInfoPlace >= 5 then
+                        Element.none
+
+                    else
+                        Images.toElement
+                            [ Element.pointer
+                            , Element.Events.onClick TradeTermsRight
+                            , Element.width Element.fill
+                            ]
+                            Images.navigateRight
+            in
+            Element.row
+                [ Element.spacing 80
+                , Element.centerX
+                , Element.height <| Element.px 23
+                ]
+                [ Element.el [ Element.width <| Element.px 46 ]
+                    maybeLeftArrow
+                , Element.el [ Element.width <| Element.px 46 ]
+                    maybeRightArrow
+                ]
+
+        infoBody =
+            Element.column
+                [ Element.centerX
+                , Element.spacing 10
+                , Element.width Element.fill
+                , Element.height <| Element.px 180
+                ]
+                (List.map
+                    (Element.paragraph
+                        [ Element.Font.size 16
+                        , Element.Font.color (Element.rgba 1 1 1 0.85)
+                        , Element.spacing 2
+                        ]
+                    )
+                    (case model.extraConfirmInfoPlace of
+                        0 ->
+                            [ [ Element.text "DAIHard is different than other exchanges. It can get pretty hardcore. If this is your first trade here, click the right arrow above to get an idea of how a DAIHard trade works." ]
+                            , [ Element.text "Once someone commits to your trade, there's no going back!" ]
+                            ]
+
+                        1 ->
+                            (case createParameters.initiatorRole of
+                                Buyer ->
+                                    [ [ Element.text <| "Your offer to buy "
+                                      , emphasizedText <| tradeAmountStr ++ " for " ++ priceStr
+                                      , Element.text <| " will be listed on the marketplace. "
+                                      , emphasizedText <| "This requires a Buyer Deposit of " ++ depositAmountStr ++ "."
+                                      ]
+                                    ]
+
+                                Seller ->
+                                    [ [ Element.text <| "Your offer to sell "
+                                      , emphasizedText <| tradeAmountStr ++ " for " ++ priceStr
+                                      , Element.text <| " will be listed on the marketplace, and an additional " ++ feeAmountStr ++ " will be set aside. "
+                                      , emphasizedText <| "This requires a total deposit of " ++ depositAmountStr ++ "."
+                                      ]
+                                    ]
+                            )
+                                ++ [ [ Element.text "Your offer will remain valid and listed on the marketplace for "
+                                     , emphasizedText expiryWindowStr
+                                     , Element.text <| "."
+                                     ]
+                                   ]
+
+                        2 ->
+                            [ [ Element.text "Until the offer expires, another DAIHard user can "
+                              , emphasizedText "commit to the trade"
+                              , Element.text " by depositing "
+                              ]
+                                ++ (case createParameters.initiatorRole of
+                                        Buyer ->
+                                            [ Element.text <| "the full sell amount of " ++ tradeAmountStr
+                                            ]
+
+                                        Seller ->
+                                            [ Element.text buyerDepositStr
+                                            ]
+                                   )
+                                ++ [ Element.text ". This immediately moves the trade to the "
+                                   , emphasizedText "Payment Phase"
+                                   , Element.text <| ", with the other user as the " ++ counterpartyRoleText ++ "."
+                                   ]
+                            , [ Element.text <| "At any point before a " ++ counterpartyRoleText ++ " commits, you can "
+                              , emphasizedText "recall the offer for a full refund"
+                              , Element.text <| " of the " ++ depositAmountStr ++ " you deposited."
+                              ]
+                            ]
+
+                        3 ->
+                            case createParameters.initiatorRole of
+                                Buyer ->
+                                    [ [ Element.text "Here you are expected to "
+                                      , emphasizedText <| "send the full " ++ priceStr ++ " to the seller"
+                                      , Element.text " as you've described in your payment methods. "
+                                      , Element.text "Encrypted chat will be available to help coordinate. "
+                                      , Element.text <| "Once you're sure the seller has received the " ++ priceStr ++ ", you are expected to "
+                                      , emphasizedText <| "confirm here on DAIHard that the " ++ priceStr ++ " has been sent. "
+                                      , Element.text "This will move the trade to the "
+                                      , emphasizedText "Judgment Phase"
+                                      , Element.text "."
+                                      ]
+                                    , [ Element.text <| "If you do not claim payment within "
+                                      , emphasizedText paymentWindowStr
+                                      , Element.text ", the trade will automatically abort, "
+                                      , emphasizedText <| "burning " ++ abortPunishmentStr ++ " from each party"
+                                      , Element.text <| " and returning the remainder (" ++ abortBuyerReturnStr ++ " to you and " ++ abortSellerReturnStr ++ " to the seller)."
+                                      ]
+                                    ]
+
+                                Seller ->
+                                    [ [ Element.text "Here, the buyer is expected to "
+                                      , emphasizedText <| "send the full " ++ priceStr ++ " to you "
+                                      , Element.text "as you've described in your payment methods. "
+                                      , Element.text <| "Encrypted chat will be available to help coordinate. Once you've received the " ++ priceStr ++ ", "
+                                      , Element.text "the buyer is expected to confirm here on DAIHard that the payment is complete."
+                                      , Element.text " This will move the trade to the "
+                                      , emphasizedText "Judgment Phase"
+                                      , Element.text "."
+                                      ]
+                                    , [ Element.text <| "If the buyer does not claim payment within "
+                                      , emphasizedText paymentWindowStr
+                                      , Element.text ", the trade will automatically abort, "
+                                      , emphasizedText <| "burning " ++ abortPunishmentStr ++ " from each party"
+                                      , Element.text <| " and returning the remainder (" ++ abortSellerReturnStr ++ " to you and " ++ abortBuyerReturnStr ++ " to the buyer)."
+                                      ]
+                                    ]
+
+                        4 ->
+                            case createParameters.initiatorRole of
+                                Buyer ->
+                                    [ [ Element.text <| "In this phase, the seller is the the judge and executioner, "
+                                      , emphasizedText <| "and can choose to burn (i.e. destroy) the full trade balance of " ++ totalReleaseableStr
+                                      , Element.text <| " (" ++ buyerDepositStr ++ " from you + " ++ tradeAmountStr ++ " from the seller)."
+                                      ]
+                                    , [ Element.text <| "If the seller received the full " ++ priceStr ++ ", "
+                                      , Element.text <| "the seller is expected to release the full " ++ totalReleaseableStr ++ ". "
+                                      , emphasizedText "Otherwise, the seller is expected to burn it."
+                                      ]
+                                    , [ Element.text <| "If the seller doesn't make a decision within this burn window of "
+                                      , emphasizedText judgmentWindowStr
+                                      , Element.text ", "
+                                      , Element.text <| "the trade automatically concludes and the " ++ totalReleaseableStr ++ " is yours to claim."
+                                      ]
+                                    ]
+
+                                Seller ->
+                                    [ [ Element.text <| "In this phase, "
+                                      , emphasizedText <| "you can choose to burn (i.e. destroy) the full trade balance of " ++ totalReleaseableStr
+                                      , Element.text <| " (" ++ buyerDepositStr ++ " from the buyer + " ++ tradeAmountStr ++ " from you), rather than releasing it to the buyer."
+                                      ]
+                                    , [ Element.text "You are expected to do this "
+                                      , emphasizedText <| "if and only if"
+                                      , Element.text <| " the buyer has not sent the " ++ priceStr ++ " as described in your payment methods."
+                                      ]
+                                    , [ Element.text <| "In "
+                                      , emphasizedText judgmentWindowStr
+                                      , Element.text ", you will lose this option, and "
+                                      , Element.text <| " buyer can withdraw the full " ++ totalReleaseableStr ++ ". You can also manually release the " ++ totalReleaseableStr ++ " early."
+                                      ]
+                                    ]
+
+                        5 ->
+                            case createParameters.initiatorRole of
+                                Buyer ->
+                                    [ [ Element.text <| "The trade has concluded. If it was successful, DAIHard takes 1% of the trade amount (" ++ feeAmountStr ++ ") from your initial deposit."
+                                      , Element.text <| "If the trade was burned, then this fee is burned as well."
+                                      ]
+                                    , [ Element.text "The result of this trade (burn, abort, or release) is recorded for both users, and displayed next to any new offers they make." ]
+                                    ]
+
+                                Seller ->
+                                    [ [ Element.text <| "The trade has concluded. If it was successful, DAIHard takes the 1% fee (" ++ feeAmountStr ++ ") set aside earlier."
+                                      , Element.text " If the trade was burned, then this fee is burned as well."
+                                      ]
+                                    , [ Element.text "The result of this trade (burn, abort, or release) is recorded for both users, and displayed next to any new offers they make." ]
+                                    ]
+
+                        _ ->
+                            []
+                    )
+                )
+
+        placeDots =
+            let
+                smallDot color =
+                    Element.el
+                        [ Element.width <| Element.px 8
+                        , Element.height <| Element.px 8
+                        , Element.Border.rounded 4
+                        , Element.Background.color color
+                        ]
+                        Element.none
+            in
+            Element.row
+                [ Element.centerX
+                , Element.spacing 6
+                ]
+                (List.range 0 5
+                    |> List.map
+                        (\i ->
+                            if i == model.extraConfirmInfoPlace then
+                                smallDot <| Element.rgba 1 1 1 1
+
+                            else
+                                smallDot <| Element.rgba 1 1 1 0.25
+                        )
+                )
+    in
+    EH.closeableModalWhiteX
+        [ Element.width (Element.px 540 |> changeForMobile Element.fill dProfile)
+        , Element.Background.color <| Element.rgb255 10 33 108
+        , Element.padding (60 |> changeForMobile 20 dProfile)
+        , Element.height (Element.shrink |> changeForMobile Element.fill dProfile)
+        ]
+        (Element.column
+            [ Element.spacing 15
+            , Element.width Element.fill
+            , Element.Font.color EH.white
+            , Element.height (Element.shrink |> changeForMobile Element.fill dProfile)
+            ]
+            [ Images.toElement
+                [ Element.height <| Element.px 70
+                , Element.centerX
+                ]
+                (Images.confirmExtraInfoIcon model.extraConfirmInfoPlace)
+            , title
+            , placeDots
+            , arrows
+            , infoBody
+            , confirmButton
+            ]
+        )
+        NoOp
+        AbortCreate
+        False
+
+
+viewModals : DisplayProfile -> Model -> List (Element Msg)
+viewModals dProfile model =
     case model.txChainStatus of
         Just txChainStatus ->
-            [ txChainStatusModal txChainStatus model ]
+            [ txChainStatusModal dProfile txChainStatus model ]
 
         Nothing ->
             []

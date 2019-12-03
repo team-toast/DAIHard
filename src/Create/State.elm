@@ -25,8 +25,8 @@ import Utils
 import Wallet
 
 
-init : Wallet.State -> ModeOrTrade -> UpdateResult
-init wallet modeOrTrade =
+init : Bool -> Wallet.State -> ModeOrTrade -> UpdateResult
+init testMode wallet modeOrTrade =
     case modeOrTrade of
         Trade trade ->
             let
@@ -107,6 +107,7 @@ init wallet modeOrTrade =
                     }
             in
             { wallet = wallet
+            , testMode = testMode
             , mode = mode
             , now = Time.millisToPosix 0
             , prices = []
@@ -128,11 +129,13 @@ init wallet modeOrTrade =
             , userAllowance = Nothing
             , depositAmount = Nothing
             , txChainStatus = Nothing
+            , extraConfirmInfoPlace = 0
             }
                 |> update Refresh
 
         Mode mode ->
             { wallet = wallet
+            , testMode = testMode
             , mode = mode
             , now = Time.millisToPosix 0
             , prices = []
@@ -142,7 +145,10 @@ init wallet modeOrTrade =
             , margin = 0
             , dhTokenType =
                 Wallet.factory wallet
-                    |> Maybe.withDefault (Native XDai)
+                    |> Maybe.withDefault
+                        (List.head (dhTokenList testMode)
+                            |> Maybe.withDefault (Native XDai)
+                        )
             , dhTokenAmount = Nothing
             , foreignCurrencyType =
                 defaultExternalCurrency mode
@@ -155,6 +161,7 @@ init wallet modeOrTrade =
             , userAllowance = Nothing
             , depositAmount = Nothing
             , txChainStatus = Nothing
+            , extraConfirmInfoPlace = 0
             }
                 |> update Refresh
 
@@ -336,21 +343,30 @@ update msg prevModel =
                                 |> List.map (Tuple.mapSecond (PriceFetch.checkAgainstTime prevModel.now))
 
                         ( newModel, appCmds ) =
-                            { prevModel
-                                | prices = newPrices
-                            }
-                                |> (case prevModel.inputToAutofill of
-                                        AmountIn ->
-                                            tryAutofillAmountIn
+                            case prevModel.mode of
+                                CryptoSwap _ ->
+                                    { prevModel
+                                        | prices = newPrices
+                                    }
+                                        |> (case prevModel.inputToAutofill of
+                                                AmountIn ->
+                                                    tryAutofillAmountIn
 
-                                        AmountOut ->
-                                            tryAutofillAmountOut
+                                                AmountOut ->
+                                                    tryAutofillAmountOut
 
-                                        Margin ->
-                                            \m ->
-                                                { m | inputToAutofill = AmountOut }
-                                                    |> tryAutofillMargin
-                                   )
+                                                Margin ->
+                                                    \m ->
+                                                        { m | inputToAutofill = AmountOut }
+                                                            |> tryAutofillMargin
+                                           )
+
+                                _ ->
+                                    ( { prevModel
+                                        | prices = newPrices
+                                      }
+                                    , []
+                                    )
                     in
                     UpdateResult
                         newModel
@@ -359,11 +375,7 @@ update msg prevModel =
                         appCmds
 
                 Err httpErr ->
-                    UpdateResult
-                        prevModel
-                        Cmd.none
-                        ChainCmd.none
-                        [ CmdUp.UserNotice UN.cantFetchPrices ]
+                    justModelUpdate prevModel
 
         ChangeMode newMode ->
             let
@@ -482,7 +494,13 @@ update msg prevModel =
                         , inputToAutofill = AmountOut
                     }
                         |> updateAmountIn newMaybeAmountIn
-                        |> tryAutofillAmountOut
+                        |> (case prevModel.mode of
+                                CryptoSwap _ ->
+                                    tryAutofillAmountOut
+
+                                _ ->
+                                    \m -> ( m, [] )
+                           )
             in
             UpdateResult
                 newModel
@@ -569,7 +587,13 @@ update msg prevModel =
                         , inputToAutofill = AmountIn
                     }
                         |> updateAmountOut newMaybeAmountOut
-                        |> tryAutofillAmountIn
+                        |> (case prevModel.mode of
+                                CryptoSwap _ ->
+                                    tryAutofillAmountIn
+
+                                _ ->
+                                    \m -> ( m, [] )
+                           )
             in
             UpdateResult
                 newModel
@@ -906,6 +930,50 @@ update msg prevModel =
                         { oldInputs | currencySearch = "" }
                 }
 
+        CloseTxModalClicked ->
+            case prevModel.txChainStatus of
+                Nothing ->
+                    justModelUpdate prevModel
+
+                Just oldTxChainStatus ->
+                    let
+                        newMaybeTxStatus =
+                            case oldTxChainStatus.mode of
+                                Confirm _ _ ->
+                                    Nothing
+
+                                ApproveNeedsSig _ ->
+                                    Nothing
+
+                                _ ->
+                                    Just <|
+                                        { oldTxChainStatus
+                                            | confirmingAbort = True
+                                        }
+                    in
+                    justModelUpdate
+                        { prevModel
+                            | txChainStatus = newMaybeTxStatus
+                        }
+
+        ConfirmCloseTxModalClicked ->
+            justModelUpdate
+                { prevModel
+                    | txChainStatus = Nothing
+                }
+
+        NevermindCloseTxModalClicked ->
+            case prevModel.txChainStatus of
+                Nothing ->
+                    justModelUpdate prevModel
+
+                Just txChainStatus ->
+                    justModelUpdate
+                        { prevModel
+                            | txChainStatus =
+                                Just { txChainStatus | confirmingAbort = False }
+                        }
+
         PlaceOrderClicked factoryType userInfo userParameters ->
             let
                 createParameters =
@@ -913,13 +981,36 @@ update msg prevModel =
             in
             UpdateResult
                 { prevModel
-                    | txChainStatus = Just <| Confirm factoryType createParameters
+                    | txChainStatus =
+                        Just <|
+                            TxChainStatus
+                                (Confirm factoryType createParameters)
+                                False
                     , depositAmount =
                         Just <| CTypes.calculateFullInitialDeposit createParameters
+                    , extraConfirmInfoPlace = 0
                 }
                 Cmd.none
                 ChainCmd.none
                 [ CmdUp.gTag "place order clicked" "txchain" prevModel.inputs.paymentMethod (createParameters.tradeAmount |> TokenValue.getFloatValueWithWarning |> floor) ]
+
+        TradeTermsRight ->
+            justModelUpdate
+                { prevModel
+                    | extraConfirmInfoPlace =
+                        prevModel.extraConfirmInfoPlace
+                            + 1
+                            |> clamp 0 5
+                }
+
+        TradeTermsLeft ->
+            justModelUpdate
+                { prevModel
+                    | extraConfirmInfoPlace =
+                        prevModel.extraConfirmInfoPlace
+                            - 1
+                            |> clamp 0 5
+                }
 
         AbortCreate ->
             UpdateResult
@@ -960,10 +1051,20 @@ update msg prevModel =
                                         initiateCreateCall factoryType createParameters
 
                                     else
-                                        ( Just (ApproveNeedsSig tokenType), approveChainCmd )
+                                        ( Just <|
+                                            TxChainStatus
+                                                (ApproveNeedsSig tokenType)
+                                                False
+                                        , approveChainCmd
+                                        )
 
                                 Nothing ->
-                                    ( Just (ApproveNeedsSig tokenType), approveChainCmd )
+                                    ( Just <|
+                                        TxChainStatus
+                                            (ApproveNeedsSig tokenType)
+                                            False
+                                    , approveChainCmd
+                                    )
             in
             UpdateResult
                 { prevModel | txChainStatus = txChainStatus }
@@ -975,7 +1076,13 @@ update msg prevModel =
             case result of
                 Ok txHash ->
                     UpdateResult
-                        { prevModel | txChainStatus = Just <| ApproveMining tokenType createParameters txHash }
+                        { prevModel
+                            | txChainStatus =
+                                Just <|
+                                    TxChainStatus
+                                        (ApproveMining tokenType createParameters txHash)
+                                        False
+                        }
                         Cmd.none
                         ChainCmd.none
                         [ CmdUp.gTag "approve signed" "txchain" "" 0 ]
@@ -996,7 +1103,7 @@ update msg prevModel =
                                 | userAllowance = Just allowance
                             }
                     in
-                    case ( newModel.txChainStatus, newModel.depositAmount ) of
+                    case ( Maybe.map .mode newModel.txChainStatus, newModel.depositAmount ) of
                         ( Just (ApproveMining _ createParameters _), Just depositAmount ) ->
                             if BigInt.compare allowance (TokenValue.getEvmValue depositAmount) /= LT then
                                 let
@@ -1026,7 +1133,13 @@ update msg prevModel =
             case result of
                 Ok txHash ->
                     UpdateResult
-                        { prevModel | txChainStatus = Just <| CreateMining factoryType txHash }
+                        { prevModel
+                            | txChainStatus =
+                                Just <|
+                                    TxChainStatus
+                                        (CreateMining factoryType txHash)
+                                        False
+                        }
                         Cmd.none
                         ChainCmd.none
                         [ CmdUp.gTag "create signed" "txchain" "" 0 ]
@@ -1336,7 +1449,10 @@ initiateCreateCall factoryType parameters =
             , onBroadcast = Nothing
             }
     in
-    ( Just (CreateNeedsSig factoryType)
+    ( Just <|
+        TxChainStatus
+            (CreateNeedsSig factoryType)
+            False
     , ChainCmd.custom customSend txParams
     )
 

@@ -32,26 +32,44 @@ import TradeCache.Types exposing (TradeCache)
 import Wallet
 
 
-root : Int -> Time.Posix -> List TradeCache -> Model -> ( Element Msg, List (Element Msg) )
-root screenWidth time tradeCaches model =
+root : DisplayProfile -> Time.Posix -> List TradeCache -> Model -> ( Element Msg, List (Element Msg) )
+root dProfile time tradeCaches model =
     ( EH.submodelContainer
         1800
+        dProfile
         Nothing
         (Just <|
             Element.row
                 [ Element.width Element.fill ]
-                [ Element.el
-                    [ Element.centerX ]
-                  <|
-                    Element.text <|
-                        "Trade at "
-                            ++ (case CTypes.getCreationInfo model.trade of
-                                    Just creationInfo ->
-                                        Eth.Utils.addressToString creationInfo.address
+                [ let
+                    addrStr =
+                        case CTypes.getCreationInfo model.trade of
+                            Just creationInfo ->
+                                Eth.Utils.addressToString creationInfo.address
 
-                                    _ ->
-                                        "..."
-                               )
+                            _ ->
+                                "..."
+                  in
+                  case dProfile of
+                    Desktop ->
+                        Element.el
+                            [ Element.centerX
+                            , Element.Font.size 18
+                            ]
+                        <|
+                            Element.text <|
+                                "Trade at "
+                                    ++ addrStr
+
+                    Mobile ->
+                        Element.column
+                            [ Element.centerX
+                            , Element.Font.size 12
+                            , Element.padding 4
+                            ]
+                            [ Element.el [ Element.centerX ] <| Element.text "Trade at"
+                            , Element.el [ Element.centerX ] <| Element.text addrStr
+                            ]
                 , case model.trade of
                     CTypes.LoadedTrade trade ->
                         Element.el
@@ -66,13 +84,17 @@ root screenWidth time tradeCaches model =
 
                                 else
                                     Element.none
+                            , Element.alignRight
+                            , Element.centerY
                             ]
                             (Element.el
-                                [ Element.paddingXY 0 5
+                                [ Element.paddingXY 5 5
+                                , Element.centerY
                                 , Element.pointer
                                 , EH.onClickNoPropagation (ToggleShowOptions True)
                                 ]
-                                EH.optionsDots
+                             <|
+                                EH.optionsDots dProfile
                             )
 
                     _ ->
@@ -80,7 +102,7 @@ root screenWidth time tradeCaches model =
                 ]
         )
         (Element.el
-            [ Element.padding 30
+            [ Element.padding (30 |> changeForMobile 10 dProfile)
             , Element.width Element.fill
             ]
             (case model.trade of
@@ -90,20 +112,20 @@ root screenWidth time tradeCaches model =
                         , Element.height Element.fill
                         , Element.spacing 40
                         ]
-                        [ header time tradeInfo model.wallet tradeCaches model.showStatsModal
+                        [ header time dProfile tradeInfo model.wallet tradeCaches model.showStatsModal
                         , Element.el
                             [ Element.width Element.fill
-                            , Element.paddingXY 40 0
+                            , Element.paddingXY 40 0 |> changeForMobile (Element.paddingXY 10 0) dProfile
                             , Element.spacing 40
                             ]
-                            (phasesElement tradeInfo model.expandedPhase model.wallet time)
+                            (phasesElement dProfile tradeInfo model.expandedPhase model.wallet time)
                         ]
 
                 CTypes.PartiallyLoadedTrade partialTradeInfo ->
                     Element.el
                         [ Element.centerX
                         , Element.centerY
-                        , Element.Font.size 30
+                        , Element.Font.size (30 |> changeForMobile 20 dProfile)
                         ]
                         (Element.text "Loading trade info...")
 
@@ -111,13 +133,13 @@ root screenWidth time tradeCaches model =
                     Element.el
                         [ Element.centerX
                         , Element.centerY
-                        , Element.Font.size 30
+                        , Element.Font.size (30 |> changeForMobile 20 dProfile)
                         ]
                         (Element.text "Invalid trade")
             )
         )
-    , [ chatOverlayElement model
-      , getModalOrNone model
+    , [ chatOverlayElement dProfile model
+      , getTxModalOrNone dProfile model
       ]
     )
 
@@ -136,17 +158,29 @@ optionsMenu trade =
         ]
 
 
-header : Time.Posix -> FullTradeInfo -> Wallet.State -> List TradeCache -> Bool -> Element Msg
-header currentTime trade wallet tradeCaches showStatsModal =
-    Element.row
-        [ Element.width Element.fill
-        , Element.spaceEvenly
-        ]
-        [ tradeStatusElement trade
-        , daiAmountElement trade wallet
-        , fiatElement trade
-        , statsElement trade tradeCaches showStatsModal
-        ]
+header : Time.Posix -> DisplayProfile -> FullTradeInfo -> Wallet.State -> List TradeCache -> Bool -> Element Msg
+header currentTime dProfile trade wallet tradeCaches showStatsModal =
+    case dProfile of
+        Desktop ->
+            Element.row
+                [ Element.width Element.fill
+                , Element.spaceEvenly
+                ]
+                [ tradeStatusElement trade
+                , daiAmountElement trade wallet
+                , fiatElement trade
+                , statsElement dProfile trade tradeCaches showStatsModal
+                ]
+
+        Mobile ->
+            Element.row
+                [ Element.width Element.fill
+                ]
+                [ Element.el [ Element.alignLeft, Element.alignTop ] <|
+                    offerElement trade
+                , Element.el [ Element.alignRight, Element.alignTop ] <|
+                    statsElement dProfile trade tradeCaches showStatsModal
+                ]
 
 
 tradeStatusElement : FullTradeInfo -> Element Msg
@@ -186,6 +220,54 @@ tradeStatusElement trade =
                 trade.creationInfo.address
             ]
         )
+
+
+offerElement : FullTradeInfo -> Element Msg
+offerElement trade =
+    let
+        preDaiText =
+            case trade.parameters.initiatorRole of
+                Buyer ->
+                    "Buying"
+
+                Seller ->
+                    "Selling"
+    in
+    Element.column
+        [ Element.spacing 5
+        , Element.alignTop
+        ]
+        [ Element.el
+            [ Element.Font.size 18
+            , Element.Font.bold
+            , Element.centerX
+            ]
+            (Element.text "Offer")
+        , Element.row
+            [ Element.spacing 7
+            , Element.Font.size 16
+            ]
+            [ Element.column
+                [ Element.spacing 5
+                ]
+                [ Element.el [ Element.alignRight ] <|
+                    Element.text preDaiText
+                , Element.el [ Element.alignRight ] <|
+                    Element.text "for"
+                ]
+            , Element.column
+                [ Element.spacing 5 ]
+                [ Element.el [ Element.alignLeft ] <|
+                    Element.text <|
+                        TokenValue.toConciseString trade.parameters.tradeAmount
+                            ++ " "
+                            ++ tokenUnitName trade.reference.factory
+                , Element.el [ Element.alignLeft ] <|
+                    Element.text <|
+                        Currencies.toString trade.terms.price
+                ]
+            ]
+        ]
 
 
 daiAmountElement : FullTradeInfo -> Wallet.State -> Element Msg
@@ -352,8 +434,8 @@ generateUserStats tradeCaches forRole userAddress =
     }
 
 
-statsElement : FullTradeInfo -> List TradeCache -> Bool -> Element Msg
-statsElement trade tradeCaches showModal =
+statsElement : DisplayProfile -> FullTradeInfo -> List TradeCache -> Bool -> Element Msg
+statsElement dProfile trade tradeCaches showModal =
     let
         userStats =
             trade.parameters.initiatorAddress
@@ -362,77 +444,106 @@ statsElement trade tradeCaches showModal =
         headerText =
             buyerOrSellerToString trade.parameters.initiatorRole
                 ++ " Stats"
-    in
-    Element.el
-        (if showModal then
-            [ Element.below
-                (Element.el
-                    [ Element.moveDown 30
-                    , Element.alignRight
-                    ]
-                    (statsModal trade.reference.factory trade.parameters.initiatorAddress userStats)
-                )
-            ]
 
-         else
-            []
-        )
-    <|
-        EH.withHeader
-            headerText
-            (Element.row
+        statsEl =
+            let
+                ( fontSize, imageHeight ) =
+                    case dProfile of
+                        Desktop ->
+                            ( 24, 28 )
+
+                        Mobile ->
+                            ( 18, 22 )
+            in
+            Element.row
                 [ Element.width Element.fill
-                , Element.spacing 20
+                , Element.spacing (20 |> changeForMobile 10 dProfile)
+                , Element.padding (0 |> changeForMobile 7 dProfile)
                 , Element.pointer
                 , EH.onClickNoPropagation ToggleStatsModal
+                , Element.Font.size fontSize
                 ]
                 (List.map
                     (Element.row [ Element.spacing 5 ])
                     [ [ Images.toElement
-                            [ Element.height <| Element.px 28
+                            [ Element.height <| Element.px imageHeight
                             ]
                             Images.released
                       , Element.el
-                            [ Element.Font.size 24
-                            , Element.Font.medium
+                            [ Element.Font.medium
                             , Element.Font.color <| EH.releasedIconColor
                             ]
                             (Element.text (String.padLeft 2 '0' <| String.fromInt userStats.numReleases))
                       ]
                     , [ Images.toElement
-                            [ Element.height <| Element.px 28
+                            [ Element.height <| Element.px imageHeight
                             ]
                             Images.aborted
                       , Element.el
-                            [ Element.Font.size 24
-                            , Element.Font.medium
+                            [ Element.Font.medium
                             , Element.Font.color <| EH.abortedIconColor
                             ]
                             (Element.text (String.padLeft 2 '0' <| String.fromInt userStats.numAborts))
                       ]
                     , [ Images.toElement
-                            [ Element.height <| Element.px 28
+                            [ Element.height <| Element.px imageHeight
                             ]
                             Images.burned
                       , Element.el
-                            [ Element.Font.size 24
-                            , Element.Font.medium
+                            [ Element.Font.medium
                             , Element.Font.color <| EH.softRed
                             ]
                             (Element.text (String.padLeft 2 '0' <| String.fromInt userStats.numBurns))
                       ]
                     ]
                 )
-            )
+    in
+    Element.el
+        ([ Element.alignTop ]
+            ++ (if showModal then
+                    [ Element.below
+                        (Element.el
+                            [ Element.moveDown (30 |> changeForMobile 10 dProfile)
+                            , Element.alignRight
+                            ]
+                            (statsModal dProfile trade.reference.factory trade.parameters.initiatorAddress userStats)
+                        )
+                    ]
+
+                else
+                    []
+               )
+        )
+        (case dProfile of
+            Desktop ->
+                EH.withHeader
+                    headerText
+                    statsEl
+
+            Mobile ->
+                Element.column
+                    [ Element.spacing 5
+                    , Element.alignTop
+                    ]
+                    [ Element.el
+                        [ Element.Font.size 18
+                        , Element.Font.bold
+                        , Element.centerX
+                        , Element.alignTop
+                        ]
+                        (Element.text headerText)
+                    , statsEl
+                    ]
+        )
 
 
-statsModal : FactoryType -> Address -> Stats -> Element Msg
-statsModal factoryType address stats =
+statsModal : DisplayProfile -> FactoryType -> Address -> Stats -> Element Msg
+statsModal dProfile factoryType address stats =
     let
         statEl titleString statString =
             Element.column
-                [ Element.Font.size 18
-                , Element.spacing 6
+                [ Element.Font.size (18 |> changeForMobile 14 dProfile)
+                , Element.spacing (6 |> changeForMobile 3 dProfile)
                 ]
                 [ Element.el
                     [ Element.Font.bold ]
@@ -444,7 +555,7 @@ statsModal factoryType address stats =
 
         statsBody =
             Element.column
-                [ Element.spacing 23
+                [ Element.spacing (23 |> changeForMobile 16 dProfile)
                 , Element.width Element.fill
                 ]
                 (List.map
@@ -481,7 +592,7 @@ statsModal factoryType address stats =
                       )
                     ]
                     ++ [ Element.el [ Element.centerX ]
-                            (EH.blueButton "View User History" (ViewUserHistory stats.asRole))
+                            (EH.blueButton dProfile [] [ "View User History" ] (ViewUserHistory stats.asRole))
                        ]
                 )
 
@@ -508,9 +619,9 @@ statsModal factoryType address stats =
         [ Element.el
             [ Element.width Element.fill
             , Element.Background.color EH.white
-            , Element.padding 17
+            , Element.padding (17 |> changeForMobile 10 dProfile)
             ]
-            (EH.ethAddress 18 address)
+            (EH.ethAddress (18 |> changeForMobile 14 dProfile) address)
         , Element.el
             [ Element.width Element.fill
             , Element.Background.color EH.white
@@ -520,8 +631,8 @@ statsModal factoryType address stats =
         ]
 
 
-phasesElement : FullTradeInfo -> CTypes.Phase -> Wallet.State -> Time.Posix -> Element Msg
-phasesElement trade expandedPhase wallet currentTime =
+phasesElement : DisplayProfile -> FullTradeInfo -> CTypes.Phase -> Wallet.State -> Time.Posix -> Element Msg
+phasesElement dProfile trade expandedPhase wallet currentTime =
     case trade.state.phase of
         CTypes.Closed ->
             Element.row
@@ -539,21 +650,34 @@ phasesElement trade expandedPhase wallet currentTime =
                 ]
 
         _ ->
-            Element.column
-                [ Element.width Element.fill
-                , Element.spacing 10
-                ]
-                [ Element.row
-                    [ Element.width Element.fill
-                    , Element.height Element.shrink
-                    , Element.spacing 20
-                    ]
-                    [ phaseElement CTypes.Open trade wallet (expandedPhase == CTypes.Open) currentTime
-                    , phaseElement CTypes.Committed trade wallet (expandedPhase == CTypes.Committed) currentTime
-                    , phaseElement CTypes.Judgment trade wallet (expandedPhase == CTypes.Judgment) currentTime
-                    ]
-                , paymentMethodElement trade.terms.paymentMethods
-                ]
+            case dProfile of
+                Desktop ->
+                    Element.column
+                        [ Element.width Element.fill
+                        , Element.spacing 10
+                        ]
+                        [ Element.row
+                            [ Element.width Element.fill
+                            , Element.height Element.shrink
+                            , Element.spacing 20
+                            ]
+                            [ phaseElement dProfile CTypes.Open trade wallet (expandedPhase == CTypes.Open) currentTime
+                            , phaseElement dProfile CTypes.Committed trade wallet (expandedPhase == CTypes.Committed) currentTime
+                            , phaseElement dProfile CTypes.Judgment trade wallet (expandedPhase == CTypes.Judgment) currentTime
+                            ]
+                        , paymentMethodElement dProfile trade.terms.paymentMethods
+                        ]
+
+                Mobile ->
+                    Element.column
+                        [ Element.width Element.fill
+                        , Element.spacing 10
+                        ]
+                        [ phaseElement dProfile CTypes.Open trade wallet True currentTime
+                        , phaseElement dProfile CTypes.Committed trade wallet True currentTime
+                        , paymentMethodElement dProfile trade.terms.paymentMethods
+                        , phaseElement dProfile CTypes.Judgment trade wallet True currentTime
+                        ]
 
 
 activePhaseAttributes =
@@ -585,13 +709,12 @@ phaseState trade phase =
         Finished
 
 
-phaseElement : CTypes.Phase -> FullTradeInfo -> Wallet.State -> Bool -> Time.Posix -> Element Msg
-phaseElement viewPhase trade wallet expanded currentTime =
+phaseElement : DisplayProfile -> CTypes.Phase -> FullTradeInfo -> Wallet.State -> Bool -> Time.Posix -> Element Msg
+phaseElement dProfile viewPhase trade wallet expanded currentTime =
     let
         commonPhaseAttributes =
-            [ Element.Border.rounded 12
+            [ Element.Border.rounded (12 |> changeForMobile 8 dProfile)
             , Element.alignTop
-            , Element.height (Element.shrink |> Element.minimum 380)
             , Element.Border.shadow
                 { offset = ( 0, 0 )
                 , size = 0
@@ -599,6 +722,13 @@ phaseElement viewPhase trade wallet expanded currentTime =
                 , color = Element.rgba 0 0 0 0.2
                 }
             ]
+                ++ (case dProfile of
+                        Desktop ->
+                            [ Element.height (Element.shrink |> Element.minimum 380) ]
+
+                        Mobile ->
+                            []
+                   )
 
         viewPhaseState =
             phaseState trade viewPhase
@@ -632,6 +762,7 @@ phaseElement viewPhase trade wallet expanded currentTime =
 
         firstEl =
             phaseStatusElement
+                dProfile
                 viewPhase
                 trade
                 currentTime
@@ -642,24 +773,34 @@ phaseElement viewPhase trade wallet expanded currentTime =
                 , Element.width Element.fill
                 , Element.height Element.fill
                 ]
-                (phaseBodyElement viewPhase currentTime trade wallet)
+                (phaseBodyElement dProfile viewPhase currentTime trade wallet)
 
         borderEl =
             Element.el
-                [ Element.height Element.fill
-                , Element.width <| Element.px 1
-                , Element.Background.color <|
-                    case viewPhaseState of
-                        Active ->
-                            Element.rgb 0 0 1
+                ((case dProfile of
+                    Desktop ->
+                        [ Element.height Element.fill
+                        , Element.width <| Element.px 1
+                        ]
 
-                        _ ->
-                            EH.lightGray
-                ]
+                    Mobile ->
+                        [ Element.width Element.fill
+                        , Element.height <| Element.px 1
+                        ]
+                 )
+                    ++ [ Element.Background.color <|
+                            case viewPhaseState of
+                                Active ->
+                                    Element.rgb 0 0 1
+
+                                _ ->
+                                    EH.lightGray
+                       ]
+                )
                 Element.none
     in
     if expanded then
-        Element.row
+        (Element.row |> changeForMobile Element.column dProfile)
             (commonPhaseAttributes
                 ++ (if viewPhaseState == Active then
                         activePhaseAttributes
@@ -687,8 +828,8 @@ phaseElement viewPhase trade wallet expanded currentTime =
             [ firstEl ]
 
 
-paymentMethodElement : List PaymentMethod -> Element Msg
-paymentMethodElement paymentMethods =
+paymentMethodElement : DisplayProfile -> List PaymentMethod -> Element Msg
+paymentMethodElement dProfile paymentMethods =
     let
         maybePmText =
             paymentMethods
@@ -703,14 +844,14 @@ paymentMethodElement paymentMethods =
         , Element.centerX
         ]
         [ Element.el
-            [ Element.Font.size 24
+            [ Element.Font.size (24 |> changeForMobile 20 dProfile)
             , Element.Font.semiBold
             , Element.Font.italic
             , Element.centerX
             ]
-            (Element.text "External Payment Method")
+            (Element.text "Payment Method")
         , Element.el
-            [ Element.Font.size 18
+            [ Element.Font.size (18 |> changeForMobile 12 dProfile)
             , Element.height Element.shrink
             , Element.Background.color <| EH.white
             , Element.Border.shadow
@@ -725,15 +866,15 @@ paymentMethodElement paymentMethods =
             (maybePmText
                 |> Maybe.map (Markdown.toHtml Nothing)
                 |> Maybe.map (List.map Element.html)
-                |> Maybe.map (Element.paragraph [])
+                |> Maybe.map (Element.paragraph [ Element.spacing 2 ])
                 |> Maybe.withDefault
                     (Element.el [ Element.Font.color EH.disabledTextColor, Element.Font.italic ] <| Element.text "No payment methods found.")
             )
         ]
 
 
-phaseStatusElement : CTypes.Phase -> CTypes.FullTradeInfo -> Time.Posix -> Element Msg
-phaseStatusElement viewPhase trade currentTime =
+phaseStatusElement : DisplayProfile -> CTypes.Phase -> CTypes.FullTradeInfo -> Time.Posix -> Element Msg
+phaseStatusElement dProfile viewPhase trade currentTime =
     let
         viewPhaseState =
             phaseState trade viewPhase
@@ -751,7 +892,6 @@ phaseStatusElement viewPhase trade currentTime =
                 [ Element.Font.color titleColor
                 , Element.Font.size 20
                 , Element.Font.semiBold
-                , Element.centerX
                 ]
                 (Element.text <|
                     case viewPhase of
@@ -778,7 +918,9 @@ phaseStatusElement viewPhase trade currentTime =
                         NotStarted ->
                             EH.interval
                                 [ Element.centerX ]
-                                [ Element.Font.size 22, Element.Font.medium ]
+                                [ Element.Font.size (22 |> changeForMobile 14 dProfile)
+                                , Element.Font.medium
+                                ]
                                 ( EH.black, EH.lightGray )
                                 (CTypes.getPhaseInterval viewPhase trade)
 
@@ -787,7 +929,9 @@ phaseStatusElement viewPhase trade currentTime =
                                 CTypes.TimeLeft timeoutInfo ->
                                     EH.intervalWithElapsedBar
                                         [ Element.centerX ]
-                                        [ Element.Font.size 22, Element.Font.medium ]
+                                        [ Element.Font.size (22 |> changeForMobile 14 dProfile)
+                                        , Element.Font.medium
+                                        ]
                                         ( EH.white, EH.lightGray )
                                         timeoutInfo
 
@@ -797,45 +941,72 @@ phaseStatusElement viewPhase trade currentTime =
                                         , Element.spacing 10
                                         ]
                                         [ Element.el [ Element.centerX ] <| Element.text (CTypes.getPokeText viewPhase)
-                                        , EH.blueButton "Poke" (StartContractAction Poke)
+                                        , EH.blueButton dProfile [] [ "Poke" ] (StartContractAction Poke)
                                         ]
 
                         Finished ->
                             Element.el [ Element.height <| Element.px 1 ] Element.none
     in
-    Element.column
-        [ Element.padding 20
-        , Element.spacing 10
-        , Element.height Element.fill
-        ]
-        [ Element.el
-            [ Element.alignTop
-            , Element.centerX
-            ]
-            titleElement
-        , Element.el
-            [ Element.height Element.fill
-            , Element.centerX
-            ]
-          <|
-            Element.el
-                [ Element.centerY
+    case dProfile of
+        Desktop ->
+            Element.column
+                [ Element.padding 20
+                , Element.spacing 10
+                , Element.height Element.fill
                 ]
-            <|
-                phaseIconElement viewPhase viewPhaseState
-        , Element.column
-            [ Element.spacing 10
-            , Element.alignBottom
-            , Element.centerX
-            ]
-            [ Element.el [ Element.centerX ] <| phaseStateElement viewPhaseState
-            , intervalElement
-            ]
-        ]
+                [ Element.el
+                    [ Element.alignTop
+                    , Element.centerX
+                    ]
+                    titleElement
+                , Element.el
+                    [ Element.height Element.fill
+                    , Element.centerX
+                    ]
+                  <|
+                    Element.el
+                        [ Element.centerY
+                        ]
+                    <|
+                        phaseIconElement dProfile viewPhase viewPhaseState
+                , Element.column
+                    [ Element.spacing 10
+                    , Element.alignBottom
+                    , Element.centerX
+                    ]
+                    [ Element.el [ Element.centerX ] <| phaseStateElement dProfile viewPhaseState
+                    , intervalElement
+                    ]
+                ]
+
+        Mobile ->
+            Element.row
+                [ Element.padding 10
+                , Element.spaceEvenly
+                , Element.width Element.fill
+                ]
+                [ Element.el
+                    [ Element.centerY ]
+                  <|
+                    phaseIconElement dProfile viewPhase viewPhaseState
+                , Element.column
+                    [ Element.spacing 10
+                    , Element.centerY
+                    ]
+                    [ Element.el [ Element.centerX ] titleElement
+                    , Element.row
+                        [ Element.spacing 10
+                        , Element.centerX
+                        ]
+                        [ phaseStateElement dProfile viewPhaseState
+                        , intervalElement
+                        ]
+                    ]
+                ]
 
 
-phaseIconElement : CTypes.Phase -> PhaseState -> Element Msg
-phaseIconElement viewPhase viewPhaseState =
+phaseIconElement : DisplayProfile -> CTypes.Phase -> PhaseState -> Element Msg
+phaseIconElement dProfile viewPhase viewPhaseState =
     let
         circleColor =
             case viewPhaseState of
@@ -849,13 +1020,13 @@ phaseIconElement viewPhase viewPhaseState =
                     Element.rgb255 1 129 104
 
         circleElement =
-            Collage.circle 50
+            Collage.circle (50 |> changeForMobile 35 dProfile)
                 |> Collage.filled (Collage.uniform (EH.elementColorToAvh4Color circleColor))
                 |> Collage.Render.svg
                 |> Element.html
 
         image =
-            CTypes.phaseIcon viewPhase
+            CTypes.phaseIconWhite viewPhase
     in
     Element.el
         [ Element.centerX
@@ -863,7 +1034,7 @@ phaseIconElement viewPhase viewPhaseState =
             (Images.toElement
                 [ Element.centerX
                 , Element.centerY
-                , Element.height <| Element.px 60
+                , Element.height <| Element.px (60 |> changeForMobile 40 dProfile)
                 ]
                 image
             )
@@ -871,13 +1042,13 @@ phaseIconElement viewPhase viewPhaseState =
         circleElement
 
 
-phaseStateElement : PhaseState -> Element Msg
-phaseStateElement pState =
+phaseStateElement : DisplayProfile -> PhaseState -> Element Msg
+phaseStateElement dProfile pState =
     let
         commonAttributes =
             [ Element.Font.italic
             , Element.Font.semiBold
-            , Element.Font.size 20
+            , Element.Font.size (20 |> changeForMobile 14 dProfile)
             ]
     in
     case pState of
@@ -901,8 +1072,8 @@ phaseStateElement pState =
                 (Element.text "Finished")
 
 
-phaseBodyElement : CTypes.Phase -> Time.Posix -> CTypes.FullTradeInfo -> Wallet.State -> Element Msg
-phaseBodyElement viewPhase currentTime trade wallet =
+phaseBodyElement : DisplayProfile -> CTypes.Phase -> Time.Posix -> CTypes.FullTradeInfo -> Wallet.State -> Element Msg
+phaseBodyElement dProfile viewPhase currentTime trade wallet =
     let
         phaseIsActive =
             viewPhase == trade.state.phase
@@ -922,8 +1093,9 @@ phaseBodyElement viewPhase currentTime trade wallet =
         makeParagraph =
             Element.paragraph
                 [ Element.Font.color mainFontColor
-                , Element.Font.size 18
+                , Element.Font.size (18 |> changeForMobile 12 dProfile)
                 , Element.Font.semiBold
+                , Element.spacing 2
                 ]
 
         emphasizedColor =
@@ -986,7 +1158,12 @@ phaseBodyElement viewPhase currentTime trade wallet =
 
         threeFlames =
             Element.row []
-                (List.repeat 3 (Images.toElement [ Element.height <| Element.px 18 ] Images.flame))
+                (List.repeat 3
+                    (Images.toElement
+                        [ Element.height <| Element.px (18 |> changeForMobile 12 dProfile) ]
+                        Images.flame
+                    )
+                )
 
         ( titleString, paragraphEls ) =
             case ( viewPhase, maybeBuyerOrSeller ) of
@@ -1101,7 +1278,7 @@ phaseBodyElement viewPhase currentTime trade wallet =
                     , List.map makeParagraph
                         [ [ Element.text "You must now pay the Seller "
                           , emphasizedText priceString
-                          , Element.text " via the External Payment Method, "
+                          , Element.text " via the Payment Method, "
                           , Element.el [ Element.Font.semiBold ] <| Element.text "and then click "
                           , scaryText "Confirm Payment"
                           , Element.text " before the payment window runs out. Use the chat to coordinate."
@@ -1128,9 +1305,9 @@ phaseBodyElement viewPhase currentTime trade wallet =
                 ( CTypes.Committed, Just Seller ) ->
                     ( "Time to Get Paid"
                     , List.map makeParagraph
-                        [ [ Element.text "Work and communicate with the Buyer to receive "
+                        [ [ Element.text "Work with the Buyer to receive "
                           , emphasizedText priceString
-                          , Element.text " as described in External Payment Method. Then, the Buyer should confirm the payment, moving the trade to the final phase."
+                          , Element.text " as described in Payment Method, using the DAIHard encrypted chat as necessary. Then, the Buyer should confirm the payment, moving the trade to the final phase."
                           ]
                         , [ Element.text "If the Buyer aborts the trade, or doesn't confirm payment before this time is up, "
                           , emphasizedText abortPunishmentString
@@ -1152,11 +1329,12 @@ phaseBodyElement viewPhase currentTime trade wallet =
                     , List.map makeParagraph
                         [ [ Element.text "During this phase, the Buyer is expected to transfer "
                           , emphasizedText priceString
-                          , Element.text " to the Seller, as described in External Payment Method, "
+                          , Element.text " to the Seller, as described in Payment Method, "
                           , Element.el [ Element.Font.semiBold ] <| Element.text "and "
                           , scaryText "Confirm the Payment "
                           , Element.text " before the payment window runs out. This would move the trade to the final phase."
                           ]
+                        , [ Element.text "DAIHard encrypted chat will be available to the Buyer and Seller, for coordination." ]
                         , [ Element.text "If the Buyer aborts the trade, or doesn't confirm payment before this time is up, "
                           , emphasizedText abortPunishmentString
                           , Element.text " (1/4 of the "
@@ -1245,31 +1423,28 @@ phaseBodyElement viewPhase currentTime trade wallet =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
-        , Element.padding 20
-        , Element.spacing 30
+        , Element.padding (20 |> changeForMobile 10 dProfile)
+        , Element.spacing (30 |> changeForMobile 20 dProfile)
         ]
-        [ Element.row
-            [ Element.width Element.fill ]
-            [ Element.el
-                [ Element.Font.size 24
-                , Element.Font.semiBold
-                , Element.Font.color emphasizedColor
-                , Element.alignLeft
-                ]
-                (Element.text titleString)
+        [ Element.el
+            [ Element.Font.size (24 |> changeForMobile 16 dProfile)
+            , Element.Font.semiBold
+            , Element.Font.color emphasizedColor
+            , Element.alignLeft
             ]
+            (Element.text titleString)
         , Element.column
             [ Element.width Element.fill
             , Element.centerY
-            , Element.spacing 13
+            , Element.spacing (13 |> changeForMobile 10 dProfile)
             ]
             paragraphEls
         , Element.el
-            [ Element.alignRight
+            [ Element.alignRight |> changeForMobile Element.centerX dProfile
             ]
             (case phaseState trade viewPhase of
                 Active ->
-                    actionButtonsElement currentTime trade wallet
+                    actionButtonsElement dProfile currentTime trade wallet
 
                 NotStarted ->
                     Element.el
@@ -1291,8 +1466,8 @@ phaseBodyElement viewPhase currentTime trade wallet =
         ]
 
 
-actionButtonsElement : Time.Posix -> FullTradeInfo -> Wallet.State -> Element Msg
-actionButtonsElement currentTime trade wallet =
+actionButtonsElement : DisplayProfile -> Time.Posix -> FullTradeInfo -> Wallet.State -> Element Msg
+actionButtonsElement dProfile currentTime trade wallet =
     case Wallet.userInfo wallet of
         Just userInfo ->
             if Wallet.networkForFactory trade.reference.factory /= userInfo.network then
@@ -1313,7 +1488,7 @@ actionButtonsElement currentTime trade wallet =
                         Element.none
 
                     CTypes.TimeLeft _ ->
-                        Element.row
+                        (Element.row |> changeForMobile Element.column dProfile)
                             [ Element.spacing 8 ]
                             (case
                                 ( trade.state.phase
@@ -1322,7 +1497,7 @@ actionButtonsElement currentTime trade wallet =
                                 )
                              of
                                 ( CTypes.Open, Just Initiator, _ ) ->
-                                    [ Element.map StartContractAction <| EH.blueButton "Remove and Refund this Trade" Recall ]
+                                    [ Element.map StartContractAction <| EH.blueButton dProfile [] [ "Remove and Refund this Trade" ] Recall ]
 
                                 ( CTypes.Open, Nothing, _ ) ->
                                     let
@@ -1330,11 +1505,11 @@ actionButtonsElement currentTime trade wallet =
                                             CTypes.responderDeposit trade.parameters
                                                 |> TokenValue.getEvmValue
                                     in
-                                    [ EH.redButton "Deposit and Commit to Trade" <| CommitClicked trade userInfo depositAmount ]
+                                    [ EH.redButton dProfile [] [ "Deposit and Commit to Trade" ] <| CommitClicked trade userInfo depositAmount ]
 
                                 ( CTypes.Committed, _, Just Buyer ) ->
-                                    [ Element.map ContractActionClicked <| EH.orangeButton "Abort Trade" Abort
-                                    , Element.map ContractActionClicked <| EH.redButton "Confirm Payment" Claim
+                                    [ Element.map ContractActionClicked <| EH.orangeButton dProfile [] [ "Abort Trade" ] Abort
+                                    , Element.map ContractActionClicked <| EH.redButton dProfile [] [ "Confirm Payment" ] Claim
                                     , chatHistoryButton
                                     ]
 
@@ -1342,8 +1517,8 @@ actionButtonsElement currentTime trade wallet =
                                     [ chatHistoryButton ]
 
                                 ( CTypes.Judgment, _, Just Seller ) ->
-                                    [ Element.map ContractActionClicked <| EH.redButton "Burn it All!" Burn
-                                    , Element.map ContractActionClicked <| EH.blueButton "Release Everything" Release
+                                    [ Element.map ContractActionClicked <| EH.redButton dProfile [] [ "Burn it All!" ] Burn
+                                    , Element.map ContractActionClicked <| EH.blueButton dProfile [] [ "Release Everything" ] Release
                                     , chatHistoryButton
                                     ]
 
@@ -1355,7 +1530,7 @@ actionButtonsElement currentTime trade wallet =
                             )
 
         Nothing ->
-            EH.redButton "Connect to Wallet" Web3Connect
+            EH.redButton dProfile [] [ "Connect to Wallet" ] Web3Connect
 
 
 chatHistoryButton : Element Msg
@@ -1374,40 +1549,116 @@ chatHistoryButton =
             Images.chatIcon
 
 
-chatOverlayElement : Model -> Element Msg
-chatOverlayElement model =
-    if model.showChatHistory then
-        let
-            chatWindow =
-                model.chatHistoryModel
-                    |> Maybe.map ChatHistory.window
-                    |> Maybe.withDefault Element.none
-        in
-        Element.el
-            [ Element.height Element.fill
-            , Element.width <| Element.px 500
-            , Element.padding 20
-            , Element.alignRight
-            ]
-        <|
-            EH.closeableModal
-                [ Element.height Element.fill
-                , Element.width Element.fill
-                ]
-                (Element.map ChatHistoryMsg chatWindow)
-                NoOp
-                ToggleChat
-                False
+chatOverlayElement : DisplayProfile -> Model -> Element Msg
+chatOverlayElement dProfile model =
+    case ( model.showChatHistory, model.chatHistoryModel ) of
+        ( True, Just chatHistoryModel ) ->
+            case dProfile of
+                Mobile ->
+                    EH.closeableModalBlackX
+                        [ Element.width Element.fill
+                        , Element.height Element.fill
+                        ]
+                        (Element.map
+                            ChatHistoryMsg
+                            (ChatHistory.window dProfile chatHistoryModel)
+                        )
+                        NoOp
+                        ToggleChat
+                        False
 
-    else
-        Element.none
+                Desktop ->
+                    Element.el
+                        [ Element.height Element.fill
+                        , Element.width <| Element.px 500
+                        , Element.padding 20
+                        , Element.alignRight
+                        ]
+                    <|
+                        EH.closeableModalBlackX
+                            [ Element.height Element.fill
+                            , Element.width Element.fill
+                            ]
+                            (Element.map
+                                ChatHistoryMsg
+                                (ChatHistory.window dProfile chatHistoryModel)
+                            )
+                            NoOp
+                            ToggleChat
+                            False
+
+        _ ->
+            Element.none
 
 
-getModalOrNone : Model -> Element Msg
-getModalOrNone model =
+getTxModalOrNone : DisplayProfile -> Model -> Element Msg
+getTxModalOrNone dProfile model =
     case ( model.txChainStatus, model.trade ) of
         ( Just txChainStatus, CTypes.LoadedTrade trade ) ->
-            case txChainStatus of
+            let
+                confirmAbortAttributes =
+                    if txChainStatus.confirmingAbort then
+                        let
+                            message =
+                                case txChainStatus.mode of
+                                    ConfirmingCommit _ _ ->
+                                        ""
+
+                                    ApproveNeedsSig ->
+                                        ""
+
+                                    ConfirmingAction _ ->
+                                        ""
+
+                                    ActionNeedsSig _ ->
+                                        ""
+
+                                    ApproveMining _ ->
+                                        "If you abort now, your deposit will not complete and you won't commit to the offer."
+
+                                    CommitNeedsSig ->
+                                        "If you abort now, your deposit will not complete and you won't commit to the offer."
+
+                                    CommitMining _ ->
+                                        "Aborting now WILL NOT PREVENT the deposit and commitment; it will only return you to the Trade page. You may be able to cancel the transaciton in your web3 wallet."
+
+                                    ActionMining _ _ ->
+                                        "Aborting now WILL NOT CANCEL this action! You may be able to cancel the transaction via your web3 wallet."
+                        in
+                        [ Element.inFront <|
+                            Element.column
+                                [ Element.centerX
+                                , Element.centerY
+                                , Element.padding 10
+                                , Element.spacing 10
+                                , Element.Border.rounded 5
+                                , Element.Background.color EH.white
+                                ]
+                                [ Element.paragraph
+                                    [ Element.width Element.fill ]
+                                    [ Element.text message ]
+                                , Element.row
+                                    [ Element.centerX
+                                    , Element.spacing 10
+                                    ]
+                                    [ EH.redButton
+                                        dProfile
+                                        []
+                                        [ "Abort" ]
+                                        ConfirmCloseTxModalClicked
+                                    , EH.blueButton
+                                        dProfile
+                                        []
+                                        [ "Nevermind" ]
+                                        NevermindCloseTxModalClicked
+                                    ]
+                                ]
+                        ]
+
+                    else
+                        []
+            in
+            case txChainStatus.mode of
                 ConfirmingCommit userInfo deposit ->
                     let
                         depositAmountString =
@@ -1442,33 +1693,34 @@ getModalOrNone model =
                                       ]
                                     )
                     in
-                    EH.closeableModal
+                    EH.closeableModalBlackX
                         []
                         (Element.column
-                            [ Element.spacing 20
-                            , Element.padding 20
+                            [ Element.spacing (20 |> changeForMobile 10 dProfile)
+                            , Element.padding (20 |> changeForMobile 10 dProfile)
                             , Element.centerX
                             , Element.height Element.fill
                             , Element.Font.center
                             ]
                             [ Element.el
-                                [ Element.Font.size 26
+                                [ Element.Font.size (26 |> changeForMobile 22 dProfile)
                                 , Element.Font.semiBold
                                 , Element.centerX
                                 , Element.centerY
                                 ]
                                 (Element.text "Just to Confirm...")
                             , Element.column
-                                [ Element.spacing 20
+                                [ Element.spacing (20 |> changeForMobile 10 dProfile)
                                 , Element.centerX
                                 , Element.centerY
                                 ]
                                 (List.map
                                     (Element.paragraph
                                         [ Element.centerX
-                                        , Element.Font.size 18
+                                        , Element.Font.size (18 |> changeForMobile 16 dProfile)
                                         , Element.Font.medium
                                         , Element.Font.color EH.permanentTextColor
+                                        , Element.spacing 2
                                         ]
                                     )
                                     ([ [ Element.text <| "You will deposit "
@@ -1492,56 +1744,100 @@ getModalOrNone model =
                                 [ Element.alignBottom
                                 , Element.centerX
                                 ]
-                                (EH.redButton "Yes, I definitely want to commit to this trade." (ConfirmCommit trade userInfo deposit))
+                                (EH.redButton
+                                    dProfile
+                                    []
+                                    (case dProfile of
+                                        Desktop ->
+                                            [ "Yes, I definitely want to commit to this trade." ]
+
+                                        Mobile ->
+                                            [ "Yes, I definitely want", "to commit to this trade." ]
+                                    )
+                                    (ConfirmCommit trade userInfo deposit)
+                                )
                             ]
                         )
                         NoOp
-                        AbortAction
+                        CloseTxModalClicked
                         False
 
                 ApproveNeedsSig ->
-                    EH.txProcessModal
-                        [ Element.text "Waiting for user signature for the approve call."
-                        , Element.text "(check Metamask!)"
-                        , Element.text "Note that there will be a second transaction to sign after this."
-                        ]
-                        NoOp
-                        NoOp
+                    Element.el
+                        (confirmAbortAttributes
+                            ++ [ Element.centerX
+                               , Element.centerY
+                               ]
+                        )
+                    <|
+                        EH.txProcessModal
+                            [ Element.text "Waiting for user signature for the approve call."
+                            , Element.text "(check Metamask!)"
+                            , Element.text "Note that there will be a second transaction to sign after this."
+                            ]
+                            NoOp
+                            CloseTxModalClicked
+                            NoOp
 
                 ApproveMining txHash ->
-                    EH.txProcessModal
-                        [ Element.text "Mining the initial approve transaction..."
-                        , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                            { url = EthHelpers.makeViewTxUrl trade.reference.factory txHash
-                            , label = Element.text "See the transaction on Etherscan"
-                            }
-                        , Element.text "Funds will not leave your wallet until you sign the next transaction."
-                        ]
-                        NoOp
-                        NoOp
+                    Element.el
+                        (confirmAbortAttributes
+                            ++ [ Element.centerX
+                               , Element.centerY
+                               ]
+                        )
+                    <|
+                        EH.txProcessModal
+                            [ Element.text "Mining the initial approve transaction..."
+                            , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
+                                { url = EthHelpers.makeViewTxUrl trade.reference.factory txHash
+                                , label = Element.text "See the transaction on Etherscan"
+                                }
+                            , Element.text "Funds will not leave your wallet until you sign the next transaction."
+                            ]
+                            NoOp
+                            CloseTxModalClicked
+                            NoOp
 
                 CommitNeedsSig ->
-                    EH.txProcessModal
-                        [ Element.text "Waiting for user signature for the final commit call."
-                        , Element.text "(check Metamask!)"
-                        , Element.text "This will make the deposit and commit you to the trade."
-                        ]
-                        NoOp
-                        NoOp
+                    Element.el
+                        (confirmAbortAttributes
+                            ++ [ Element.centerX
+                               , Element.centerY
+                               ]
+                        )
+                    <|
+                        EH.txProcessModal
+                            [ Element.text "Waiting for user signature for the final commit call."
+                            , Element.text "(check Metamask!)"
+                            , Element.text "This will make the deposit and commit you to the trade."
+                            ]
+                            NoOp
+                            CloseTxModalClicked
+                            NoOp
 
                 CommitMining txHash ->
-                    EH.txProcessModal
-                        [ Element.text "Mining the final commit transaction..."
-                        , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                            { url = EthHelpers.makeViewTxUrl trade.reference.factory txHash
-                            , label = Element.text "See the transaction"
-                            }
-                        ]
-                        NoOp
-                        NoOp
+                    Element.el
+                        (confirmAbortAttributes
+                            ++ [ Element.centerX
+                               , Element.centerY
+                               ]
+                        )
+                    <|
+                        EH.txProcessModal
+                            [ Element.text "Mining the final commit transaction..."
+                            , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
+                                { url = EthHelpers.makeViewTxUrl trade.reference.factory txHash
+                                , label = Element.text "See the transaction"
+                                }
+                            ]
+                            NoOp
+                            CloseTxModalClicked
+                            NoOp
 
                 ConfirmingAction action ->
-                    EH.closeableModal []
+                    EH.closeableModalBlackX
+                        confirmAbortAttributes
                         (Element.column
                             [ Element.spacing 20
                             , Element.padding 20
@@ -1557,16 +1853,17 @@ getModalOrNone model =
                                 ]
                                 (Element.text "Just to Confirm...")
                             , Element.column
-                                [ Element.spacing 20
+                                [ Element.spacing (20 |> changeForMobile 10 dProfile)
                                 , Element.centerX
                                 , Element.centerY
                                 ]
                                 (List.map
                                     (Element.paragraph
                                         [ Element.centerX
-                                        , Element.Font.size 18
+                                        , Element.Font.size (18 |> changeForMobile 16 dProfile)
                                         , Element.Font.medium
                                         , Element.Font.color EH.permanentTextColor
+                                        , Element.spacing 2
                                         ]
                                     )
                                     (case action of
@@ -1612,21 +1909,29 @@ getModalOrNone model =
                                     Burn ->
                                         "I understand. Burn the " ++ tokenUnitName trade.reference.factory ++ "."
                                  )
-                                    |> (\s -> EH.redButton s (StartContractAction action))
+                                    |> (\s -> EH.redButton dProfile [] [ s ] (StartContractAction action))
                                 )
                             ]
                         )
                         NoOp
-                        AbortAction
+                        CloseTxModalClicked
                         False
 
                 ActionNeedsSig action ->
-                    EH.txProcessModal
-                        [ Element.text <| "Waiting for user signature for the " ++ actionName action ++ " call."
-                        , Element.text "(check Metamask!)"
-                        ]
-                        NoOp
-                        NoOp
+                    Element.el
+                        (confirmAbortAttributes
+                            ++ [ Element.centerX
+                               , Element.centerY
+                               ]
+                        )
+                    <|
+                        EH.txProcessModal
+                            [ Element.text <| "Waiting for user signature for the " ++ actionName action ++ " call."
+                            , Element.text "(check Metamask!)"
+                            ]
+                            NoOp
+                            CloseTxModalClicked
+                            NoOp
 
                 ActionMining action txHash ->
                     Element.none

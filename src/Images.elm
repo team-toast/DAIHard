@@ -1,4 +1,4 @@
-module Images exposing (Image(..), aborted, addButton, backButton, burned, chatIcon, closeIcon, committedPhase, daiSymbol, downArrow, fiatBag, flame, image, judgmentPhase, loadingArrows, marginSymbol, marketplace, myTrades, newTrade, none, numberOnCircleEl, openPhase, openWindowIcon, pmBank, pmCash, pmCustom, qmarkCircle, release, releaseWindowIcon, released, searchIcon, stopWhite, swapArrows, toElement, upArrow, verticalSwapArrows)
+module Images exposing (Image(..), aborted, addButton, backButton, burned, chatIcon, closeIconBlack, closeIconWhite, committedPhaseBlack, committedPhaseWhite, confirmExtraInfoIcon, daiSymbol, downArrow, fiatBag, flame, image, judgmentPhaseBlack, judgmentPhaseWhite, loadingArrows, marginSymbol, marketplace, myTrades, navigateLeft, navigateRight, newTrade, none, numberOnCircleEl, openPhaseBlack, openPhaseWhite, openWindowIcon, pmBank, pmCash, pmCustom, qmarkCircle, release, releaseWindowIcon, released, searchIcon, stopWhite, swapArrows, threeDotsHorizontal, threeDotsVertical, toElement, upArrow, verticalSwapArrows)
 
 import Element exposing (Attribute, Element)
 import Time
@@ -176,10 +176,18 @@ loadingArrows =
         }
 
 
-closeIcon : Image
-closeIcon =
+closeIconBlack : Image
+closeIconBlack =
     JustImage
-        { src = "/DAIHard/static/img/remove-circle.svg"
+        { src = "/DAIHard/static/img/remove-circle-black.svg"
+        , description = "close"
+        }
+
+
+closeIconWhite : Image
+closeIconWhite =
+    JustImage
+        { src = "/DAIHard/static/img/remove-circle-white.svg"
         , description = "close"
         }
 
@@ -224,26 +232,50 @@ burned =
         }
 
 
-openPhase : Image
-openPhase =
+openPhaseWhite : Image
+openPhaseWhite =
     JustImage
-        { src = "/DAIHard/static/img/diamond-give-white.svg"
+        { src = "/DAIHard/static/img/phase-open-white.svg"
         , description = "open phase"
         }
 
 
-committedPhase : Image
-committedPhase =
+committedPhaseWhite : Image
+committedPhaseWhite =
     JustImage
-        { src = "/DAIHard/static/img/phase-committed.svg"
+        { src = "/DAIHard/static/img/phase-committed-white.svg"
         , description = "committed phase"
         }
 
 
-judgmentPhase : Image
-judgmentPhase =
+judgmentPhaseWhite : Image
+judgmentPhaseWhite =
     JustImage
-        { src = "/DAIHard/static/img/time-clock-fire.svg"
+        { src = "/DAIHard/static/img/phase-judgment-white.svg"
+        , description = "judgment phase"
+        }
+
+
+openPhaseBlack : Image
+openPhaseBlack =
+    JustImage
+        { src = "/DAIHard/static/img/phase-open-black.svg"
+        , description = "open phase"
+        }
+
+
+committedPhaseBlack : Image
+committedPhaseBlack =
+    JustImage
+        { src = "/DAIHard/static/img/phase-committed-black.svg"
+        , description = "committed phase"
+        }
+
+
+judgmentPhaseBlack : Image
+judgmentPhaseBlack =
+    JustImage
+        { src = "/DAIHard/static/img/phase-judgment-black.svg"
         , description = "judgment phase"
         }
 
@@ -304,4 +336,79 @@ newTrade =
     JustImage
         { src = "/DAIHard/static/img/add-circle-bold.svg"
         , description = "newTrade"
+        }
+
+
+threeDotsHorizontal : Image
+threeDotsHorizontal =
+    JustImage
+        { src = "/DAIHard/static/img/3-dots-big-horizontal.png"
+        , description = "options"
+        }
+
+
+threeDotsVertical : Image
+threeDotsVertical =
+    JustImage
+        { src = "/DAIHard/static/img/3-dots-small-vertical.svg"
+        , description = "options"
+        }
+
+
+confirmExtraInfoIcon : Int -> Image
+confirmExtraInfoIcon place =
+    case place of
+        0 ->
+            JustImage
+                { src = "/DAIHard/static/img/rocket.svg"
+                , description = "info"
+                }
+
+        1 ->
+            JustImage
+                { src = "/DAIHard/static/img/open-window-white.svg"
+                , description = "info"
+                }
+
+        2 ->
+            JustImage
+                { src = "/DAIHard/static/img/fishing-fish.svg"
+                , description = "info"
+                }
+
+        3 ->
+            JustImage
+                { src = "/DAIHard/static/img/phase-committed-white.svg"
+                , description = "info"
+                }
+
+        4 ->
+            JustImage
+                { src = "/DAIHard/static/img/legal-hammer.svg"
+                , description = "info"
+                }
+
+        5 ->
+            JustImage
+                { src = "/DAIHard/static/img/flags.svg"
+                , description = "info"
+                }
+
+        _ ->
+            None
+
+
+navigateLeft : Image
+navigateLeft =
+    JustImage
+        { src = "/DAIHard/static/img/keyboard-arrow-left.svg"
+        , description = "left"
+        }
+
+
+navigateRight : Image
+navigateRight =
+    JustImage
+        { src = "/DAIHard/static/img/keyboard-arrow-right.svg"
+        , description = "right"
         }

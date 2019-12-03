@@ -20,15 +20,15 @@ import TokenValue exposing (TokenValue)
 import TradeTable.Types exposing (..)
 
 
-view : Time.Posix -> Model -> List ( Currencies.Symbol, PriceFetch.PriceData ) -> List ColType -> List CTypes.FullTradeInfo -> Element Msg
-view time model prices colTypes trades =
+view : Time.Posix -> DisplayProfile -> Model -> List ( Currencies.Symbol, PriceFetch.PriceData ) -> List ColType -> List CTypes.FullTradeInfo -> Element Msg
+view time dProfile model prices colTypes trades =
     Element.column
         [ Element.width Element.fill
         , Element.height Element.fill
         , Element.spacing 5
         ]
         [ viewColHeaders model.orderBy colTypes
-        , viewTradeRows time model prices colTypes trades
+        , viewTradeRows time dProfile model prices colTypes trades
         ]
 
 
@@ -53,7 +53,7 @@ viewColHeaders orderBy colTypes =
 
 viewColHeader : Maybe Ordering -> ColType -> Element Msg
 viewColHeader maybeOrdering colType =
-    cellMaker (colTypePortion colType) (sortableColumnHeader colType maybeOrdering)
+    cellMaker (colTypePortion colType) 60 (sortableColumnHeader colType maybeOrdering)
 
 
 colTypePortion : ColType -> Int
@@ -68,8 +68,8 @@ colTypePortion colType =
         Offer ->
             1
 
-        Price ->
-            2
+        Windows ->
+            1
 
         ResponderProfit ->
             1
@@ -123,8 +123,8 @@ colTitleEl colType =
                 Offer ->
                     "Offer"
 
-                Price ->
-                    "For"
+                Windows ->
+                    "Phase Times"
 
                 ResponderProfit ->
                     "Responder Profit"
@@ -136,8 +136,8 @@ colTitleEl colType =
                     "Burn Window"
 
 
-viewTradeRows : Time.Posix -> Model -> List ( Currencies.Symbol, PriceFetch.PriceData ) -> List ColType -> List CTypes.FullTradeInfo -> Element Msg
-viewTradeRows time model prices colTypes trades =
+viewTradeRows : Time.Posix -> DisplayProfile -> Model -> List ( Currencies.Symbol, PriceFetch.PriceData ) -> List ColType -> List CTypes.FullTradeInfo -> Element Msg
+viewTradeRows time dProfile model prices colTypes trades =
     Element.column
         [ Element.width Element.fill
         , Element.Border.width 2
@@ -149,12 +149,12 @@ viewTradeRows time model prices colTypes trades =
         ]
         (trades
             |> List.sortWith (sortByFunc prices model.orderBy)
-            |> List.map (viewTradeRow time prices colTypes)
+            |> List.map (viewTradeRow time dProfile prices colTypes)
         )
 
 
-viewTradeRow : Time.Posix -> List ( Currencies.Symbol, PriceFetch.PriceData ) -> List ColType -> CTypes.FullTradeInfo -> Element Msg
-viewTradeRow time prices colTypes trade =
+viewTradeRow : Time.Posix -> DisplayProfile -> List ( Currencies.Symbol, PriceFetch.PriceData ) -> List ColType -> CTypes.FullTradeInfo -> Element Msg
+viewTradeRow time dProfile prices colTypes trade =
     Element.column
         [ Element.width Element.fill
         , Element.spacing 1
@@ -169,10 +169,10 @@ viewTradeRow time prices colTypes trade =
             (colTypes
                 |> List.map
                     (\colType ->
-                        viewTradeCell time prices colType trade
+                        viewTradeCell time dProfile prices colType trade
                     )
             )
-        , cellMaker 1 <| viewPaymentMethods trade.terms.paymentMethods
+        , cellMaker 1 80 <| viewPaymentMethods trade.terms.paymentMethods
         ]
 
 
@@ -184,10 +184,11 @@ viewPaymentMethods paymentMethods =
         |> Maybe.withDefault Element.none
 
 
-viewTradeCell : Time.Posix -> List ( Currencies.Symbol, PriceFetch.PriceData ) -> ColType -> CTypes.FullTradeInfo -> Element Msg
-viewTradeCell time prices colType trade =
+viewTradeCell : Time.Posix -> DisplayProfile -> List ( Currencies.Symbol, PriceFetch.PriceData ) -> ColType -> CTypes.FullTradeInfo -> Element Msg
+viewTradeCell time dProfile prices colType trade =
     cellMaker
         (colTypePortion colType)
+        (60 |> changeForMobile 90 dProfile)
         (case colType of
             Phase ->
                 let
@@ -256,29 +257,95 @@ viewTradeCell time prices colType trade =
                         Element.none
 
             Offer ->
-                Element.row
-                    [ Element.spacing 5 ]
-                    [ Element.text <|
-                        ((case trade.parameters.initiatorRole of
-                            Buyer ->
-                                "Buying "
-
-                            Seller ->
-                                "Selling "
-                         )
-                            ++ TokenValue.toConciseString trade.parameters.tradeAmount
-                            ++ " "
-                            ++ tokenUnitName trade.reference.factory
-                        )
+                (Element.column |> changeForMobile Element.column dProfile)
+                    [ Element.spacing 5
+                    , Element.Font.size (18 |> changeForMobile 14 dProfile)
                     ]
+                    [ Element.row
+                        [ Element.spacing 5 ]
+                        [ Element.text <|
+                            ((case trade.parameters.initiatorRole of
+                                Buyer ->
+                                    "Buying "
 
-            Price ->
-                EH.price trade.terms.price
+                                Seller ->
+                                    "Selling "
+                             )
+                                ++ TokenValue.toConciseString trade.parameters.tradeAmount
+                                ++ " "
+                                ++ tokenUnitName trade.reference.factory
+                            )
+                        ]
+                    , Element.row
+                        [ Element.spacing 5 ]
+                        [ Element.text "for"
+                        , EH.price trade.terms.price
+                        ]
+                    ]
 
             ResponderProfit ->
                 ResponderProfit.calculate prices trade
                     |> Maybe.map (EH.coloredResponderProfit True)
                     |> Maybe.withDefault Element.none
+
+            Windows ->
+                let
+                    timeLeftIntervalOrTotalTime : CTypes.Phase -> Element Msg
+                    timeLeftIntervalOrTotalTime phase =
+                        if trade.state.phase == phase then
+                            case CTypes.getCurrentPhaseTimeoutInfo time trade of
+                                CTypes.TimeLeft timeoutInfo ->
+                                    let
+                                        baseIntervalColor =
+                                            if TimeHelpers.getRatio (Tuple.first timeoutInfo) (Tuple.second timeoutInfo) < 0.05 then
+                                                EH.softRed
+
+                                            else
+                                                EH.black
+                                    in
+                                    EH.intervalWithElapsedBar
+                                        [ Element.width Element.fill ]
+                                        [ Element.Font.size 16
+                                        , Element.Font.color EH.blue
+                                        ]
+                                        ( baseIntervalColor, EH.lightGray )
+                                        timeoutInfo
+
+                                CTypes.TimeUp totalInterval ->
+                                    EH.intervalWithElapsedBar
+                                        [ Element.width Element.fill ]
+                                        [ Element.Font.size 16 ]
+                                        ( EH.softRed, EH.lightGray )
+                                        ( Time.millisToPosix 0, totalInterval )
+
+                        else
+                            EH.interval [] [ Element.Font.size 16 ] ( EH.black, EH.lightGray ) <|
+                                case phase of
+                                    CTypes.Open ->
+                                        trade.parameters.autorecallInterval
+
+                                    CTypes.Committed ->
+                                        trade.parameters.autoabortInterval
+
+                                    CTypes.Judgment ->
+                                        trade.parameters.autoreleaseInterval
+
+                                    CTypes.Closed ->
+                                        Time.millisToPosix 0
+                in
+                Element.column
+                    [ Element.spacing 5 ]
+                    ([ CTypes.Open, CTypes.Committed, CTypes.Judgment ]
+                        |> List.map
+                            (\phase ->
+                                Element.row
+                                    [ Element.spacing 5 ]
+                                    [ Images.toElement [ Element.height <| Element.px 20 ] <|
+                                        CTypes.phaseIconBlack phase
+                                    , timeLeftIntervalOrTotalTime phase
+                                    ]
+                            )
+                    )
 
             PaymentWindow ->
                 let
@@ -328,11 +395,11 @@ viewTradeCell time prices colType trade =
         )
 
 
-cellMaker : Int -> Element Msg -> Element Msg
-cellMaker portion cellElement =
+cellMaker : Int -> Int -> Element Msg -> Element Msg
+cellMaker portion height cellElement =
     Element.el
         [ Element.width <| Element.fillPortion portion
-        , Element.height <| Element.px 60
+        , Element.height <| Element.px height
         , Element.clip
         ]
     <|
@@ -361,8 +428,11 @@ sortByFunc prices ( sortCol, ordering ) =
         Offer ->
             \a b -> TokenValue.compare a.parameters.tradeAmount b.parameters.tradeAmount
 
-        Price ->
-            \a b -> Currencies.compare a.terms.price b.terms.price
+        Windows ->
+            \a b ->
+                TimeHelpers.compare
+                    (TimeHelpers.add a.parameters.autoabortInterval a.parameters.autoreleaseInterval)
+                    (TimeHelpers.add b.parameters.autoabortInterval b.parameters.autoreleaseInterval)
 
         ResponderProfit ->
             \a b ->

@@ -1,4 +1,4 @@
-module Trade.Types exposing (ContractAction(..), Model, Msg(..), PhaseState(..), TxChainStatus(..), UpdateResult, actionName, justModelUpdate)
+module Trade.Types exposing (ContractAction(..), Model, Msg(..), PhaseState(..), TxChainMode(..), TxChainStatus, UpdateResult, actionName, justModelUpdate)
 
 import Array exposing (Array)
 import BigInt exposing (BigInt)
@@ -48,7 +48,9 @@ type Msg
     | ToggleShowOptions Bool
     | DuplicateClicked TradeReference
     | CommitClicked CTypes.FullTradeInfo UserInfo BigInt
-    | AbortAction
+    | CloseTxModalClicked
+    | ConfirmCloseTxModalClicked
+    | NevermindCloseTxModalClicked
     | ConfirmCommit CTypes.FullTradeInfo UserInfo BigInt
     | CommitSigned (Result String TxHash)
     | CommitMined (Result String TxReceipt)
@@ -88,7 +90,13 @@ justModelUpdate model =
         []
 
 
-type TxChainStatus
+type alias TxChainStatus =
+    { mode : TxChainMode
+    , confirmingAbort : Bool
+    }
+
+
+type TxChainMode
     = ConfirmingCommit UserInfo BigInt
     | ApproveNeedsSig
     | ApproveMining TxHash

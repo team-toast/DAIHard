@@ -136,11 +136,7 @@ update msg prevModel =
                         { prevModel | prices = newPrices }
 
                 Err httpErr ->
-                    UpdateResult
-                        prevModel
-                        Cmd.none
-                        ChainCmd.none
-                        [ CmdUp.UserNotice UN.cantFetchPrices ]
+                    justModelUpdate prevModel
 
         Refresh ->
             UpdateResult

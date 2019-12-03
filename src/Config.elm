@@ -10,11 +10,15 @@ tokenDecimals =
     18
 
 
-activeFactories : List FactoryType
-activeFactories =
-    [ Token EthDai
-    , Native XDai
-    ]
+activeFactories : Bool -> List FactoryType
+activeFactories testMode =
+    if testMode then
+        [ Token KovanDai ]
+
+    else
+        [ Token EthDai
+        , Native XDai
+        ]
 
 
 tokenContractAddress : TokenFactoryType -> Address

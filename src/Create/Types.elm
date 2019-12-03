@@ -1,4 +1,4 @@
-module Create.Types exposing (AutofillableInput(..), CurrencyType(..), Errors, Inputs, IntervalUnit(..), MarginButtonType(..), Mode(..), ModeOrTrade(..), Model, Msg(..), TradeType(..), TxChainStatus(..), UpdateResult, UserInterval, buildCryptoSwapSellPaymentMethodString, cryptoSwapSellPaymentMethodPrefix, cryptoSwapSellPaymentMethodSuffix, currencySymbol, externalCurrencyPrice, getAmountIn, getAmountOut, getTradeAmount, getTradePrice, getUserInterval, initiatorRole, intervalUnitToString, justModelUpdate, marginButtonTypeToString, maybeBuildPaymentMethods, maybeUserParameters, modeToString, noErrors, tradeType, updateAmountIn, updateAmountOut, updateForeignCurrencyType, updateInType, updateOutType, updateUserInterval, userIntervalToPosix, userIntervalToString)
+module Create.Types exposing (AutofillableInput(..), CurrencyType(..), Errors, Inputs, IntervalUnit(..), MarginButtonType(..), Mode(..), ModeOrTrade(..), Model, Msg(..), TradeType(..), TxChainMode(..), TxChainStatus, UpdateResult, UserInterval, buildCryptoSwapSellPaymentMethodString, cryptoSwapSellPaymentMethodPrefix, cryptoSwapSellPaymentMethodSuffix, currencySymbol, externalCurrencyPrice, getAmountIn, getAmountOut, getTradeAmount, getTradePrice, getUserInterval, initiatorRole, intervalUnitToString, justModelUpdate, marginButtonTypeToString, maybeBuildPaymentMethods, maybeUserParameters, modeToString, noErrors, tradeType, updateAmountIn, updateAmountOut, updateForeignCurrencyType, updateInType, updateOutType, updateUserInterval, userIntervalToPosix, userIntervalToString)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -19,6 +19,7 @@ import Wallet
 
 type alias Model =
     { wallet : Wallet.State
+    , testMode : Bool
     , mode : Mode
     , now : Time.Posix
     , prices : List ( Currencies.Symbol, PriceFetch.PriceData )
@@ -38,10 +39,17 @@ type alias Model =
     , userAllowance : Maybe BigInt
     , depositAmount : Maybe TokenValue
     , txChainStatus : Maybe TxChainStatus
+    , extraConfirmInfoPlace : Int
     }
 
 
-type TxChainStatus
+type alias TxChainStatus =
+    { mode : TxChainMode
+    , confirmingAbort : Bool
+    }
+
+
+type TxChainMode
     = Confirm FactoryType CTypes.CreateParameters
     | ApproveNeedsSig TokenFactoryType
     | ApproveMining TokenFactoryType CTypes.CreateParameters TxHash
@@ -71,8 +79,13 @@ type Msg
     | IntervalInputChanged String
     | IntervalUnitChanged IntervalUnit
     | CloseModals
+    | CloseTxModalClicked
+    | ConfirmCloseTxModalClicked
+    | NevermindCloseTxModalClicked
     | PlaceOrderClicked FactoryType UserInfo CTypes.UserParameters
     | AbortCreate
+    | TradeTermsRight
+    | TradeTermsLeft
     | ConfirmCreate FactoryType CTypes.CreateParameters TokenValue
     | AllowanceFetched TokenFactoryType (Result Http.Error BigInt)
     | ApproveSigned TokenFactoryType CTypes.CreateParameters (Result String TxHash)
@@ -191,7 +204,7 @@ intervalUnitToString : IntervalUnit -> String
 intervalUnitToString intervalUnit =
     case intervalUnit of
         Minute ->
-            "Minute"
+            "Min"
 
         Hour ->
             "Hour"
@@ -208,7 +221,7 @@ userIntervalToString interval =
     String.fromInt interval.num
         ++ " "
         ++ intervalUnitToString interval.unit
-        ++ (if interval.num /= 1 then
+        ++ (if interval.num /= 1 && interval.unit /= Minute then
                 "s"
 
             else

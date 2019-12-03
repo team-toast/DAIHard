@@ -34,7 +34,8 @@ type alias Flags =
 
 type alias Model =
     { key : Browser.Navigation.Key
-    , currentRoute : Routing.Route
+    , testMode : Bool
+    , pageRoute : Routing.PageRoute
     , userAddress : Maybe Address -- `wallet` will store this but only after commPubkey has been generated
     , wallet : Wallet.State
     , time : Time.Posix
@@ -42,7 +43,7 @@ type alias Model =
     , tradeCaches : List TradeCache
     , submodel : Submodel
     , userNotices : List (UserNotice Msg)
-    , screenWidth : Int
+    , dProfile : DisplayProfile
     }
 
 
@@ -56,9 +57,10 @@ type Submodel
 
 
 type Msg
-    = LinkClicked Browser.UrlRequest
+    = Resize Int Int
+    | LinkClicked Browser.UrlRequest
     | UrlChanged Url
-    | GotoRoute Routing.Route
+    | GotoRoute Routing.PageRoute
     | CheckIfRedeployFetchComplete
     | Tick Time.Posix
     | CmdUp (CmdUp.CmdUp Msg)

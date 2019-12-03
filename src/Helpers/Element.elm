@@ -1,4 +1,4 @@
-module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, addAlpha, basicOpenDropdown, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, coloredResponderProfit, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, maybeErrorElement, mediumGray, modal, moveToFront, niceBottomBorderEl, niceFloatingRow, onClickNoPropagation, optionsDots, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, redButton, releasedIconColor, responderProfitFloatToConciseString, responderProfitSymbol, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, searchableOpenDropdown, simpleSubmodelContainer, softRed, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, thinGrayHRuler, txProcessModal, uncoloredResponderProfit, white, withHeader, withInputHeader, withInputHeaderAndMaybeError, withSelectedUnderline, yellow)
+module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, addAlpha, basicOpenDropdown, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModalBlackX, closeableModalWhiteX, coloredResponderProfit, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, maybeErrorElement, mediumGray, modal, moveToFront, niceBottomBorderEl, niceFloatingRow, noSelectText, onClickNoPropagation, optionsDots, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, redButton, releasedIconColor, responderProfitFloatToConciseString, responderProfitSymbol, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, searchableOpenDropdown, simpleSubmodelContainer, softRed, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, thinGrayHRuler, txProcessModal, uncoloredResponderProfit, white, withHeader, withInputHeader, withInputHeaderAndMaybeError, withSelectedUnderline, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -178,14 +178,13 @@ daiValue tv =
 price : Price -> Element msg
 price p =
     Element.row [ Element.spacing 4 ]
-        [ Currencies.icon p.symbol |> Maybe.withDefault Element.none
+        [ Element.text <| Currencies.toStringNoSymbol p
         , Element.el
             [ Element.Font.color <| Element.rgba 0 0 0 0.5
             , Element.Font.medium
-            , Element.width <| Element.px 50
             ]
             (Element.text p.symbol)
-        , Element.text <| Currencies.toString p
+        , Currencies.icon p.symbol |> Maybe.withDefault Element.none
         ]
 
 
@@ -612,32 +611,44 @@ dropdownSelector itemsAndMsgs =
 -- BUTTONS
 
 
-button : ( Element.Color, Element.Color, Element.Color ) -> Element.Color -> String -> msg -> Element msg
-button ( bgColor, bgHoverColor, bgPressedColor ) textColor text msg =
-    Element.el
-        [ Element.Border.rounded 4
-        , Element.pointer
-        , Element.Events.onClick msg
-        , Element.paddingXY 25 17
-        , Element.Font.color textColor
-        , Element.Font.size 18
-        , Element.Font.semiBold
-        , Element.Background.color bgColor
-        , Element.mouseDown [ Element.Background.color bgPressedColor ]
-        , Element.mouseOver [ Element.Background.color bgHoverColor ]
-        ]
-        (Element.text text)
+button : DisplayProfile -> List (Attribute msg) -> ( Element.Color, Element.Color, Element.Color ) -> Element.Color -> List String -> msg -> Element msg
+button dProfile attributes ( bgColor, bgHoverColor, bgPressedColor ) textColor lines msg =
+    Element.column
+        (attributes
+            ++ [ Element.Border.rounded 4
+               , Element.spacing (8 |> changeForMobile 5 dProfile)
+               , Element.pointer
+               , Element.Events.onClick msg
+               , Element.paddingXY 25 17 |> changeForMobile (Element.padding 10) dProfile
+               , Element.Font.color textColor
+               , Element.Font.size (18 |> changeForMobile 16 dProfile)
+               , Element.Font.semiBold
+               , Element.Background.color bgColor
+               , Element.mouseDown [ Element.Background.color bgPressedColor ]
+               , Element.mouseOver [ Element.Background.color bgHoverColor ]
+               , noSelectText
+               ]
+        )
+        (List.map
+            (Element.el [ Element.centerX ] << Element.text)
+            lines
+        )
 
 
-closeButton : msg -> Element msg
-closeButton msg =
+closeButton : Bool -> msg -> Element msg
+closeButton isBlack msg =
     Element.el
         [ Element.padding 10
         , Element.Events.onClick msg
         , Element.pointer
         ]
         (Images.toElement [ Element.width <| Element.px 22 ]
-            Images.closeIcon
+            (if isBlack then
+                Images.closeIconBlack
+
+             else
+                Images.closeIconWhite
+            )
         )
 
 
@@ -662,9 +673,10 @@ pokeButton pokeMsg =
         }
 
 
-blueButton : String -> msg -> Element msg
-blueButton text msg =
-    button
+blueButton : DisplayProfile -> List (Attribute msg) -> List String -> msg -> Element msg
+blueButton dProfile attributes text msg =
+    button dProfile
+        attributes
         ( Element.rgba 0 0 1 1
         , Element.rgba 0 0 1 0.8
         , Element.rgba 0 0 1 0.6
@@ -674,9 +686,10 @@ blueButton text msg =
         msg
 
 
-inverseBlueButton : String -> msg -> Element msg
-inverseBlueButton text msg =
-    button
+inverseBlueButton : DisplayProfile -> List (Attribute msg) -> List String -> msg -> Element msg
+inverseBlueButton dProfile attributes text msg =
+    button dProfile
+        attributes
         ( Element.rgba 0 0 1 0.05
         , Element.rgba 0 0 1 0.1
         , Element.rgba 0 0 1 0.2
@@ -686,9 +699,10 @@ inverseBlueButton text msg =
         msg
 
 
-redButton : String -> msg -> Element msg
-redButton text msg =
-    button
+redButton : DisplayProfile -> List (Attribute msg) -> List String -> msg -> Element msg
+redButton dProfile attributes text msg =
+    button dProfile
+        attributes
         ( Element.rgba 1 0 0 1
         , Element.rgba 1 0 0 0.8
         , Element.rgba 1 0 0 0.6
@@ -698,25 +712,28 @@ redButton text msg =
         msg
 
 
-disabledButton : String -> Maybe String -> Element msg
-disabledButton text maybeTipText =
+disabledButton : DisplayProfile -> List (Attribute msg) -> String -> Maybe String -> Element msg
+disabledButton dProfile attributes text maybeTipText =
     Element.el
-        [ Element.Border.rounded 4
-        , Element.paddingXY 25 17
-        , Element.Font.size 18
-        , Element.Font.semiBold
-        , Element.Background.color lightGray
-        , Element.above <|
-            maybeErrorElement
-                [ Element.moveUp 5 ]
-                maybeTipText
-        ]
+        (attributes
+            ++ [ Element.Border.rounded 4
+               , Element.paddingXY 25 17 |> changeForMobile (Element.paddingXY 10 5) dProfile
+               , Element.Font.size (18 |> changeForMobile 16 dProfile)
+               , Element.Font.semiBold
+               , Element.Background.color lightGray
+               , Element.above <|
+                    maybeErrorElement
+                        [ Element.moveUp 5 ]
+                        maybeTipText
+               ]
+        )
         (Element.text text)
 
 
-orangeButton : String -> msg -> Element msg
-orangeButton text msg =
-    button
+orangeButton : DisplayProfile -> List (Attribute msg) -> List String -> msg -> Element msg
+orangeButton dProfile attributes text msg =
+    button dProfile
+        attributes
         ( Element.rgba 1 0.6 0.2 1
         , Element.rgba 1 0.6 0.2 0.8
         , Element.rgba 1 0.6 0.2 0.6
@@ -916,8 +933,8 @@ modal overlayColor includeScrollbarY clickInsideMsg clickOutsideMsg el =
         el
 
 
-closeableModal : List (Attribute msg) -> Element msg -> msg -> msg -> Bool -> Element msg
-closeableModal extraAttributes innerEl clickInsideMsg closeMsg includeScrollbarY =
+closeableModal : Bool -> List (Attribute msg) -> Element msg -> msg -> msg -> Bool -> Element msg
+closeableModal isBlack extraAttributes innerEl clickInsideMsg closeMsg includeScrollbarY =
     modal
         (Element.rgba 0 0 0.3 0.6)
         includeScrollbarY
@@ -935,20 +952,28 @@ closeableModal extraAttributes innerEl clickInsideMsg closeMsg includeScrollbarY
                     [ Element.alignRight
                     , Element.alignTop
                     ]
-                    (closeButton closeMsg)
+                    (closeButton isBlack closeMsg)
              ]
                 ++ extraAttributes
             )
             innerEl
 
 
-txProcessModal : List (Element msg) -> msg -> msg -> Element msg
-txProcessModal textLines clickInsideMsg closeMsg =
+closeableModalBlackX =
+    closeableModal True
+
+
+closeableModalWhiteX =
+    closeableModal False
+
+
+txProcessModal : List (Element msg) -> msg -> msg -> msg -> Element msg
+txProcessModal textLines clickInsideMsg closeMsg clickOutsideMsg =
     modal
         (Element.rgba 0 0 0.3 0.6)
         False
         clickInsideMsg
-        closeMsg
+        clickOutsideMsg
     <|
         Element.column
             [ Element.spacing 10
@@ -957,6 +982,12 @@ txProcessModal textLines clickInsideMsg closeMsg =
             , Element.Background.color <| Element.rgba 0 0 0 0.5
             , Element.Border.rounded 8
             , Element.padding 20
+            , Element.inFront <|
+                Element.el
+                    [ Element.alignRight
+                    , Element.alignTop
+                    ]
+                    (closeButton False closeMsg)
             ]
             (textLines
                 |> List.map
@@ -1134,13 +1165,7 @@ scrollbarYEl attrs body =
 simpleSubmodelContainer : Int -> Element msg -> Element msg
 simpleSubmodelContainer maxWidth el =
     Element.el
-        [ Element.paddingEach
-            { top = 60
-            , bottom = 40
-            , right = 0
-            , left = 0
-            }
-        , Element.width Element.fill
+        [ Element.width Element.fill
         ]
     <|
         Element.el
@@ -1158,16 +1183,10 @@ simpleSubmodelContainer maxWidth el =
             el
 
 
-submodelContainer : Int -> Maybe String -> Maybe (Element msg) -> Element msg -> Element msg
-submodelContainer maxWidth maybeBigTitleText maybeTitleEl el =
+submodelContainer : Int -> DisplayProfile -> Maybe String -> Maybe (Element msg) -> Element msg -> Element msg
+submodelContainer maxWidth dProfile maybeBigTitleText maybeTitleEl el =
     Element.column
-        [ Element.paddingEach
-            { top = 60
-            , bottom = 40
-            , right = 0
-            , left = 0
-            }
-        , Element.spacing 60
+        [ Element.spacing 60
         , Element.width Element.fill
         ]
         [ Maybe.map
@@ -1182,7 +1201,7 @@ submodelContainer maxWidth maybeBigTitleText maybeTitleEl el =
             |> Maybe.withDefault Element.none
         , Element.column
             [ Element.Background.color <| submodelBackgroundColor
-            , Element.spacing 20
+            , Element.spacing (20 |> changeForMobile 5 dProfile)
             , Element.Border.rounded 8
             , Element.clip
             , Element.centerX
@@ -1197,7 +1216,7 @@ submodelContainer maxWidth maybeBigTitleText maybeTitleEl el =
             [ Maybe.map
                 (Element.el
                     [ Element.width Element.fill
-                    , Element.padding 15
+                    , Element.padding (15 |> changeForMobile 5 dProfile)
                     , Element.Background.color white
                     , Element.Border.shadow
                         { offset = ( 0, 0 )
@@ -1214,23 +1233,23 @@ submodelContainer maxWidth maybeBigTitleText maybeTitleEl el =
         ]
 
 
-withInputHeader : List (Attribute msg) -> String -> Element msg -> Element msg
-withInputHeader attributes titleStr el =
-    withInputHeaderAndMaybeError attributes titleStr Nothing el
+withInputHeader : DisplayProfile -> List (Attribute msg) -> String -> Element msg -> Element msg
+withInputHeader dProfile attributes titleStr el =
+    withInputHeaderAndMaybeError dProfile attributes titleStr Nothing el
 
 
-withInputHeaderAndMaybeError : List (Attribute msg) -> String -> Maybe String -> Element msg -> Element msg
-withInputHeaderAndMaybeError attributes titleStr maybeError el =
+withInputHeaderAndMaybeError : DisplayProfile -> List (Attribute msg) -> String -> Maybe String -> Element msg -> Element msg
+withInputHeaderAndMaybeError dProfile attributes titleStr maybeError el =
     Element.column
         (attributes
             ++ [ Element.spacing 10
                ]
         )
         [ Element.row
-            [ Element.spacing 20
+            [ Element.spacing (20 |> changeForMobile 10 dProfile)
             ]
             [ Element.el
-                [ Element.Font.size 18
+                [ Element.Font.size (18 |> changeForMobile 16 dProfile)
                 , Element.Font.semiBold
                 , Element.Font.color <| Element.rgb255 1 31 52
                 , Element.alignLeft
@@ -1239,7 +1258,7 @@ withInputHeaderAndMaybeError attributes titleStr maybeError el =
             , case maybeError of
                 Just error ->
                     Element.el
-                        [ Element.Font.size 12
+                        [ Element.Font.size (12 |> changeForMobile 10 dProfile)
                         , Element.Font.color softRed
                         ]
                         (Element.text error)
@@ -1398,18 +1417,21 @@ moveToFront =
     Element.htmlAttribute <| Html.Attributes.style "z-index" "1000"
 
 
-optionsDots : Element msg
-optionsDots =
-    let
-        circle =
-            Element.el [ Element.width Element.shrink ]
-                (Collage.circle 5
-                    |> Collage.filled (Collage.uniform Color.darkGray)
-                    |> Collage.Render.svg
-                    |> Element.html
-                )
-    in
-    Element.row
-        [ Element.spacing 7
-        ]
-        (List.repeat 3 circle)
+optionsDots : DisplayProfile -> Element msg
+optionsDots dProfile =
+    case dProfile of
+        Desktop ->
+            Images.toElement
+                []
+                Images.threeDotsHorizontal
+
+        Mobile ->
+            Images.toElement
+                [ Element.paddingXY 5 0 ]
+                Images.threeDotsVertical
+
+
+noSelectText : Attribute msg
+noSelectText =
+    Html.Attributes.style "user-select" "none"
+        |> Element.htmlAttribute

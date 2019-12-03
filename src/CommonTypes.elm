@@ -1,10 +1,15 @@
-module CommonTypes exposing (BuyerOrSeller(..), FactoryType(..), GTagData, InitiatorOrResponder(..), IntervalType(..), NativeFactoryType(..), TokenFactoryType(..), TradeReference, UserInfo, buyerOrSellerToString, dhTokenList, factoryName, intervalTypeToString, networkNameForFactory, tokenSymbol, tokenUnitName)
+module CommonTypes exposing (BuyerOrSeller(..), DisplayProfile(..), FactoryType(..), GTagData, InitiatorOrResponder(..), IntervalType(..), NativeFactoryType(..), TokenFactoryType(..), TradeReference, UserInfo, buyerOrSellerToString, changeForMobile, dhTokenList, factoryName, intervalTypeToString, networkNameForFactory, screenWidthToDisplayProfile, tokenSymbol, tokenUnitName)
 
 import Dict
 import Eth.Net
 import Eth.Types exposing (Address)
 import Json.Decode
 import Json.Encode
+
+
+type DisplayProfile
+    = Desktop
+    | Mobile
 
 
 type alias GTagData =
@@ -58,6 +63,25 @@ type IntervalType
     = Expiry
     | Payment
     | Judgment
+
+
+screenWidthToDisplayProfile : Int -> DisplayProfile
+screenWidthToDisplayProfile width =
+    if width >= 1150 then
+        Desktop
+
+    else
+        Mobile
+
+
+changeForMobile : a -> DisplayProfile -> a -> a
+changeForMobile changed dProfile original =
+    case dProfile of
+        Desktop ->
+            original
+
+        Mobile ->
+            changed
 
 
 intervalTypeToString : IntervalType -> String
@@ -115,7 +139,7 @@ tokenUnitName factoryType =
             "ETH"
 
         Native Kovan ->
-            "(k)ETH"
+            "kETH"
 
         Native XDai ->
             "xDai"
@@ -128,13 +152,13 @@ tokenSymbol factoryType =
             "SAI"
 
         Token KovanDai ->
-            "SAI"
+            "(K)SAI"
 
         Native Eth ->
             "ETH"
 
         Native Kovan ->
-            "ETH"
+            "KETH"
 
         Native XDai ->
             "XDAI"
@@ -159,8 +183,12 @@ networkNameForFactory factoryType =
             "xDai"
 
 
-dhTokenList : List FactoryType
-dhTokenList =
-    [ Native XDai
-    , Token EthDai
-    ]
+dhTokenList : Bool -> List FactoryType
+dhTokenList testMode =
+    if testMode then
+        [ Token KovanDai ]
+
+    else
+        [ Native XDai
+        , Token EthDai
+        ]
