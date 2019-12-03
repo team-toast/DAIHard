@@ -416,6 +416,7 @@ userNotice dProfile ( id, notice ) =
         , Element.Border.width 1
         , Element.Border.color <| Element.rgba 0 0 0 0.15
         , EH.subtleShadow
+        , EH.onClickNoPropagation NoOp
         ]
         (notice.mainParagraphs
             |> List.indexedMap
