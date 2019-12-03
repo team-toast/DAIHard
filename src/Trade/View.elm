@@ -1595,7 +1595,70 @@ getTxModalOrNone : DisplayProfile -> Model -> Element Msg
 getTxModalOrNone dProfile model =
     case ( model.txChainStatus, model.trade ) of
         ( Just txChainStatus, CTypes.LoadedTrade trade ) ->
-            case txChainStatus of
+            let
+                confirmAbortAttributes =
+                    if txChainStatus.confirmingAbort then
+                        let
+                            message =
+                                case txChainStatus.mode of
+                                    ConfirmingCommit _ _ ->
+                                        ""
+
+                                    ApproveNeedsSig ->
+                                        ""
+
+                                    ConfirmingAction _ ->
+                                        ""
+
+                                    ActionNeedsSig _ ->
+                                        ""
+
+                                    ApproveMining _ ->
+                                        "If you abort now, your deposit will not complete and you won't commit to the offer."
+
+                                    CommitNeedsSig ->
+                                        "If you abort now, your deposit will not complete and you won't commit to the offer."
+
+                                    CommitMining _ ->
+                                        "Aborting now WILL NOT PREVENT the deposit and commitment; it will only return you to the Trade page. You may be able to cancel the transaciton in your web3 wallet."
+
+                                    ActionMining _ _ ->
+                                        "Aborting now WILL NOT CANCEL this action! You may be able to cancel the transaction via your web3 wallet."
+                        in
+                        [ Element.inFront <|
+                            Element.column
+                                [ Element.centerX
+                                , Element.centerY
+                                , Element.padding 10
+                                , Element.spacing 10
+                                , Element.Border.rounded 5
+                                , Element.Background.color EH.white
+                                ]
+                                [ Element.paragraph
+                                    [ Element.width Element.fill ]
+                                    [ Element.text message ]
+                                , Element.row
+                                    [ Element.centerX
+                                    , Element.spacing 10
+                                    ]
+                                    [ EH.redButton
+                                        dProfile
+                                        []
+                                        [ "Abort" ]
+                                        ConfirmCloseTxModalClicked
+                                    , EH.blueButton
+                                        dProfile
+                                        []
+                                        [ "Nevermind" ]
+                                        NevermindCloseTxModalClicked
+                                    ]
+                                ]
+                        ]
+
+                    else
+                        []
+            in
+            case txChainStatus.mode of
                 ConfirmingCommit userInfo deposit ->
                     let
                         depositAmountString =
@@ -1696,52 +1759,85 @@ getTxModalOrNone dProfile model =
                             ]
                         )
                         NoOp
-                        AbortAction
+                        CloseTxModalClicked
                         False
 
                 ApproveNeedsSig ->
-                    EH.txProcessModal
-                        [ Element.text "Waiting for user signature for the approve call."
-                        , Element.text "(check Metamask!)"
-                        , Element.text "Note that there will be a second transaction to sign after this."
-                        ]
-                        NoOp
-                        NoOp
+                    Element.el
+                        (confirmAbortAttributes
+                            ++ [ Element.centerX
+                               , Element.centerY
+                               ]
+                        )
+                    <|
+                        EH.txProcessModal
+                            [ Element.text "Waiting for user signature for the approve call."
+                            , Element.text "(check Metamask!)"
+                            , Element.text "Note that there will be a second transaction to sign after this."
+                            ]
+                            NoOp
+                            CloseTxModalClicked
+                            NoOp
 
                 ApproveMining txHash ->
-                    EH.txProcessModal
-                        [ Element.text "Mining the initial approve transaction..."
-                        , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                            { url = EthHelpers.makeViewTxUrl trade.reference.factory txHash
-                            , label = Element.text "See the transaction on Etherscan"
-                            }
-                        , Element.text "Funds will not leave your wallet until you sign the next transaction."
-                        ]
-                        NoOp
-                        NoOp
+                    Element.el
+                        (confirmAbortAttributes
+                            ++ [ Element.centerX
+                               , Element.centerY
+                               ]
+                        )
+                    <|
+                        EH.txProcessModal
+                            [ Element.text "Mining the initial approve transaction..."
+                            , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
+                                { url = EthHelpers.makeViewTxUrl trade.reference.factory txHash
+                                , label = Element.text "See the transaction on Etherscan"
+                                }
+                            , Element.text "Funds will not leave your wallet until you sign the next transaction."
+                            ]
+                            NoOp
+                            CloseTxModalClicked
+                            NoOp
 
                 CommitNeedsSig ->
-                    EH.txProcessModal
-                        [ Element.text "Waiting for user signature for the final commit call."
-                        , Element.text "(check Metamask!)"
-                        , Element.text "This will make the deposit and commit you to the trade."
-                        ]
-                        NoOp
-                        NoOp
+                    Element.el
+                        (confirmAbortAttributes
+                            ++ [ Element.centerX
+                               , Element.centerY
+                               ]
+                        )
+                    <|
+                        EH.txProcessModal
+                            [ Element.text "Waiting for user signature for the final commit call."
+                            , Element.text "(check Metamask!)"
+                            , Element.text "This will make the deposit and commit you to the trade."
+                            ]
+                            NoOp
+                            CloseTxModalClicked
+                            NoOp
 
                 CommitMining txHash ->
-                    EH.txProcessModal
-                        [ Element.text "Mining the final commit transaction..."
-                        , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
-                            { url = EthHelpers.makeViewTxUrl trade.reference.factory txHash
-                            , label = Element.text "See the transaction"
-                            }
-                        ]
-                        NoOp
-                        NoOp
+                    Element.el
+                        (confirmAbortAttributes
+                            ++ [ Element.centerX
+                               , Element.centerY
+                               ]
+                        )
+                    <|
+                        EH.txProcessModal
+                            [ Element.text "Mining the final commit transaction..."
+                            , Element.newTabLink [ Element.Font.underline, Element.Font.color EH.blue ]
+                                { url = EthHelpers.makeViewTxUrl trade.reference.factory txHash
+                                , label = Element.text "See the transaction"
+                                }
+                            ]
+                            NoOp
+                            CloseTxModalClicked
+                            NoOp
 
                 ConfirmingAction action ->
-                    EH.closeableModalBlackX []
+                    EH.closeableModalBlackX
+                        confirmAbortAttributes
                         (Element.column
                             [ Element.spacing 20
                             , Element.padding 20
@@ -1818,16 +1914,24 @@ getTxModalOrNone dProfile model =
                             ]
                         )
                         NoOp
-                        AbortAction
+                        CloseTxModalClicked
                         False
 
                 ActionNeedsSig action ->
-                    EH.txProcessModal
-                        [ Element.text <| "Waiting for user signature for the " ++ actionName action ++ " call."
-                        , Element.text "(check Metamask!)"
-                        ]
-                        NoOp
-                        NoOp
+                    Element.el
+                        (confirmAbortAttributes
+                            ++ [ Element.centerX
+                               , Element.centerY
+                               ]
+                        )
+                    <|
+                        EH.txProcessModal
+                            [ Element.text <| "Waiting for user signature for the " ++ actionName action ++ " call."
+                            , Element.text "(check Metamask!)"
+                            ]
+                            NoOp
+                            CloseTxModalClicked
+                            NoOp
 
                 ActionMining action txHash ->
                     Element.none
