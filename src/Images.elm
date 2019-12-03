@@ -360,7 +360,7 @@ confirmExtraInfoIcon place =
     case place of
         0 ->
             JustImage
-                { src = "/DAIHard/static/img/cog.svg"
+                { src = "/DAIHard/static/img/rocket.svg"
                 , description = "info"
                 }
 
@@ -372,7 +372,7 @@ confirmExtraInfoIcon place =
 
         2 ->
             JustImage
-                { src = "/DAIHard/static/img/cog.svg"
+                { src = "/DAIHard/static/img/fishing-fish.svg"
                 , description = "info"
                 }
 
