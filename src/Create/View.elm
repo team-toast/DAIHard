@@ -1351,7 +1351,7 @@ txChainStatusModal dProfile txChainStatus model =
             <|
                 EH.txProcessModal
                     [ Element.text "Waiting for user signature for the approve call."
-                    , Element.text "(check Metamask!)"
+                    , Element.text "(check your web3 wallet!)"
                     , Element.text "Note that there will be a second transaction to sign after this."
                     ]
                     NoOp
@@ -1394,7 +1394,7 @@ txChainStatusModal dProfile txChainStatus model =
             <|
                 EH.txProcessModal
                     [ Element.text "Waiting for user signature for the create call."
-                    , Element.text "(check Metamask!)"
+                    , Element.text "(check your web3 wallet!)"
                     ]
                     NoOp
                     CloseTxModalClicked

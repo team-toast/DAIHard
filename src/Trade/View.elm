@@ -1733,7 +1733,7 @@ getTxModalOrNone dProfile model =
                                      ]
                                         ++ (case trade.reference.factory of
                                                 Token _ ->
-                                                    [ [ Element.text <| "(This ususally requires two Metamask signatures. Your " ++ tokenUnitName trade.reference.factory ++ " will not be deposited until the second transaction has been mined.)" ] ]
+                                                    [ [ Element.text <| "(This ususally requires two web3 signatures. Your " ++ tokenUnitName trade.reference.factory ++ " will not be deposited until the second transaction has been mined.)" ] ]
 
                                                 _ ->
                                                     []
@@ -1772,7 +1772,7 @@ getTxModalOrNone dProfile model =
                     <|
                         EH.txProcessModal
                             [ Element.text "Waiting for user signature for the approve call."
-                            , Element.text "(check Metamask!)"
+                            , Element.text "(check your web3 wallet!)"
                             , Element.text "Note that there will be a second transaction to sign after this."
                             ]
                             NoOp
@@ -1809,7 +1809,7 @@ getTxModalOrNone dProfile model =
                     <|
                         EH.txProcessModal
                             [ Element.text "Waiting for user signature for the final commit call."
-                            , Element.text "(check Metamask!)"
+                            , Element.text "(check your web3 wallet!)"
                             , Element.text "This will make the deposit and commit you to the trade."
                             ]
                             NoOp
@@ -1927,7 +1927,7 @@ getTxModalOrNone dProfile model =
                     <|
                         EH.txProcessModal
                             [ Element.text <| "Waiting for user signature for the " ++ actionName action ++ " call."
-                            , Element.text "(check Metamask!)"
+                            , Element.text "(check your web3 wallet!)"
                             ]
                             NoOp
                             CloseTxModalClicked
