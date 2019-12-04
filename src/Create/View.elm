@@ -1622,14 +1622,12 @@ createConfirmModal dProfile model factoryType createParameters =
 
         infoBody =
             Element.column
-                [ Element.centerX
-                , Element.spacing 10
+                [ Element.spacing 10
                 , Element.width Element.fill
-                , Element.height <| Element.px 180
                 ]
                 (List.map
                     (Element.paragraph
-                        [ Element.Font.size 16
+                        [ Element.Font.size (16 |> changeForMobile 14 dProfile)
                         , Element.Font.color (Element.rgba 1 1 1 0.85)
                         , Element.spacing 2
                         ]
@@ -1693,15 +1691,12 @@ createConfirmModal dProfile model factoryType createParameters =
                                 Buyer ->
                                     [ [ Element.text "Here you are expected to "
                                       , emphasizedText <| "send the full " ++ priceStr ++ " to the seller"
-                                      , Element.text " as you've described in your payment methods. "
-                                      , Element.text "Encrypted chat will be available to help coordinate. "
-                                      , Element.text <| "Once you're sure the seller has received the " ++ priceStr ++ ", you are expected to "
-                                      , emphasizedText <| "confirm here on DAIHard that the " ++ priceStr ++ " has been sent. "
+                                      , Element.text " as you've described in your payment methods, then click \"Confirm Payment\". "
                                       , Element.text "This will move the trade to the "
                                       , emphasizedText "Judgment Phase"
-                                      , Element.text "."
+                                      , Element.text ". Encrypted chat will be available to help coordinate."
                                       ]
-                                    , [ Element.text <| "If you do not claim payment within "
+                                    , [ Element.text <| "If you do not Confirm Payment within "
                                       , emphasizedText paymentWindowStr
                                       , Element.text ", the trade will automatically abort, "
                                       , emphasizedText <| "burning " ++ abortPunishmentStr ++ " from each party"
@@ -1712,14 +1707,11 @@ createConfirmModal dProfile model factoryType createParameters =
                                 Seller ->
                                     [ [ Element.text "Here, the buyer is expected to "
                                       , emphasizedText <| "send the full " ++ priceStr ++ " to you "
-                                      , Element.text "as you've described in your payment methods. "
-                                      , Element.text <| "Encrypted chat will be available to help coordinate. Once you've received the " ++ priceStr ++ ", "
-                                      , Element.text "the buyer is expected to confirm here on DAIHard that the payment is complete."
-                                      , Element.text " This will move the trade to the "
+                                      , Element.text "as you've described in your payment methods, then move the trade to the "
                                       , emphasizedText "Judgment Phase"
-                                      , Element.text "."
+                                      , Element.text ". Encrypted chat will be available to help coordinate."
                                       ]
-                                    , [ Element.text <| "If the buyer does not claim payment within "
+                                    , [ Element.text <| "If the buyer does not Confirm Payment within "
                                       , emphasizedText paymentWindowStr
                                       , Element.text ", the trade will automatically abort, "
                                       , emphasizedText <| "burning " ++ abortPunishmentStr ++ " from each party"
@@ -1730,13 +1722,12 @@ createConfirmModal dProfile model factoryType createParameters =
                         4 ->
                             case createParameters.initiatorRole of
                                 Buyer ->
-                                    [ [ Element.text <| "In this phase, the seller is the the judge and executioner, "
-                                      , emphasizedText <| "and can choose to burn (i.e. destroy) the full trade balance of " ++ totalReleaseableStr
-                                      , Element.text <| " (" ++ buyerDepositStr ++ " from you + " ++ tradeAmountStr ++ " from the seller)."
+                                    [ [ Element.text <| "In this phase, the seller will have the option to "
+                                      , emphasizedText <| "burn (i.e. destroy) the full trade balance of " ++ totalReleaseableStr ++ "."
                                       ]
-                                    , [ Element.text <| "If the seller received the full " ++ priceStr ++ ", "
-                                      , Element.text <| "the seller is expected to release the full " ++ totalReleaseableStr ++ ". "
-                                      , emphasizedText "Otherwise, the seller is expected to burn it."
+                                    , [ Element.text "The seller is expected to do this "
+                                      , emphasizedText <| "if and only if"
+                                      , Element.text <| " you did not sent the " ++ priceStr ++ " as described in your payment methods."
                                       ]
                                     , [ Element.text <| "If the seller doesn't make a decision within this burn window of "
                                       , emphasizedText judgmentWindowStr
@@ -1746,13 +1737,12 @@ createConfirmModal dProfile model factoryType createParameters =
                                     ]
 
                                 Seller ->
-                                    [ [ Element.text <| "In this phase, "
-                                      , emphasizedText <| "you can choose to burn (i.e. destroy) the full trade balance of " ++ totalReleaseableStr
-                                      , Element.text <| " (" ++ buyerDepositStr ++ " from the buyer + " ++ tradeAmountStr ++ " from you), rather than releasing it to the buyer."
+                                    [ [ Element.text <| "In this phase, you will have the option to "
+                                      , emphasizedText <| "burn (i.e. destroy) the full trade balance of " ++ totalReleaseableStr ++ "."
                                       ]
                                     , [ Element.text "You are expected to do this "
                                       , emphasizedText <| "if and only if"
-                                      , Element.text <| " the buyer has not sent the " ++ priceStr ++ " as described in your payment methods."
+                                      , Element.text <| " the buyer did not sent the " ++ priceStr ++ " as described in your payment methods."
                                       ]
                                     , [ Element.text <| "In "
                                       , emphasizedText judgmentWindowStr
