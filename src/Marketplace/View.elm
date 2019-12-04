@@ -495,6 +495,7 @@ applyButton =
         [ Element.Background.color EH.blue
         , Element.padding 10
         , Element.Border.rounded 5
+        , EH.noSelectText
         ]
         { onPress = Just ApplyInputs
         , label =
@@ -513,6 +514,7 @@ resetButton =
         [ Element.Background.color EH.blue
         , Element.padding 10
         , Element.Border.rounded 5
+        , EH.noSelectText
         ]
         { onPress = Just ResetSearch
         , label =

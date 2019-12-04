@@ -521,6 +521,7 @@ button dProfile bgColor textColor text maybeOnClick =
          , Element.paddingXY 22 16 |> changeForMobile (Element.padding 10) dProfile
          , Element.Font.color textColor
          , Element.Font.size (20 |> changeForMobile 16 dProfile)
+         , EH.noSelectText
          ]
             ++ (case maybeOnClick of
                     Just onClick ->
@@ -1206,6 +1207,7 @@ placeOrderButton dProfile model =
                  , Element.Font.center
                  , Element.Background.color bgColor
                  , Element.Font.color textColor
+                 , EH.noSelectText
                  , Element.above <|
                     case maybeError of
                         Just error ->
