@@ -46,13 +46,6 @@ init flags url key =
         fullRoute =
             Routing.urlToRoute url
 
-        tooSmallNotice =
-            if flags.width < 1024 then
-                Just <| UN.screenToSmall flags.width
-
-            else
-                Nothing
-
         ( wallet, cmdUpsFromNetwork ) =
             if flags.networkId == 0 then
                 ( Wallet.NoneDetected
@@ -76,9 +69,6 @@ init flags url key =
                     Just _ ->
                         Nothing
 
-        -- userNotices =
-        --     Maybe.Extra.values
-        --         [ tooSmallNotice, providerNotice ]
         userNotices =
             Maybe.Extra.values
                 [ providerNotice ]
