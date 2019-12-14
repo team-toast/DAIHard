@@ -7,11 +7,14 @@ contract BucketSale
 {
     using SafeMath for uint256;
 
+    uint public HUNDRED_PERC = 100000;
+
     struct Buy
     {
         uint valueEntered;
         uint tokensExited;
         bool haveWithdrawn;
+        address referralAddress;
     }
 
     struct Bucket
@@ -19,8 +22,9 @@ contract BucketSale
         uint totalValueEntered;
     }
 
-    mapping (uint256 => Bucket) public buckets;
-    mapping (uint256 => mapping (address => Buy)) public buys;
+    mapping (uint => Bucket) public buckets;
+    mapping (uint => mapping (address => Buy)) public buys;
+    mapping (address => uint) public referredTotal;
 
     address public owner;
     uint public startOfSale;
@@ -32,7 +36,7 @@ contract BucketSale
 
     constructor (
             uint _bucketPeriod,
-            uint _bucketSupply,     
+            uint _bucketSupply,
             Erc20 _tokeOnSale,      // SUGR in our case
             Erc20 _tokenSoldFor)    // typically DAI
         public
@@ -95,7 +99,7 @@ contract BucketSale
     }
 
     event Entered(address indexed _buyer, uint256 _bucket, uint _amount);
-    function enter(address _buyer, uint _amount)
+    function enter(address _buyer, uint _amount, address _referralAddress)
         public
     {
         require(_amount > 0, "can't buy nothing");
@@ -105,6 +109,8 @@ contract BucketSale
 
         Bucket storage bucket = buckets[currentBucket()];
         bucket.totalValueEntered = bucket.totalValueEntered.add(_amount);
+        bucket.referralAddress = _referralAddress;
+        referredTotal[_referralAddress] = referredTotal[_referralAddress].add(_amount);
 
         bool transferSuccess = tokenSoldFor.transferFrom(_buyer, address(this), _amount);
         require(transferSuccess, "transfer failed");
@@ -125,12 +131,34 @@ contract BucketSale
         require(!buyToWithdraw.haveWithdrawn, "already withdrawn");
 
         Bucket storage bucket = buckets[_bucketID];
-        uint amountToWithdraw = bucketSupply.div(bucket.totalValueEntered).mul(buyToWithdraw.valueEntered);
+        uint baseAmount = bucketSupply.mul(buyToWithdraw.valueEntered).div(bucket.totalValueEntered);
+        uint rewardAmount = baseAmount.mul().div(1000000);
+        uint referralAmount = baseAmount.mul(referrerReferralRewardPerc(buy.referralAddress)).div(HUNDRED_PERC);
         buyToWithdraw.haveWithdrawn = true;
 
-        bool transferSuccess = tokenOnSale.transfer(msg.sender, amountToWithdraw);
-        require(transferSuccess, "erc20 transfer failed");
+        bool transferSuccess = tokenOnSale.transfer(msg.sender, baseAmount);
+        require(transferSuccess, "erc20 base transfer failed");
 
-        emit Exited(_buyer, _bucketID, amountToWithdraw);
+        bool rewardTransferSuccess = tokenOnSale.transfer(msg.sender, referralAmount);
+        require(transferSuccess, "erc20 referral reward transfer failed");
+
+        emit Exited(_buyer, _bucketID, baseAmount);
     }
+
+    function buyerReferralRewardPerc(address _referralAddress)
+        public
+        returns(uint)
+    {
+        return 1100000;
+    }
+
+    //perc is between 0 and 100k, so 3 decimal precision.
+    function referrerReferralRewardPerc(address _referralAddress)
+        public
+        returns(uint)
+    {
+        uint daiContributed = referredTotal[_referralAddress].div(1000000000000000000);
+        uint multiplier = daiContributed + 10000;
+        uint result = min(HUNDRED_PERC, multiplier);
+        return result;
 }
