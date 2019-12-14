@@ -17,6 +17,7 @@ import Helpers.Eth as EthHelpers
 import Json.Decode
 import Marketplace.Types
 import Routing
+import SugarSale.Types
 import Time
 import Trade.Types
 import TradeCache.Types as TradeCache exposing (TradeCache)
@@ -54,6 +55,7 @@ type Submodel
     | TradeModel Trade.Types.Model
     | MarketplaceModel Marketplace.Types.Model
     | AgentHistoryModel AgentHistory.Types.Model
+    | SugarSaleModel SugarSale.Types.Model
 
 
 type Msg
@@ -73,6 +75,7 @@ type Msg
     | TradeMsg Trade.Types.Msg
     | MarketplaceMsg Marketplace.Types.Msg
     | AgentHistoryMsg AgentHistory.Types.Msg
+    | SugarSaleMsg SugarSale.Types.Msg
     | DismissNotice Int
     | ClickHappened
     | NoOp

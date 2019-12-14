@@ -30,6 +30,8 @@ import Marketplace.State
 import Maybe.Extra
 import Notifications
 import Routing
+import SugarSale.State
+import SugarSale.Types as SugarSale
 import Time
 import Trade.State
 import TradeCache.State as TradeCache
@@ -441,6 +443,33 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
+        SugarSaleMsg sugarSaleMsg ->
+            case model.submodel of
+                SugarSaleModel sugarSaleModel ->
+                    let
+                        updateResult =
+                            SugarSale.State.update sugarSaleMsg sugarSaleModel
+
+                        ( newTxSentry, chainCmd, userNotices ) =
+                            ChainCmd.execute model.txSentry (ChainCmd.map SugarSaleMsg updateResult.chainCmd)
+                    in
+                    ( { model
+                        | submodel = SugarSaleModel updateResult.model
+                        , txSentry = newTxSentry
+                      }
+                    , Cmd.batch
+                        [ Cmd.map SugarSaleMsg updateResult.cmd
+                        , chainCmd
+                        ]
+                    )
+                        |> runCmdUps
+                            (CmdUp.mapList SugarSaleMsg updateResult.cmdUps
+                                ++ List.map CmdUp.UserNotice userNotices
+                            )
+
+                _ ->
+                    ( model, Cmd.none )
+
         TxSentryMsg subMsg ->
             let
                 ( newTxSentry, subCmd ) =
@@ -789,6 +818,28 @@ runCmdDown cmdDown prevModel =
                         ++ List.map CmdUp.UserNotice userNotices
                     )
 
+        SugarSaleModel sugarSaleModel ->
+            let
+                updateResult =
+                    sugarSaleModel |> SugarSale.State.runCmdDown cmdDown
+
+                ( newTxSentry, chainCmd, userNotices ) =
+                    ChainCmd.execute prevModel.txSentry (ChainCmd.map SugarSaleMsg updateResult.chainCmd)
+            in
+            ( { prevModel
+                | submodel = SugarSaleModel updateResult.model
+                , txSentry = newTxSentry
+              }
+            , Cmd.batch
+                [ Cmd.map SugarSaleMsg updateResult.cmd
+                , chainCmd
+                ]
+            )
+                |> runCmdUps
+                    (CmdUp.mapList SugarSaleMsg updateResult.cmdUps
+                        ++ List.map CmdUp.UserNotice userNotices
+                    )
+
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
@@ -834,6 +885,9 @@ submodelSubscriptions model =
 
         AgentHistoryModel agentHistoryModel ->
             Sub.map AgentHistoryMsg <| AgentHistory.State.subscriptions agentHistoryModel
+
+        SugarSaleModel sugarSaleModel ->
+            Sub.map SugarSaleMsg <| SugarSale.State.subscriptions sugarSaleModel
 
 
 port walletSentryPort : (Json.Decode.Value -> msg) -> Sub msg

@@ -20,6 +20,7 @@ import Images exposing (Image)
 import Marketplace.Types
 import Marketplace.View
 import Routing
+import SugarSale.View
 import Trade.View
 import Types exposing (..)
 import UserNotice as UN exposing (UserNotice)
@@ -510,6 +511,12 @@ submodelElementAndModal dProfile model =
                     ( Element.map AgentHistoryMsg (AgentHistory.View.root model.time dProfile model.tradeCaches agentHistoryModel)
                     , []
                     )
+
+                SugarSaleModel sugarSaleModel ->
+                    SugarSale.View.root dProfile sugarSaleModel
+                        |> Tuple.mapBoth
+                            (Element.map SugarSaleMsg)
+                            (List.map (Element.map SugarSaleMsg))
     in
     ( Element.el
         [ Element.width Element.fill
