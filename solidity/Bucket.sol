@@ -156,6 +156,7 @@ contract BucketSale
     function referrerReferralRewardPerc(address _referralAddress)
         public
         returns(uint)
+        //comment
     {
         uint daiContributed = referredTotal[_referralAddress].div(1000000000000000000);
         uint multiplier = daiContributed + 10000;
