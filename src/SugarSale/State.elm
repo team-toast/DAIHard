@@ -13,16 +13,27 @@ import Utils
 import Wallet
 
 
-init : Bool -> Wallet.State -> UpdateResult
+init : Bool -> Wallet.State -> ( Model, Cmd Msg )
 init testMode wallet =
-    Debug.todo ""
+    ( { wallet = wallet
+      , testMode = testMode
+      }
+    , Cmd.none
+    )
 
 
 update : Msg -> Model -> UpdateResult
 update msg prevModel =
     case msg of
-        _ ->
-            Debug.todo ""
+        NoOp ->
+            justModelUpdate prevModel
+
+        CmdUp cmdUp ->
+            UpdateResult
+                prevModel
+                Cmd.none
+                ChainCmd.none
+                [ cmdUp ]
 
 
 runCmdDown : CmdDown -> Model -> UpdateResult
@@ -41,6 +52,4 @@ runCmdDown cmdDown prevModel =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch
-        [ Time.every 500 UpdateNow
-        ]
+    Sub.none

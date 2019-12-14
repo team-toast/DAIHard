@@ -19,4 +19,6 @@ import Wallet
 
 root : DisplayProfile -> Model -> ( Element Msg, List (Element Msg) )
 root dProfile model =
-    Debug.todo ""
+    ( Element.none
+    , []
+    )

@@ -185,6 +185,28 @@ headerContent dProfile model =
                         ConnectToWeb3
                         Important
             ]
+        , case dProfile of
+            Desktop ->
+                Element.el
+                    [ Element.centerX
+                    , Element.alignTop
+                    ]
+                <|
+                    headerLink
+                        dProfile
+                        Nothing
+                        "Sugar"
+                        (GotoRoute <| Routing.SugarSale)
+                        (case model.submodel of
+                            SugarSaleModel _ ->
+                                Active
+
+                            _ ->
+                                Normal
+                        )
+
+            Mobile ->
+                Element.none
         , let
             smLinks =
                 [ Element.el

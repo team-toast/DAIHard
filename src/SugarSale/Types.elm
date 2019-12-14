@@ -12,14 +12,12 @@ import Wallet
 type alias Model =
     { wallet : Wallet.State
     , testMode : Bool
-    , now : Time.Posix
     }
 
 
 type Msg
     = NoOp
     | CmdUp (CmdUp Msg)
-    | UpdateNow Time.Posix
 
 
 type alias UpdateResult =

@@ -699,6 +699,19 @@ gotoPageRoute route prevModel =
                 ]
             )
 
+        Routing.SugarSale ->
+            let
+                ( sugarSaleModel, sugarSaleCmd ) =
+                    SugarSale.State.init prevModel.testMode prevModel.wallet
+            in
+            ( { prevModel
+                | submodel = SugarSaleModel sugarSaleModel
+              }
+            , Cmd.batch
+                [ Cmd.map SugarSaleMsg sugarSaleCmd
+                ]
+            )
+
         Routing.NotFound ->
             ( prevModel |> addUserNotice UN.invalidUrl
             , Cmd.none
