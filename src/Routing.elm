@@ -24,6 +24,7 @@ type PageRoute
     | Trade TradeReference
     | Marketplace
     | AgentHistory Address
+    | SugarSale
     | NotFound
 
 
@@ -45,6 +46,7 @@ pageRouteParser =
         , Url.Parser.map Marketplace (Url.Parser.s "marketplace")
         , Url.Parser.map AgentHistory (Url.Parser.s "history" </> addressParser)
         , Url.Parser.map (\address -> AgentHistory address) (Url.Parser.s "history" </> addressParser)
+        , Url.Parser.map SugarSale (Url.Parser.s "sugar")
         ]
 
 
@@ -78,6 +80,9 @@ routeToString fullRoute =
 
                     AgentHistory address ->
                         [ "history", Eth.Utils.addressToString address ]
+
+                    SugarSale ->
+                        [ "sugar" ]
 
                     NotFound ->
                         []
