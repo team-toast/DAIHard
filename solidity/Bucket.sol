@@ -13,7 +13,6 @@ contract BucketSale
     {
         uint valueEntered;
         uint tokensExited;
-        bool haveWithdrawn;
         address referralAddress;
     }
 
@@ -128,19 +127,19 @@ contract BucketSale
 
         Buy storage buyToWithdraw = buys[_bucketID][msg.sender];
         require(buyToWithdraw.valueEntered > 0, "can't take out if you didn't put in");
-        require(!buyToWithdraw.haveWithdrawn, "already withdrawn");
+        require(buyToWithdraw.tokensExited == 0, "already withdrawn");
 
         Bucket storage bucket = buckets[_bucketID];
         uint baseAmount = bucketSupply.mul(buyToWithdraw.valueEntered).div(bucket.totalValueEntered);
         uint rewardAmount = baseAmount.mul().div(1000000);
         uint referralAmount = baseAmount.mul(referrerReferralRewardPerc(buy.referralAddress)).div(HUNDRED_PERC);
-        buyToWithdraw.haveWithdrawn = true;
 
-        bool transferSuccess = tokenOnSale.transfer(msg.sender, baseAmount);
-        require(transferSuccess, "erc20 base transfer failed");
+        buyToWithdraw.tokensExited = baseAmount + referralAmount;
 
-        bool rewardTransferSuccess = tokenOnSale.transfer(msg.sender, referralAmount);
-        require(transferSuccess, "erc20 referral reward transfer failed");
+        bool transferSuccess = tokenOnSale.transfer(msg.sender, buyToWithdraw.tokensExited);
+        require(transferSuccess, "erc20 transfer failed");
+
+        TODO: transfer referral reward to referrer
 
         emit Exited(_buyer, _bucketID, baseAmount);
     }
