@@ -17,6 +17,8 @@ init : Bool -> Wallet.State -> ( Model, Cmd Msg )
 init testMode wallet =
     ( { wallet = wallet
       , testMode = testMode
+      , currentBlock = Debug.todo ""
+      , buckets = Debug.todo ""
       }
     , Cmd.none
     )

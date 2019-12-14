@@ -19,6 +19,36 @@ import Wallet
 
 root : DisplayProfile -> Model -> ( Element Msg, List (Element Msg) )
 root dProfile model =
-    ( Element.none
+    ( Element.column
+        [ Element.width Element.fill
+        , Element.paddingEach
+            { bottom = 40
+            , top = 0
+            , right = 0
+            , left = 0
+            }
+        ]
+        [ EH.simpleSubmodelContainer
+            (1200 |> changeForMobile 400 dProfile)
+            (Element.column
+                [ Element.width Element.fill
+                , Element.spacing (20 |> changeForMobile 10 dProfile)
+                , Element.padding (20 |> changeForMobile 10 dProfile)
+                ]
+                [ bucketsRow dProfile model
+                , entryUX dProfile model
+                ]
+            )
+        ]
     , []
     )
+
+
+bucketsRow : DisplayProfile -> Model -> Element Msg
+bucketsRow dProfile model =
+    Element.text "buckets row"
+
+
+entryUX : DisplayProfile -> Model -> Element Msg
+entryUX dProfile model =
+    Element.text "entry UX"
