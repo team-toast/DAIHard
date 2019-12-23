@@ -4,6 +4,7 @@ import ChainCmd exposing (ChainCmd)
 import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Eth.Types exposing (Address, TxHash, TxReceipt)
+import Http
 import Time
 import TokenValue exposing (TokenValue)
 import Wallet
@@ -20,6 +21,8 @@ type alias Model =
 type Msg
     = NoOp
     | CmdUp (CmdUp Msg)
+    | Refresh
+    | BlocknumFetched (Result Http.Error Int)
 
 
 type alias UpdateResult =

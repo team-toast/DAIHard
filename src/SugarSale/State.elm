@@ -5,7 +5,10 @@ import CmdDown exposing (CmdDown)
 import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Config
+import Eth
+import Helpers.Eth as EthHelpers
 import SugarSale.Types exposing (..)
+import Task
 import Time
 import TokenValue exposing (TokenValue)
 import UserNotice as UN
@@ -20,7 +23,7 @@ init testMode wallet =
       , currentBlock = Debug.todo ""
       , buckets = Debug.todo ""
       }
-    , Cmd.none
+    , fetchBlocknumCmd
     )
 
 
@@ -36,6 +39,32 @@ update msg prevModel =
                 Cmd.none
                 ChainCmd.none
                 [ cmdUp ]
+
+        Refresh ->
+            UpdateResult
+                prevModel
+                fetchBlocknumCmd
+                ChainCmd.none
+                []
+
+        BlocknumFetched fetchResult ->
+            case fetchResult of
+                Ok blocknum ->
+                    justModelUpdate
+                        { prevModel | currentBlock = Just blocknum }
+
+                Err httpErr ->
+                    let
+                        _ =
+                            Debug.log "http error when fetching blocknum" httpErr
+                    in
+                    justModelUpdate prevModel
+
+
+fetchBlocknumCmd : Cmd Msg
+fetchBlocknumCmd =
+    Eth.getBlockNumber (EthHelpers.httpProviderForFactory (Token EthDai))
+        |> Task.attempt BlocknumFetched
 
 
 runCmdDown : CmdDown -> Model -> UpdateResult
@@ -54,4 +83,4 @@ runCmdDown cmdDown prevModel =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    Time.every 500 (always Refresh)
