@@ -13,7 +13,6 @@ contract BucketSale
     {
         uint valueEntered;
         uint tokensExited;
-        bool haveWithdrawn;
         address referralAddress;
     }
 
@@ -106,10 +105,11 @@ contract BucketSale
 
         Buy storage buy = buys[currentBucket()][_buyer];
         buy.valueEntered = buy.valueEntered.add(_amount);
+        buy.referralAddress = _referralAddress;
 
         Bucket storage bucket = buckets[currentBucket()];
         bucket.totalValueEntered = bucket.totalValueEntered.add(_amount);
-        bucket.referralAddress = _referralAddress;
+        
         referredTotal[_referralAddress] = referredTotal[_referralAddress].add(_amount);
 
         bool transferSuccess = tokenSoldFor.transferFrom(_buyer, address(this), _amount);
@@ -128,19 +128,30 @@ contract BucketSale
 
         Buy storage buyToWithdraw = buys[_bucketID][msg.sender];
         require(buyToWithdraw.valueEntered > 0, "can't take out if you didn't put in");
-        require(!buyToWithdraw.haveWithdrawn, "already withdrawn");
+        require(buyToWithdraw.tokensExited == 0, "already withdrawn");
 
         Bucket storage bucket = buckets[_bucketID];
         uint baseAmount = bucketSupply.mul(buyToWithdraw.valueEntered).div(bucket.totalValueEntered);
-        uint rewardAmount = baseAmount.mul().div(1000000);
-        uint referralAmount = rewardAmount.mul(referrerReferralRewardPerc(buy.referralAddress)).div(HUNDRED_PERC);
-        buyToWithdraw.haveWithdrawn = true;
 
-        bool transferSuccess = tokenOnSale.transfer(msg.sender, baseAmount);
-        require(transferSuccess, "erc20 base transfer failed");
+        uint msgsenderReferralBonus;
+        uint referrerReward;
+        if (buyToWithdraw.referralAddress == address(0x0)) {
+            msgsenderReferralBonus = referrerReward = 0;
+        }
+        else {
+            msgsenderReferralBonus = baseAmount.mul(110000).div(100000);
+            referrerReward = baseAmount.mul(referrerRewardPerc(buy.referralAddress)).div(HUNDRED_PERC);
+        }
 
-        bool rewardTransferSuccess = tokenOnSale.transfer(msg.sender, referralAmount);
-        require(rewardTransferSuccess, "erc20 referral reward transfer failed");
+        buyToWithdraw.tokensDisbursed = baseAmount + msgsenderReferralBonus + referrerReward;
+
+        bool transferSuccess = tokenOnSale.transfer(msg.sender, baseAmount + msgsenderReferralBonus);
+        require(transferSuccess, "erc20 transfer failed");
+
+        if (buyToWithdraw.referralAddress != address(0x0)) {
+            transferSuccess = tokenOnSale.transfer(buyToWithdraw.referralAddress, referrerReward);
+            require(transferSuccess, "erc20 transfer to referrer failed");
+        }
 
         emit Exited(_buyer, _bucketID, baseAmount);
     }
@@ -153,13 +164,12 @@ contract BucketSale
     }
 
     //perc is between 0 and 100k, so 3 decimal precision.
-    function referrerReferralRewardPerc(address _referralAddress)
+    function referrerRewardPerc(address _referralAddress)
         public
         returns(uint)
     {
-        uint daiContributed = referredTotal[_referralAddress].div(1000000000000000000);
-        uint multiplier = daiContributed + 10000;
+        uint daiReferredTotal = referredTotal[_referralAddress].div(1000000000000000000);
+        uint multiplier = daiReferredTotal + 10000;
         uint result = min(HUNDRED_PERC, multiplier);
         return result;
-    }
 }
