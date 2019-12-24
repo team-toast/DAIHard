@@ -1,10 +1,16 @@
+// solium-disable linebreak-style
 pragma solidity 0.5.11;
 
 import "./SafeMath.sol";
-import "./Erc20.sol";
+import "./ERC20Interface.sol";
 
 contract BucketSale
 {
+    function min(uint a, uint b) public pure returns (uint) {
+        if (a < b) return a;
+        else return b;
+    }
+
     using SafeMath for uint256;
 
     uint public HUNDRED_PERC = 100000;
@@ -12,7 +18,7 @@ contract BucketSale
     struct Buy
     {
         uint valueEntered;
-        uint tokensExited;
+        uint tokensDisbursed;
         address referralAddress;
     }
 
@@ -30,14 +36,14 @@ contract BucketSale
     uint public endOfSale;
     uint public bucketPeriod;
     uint public bucketSupply;
-    Erc20 public tokenOnSale;
-    Erc20 public tokenSoldFor;
+    ERC20Interface public tokenOnSale;
+    ERC20Interface public tokenSoldFor;
 
     constructor (
             uint _bucketPeriod,
             uint _bucketSupply,
-            Erc20 _tokeOnSale,      // SUGR in our case
-            Erc20 _tokenSoldFor)    // typically DAI
+            ERC20Interface _tokeOnSale,      // SUGR in our case
+            ERC20Interface _tokenSoldFor)    // typically DAI
         public
     {
         owner = msg.sender;
@@ -59,7 +65,16 @@ contract BucketSale
         public
         onlyOwner
     {
+        require(_startDateTime >= timestamp(), "Can't start the sale in the past");
+        require(startOfSale == 0, "Sale start has already been set");
         startOfSale = _startDateTime;
+    }
+    
+    function startSaleNow()
+        public
+        onlyOwner
+    {
+        startSale(timestamp());
     }
 
     function stopSale(uint _inputEndOfSale)
@@ -87,6 +102,9 @@ contract BucketSale
         view
         returns (uint)
     {
+        require(startOfSale != 0, "No start time for sale");
+        require(startOfSale <= timestamp(), "sale not yet started");
+        
         if (endOfSale == 0 || endOfSale > timestamp())
         {
             return timestamp().sub(startOfSale).div(bucketPeriod);
@@ -128,7 +146,7 @@ contract BucketSale
 
         Buy storage buyToWithdraw = buys[_bucketID][msg.sender];
         require(buyToWithdraw.valueEntered > 0, "can't take out if you didn't put in");
-        require(buyToWithdraw.tokensExited == 0, "already withdrawn");
+        require(buyToWithdraw.tokensDisbursed == 0, "already withdrawn");
 
         Bucket storage bucket = buckets[_bucketID];
         uint baseAmount = bucketSupply.mul(buyToWithdraw.valueEntered).div(bucket.totalValueEntered);
@@ -140,7 +158,7 @@ contract BucketSale
         }
         else {
             msgsenderReferralBonus = baseAmount.mul(110000).div(100000);
-            referrerReward = baseAmount.mul(referrerRewardPerc(buy.referralAddress)).div(HUNDRED_PERC);
+            referrerReward = baseAmount.mul(referrerRewardPerc(buyToWithdraw.referralAddress)).div(HUNDRED_PERC);
         }
 
         buyToWithdraw.tokensDisbursed = baseAmount + msgsenderReferralBonus + referrerReward;
@@ -156,20 +174,15 @@ contract BucketSale
         emit Exited(_buyer, _bucketID, baseAmount);
     }
 
-    function buyerReferralRewardPerc(address _referralAddress)
-        public
-        returns(uint)
-    {
-        return 1100000;
-    }
-
     //perc is between 0 and 100k, so 3 decimal precision.
     function referrerRewardPerc(address _referralAddress)
         public
+        view
         returns(uint)
     {
         uint daiReferredTotal = referredTotal[_referralAddress].div(1000000000000000000);
         uint multiplier = daiReferredTotal + 10000;
         uint result = min(HUNDRED_PERC, multiplier);
         return result;
+    }
 }
