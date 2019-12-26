@@ -32,22 +32,22 @@ contract BucketSale
     mapping (address => uint) public referredTotal;
 
     address public owner;
-    uint public startOfSale;
-    uint public endOfSale;
-    uint public bucketPeriod;
+    uint public saleStartBlock;
+    uint public saleEndBlock;
+    uint public blocksPerBucket;
     uint public bucketSupply;
     ERC20Interface public tokenOnSale;
     ERC20Interface public tokenSoldFor;
 
     constructor (
-            uint _bucketPeriod,
+            uint _blocksPerBucket,
             uint _bucketSupply,
             ERC20Interface _tokeOnSale,      // SUGR in our case
             ERC20Interface _tokenSoldFor)    // typically DAI
         public
     {
         owner = msg.sender;
-        bucketPeriod = _bucketPeriod;
+        blocksPerBucket = _blocksPerBucket;
         bucketSupply = _bucketSupply;
         tokenOnSale = _tokeOnSale;
         tokenSoldFor = _tokenSoldFor;
@@ -59,31 +59,29 @@ contract BucketSale
         _;
     }
 
-    function timestamp() public view returns (uint256 _now) { return block.timestamp; }
-
-    function startSale(uint256 _startDateTime)
+    function setSaleStartBlock(uint256 _startBlock)
         public
         onlyOwner
     {
-        require(_startDateTime >= timestamp(), "Can't start the sale in the past");
-        require(startOfSale == 0, "Sale start has already been set");
-        startOfSale = _startDateTime;
+        require(_startBlock >= block.number, "Can't start the sale in the past");
+        require(saleStartBlock == 0, "Sale start has already been set");
+        saleStartBlock = _startBlock;
     }
-    
+
     function startSaleNow()
         public
         onlyOwner
     {
-        startSale(timestamp());
+        setSaleStartBlock(block.number);
     }
 
-    function stopSale(uint _inputEndOfSale)
+    function setSaleEndBlock(uint _endBlock)
         public
         onlyOwner
     {
-        require(_inputEndOfSale < timestamp(), "cannot be in the past");
-        require(endOfSale == 0 || endOfSale < timestamp(), "cannot extend sale after end date has passed");
-        endOfSale = _inputEndOfSale;
+        require(_endBlock >= block.number, "cannot be in the past");
+        require(saleEndBlock == 0 || block.number <= saleEndBlock, "cannot extend sale after end date has passed");
+        saleEndBlock = _endBlock;
     }
 
     event Drained(address indexed _target, uint _amount);
@@ -102,16 +100,16 @@ contract BucketSale
         view
         returns (uint)
     {
-        require(startOfSale != 0, "No start time for sale");
-        require(startOfSale <= timestamp(), "sale not yet started");
-        
-        if (endOfSale == 0 || endOfSale > timestamp())
+        require(saleStartBlock != 0, "No start time for sale");
+        require(block.number >= saleStartBlock, "sale not yet started");
+
+        if (saleEndBlock == 0 || block.number < saleEndBlock)
         {
-            return timestamp().sub(startOfSale).div(bucketPeriod);
+            return block.number.sub(saleStartBlock).div(blocksPerBucket);
         }
         else
         {
-            return endOfSale.sub(startOfSale).div(bucketPeriod);
+            return saleEndBlock.sub(saleStartBlock).div(blocksPerBucket);
         }
     }
 
@@ -140,9 +138,7 @@ contract BucketSale
     function exit(address _buyer, uint _bucketID)
         public
     {
-        require(
-            timestamp() < endOfSale || _bucketID < currentBucket(),
-            "can only exit from concluded buckets");
+        require(_bucketID < currentBucket(), "can only exit from concluded buckets");
 
         Buy storage buyToWithdraw = buys[_bucketID][msg.sender];
         require(buyToWithdraw.valueEntered > 0, "can't take out if you didn't put in");

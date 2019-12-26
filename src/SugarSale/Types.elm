@@ -1,5 +1,6 @@
-module SugarSale.Types exposing (Model, Msg(..), UpdateResult, justModelUpdate)
+module SugarSale.Types exposing (Bucket, Buy, Model, Msg(..), SugarSale, UpdateResult, getBuysDefaultEmpty, justModelUpdate, totalTokensExited, totalValueEntered)
 
+import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
 import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
@@ -13,8 +14,15 @@ import Wallet
 type alias Model =
     { wallet : Wallet.State
     , testMode : Bool
-    , currentBlock : Maybe Int
-    , buckets : List Bucket
+    , currentBlock : Maybe BigInt
+    , saleStartblock : Maybe BigInt
+    , sugarSale : Maybe SugarSale
+    }
+
+
+type alias SugarSale =
+    { pastBuckets : List Bucket
+    , activeBucket : Bucket
     }
 
 
@@ -23,6 +31,7 @@ type Msg
     | CmdUp (CmdUp Msg)
     | Refresh
     | BlocknumFetched (Result Http.Error Int)
+    | SaleStartblockFetched (Result Http.Error BigInt)
 
 
 type alias UpdateResult =
@@ -43,28 +52,15 @@ justModelUpdate model =
 
 
 type alias Bucket =
-    { startBlock : Int
-    , state : BucketState
+    { startBlock : BigInt
+    , buys : Maybe (List Buy)
     }
-
-
-type BucketState
-    = NotStarted
-    | Active (Maybe (List Buy))
-    | Concluded (Maybe (List Buy))
 
 
 getBuysDefaultEmpty : Bucket -> List Buy
 getBuysDefaultEmpty bucket =
-    case bucket.state of
-        Active (Just buys) ->
-            buys
-
-        Concluded (Just buys) ->
-            buys
-
-        _ ->
-            []
+    bucket.buys
+        |> Maybe.withDefault []
 
 
 totalValueEntered : Bucket -> TokenValue

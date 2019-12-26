@@ -1,7 +1,7 @@
-module Config exposing (activeFactories, devFeeAddress, factoryAddress, tokenContractAddress, tokenDecimals)
+module Config exposing (activeFactories, devFeeAddress, factoryAddress, sugarSaleBlocksPerBucket, testSugarSaleAddress, tokenContractAddress, tokenDecimals)
 
+import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
-import Eth.Net
 import Eth.Types exposing (Address)
 import Eth.Utils
 
@@ -67,3 +67,17 @@ devFeeAddress factoryType =
 
         Native XDai ->
             Eth.Utils.unsafeToAddress "0x092110996699c3E06e998d89F0f4586026e44F0F"
+
+
+testSugarSaleAddress : Address
+testSugarSaleAddress =
+    Eth.Utils.unsafeToAddress "0xfCb3095662c674F46dDfC5B7c2Be4D25b26f6987"
+
+
+sugarSaleBlocksPerBucket : Bool -> BigInt
+sugarSaleBlocksPerBucket testMode =
+    if testMode then
+        BigInt.fromInt 15
+
+    else
+        Debug.todo "blocks per bucket in non-test-mode"
