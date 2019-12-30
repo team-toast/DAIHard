@@ -1,11 +1,13 @@
-module SugarSale.Types exposing (Bucket, Buy, Model, Msg(..), SugarSale, UpdateResult, getBuysDefaultEmpty, justModelUpdate, totalTokensExited, totalValueEntered)
+module SugarSale.Types exposing (Bucket, BucketState(..), BucketView(..), Buy, Model, Msg(..), SugarSale, UpdateResult, getActiveBucketId, getBucketInfo, getBuysDefaultEmpty, justModelUpdate, makeBlankBucket, totalTokensExited, totalValueEntered)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
 import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
+import Config
 import Eth.Types exposing (Address, TxHash, TxReceipt)
 import Http
+import List.Extra
 import Time
 import TokenValue exposing (TokenValue)
 import Wallet
@@ -14,15 +16,10 @@ import Wallet
 type alias Model =
     { wallet : Wallet.State
     , testMode : Bool
-    , currentBlock : Maybe BigInt
-    , saleStartblock : Maybe BigInt
+    , currentBlock : Maybe Int
+    , saleStartblock : Maybe Int
     , sugarSale : Maybe SugarSale
-    }
-
-
-type alias SugarSale =
-    { pastBuckets : List Bucket
-    , activeBucket : Bucket
+    , bucketView : BucketView
     }
 
 
@@ -51,10 +48,59 @@ justModelUpdate model =
     }
 
 
+type alias SugarSale =
+    { startBlock : Int
+    , pastBuckets : List Bucket
+    , activeBucket : Bucket
+    }
+
+
+getBucketInfo : SugarSale -> Int -> Bool -> ( BucketState, Bucket )
+getBucketInfo sugarSale bucketId testMode =
+    case sugarSale.pastBuckets |> List.Extra.getAt bucketId of
+        Just pastBucket ->
+            ( Past, pastBucket )
+
+        Nothing ->
+            if bucketId == List.length sugarSale.pastBuckets then
+                ( Active, sugarSale.activeBucket )
+
+            else
+                ( Future, makeBlankBucket testMode sugarSale.startBlock bucketId )
+
+
+getActiveBucketId : SugarSale -> Int -> Bool -> Int
+getActiveBucketId sugarSale currentBlock testMode =
+    (currentBlock - sugarSale.startBlock)
+        // Config.sugarSaleBlocksPerBucket testMode
+
+
 type alias Bucket =
-    { startBlock : BigInt
+    { startBlock : Int
     , buys : Maybe (List Buy)
     }
+
+
+makeBlankBucket : Bool -> Int -> Int -> Bucket
+makeBlankBucket testMode sugarSaleStartblock bucketId =
+    Bucket
+        (sugarSaleStartblock
+            + (Config.sugarSaleBlocksPerBucket testMode
+                * bucketId
+              )
+        )
+        Nothing
+
+
+type BucketState
+    = Past
+    | Active
+    | Future
+
+
+type BucketView
+    = ViewActive
+    | ViewId Int
 
 
 getBuysDefaultEmpty : Bucket -> List Buy

@@ -9,6 +9,7 @@ import Config
 import Contracts.SugarSale.Wrappers as SugarSaleContract
 import Eth
 import Eth.Types exposing (HttpProvider)
+import Helpers.BigInt as BigIntHelpers
 import Helpers.Eth as EthHelpers
 import List.Extra
 import SugarSale.Types exposing (..)
@@ -28,6 +29,7 @@ init testMode wallet =
           , currentBlock = Nothing
           , saleStartblock = Nothing
           , sugarSale = Nothing
+          , bucketView = ViewActive
           }
         , Cmd.batch
             [ fetchBlocknumCmd testMode
@@ -66,7 +68,7 @@ update msg prevModel =
                         newMaybeSugarSale =
                             case ( prevModel.saleStartblock, prevModel.sugarSale ) of
                                 ( Just saleStartblock, Nothing ) ->
-                                    case initSugarSale prevModel.testMode saleStartblock (BigInt.fromInt blocknum) of
+                                    case initSugarSale prevModel.testMode saleStartblock blocknum of
                                         Just s ->
                                             Just s
 
@@ -76,7 +78,7 @@ update msg prevModel =
                                 ( Just _, Just sugarSale ) ->
                                     Just
                                         (sugarSale
-                                            |> addNewActiveBucketIfNeeded (BigInt.fromInt blocknum)
+                                            |> addNewActiveBucketIfNeeded blocknum prevModel.testMode
                                         )
 
                                 ( Nothing, _ ) ->
@@ -84,7 +86,7 @@ update msg prevModel =
                     in
                     justModelUpdate
                         { prevModel
-                            | currentBlock = Just <| BigInt.fromInt blocknum
+                            | currentBlock = Just blocknum
                             , sugarSale = newMaybeSugarSale
                         }
 
@@ -97,8 +99,11 @@ update msg prevModel =
 
         SaleStartblockFetched fetchResult ->
             case fetchResult of
-                Ok startblock ->
+                Ok startblockBigInt ->
                     let
+                        startblock =
+                            BigIntHelpers.toIntWithWarning startblockBigInt
+
                         newMaybeSugarSale =
                             case ( prevModel.currentBlock, prevModel.sugarSale ) of
                                 ( Just currentBlock, Nothing ) ->
@@ -126,47 +131,63 @@ update msg prevModel =
                     justModelUpdate prevModel
 
 
-initSugarSale : Bool -> BigInt -> BigInt -> Maybe SugarSale
+initSugarSale : Bool -> Int -> Int -> Maybe SugarSale
 initSugarSale testMode saleStartBlock currentBlock =
-    let
-        blocksPerBucket =
-            Config.sugarSaleBlocksPerBucket testMode
+    if saleStartBlock == 0 then
+        Nothing
 
-        bucketState startBlock =
-            Debug.todo ""
+    else
+        let
+            blocksPerBucket =
+                Config.sugarSaleBlocksPerBucket testMode
 
-        allBuckets =
-            List.Extra.iterate
-                (\lastBucketAdded ->
-                    let
-                        nextBucketStartblock =
-                            BigInt.add
-                                lastBucketAdded.startBlock
-                                blocksPerBucket
-                    in
-                    if BigInt.compare nextBucketStartblock currentBlock == GT then
+            allBuckets =
+                List.Extra.iterate
+                    (\lastBucketAdded ->
+                        let
+                            nextBucketStartblock =
+                                lastBucketAdded.startBlock + blocksPerBucket
+                        in
+                        if nextBucketStartblock > currentBlock then
+                            Nothing
+
+                        else
+                            Just <|
+                                Bucket
+                                    nextBucketStartblock
+                                    Nothing
+                    )
+                    (Bucket
+                        saleStartBlock
                         Nothing
+                    )
+        in
+        Maybe.map2
+            (SugarSale saleStartBlock)
+            (List.Extra.init allBuckets)
+            (List.Extra.last allBuckets)
 
-                    else
-                        Just <|
-                            Bucket
-                                nextBucketStartblock
-                                Nothing
-                )
-                (Bucket
-                    saleStartBlock
-                    Nothing
-                )
+
+addNewActiveBucketIfNeeded : Int -> Bool -> SugarSale -> SugarSale
+addNewActiveBucketIfNeeded currentBlock testMode prevSugarSale =
+    let
+        nextBucketStartblock =
+            prevSugarSale.activeBucket.startBlock + Config.sugarSaleBlocksPerBucket testMode
     in
-    Maybe.map2
-        SugarSale
-        (List.Extra.init allBuckets)
-        (List.Extra.last allBuckets)
+    if nextBucketStartblock <= currentBlock then
+        { prevSugarSale
+            | pastBuckets =
+                List.append
+                    prevSugarSale.pastBuckets
+                    [ prevSugarSale.activeBucket ]
+            , activeBucket =
+                Bucket
+                    nextBucketStartblock
+                    Nothing
+        }
 
-
-addNewActiveBucketIfNeeded : BigInt -> SugarSale -> SugarSale
-addNewActiveBucketIfNeeded currentBlock prevSugarSale =
-    Debug.todo ""
+    else
+        prevSugarSale
 
 
 httpProvider : Bool -> HttpProvider
@@ -207,4 +228,4 @@ runCmdDown cmdDown prevModel =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Time.every 500 (always Refresh)
+    Time.every 1000 (always Refresh)

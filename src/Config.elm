@@ -74,10 +74,10 @@ testSugarSaleAddress =
     Eth.Utils.unsafeToAddress "0xfCb3095662c674F46dDfC5B7c2Be4D25b26f6987"
 
 
-sugarSaleBlocksPerBucket : Bool -> BigInt
+sugarSaleBlocksPerBucket : Bool -> Int
 sugarSaleBlocksPerBucket testMode =
     if testMode then
-        BigInt.fromInt 15
+        15
 
     else
         Debug.todo "blocks per bucket in non-test-mode"
