@@ -1,32 +1,28 @@
 module Contracts.SugarSale.Generated.BucketSale exposing
     ( Buy
-    , Drained
     , Entered
     , Exited
-    , blocksPerBucket
+    , Forwarded
+    , bucketPeriod
     , bucketSupply
     , buckets
+    , buyerReferralRewardPerc
     , buys
     , buysDecoder
     , currentBucket
-    , drain
-    , drainedDecoder
-    , drainedEvent
     , enter
     , enteredDecoder
     , enteredEvent
     , exit
     , exitedDecoder
     , exitedEvent
-    , min
+    , forwardedDecoder
+    , forwardedEvent
     , owner
     , referredTotal
-    , referrerRewardPerc
-    , saleEndBlock
-    , saleStartBlock
-    , setSaleEndBlock
-    , setSaleStartBlock
-    , startSaleNow
+    , referrerReferralRewardPerc
+    , startOfSale
+    , timestamp
     , tokenOnSale
     , tokenSoldFor
     )
@@ -48,16 +44,16 @@ import Json.Decode.Pipeline exposing (custom)
 -}
 
 
-{-| "blocksPerBucket()" function
+{-| "bucketPeriod()" function
 -}
-blocksPerBucket : Address -> Call BigInt
-blocksPerBucket contractAddress =
+bucketPeriod : Address -> Call BigInt
+bucketPeriod contractAddress =
     { to = Just contractAddress
     , from = Nothing
     , gas = Nothing
     , gasPrice = Nothing
     , value = Nothing
-    , data = Just <| AbiEncode.functionCall "blocksPerBucket()" []
+    , data = Just <| AbiEncode.functionCall "bucketPeriod()" []
     , nonce = Nothing
     , decoder = toElmDecoder AbiDecode.uint
     }
@@ -93,11 +89,26 @@ buckets contractAddress a =
     }
 
 
+{-| "buyerReferralRewardPerc()" function
+-}
+buyerReferralRewardPerc : Address -> Call BigInt
+buyerReferralRewardPerc contractAddress =
+    { to = Just contractAddress
+    , from = Nothing
+    , gas = Nothing
+    , gasPrice = Nothing
+    , value = Nothing
+    , data = Just <| AbiEncode.functionCall "buyerReferralRewardPerc()" []
+    , nonce = Nothing
+    , decoder = toElmDecoder AbiDecode.uint
+    }
+
+
 {-| "buys(uint256,address)" function
 -}
 type alias Buy =
     { valueEntered : BigInt
-    , tokensDisbursed : BigInt
+    , tokensExited : BigInt
     , referralAddress : Address
     }
 
@@ -139,21 +150,6 @@ currentBucket contractAddress =
     }
 
 
-{-| "drain(address)" function
--}
-drain : Address -> Address -> Call ()
-drain contractAddress target =
-    { to = Just contractAddress
-    , from = Nothing
-    , gas = Nothing
-    , gasPrice = Nothing
-    , value = Nothing
-    , data = Just <| AbiEncode.functionCall "drain(address)" [ AbiEncode.address target ]
-    , nonce = Nothing
-    , decoder = Decode.succeed ()
-    }
-
-
 {-| "enter(address,uint256,address)" function
 -}
 enter : Address -> Address -> BigInt -> Address -> Call ()
@@ -181,21 +177,6 @@ exit contractAddress buyer bucketID =
     , data = Just <| AbiEncode.functionCall "exit(address,uint256)" [ AbiEncode.address buyer, AbiEncode.uint bucketID ]
     , nonce = Nothing
     , decoder = Decode.succeed ()
-    }
-
-
-{-| "min(uint256,uint256)" function
--}
-min : Address -> BigInt -> BigInt -> Call BigInt
-min contractAddress a b =
-    { to = Just contractAddress
-    , from = Nothing
-    , gas = Nothing
-    , gasPrice = Nothing
-    , value = Nothing
-    , data = Just <| AbiEncode.functionCall "min(uint256,uint256)" [ AbiEncode.uint a, AbiEncode.uint b ]
-    , nonce = Nothing
-    , decoder = toElmDecoder AbiDecode.uint
     }
 
 
@@ -229,93 +210,48 @@ referredTotal contractAddress a =
     }
 
 
-{-| "referrerRewardPerc(address)" function
+{-| "referrerReferralRewardPerc(address)" function
 -}
-referrerRewardPerc : Address -> Address -> Call BigInt
-referrerRewardPerc contractAddress referralAddress =
+referrerReferralRewardPerc : Address -> Address -> Call BigInt
+referrerReferralRewardPerc contractAddress referralAddress =
     { to = Just contractAddress
     , from = Nothing
     , gas = Nothing
     , gasPrice = Nothing
     , value = Nothing
-    , data = Just <| AbiEncode.functionCall "referrerRewardPerc(address)" [ AbiEncode.address referralAddress ]
+    , data = Just <| AbiEncode.functionCall "referrerReferralRewardPerc(address)" [ AbiEncode.address referralAddress ]
     , nonce = Nothing
     , decoder = toElmDecoder AbiDecode.uint
     }
 
 
-{-| "saleEndBlock()" function
+{-| "startOfSale()" function
 -}
-saleEndBlock : Address -> Call BigInt
-saleEndBlock contractAddress =
+startOfSale : Address -> Call BigInt
+startOfSale contractAddress =
     { to = Just contractAddress
     , from = Nothing
     , gas = Nothing
     , gasPrice = Nothing
     , value = Nothing
-    , data = Just <| AbiEncode.functionCall "saleEndBlock()" []
+    , data = Just <| AbiEncode.functionCall "startOfSale()" []
     , nonce = Nothing
     , decoder = toElmDecoder AbiDecode.uint
     }
 
 
-{-| "saleStartBlock()" function
+{-| "timestamp()" function
 -}
-saleStartBlock : Address -> Call BigInt
-saleStartBlock contractAddress =
+timestamp : Address -> Call BigInt
+timestamp contractAddress =
     { to = Just contractAddress
     , from = Nothing
     , gas = Nothing
     , gasPrice = Nothing
     , value = Nothing
-    , data = Just <| AbiEncode.functionCall "saleStartBlock()" []
+    , data = Just <| AbiEncode.functionCall "timestamp()" []
     , nonce = Nothing
     , decoder = toElmDecoder AbiDecode.uint
-    }
-
-
-{-| "setSaleEndBlock(uint256)" function
--}
-setSaleEndBlock : Address -> BigInt -> Call ()
-setSaleEndBlock contractAddress endBlock =
-    { to = Just contractAddress
-    , from = Nothing
-    , gas = Nothing
-    , gasPrice = Nothing
-    , value = Nothing
-    , data = Just <| AbiEncode.functionCall "setSaleEndBlock(uint256)" [ AbiEncode.uint endBlock ]
-    , nonce = Nothing
-    , decoder = Decode.succeed ()
-    }
-
-
-{-| "setSaleStartBlock(uint256)" function
--}
-setSaleStartBlock : Address -> BigInt -> Call ()
-setSaleStartBlock contractAddress startBlock =
-    { to = Just contractAddress
-    , from = Nothing
-    , gas = Nothing
-    , gasPrice = Nothing
-    , value = Nothing
-    , data = Just <| AbiEncode.functionCall "setSaleStartBlock(uint256)" [ AbiEncode.uint startBlock ]
-    , nonce = Nothing
-    , decoder = Decode.succeed ()
-    }
-
-
-{-| "startSaleNow()" function
--}
-startSaleNow : Address -> Call ()
-startSaleNow contractAddress =
-    { to = Just contractAddress
-    , from = Nothing
-    , gas = Nothing
-    , gasPrice = Nothing
-    , value = Nothing
-    , data = Just <| AbiEncode.functionCall "startSaleNow()" []
-    , nonce = Nothing
-    , decoder = Decode.succeed ()
     }
 
 
@@ -347,33 +283,6 @@ tokenSoldFor contractAddress =
     , nonce = Nothing
     , decoder = toElmDecoder AbiDecode.address
     }
-
-
-{-| "Drained(address,uint256)" event
--}
-type alias Drained =
-    { target : Address
-    , amount : BigInt
-    }
-
-
-drainedEvent : Address -> Maybe Address -> LogFilter
-drainedEvent contractAddress target =
-    { fromBlock = LatestBlock
-    , toBlock = LatestBlock
-    , address = contractAddress
-    , topics =
-        [ Just <| U.keccak256 "Drained(address,uint256)"
-        , Maybe.map (abiEncode << AbiEncode.address) target
-        ]
-    }
-
-
-drainedDecoder : Decoder Drained
-drainedDecoder =
-    succeed Drained
-        |> custom (topic 1 AbiDecode.address)
-        |> custom (data 0 AbiDecode.uint)
 
 
 {-| "Entered(address,uint256,uint256)" event
@@ -432,3 +341,33 @@ exitedDecoder =
         |> custom (topic 1 AbiDecode.address)
         |> custom (data 0 AbiDecode.uint)
         |> custom (data 1 AbiDecode.uint)
+
+
+{-| "Forwarded(address,bytes,uint256,bool,bytes)" event
+-}
+type alias Forwarded =
+    { to : Address
+    , data : String
+    , wei : BigInt
+    , success : Bool
+    , resultData : String
+    }
+
+
+forwardedEvent : Address -> LogFilter
+forwardedEvent contractAddress =
+    { fromBlock = LatestBlock
+    , toBlock = LatestBlock
+    , address = contractAddress
+    , topics = [ Just <| U.keccak256 "Forwarded(address,bytes,uint256,bool,bytes)" ]
+    }
+
+
+forwardedDecoder : Decoder Forwarded
+forwardedDecoder =
+    succeed Forwarded
+        |> custom (data 0 AbiDecode.address)
+        |> custom (data 1 AbiDecode.dynamicBytes)
+        |> custom (data 2 AbiDecode.uint)
+        |> custom (data 3 AbiDecode.bool)
+        |> custom (data 4 AbiDecode.dynamicBytes)

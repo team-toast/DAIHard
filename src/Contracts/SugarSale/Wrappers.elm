@@ -1,4 +1,4 @@
-module Contracts.SugarSale.Wrappers exposing (getSaleStartBlockCmd)
+module Contracts.SugarSale.Wrappers exposing (getSaleStartTimestampCmd, getTotalValueEnteredForBucket)
 
 import BigInt exposing (BigInt)
 import Config
@@ -9,8 +9,15 @@ import Http
 import Task
 
 
-getSaleStartBlockCmd : HttpProvider -> (Result Http.Error BigInt -> msg) -> Cmd msg
-getSaleStartBlockCmd httpProvider msgConstructor =
-    BucketSale.saleStartBlock Config.testSugarSaleAddress
+getSaleStartTimestampCmd : HttpProvider -> (Result Http.Error BigInt -> msg) -> Cmd msg
+getSaleStartTimestampCmd httpProvider msgConstructor =
+    BucketSale.startOfSale Config.testSugarSaleAddress
+        |> Eth.call httpProvider
+        |> Task.attempt msgConstructor
+
+
+getTotalValueEnteredForBucket : HttpProvider -> Int -> (Result Http.Error BigInt -> msg) -> Cmd msg
+getTotalValueEnteredForBucket httpProvider bucketId msgConstructor =
+    BucketSale.buckets Config.testSugarSaleAddress (BigInt.fromInt bucketId)
         |> Eth.call httpProvider
         |> Task.attempt msgConstructor

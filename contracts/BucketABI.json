@@ -2,7 +2,7 @@
     {
         "constant": true,
         "inputs": [],
-        "name": "blocksPerBucket",
+        "name": "buyerReferralRewardPerc",
         "outputs": [
             {
                 "internalType": "uint256",
@@ -11,31 +11,7 @@
             }
         ],
         "payable": false,
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "constant": false,
-        "inputs": [],
-        "name": "startSaleNow",
-        "outputs": [],
-        "payable": false,
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "constant": true,
-        "inputs": [],
-        "name": "saleStartBlock",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "payable": false,
-        "stateMutability": "view",
+        "stateMutability": "pure",
         "type": "function"
     },
     {
@@ -66,25 +42,10 @@
     {
         "constant": true,
         "inputs": [],
-        "name": "saleEndBlock",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "payable": false,
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "constant": true,
-        "inputs": [],
         "name": "tokenSoldFor",
         "outputs": [
             {
-                "internalType": "contract ERC20Interface",
+                "internalType": "contract Erc20",
                 "name": "",
                 "type": "address"
             }
@@ -114,71 +75,9 @@
         "name": "tokenOnSale",
         "outputs": [
             {
-                "internalType": "contract ERC20Interface",
+                "internalType": "contract Erc20",
                 "name": "",
                 "type": "address"
-            }
-        ],
-        "payable": false,
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "constant": true,
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "_referralAddress",
-                "type": "address"
-            }
-        ],
-        "name": "referrerRewardPerc",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "payable": false,
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "constant": true,
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "a",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "b",
-                "type": "uint256"
-            }
-        ],
-        "name": "min",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "payable": false,
-        "stateMutability": "pure",
-        "type": "function"
-    },
-    {
-        "constant": true,
-        "inputs": [],
-        "name": "HUNDRED_PERC",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
             }
         ],
         "payable": false,
@@ -209,6 +108,27 @@
                 "internalType": "address",
                 "name": "",
                 "type": "address"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "_referralAddress",
+                "type": "address"
+            }
+        ],
+        "name": "referrerReferralRewardPerc",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
             }
         ],
         "payable": false,
@@ -258,18 +178,48 @@
         "type": "function"
     },
     {
-        "constant": false,
-        "inputs": [
+        "constant": true,
+        "inputs": [],
+        "name": "startOfSale",
+        "outputs": [
             {
                 "internalType": "uint256",
-                "name": "_startBlock",
+                "name": "",
                 "type": "uint256"
             }
         ],
-        "name": "setSaleStartBlock",
-        "outputs": [],
         "payable": false,
-        "stateMutability": "nonpayable",
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [],
+        "name": "timestamp",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "_now",
+                "type": "uint256"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": true,
+        "inputs": [],
+        "name": "bucketPeriod",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "payable": false,
+        "stateMutability": "view",
         "type": "function"
     },
     {
@@ -277,11 +227,21 @@
         "inputs": [
             {
                 "internalType": "address",
-                "name": "_target",
+                "name": "_to",
                 "type": "address"
+            },
+            {
+                "internalType": "bytes",
+                "name": "_data",
+                "type": "bytes"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_wei",
+                "type": "uint256"
             }
         ],
-        "name": "drain",
+        "name": "forward",
         "outputs": [],
         "payable": false,
         "stateMutability": "nonpayable",
@@ -330,7 +290,7 @@
             },
             {
                 "internalType": "uint256",
-                "name": "tokensDisbursed",
+                "name": "tokensExited",
                 "type": "uint256"
             },
             {
@@ -344,25 +304,10 @@
         "type": "function"
     },
     {
-        "constant": false,
         "inputs": [
             {
                 "internalType": "uint256",
-                "name": "_endBlock",
-                "type": "uint256"
-            }
-        ],
-        "name": "setSaleEndBlock",
-        "outputs": [],
-        "payable": false,
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "_blocksPerBucket",
+                "name": "_bucketPeriod",
                 "type": "uint256"
             },
             {
@@ -371,12 +316,12 @@
                 "type": "uint256"
             },
             {
-                "internalType": "contract ERC20Interface",
-                "name": "_tokeOnSale",
+                "internalType": "contract Erc20",
+                "name": "_tokenOnSale",
                 "type": "address"
             },
             {
-                "internalType": "contract ERC20Interface",
+                "internalType": "contract Erc20",
                 "name": "_tokenSoldFor",
                 "type": "address"
             }
@@ -389,19 +334,37 @@
         "anonymous": false,
         "inputs": [
             {
-                "indexed": true,
+                "indexed": false,
                 "internalType": "address",
-                "name": "_target",
+                "name": "_to",
                 "type": "address"
             },
             {
                 "indexed": false,
+                "internalType": "bytes",
+                "name": "_data",
+                "type": "bytes"
+            },
+            {
+                "indexed": false,
                 "internalType": "uint256",
-                "name": "_amount",
+                "name": "_wei",
                 "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "bool",
+                "name": "_success",
+                "type": "bool"
+            },
+            {
+                "indexed": false,
+                "internalType": "bytes",
+                "name": "_resultData",
+                "type": "bytes"
             }
         ],
-        "name": "Drained",
+        "name": "Forwarded",
         "type": "event"
     },
     {
