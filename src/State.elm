@@ -702,7 +702,7 @@ gotoPageRoute route prevModel =
         Routing.SugarSale ->
             let
                 ( sugarSaleModel, sugarSaleCmd ) =
-                    SugarSale.State.init prevModel.testMode prevModel.wallet
+                    SugarSale.State.init prevModel.testMode prevModel.wallet prevModel.now
             in
             ( { prevModel
                 | submodel = SugarSaleModel sugarSaleModel

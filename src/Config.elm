@@ -1,9 +1,10 @@
-module Config exposing (activeFactories, devFeeAddress, factoryAddress, sugarSaleBlocksPerBucket, testSugarSaleAddress, tokenContractAddress, tokenDecimals)
+module Config exposing (activeFactories, devFeeAddress, factoryAddress, sugarSaleBucketInterval, testSugarSaleAddress, tokenContractAddress, tokenDecimals)
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
 import Eth.Types exposing (Address)
 import Eth.Utils
+import Time
 
 
 tokenDecimals =
@@ -71,13 +72,13 @@ devFeeAddress factoryType =
 
 testSugarSaleAddress : Address
 testSugarSaleAddress =
-    Eth.Utils.unsafeToAddress "0xfCb3095662c674F46dDfC5B7c2Be4D25b26f6987"
+    Eth.Utils.unsafeToAddress "0xb7Cc78C0bb9Eb8a25c8050593b7643922680D97B"
 
 
-sugarSaleBlocksPerBucket : Bool -> Int
-sugarSaleBlocksPerBucket testMode =
+sugarSaleBucketInterval : Bool -> Time.Posix
+sugarSaleBucketInterval testMode =
     if testMode then
-        15
+        Time.millisToPosix <| 1000 * 60 * 2
 
     else
         Debug.todo "blocks per bucket in non-test-mode"

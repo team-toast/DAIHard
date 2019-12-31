@@ -11,7 +11,9 @@ import Eth
 import Eth.Types exposing (HttpProvider)
 import Helpers.BigInt as BigIntHelpers
 import Helpers.Eth as EthHelpers
+import Helpers.Time as TimeHelpers
 import List.Extra
+import Maybe.Extra
 import SugarSale.Types exposing (..)
 import Task
 import Time
@@ -21,19 +23,18 @@ import Utils
 import Wallet
 
 
-init : Bool -> Wallet.State -> ( Model, Cmd Msg )
-init testMode wallet =
+init : Bool -> Wallet.State -> Time.Posix -> ( Model, Cmd Msg )
+init testMode wallet now =
     if testMode then
         ( { wallet = wallet
           , testMode = testMode
-          , currentBlock = Nothing
-          , saleStartblock = Nothing
+          , now = now
+          , saleStartTime = Nothing
           , sugarSale = Nothing
           , bucketView = ViewActive
           }
         , Cmd.batch
-            [ fetchBlocknumCmd testMode
-            , fetchSaleStartblockCmd testMode
+            [ fetchSaleStartTimestampCmd testMode
             ]
         )
 
@@ -54,127 +55,166 @@ update msg prevModel =
                 ChainCmd.none
                 [ cmdUp ]
 
-        Refresh ->
+        Refresh newNow ->
+            let
+                cmd =
+                    Cmd.batch <|
+                        [ fetchInfoForVisibleNonFutureBucketsCmd prevModel
+                        ]
+            in
             UpdateResult
-                prevModel
-                (fetchBlocknumCmd prevModel.testMode)
+                { prevModel
+                    | now = newNow
+                    , sugarSale =
+                        Maybe.map
+                            (addNewActiveBucketIfNeeded newNow prevModel.testMode)
+                            prevModel.sugarSale
+                }
+                cmd
                 ChainCmd.none
                 []
 
-        BlocknumFetched fetchResult ->
+        SaleStartTimestampFetched fetchResult ->
             case fetchResult of
-                Ok blocknum ->
-                    let
-                        newMaybeSugarSale =
-                            case ( prevModel.saleStartblock, prevModel.sugarSale ) of
-                                ( Just saleStartblock, Nothing ) ->
-                                    case initSugarSale prevModel.testMode saleStartblock blocknum of
-                                        Just s ->
-                                            Just s
+                Ok startTimestampBigInt ->
+                    if BigInt.compare startTimestampBigInt (BigInt.fromInt 0) == EQ then
+                        Debug.todo "Failed to init sugar sale; sale startTime == 0."
 
-                                        Nothing ->
-                                            Debug.todo "Failed to init sugar sale. Is it started yet?"
-
-                                ( Just _, Just sugarSale ) ->
-                                    Just
-                                        (sugarSale
-                                            |> addNewActiveBucketIfNeeded blocknum prevModel.testMode
-                                        )
-
-                                ( Nothing, _ ) ->
-                                    prevModel.sugarSale
-                    in
-                    justModelUpdate
-                        { prevModel
-                            | currentBlock = Just blocknum
-                            , sugarSale = newMaybeSugarSale
-                        }
-
-                Err httpErr ->
-                    let
-                        _ =
-                            Debug.log "http error when fetching blocknum" httpErr
-                    in
-                    justModelUpdate prevModel
-
-        SaleStartblockFetched fetchResult ->
-            case fetchResult of
-                Ok startblockBigInt ->
-                    let
-                        startblock =
-                            BigIntHelpers.toIntWithWarning startblockBigInt
-
-                        newMaybeSugarSale =
-                            case ( prevModel.currentBlock, prevModel.sugarSale ) of
-                                ( Just currentBlock, Nothing ) ->
-                                    case initSugarSale prevModel.testMode startblock currentBlock of
-                                        Just s ->
-                                            Just s
-
-                                        Nothing ->
-                                            Debug.todo "Failed to init sugar sale. Is it started yet?"
-
-                                _ ->
-                                    prevModel.sugarSale
-                    in
-                    justModelUpdate
-                        { prevModel
-                            | sugarSale = newMaybeSugarSale
-                            , saleStartblock = Just startblock
-                        }
-
-                Err httpErr ->
-                    let
-                        _ =
-                            Debug.log "http error when fetching sale startblock" httpErr
-                    in
-                    justModelUpdate prevModel
-
-
-initSugarSale : Bool -> Int -> Int -> Maybe SugarSale
-initSugarSale testMode saleStartBlock currentBlock =
-    if saleStartBlock == 0 then
-        Nothing
-
-    else
-        let
-            blocksPerBucket =
-                Config.sugarSaleBlocksPerBucket testMode
-
-            allBuckets =
-                List.Extra.iterate
-                    (\lastBucketAdded ->
+                    else
                         let
-                            nextBucketStartblock =
-                                lastBucketAdded.startBlock + blocksPerBucket
+                            startTimestamp =
+                                TimeHelpers.secondsBigIntToPosixWithWarning startTimestampBigInt
+
+                            newMaybeSugarSale =
+                                case prevModel.sugarSale of
+                                    Nothing ->
+                                        case initSugarSale prevModel.testMode startTimestamp prevModel.now of
+                                            Just s ->
+                                                Just s
+
+                                            Nothing ->
+                                                Debug.todo "Failed to init sugar sale. Is it started yet?"
+
+                                    _ ->
+                                        prevModel.sugarSale
                         in
-                        if nextBucketStartblock > currentBlock then
-                            Nothing
+                        justModelUpdate
+                            { prevModel
+                                | sugarSale = newMaybeSugarSale
+                                , saleStartTime = Just startTimestamp
+                            }
 
-                        else
-                            Just <|
-                                Bucket
-                                    nextBucketStartblock
-                                    Nothing
-                    )
-                    (Bucket
-                        saleStartBlock
-                        Nothing
-                    )
-        in
-        Maybe.map2
-            (SugarSale saleStartBlock)
-            (List.Extra.init allBuckets)
-            (List.Extra.last allBuckets)
+                Err httpErr ->
+                    let
+                        _ =
+                            Debug.log "http error when fetching sale startTime" httpErr
+                    in
+                    justModelUpdate prevModel
+
+        BucketValueEnteredFetched bucketId fetchResult ->
+            case prevModel.sugarSale of
+                Nothing ->
+                    let
+                        _ =
+                            Debug.log "Warning! Bucket value fetched but there is no sugarSale present!" ""
+                    in
+                    justModelUpdate prevModel
+
+                Just oldSugarSale ->
+                    case fetchResult of
+                        Ok valueEnteredBigInt ->
+                            let
+                                valueEntered =
+                                    BigIntHelpers.toIntWithWarning valueEnteredBigInt
+                            in
+                            justModelUpdate
+                                { prevModel
+                                    | sugarSale =
+                                        Just <|
+                                            if bucketId == List.length oldSugarSale.pastBuckets then
+                                                let
+                                                    oldActiveBucket =
+                                                        oldSugarSale.activeBucket
+                                                in
+                                                { oldSugarSale
+                                                    | activeBucket =
+                                                        { oldActiveBucket
+                                                            | totalValueEntered = Just valueEntered
+                                                        }
+                                                }
+
+                                            else if bucketId < List.length oldSugarSale.pastBuckets then
+                                                { oldSugarSale
+                                                    | pastBuckets =
+                                                        oldSugarSale.pastBuckets
+                                                            |> List.Extra.updateAt bucketId
+                                                                (\bucket ->
+                                                                    { bucket | totalValueEntered = Just valueEntered }
+                                                                )
+                                                }
+
+                                            else
+                                                let
+                                                    _ =
+                                                        Debug.log "Warning! Somehow trying to update a bucket that doesn't exist!" ""
+                                                in
+                                                oldSugarSale
+                                }
+
+                        Err httpErr ->
+                            let
+                                _ =
+                                    Debug.log "http error when fetching total bucket value entered" ( bucketId, fetchResult )
+                            in
+                            justModelUpdate prevModel
 
 
-addNewActiveBucketIfNeeded : Int -> Bool -> SugarSale -> SugarSale
-addNewActiveBucketIfNeeded currentBlock testMode prevSugarSale =
+initSugarSale : Bool -> Time.Posix -> Time.Posix -> Maybe SugarSale
+initSugarSale testMode saleStartTimestamp now =
     let
-        nextBucketStartblock =
-            prevSugarSale.activeBucket.startBlock + Config.sugarSaleBlocksPerBucket testMode
+        bucketInterval =
+            Config.sugarSaleBucketInterval testMode
+
+        allBuckets =
+            List.Extra.iterate
+                (\lastBucketAdded ->
+                    let
+                        nextBucketStartTime =
+                            TimeHelpers.add
+                                lastBucketAdded.startTime
+                                bucketInterval
+                    in
+                    if TimeHelpers.compare nextBucketStartTime now == GT then
+                        Nothing
+
+                    else
+                        Just <|
+                            Bucket
+                                nextBucketStartTime
+                                Nothing
+                                Nothing
+                )
+                (Bucket
+                    saleStartTimestamp
+                    Nothing
+                    Nothing
+                )
     in
-    if nextBucketStartblock <= currentBlock then
+    Maybe.map2
+        (SugarSale saleStartTimestamp)
+        (List.Extra.init allBuckets)
+        (List.Extra.last allBuckets)
+
+
+addNewActiveBucketIfNeeded : Time.Posix -> Bool -> SugarSale -> SugarSale
+addNewActiveBucketIfNeeded now testMode prevSugarSale =
+    let
+        nextBucketStartTime =
+            TimeHelpers.add
+                prevSugarSale.activeBucket.startTime
+                (Config.sugarSaleBucketInterval testMode)
+    in
+    if TimeHelpers.compare nextBucketStartTime now /= GT then
         { prevSugarSale
             | pastBuckets =
                 List.append
@@ -182,12 +222,36 @@ addNewActiveBucketIfNeeded currentBlock testMode prevSugarSale =
                     [ prevSugarSale.activeBucket ]
             , activeBucket =
                 Bucket
-                    nextBucketStartblock
+                    nextBucketStartTime
+                    Nothing
                     Nothing
         }
 
     else
         prevSugarSale
+
+
+fetchInfoForVisibleNonFutureBucketsCmd : Model -> Cmd Msg
+fetchInfoForVisibleNonFutureBucketsCmd model =
+    case model.sugarSale of
+        Just sugarSale ->
+            visibleBucketIds sugarSale model.bucketView model.now model.testMode
+                |> List.map
+                    (\id ->
+                        if id <= getActiveBucketId sugarSale model.now model.testMode then
+                            SugarSaleContract.getTotalValueEnteredForBucket
+                                (httpProvider model.testMode)
+                                id
+                                (SugarSale.Types.BucketValueEnteredFetched id)
+
+                        else
+                            Cmd.none
+                     -- Don't try to fetch values for future buckets
+                    )
+                |> Cmd.batch
+
+        _ ->
+            Cmd.none
 
 
 httpProvider : Bool -> HttpProvider
@@ -199,17 +263,11 @@ httpProvider test =
         Debug.todo "non-test mode not yet defined for httpProvider"
 
 
-fetchBlocknumCmd : Bool -> Cmd Msg
-fetchBlocknumCmd test =
-    Eth.getBlockNumber (httpProvider test)
-        |> Task.attempt BlocknumFetched
-
-
-fetchSaleStartblockCmd : Bool -> Cmd Msg
-fetchSaleStartblockCmd test =
-    SugarSaleContract.getSaleStartBlockCmd
+fetchSaleStartTimestampCmd : Bool -> Cmd Msg
+fetchSaleStartTimestampCmd test =
+    SugarSaleContract.getSaleStartTimestampCmd
         (httpProvider test)
-        SaleStartblockFetched
+        SaleStartTimestampFetched
 
 
 runCmdDown : CmdDown -> Model -> UpdateResult
@@ -228,4 +286,4 @@ runCmdDown cmdDown prevModel =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Time.every 1000 (always Refresh)
+    Time.every 1000 Refresh

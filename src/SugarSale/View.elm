@@ -15,6 +15,7 @@ import Images
 import List.Extra
 import Routing
 import SugarSale.Types exposing (..)
+import Time
 import TokenValue exposing (TokenValue)
 import Wallet
 
@@ -37,7 +38,7 @@ root dProfile model =
                 , Element.spacing (20 |> changeForMobile 10 dProfile)
                 , Element.padding (20 |> changeForMobile 10 dProfile)
                 ]
-                [ viewMaybeBucketsRow model.sugarSale model.bucketView model.currentBlock 5 model.testMode dProfile
+                [ viewMaybeBucketsRow model.sugarSale model.bucketView model.now model.testMode dProfile
                 , entryUX model dProfile
                 ]
             )
@@ -46,45 +47,34 @@ root dProfile model =
     )
 
 
-viewMaybeBucketsRow : Maybe SugarSale -> BucketView -> Maybe Int -> Int -> Bool -> DisplayProfile -> Element Msg
-viewMaybeBucketsRow maybeSugarSale bucketView maybeCurrentBlock numBucketsToSide testMode dProfile =
+viewMaybeBucketsRow : Maybe SugarSale -> BucketView -> Time.Posix -> Bool -> DisplayProfile -> Element Msg
+viewMaybeBucketsRow maybeSugarSale bucketView now testMode dProfile =
     Element.el
         [ Element.centerX
         ]
     <|
-        case ( maybeSugarSale, maybeCurrentBlock ) of
-            ( Just sugarSale, Just currentBlock ) ->
-                viewBucketsRow sugarSale bucketView currentBlock numBucketsToSide testMode dProfile
+        case maybeSugarSale of
+            Just sugarSale ->
+                viewBucketsRow sugarSale bucketView now testMode dProfile
 
             _ ->
                 Element.el [ Element.centerX ] <| Element.text "LOADING...."
 
 
-viewBucketsRow : SugarSale -> BucketView -> Int -> Int -> Bool -> DisplayProfile -> Element Msg
-viewBucketsRow sugarSale bucketView currentBlock numBucketsToSide testMode dProfile =
-    let
-        centerBucketId =
-            case bucketView of
-                ViewActive ->
-                    getActiveBucketId sugarSale currentBlock testMode
-
-                ViewId id ->
-                    id
-    in
-    List.range
-        (max (centerBucketId - numBucketsToSide) 0)
-        (centerBucketId + numBucketsToSide)
+viewBucketsRow : SugarSale -> BucketView -> Time.Posix -> Bool -> DisplayProfile -> Element Msg
+viewBucketsRow sugarSale bucketView now testMode dProfile =
+    visibleBucketIds sugarSale bucketView now testMode
         |> List.map
             (\id ->
                 viewBucket
                     sugarSale
                     id
-                    (id == centerBucketId)
+                    (id == focusedBucketId sugarSale bucketView now testMode)
                     testMode
                     dProfile
             )
         |> Element.row
-            [ Element.spacing 5 ]
+            [ Element.spacing 15 ]
 
 
 viewBucket : SugarSale -> Int -> Bool -> Bool -> DisplayProfile -> Element Msg
@@ -93,29 +83,62 @@ viewBucket sugarSale bucketId isFocused testMode dProfile =
         ( bucketState, bucket ) =
             getBucketInfo sugarSale bucketId testMode
 
+        borderColor =
+            if bucketState == Future then
+                Element.rgb 0.9 0.9 0.9
+
+            else
+                Element.rgb 0.8 0.8 0.8
+
+        backgroundColor =
+            case bucketState of
+                Past ->
+                    Element.rgba 0 1 0 0.2
+
+                Active ->
+                    EH.lightBlue
+
+                Future ->
+                    EH.white
+
         containerAttributes =
             [ Element.Border.rounded 5
             , Element.padding 10
             , Element.Border.width 1
-            , Element.Border.color EH.black
+            , Element.Border.color borderColor
+            , Element.Background.color backgroundColor
             , Element.alignTop
             , Element.inFront <|
                 Element.el
                     [ Element.alignLeft
                     , Element.alignTop
                     , Element.Font.size 14
+                    , Element.Background.color borderColor
+                    , Element.padding 2
                     ]
                     (Element.text <| String.fromInt bucketId)
             ]
                 ++ (if isFocused then
-                        [ Element.width <| Element.px (100 |> changeForMobile 60 dProfile)
-                        , Element.height <| Element.px (100 |> changeForMobile 60 dProfile)
+                        [ Element.width <| Element.px (150 |> changeForMobile 90 dProfile)
+                        , Element.height <| Element.px (150 |> changeForMobile 90 dProfile)
                         ]
 
                     else
-                        [ Element.width <| Element.px (80 |> changeForMobile 50 dProfile)
-                        , Element.height <| Element.px (80 |> changeForMobile 50 dProfile)
+                        [ Element.width <| Element.px (110 |> changeForMobile 65 dProfile)
+                        , Element.height <| Element.px (110 |> changeForMobile 65 dProfile)
                         ]
+                   )
+                ++ (if bucketState /= Future then
+                        [ Element.Border.shadow
+                            { offset = ( -5, 5 )
+                            , size = 0
+                            , blur = 5
+                            , color = Element.rgba 0 0 0 0.2
+                            }
+                        ]
+
+                    else
+                        []
                    )
     in
     Element.el

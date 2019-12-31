@@ -1,4 +1,4 @@
-module Helpers.Time exposing (HumanReadableInterval, add, compare, daysStrToMaybePosix, getRatio, isNegative, negativeToZero, posixToMillisBigInt, posixToSeconds, posixToSecondsBigInt, secondsBigIntToMaybePosix, sub, toHumanReadableInterval, toString)
+module Helpers.Time exposing (HumanReadableInterval, add, compare, daysStrToMaybePosix, getRatio, isNegative, negativeToZero, posixToMillisBigInt, posixToSeconds, posixToSecondsBigInt, secondsBigIntToMaybePosix, secondsBigIntToPosixWithWarning, secondsToPosix, sub, toHumanReadableInterval, toString)
 
 import BigInt exposing (BigInt)
 import Helpers.BigInt as BigIntHelpers
@@ -63,6 +63,18 @@ daysStrToMaybePosix timeStr =
 posixToSeconds : Time.Posix -> Int
 posixToSeconds t =
     Time.posixToMillis t // 1000
+
+
+secondsToPosix : Int -> Time.Posix
+secondsToPosix s =
+    Time.millisToPosix (s * 1000)
+
+
+secondsBigIntToPosixWithWarning : BigInt -> Time.Posix
+secondsBigIntToPosixWithWarning =
+    BigIntHelpers.toIntWithWarning
+        >> (\secs -> secs * 1000)
+        >> Time.millisToPosix
 
 
 posixToMillisBigInt : Time.Posix -> BigInt
