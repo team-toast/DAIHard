@@ -118,7 +118,7 @@ init flags url key =
             , testMode = fullRoute.testing
             , wallet = wallet
             , userAddress = Nothing
-            , time = Time.millisToPosix 0
+            , now = Time.millisToPosix flags.nowInMillis
             , txSentry = txSentry
             , tradeCaches = tradeCaches
             , submodel = InitialBlank
@@ -239,7 +239,7 @@ update msg model =
                     )
 
         Tick newTime ->
-            ( { model | time = newTime }, Cmd.none )
+            ( { model | now = newTime }, Cmd.none )
 
         ConnectToWeb3 ->
             case model.wallet of

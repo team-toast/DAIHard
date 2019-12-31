@@ -29,7 +29,8 @@ function startDapp() {
                 flags: {
                     networkId: id,
                     width: window.innerWidth,
-                    height: window.innerHeight
+                    height: window.innerHeight,
+                    nowInMillis: Date.now()
                 }
             });
 
@@ -44,7 +45,8 @@ function startDapp() {
             flags: {
                 networkId: 0, // 0 indicates no network set by provider
                 width: window.innerWidth,
-                height: window.innerHeight
+                height: window.innerHeight,
+                nowInMillis: Date.now()
             }
         });
 

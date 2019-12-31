@@ -518,19 +518,19 @@ submodelElementAndModal dProfile model =
                     )
 
                 TradeModel tradeModel ->
-                    Trade.View.root dProfile model.time model.tradeCaches tradeModel
+                    Trade.View.root dProfile model.now model.tradeCaches tradeModel
                         |> Tuple.mapBoth
                             (Element.map TradeMsg)
                             (List.map (Element.map TradeMsg))
 
                 MarketplaceModel marketplaceModel ->
-                    Marketplace.View.root model.time dProfile model.tradeCaches marketplaceModel
+                    Marketplace.View.root model.now dProfile model.tradeCaches marketplaceModel
                         |> Tuple.mapBoth
                             (Element.map MarketplaceMsg)
                             (List.map (Element.map MarketplaceMsg))
 
                 AgentHistoryModel agentHistoryModel ->
-                    ( Element.map AgentHistoryMsg (AgentHistory.View.root model.time dProfile model.tradeCaches agentHistoryModel)
+                    ( Element.map AgentHistoryMsg (AgentHistory.View.root model.now dProfile model.tradeCaches agentHistoryModel)
                     , []
                     )
 
