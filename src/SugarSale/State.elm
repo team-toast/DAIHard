@@ -203,6 +203,29 @@ update msg prevModel =
                                     justModelUpdate
                                         { prevModel | sugarSale = Just newSugarSale }
 
+        BucketClicked bucketId ->
+            case prevModel.sugarSale of
+                Nothing ->
+                    let
+                        _ =
+                            Debug.log "Bucket clicked, but sugarSale isn't loaded! What??" ""
+                    in
+                    justModelUpdate prevModel
+
+                Just sugarSale ->
+                    let
+                        newBucketView =
+                            if bucketId == getActiveBucketId sugarSale prevModel.now prevModel.testMode then
+                                ViewActive
+
+                            else
+                                ViewId bucketId
+                    in
+                    justModelUpdate
+                        { prevModel
+                            | bucketView = newBucketView
+                        }
+
 
 initSugarSale : Bool -> Time.Posix -> Time.Posix -> Maybe SugarSale
 initSugarSale testMode saleStartTimestamp now =

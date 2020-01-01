@@ -33,6 +33,7 @@ type Msg
     | SaleStartTimestampFetched (Result Http.Error BigInt)
     | BucketValueEnteredFetched Int (Result Http.Error BigInt)
     | UserBuyFetched Address Int (Result Http.Error SugarSaleContract.Buy)
+    | BucketClicked Int
 
 
 type alias UpdateResult =

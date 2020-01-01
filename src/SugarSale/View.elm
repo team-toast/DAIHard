@@ -108,6 +108,8 @@ viewBucket sugarSale bucketId isFocused testMode dProfile =
             , Element.Border.color borderColor
             , Element.Background.color backgroundColor
             , Element.alignTop
+            , Element.Events.onClick (BucketClicked bucketId)
+            , Element.pointer
             , Element.inFront <|
                 Element.el
                     [ Element.alignLeft
