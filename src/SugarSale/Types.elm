@@ -1,4 +1,4 @@
-module SugarSale.Types exposing (Bucket, BucketState(..), BucketUserExitInfo, BucketView(..), Model, Msg(..), SugarSale, UpdateResult, buyToBucketExitInfo, focusedBucketId, getActiveBucketId, getBucketInfo, justModelUpdate, makeBlankBucket, numBucketsToSide, updateAllPastOrActiveBuckets, updatePastOrActiveBucketAt, visibleBucketIds)
+module SugarSale.Types exposing (Bucket, BucketState(..), BucketUserExitInfo, BucketView(..), Model, Msg(..), SugarSale, UpdateResult, activeBucketTimeLeft, bucketStartTime, buyToBucketExitInfo, focusedBucketId, getActiveBucketId, getBucketInfo, justModelUpdate, makeBlankBucket, numBucketsToSide, updateAllPastOrActiveBuckets, updatePastOrActiveBucketAt, visibleBucketIds)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -20,6 +20,7 @@ type alias Model =
     { wallet : Wallet.State
     , testMode : Bool
     , now : Time.Posix
+    , timezone : Maybe Time.Zone
     , saleStartTime : Maybe Time.Posix
     , sugarSale : Maybe SugarSale
     , bucketView : BucketView
@@ -29,6 +30,7 @@ type alias Model =
 type Msg
     = NoOp
     | CmdUp (CmdUp Msg)
+    | TimezoneGot Time.Zone
     | Refresh Time.Posix
     | SaleStartTimestampFetched (Result Http.Error BigInt)
     | BucketValueEnteredFetched Int (Result Http.Error BigInt)
@@ -135,6 +137,27 @@ getActiveBucketId sugarSale now testMode =
         // (Config.sugarSaleBucketInterval testMode
                 |> TimeHelpers.posixToSeconds
            )
+
+
+activeBucketTimeLeft : SugarSale -> Time.Posix -> Bool -> Time.Posix
+activeBucketTimeLeft sugarSale now testMode =
+    let
+        nextBucketId =
+            getActiveBucketId sugarSale now testMode + 1
+    in
+    TimeHelpers.sub
+        (bucketStartTime sugarSale nextBucketId testMode)
+        now
+
+
+bucketStartTime : SugarSale -> Int -> Bool -> Time.Posix
+bucketStartTime sugarSale bucketId testMode =
+    TimeHelpers.add
+        sugarSale.startTime
+        (TimeHelpers.secondsToPosix <|
+            TimeHelpers.posixToSeconds (Config.sugarSaleBucketInterval testMode)
+                * bucketId
+        )
 
 
 type alias Bucket =

@@ -11,6 +11,7 @@ import Element.Font
 import Element.Input
 import FormatFloat exposing (formatFloat)
 import Helpers.Element as EH
+import Helpers.Time as TimeHelpers
 import Images
 import List.Extra
 import Routing
@@ -187,4 +188,133 @@ viewBucket sugarSale bucketId isFocused testMode dProfile =
 
 entryUX : Model -> DisplayProfile -> Element Msg
 entryUX model dProfile =
-    Element.text "entry UX"
+    case model.sugarSale of
+        Nothing ->
+            Element.text "Loading..."
+
+        Just sugarSale ->
+            let
+                id =
+                    focusedBucketId
+                        sugarSale
+                        model.bucketView
+                        model.now
+                        model.testMode
+
+                ( bucketState, bucket ) =
+                    getBucketInfo
+                        sugarSale
+                        id
+                        model.testMode
+
+                timingMsgLines =
+                    case bucketState of
+                        Past ->
+                            [ "Bucket Ended at "
+                            , bucketStartTime sugarSale (id + 1) model.testMode
+                                |> bucketTimestampToString model.now model.timezone
+                            ]
+
+                        Active ->
+                            [ "Bucket Ends In "
+                            , activeBucketTimeLeft sugarSale model.now model.testMode
+                                |> TimeHelpers.toConciseIntervalString
+                            ]
+
+                        Future ->
+                            [ "Bucket Will Start at "
+                            , bucketStartTime sugarSale id model.testMode
+                                |> bucketTimestampToString model.now model.timezone
+                            ]
+            in
+            Element.column
+                [ Element.width Element.fill
+                , Element.padding 20
+                ]
+                [ Element.column
+                    [ Element.centerX
+                    , Element.Font.size (22 |> changeForMobile 18 dProfile)
+                    ]
+                  <|
+                    List.map
+                        Element.text
+                        timingMsgLines
+                ]
+
+
+bucketTimestampToString : Time.Posix -> Maybe Time.Zone -> Time.Posix -> String
+bucketTimestampToString now maybeTz timestamp =
+    let
+        tz =
+            maybeTz |> Maybe.withDefault Time.utc
+
+        timeDiff =
+            TimeHelpers.secondsToPosix <|
+                abs <|
+                    TimeHelpers.posixToSeconds now
+                        - TimeHelpers.posixToSeconds timestamp
+
+        maybeDayString =
+            let
+                isSameDay =
+                    (Time.toDay tz now == Time.toDay tz timestamp)
+                        && (TimeHelpers.compare timeDiff TimeHelpers.oneDay == LT)
+
+                isSameYear =
+                    Time.toYear tz now == Time.toYear tz timestamp
+            in
+            if isSameDay then
+                Nothing
+
+            else if TimeHelpers.compare timeDiff TimeHelpers.oneWeek == LT then
+                Just
+                    (Time.toWeekday tz timestamp
+                        |> TimeHelpers.weekdayToShortString
+                    )
+
+            else if isSameYear then
+                Just <|
+                    (Time.toMonth tz timestamp
+                        |> TimeHelpers.monthToShortString
+                    )
+                        ++ " "
+                        ++ (Time.toDay tz timestamp
+                                |> String.fromInt
+                           )
+
+            else
+                Just <|
+                    (Time.toMonth tz timestamp
+                        |> TimeHelpers.monthToShortString
+                    )
+                        ++ " "
+                        ++ (Time.toDay tz timestamp
+                                |> String.fromInt
+                           )
+                        ++ ", "
+                        ++ (Time.toYear tz timestamp
+                                |> String.fromInt
+                           )
+
+        timeString =
+            (Time.toHour tz timestamp
+                |> String.fromInt
+                |> String.padLeft 2 '0'
+            )
+                ++ ":"
+                ++ (Time.toMinute tz timestamp
+                        |> String.fromInt
+                        |> String.padLeft 2 '0'
+                   )
+    in
+    (maybeDayString
+        |> Maybe.map (\s -> s ++ " ")
+        |> Maybe.withDefault ""
+    )
+        ++ timeString
+        ++ (if maybeTz == Nothing then
+                " (UTC)"
+
+            else
+                ""
+           )

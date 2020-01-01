@@ -29,12 +29,14 @@ init testMode wallet now =
         ( { wallet = wallet
           , testMode = testMode
           , now = now
+          , timezone = Nothing
           , saleStartTime = Nothing
           , sugarSale = Nothing
           , bucketView = ViewActive
           }
         , Cmd.batch
             [ fetchSaleStartTimestampCmd testMode
+            , Task.perform TimezoneGot Time.here
             ]
         )
 
@@ -54,6 +56,10 @@ update msg prevModel =
                 Cmd.none
                 ChainCmd.none
                 [ cmdUp ]
+
+        TimezoneGot tz ->
+            justModelUpdate
+                { prevModel | timezone = Just tz }
 
         Refresh newNow ->
             let
