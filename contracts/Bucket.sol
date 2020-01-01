@@ -34,6 +34,7 @@ contract BucketSale
     Erc20 public tokenSoldFor;
 
     constructor (
+            uint _startOfSale,
             uint _bucketPeriod,
             uint _bucketSupply,
             Erc20 _tokenOnSale,      // SUGR in our case
@@ -41,7 +42,7 @@ contract BucketSale
         public
     {
         owner = msg.sender;
-        startOfSale = timestamp();
+        startOfSale = _startOfSale;
         bucketPeriod = _bucketPeriod;
         bucketSupply = _bucketSupply;
         tokenOnSale = _tokenOnSale;
