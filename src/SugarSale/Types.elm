@@ -1,11 +1,13 @@
-module SugarSale.Types exposing (Bucket, BucketState(..), BucketView(..), Buy, Model, Msg(..), SugarSale, UpdateResult, focusedBucketId, getActiveBucketId, getBucketInfo, getBuysForUserDefaultEmpty, justModelUpdate, makeBlankBucket, numBucketsToSide, visibleBucketIds)
+module SugarSale.Types exposing (Bucket, BucketState(..), BucketUserExitInfo, BucketView(..), Model, Msg(..), SugarSale, UpdateResult, buyToBucketExitInfo, focusedBucketId, getActiveBucketId, getBucketInfo, justModelUpdate, makeBlankBucket, numBucketsToSide, updateAllPastOrActiveBuckets, updatePastOrActiveBucketAt, visibleBucketIds)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
 import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Config
+import Contracts.SugarSale.Generated.BucketSale as SugarSaleContract
 import Eth.Types exposing (Address, TxHash, TxReceipt)
+import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
 import Http
 import List.Extra
@@ -30,6 +32,7 @@ type Msg
     | Refresh Time.Posix
     | SaleStartTimestampFetched (Result Http.Error BigInt)
     | BucketValueEnteredFetched Int (Result Http.Error BigInt)
+    | UserBuyFetched Address Int (Result Http.Error SugarSaleContract.Buy)
 
 
 type alias UpdateResult =
@@ -70,6 +73,38 @@ getBucketInfo sugarSale bucketId testMode =
                 ( Future, makeBlankBucket testMode sugarSale.startTime bucketId )
 
 
+updateAllPastOrActiveBuckets : (Bucket -> Bucket) -> SugarSale -> SugarSale
+updateAllPastOrActiveBuckets func sugarSale =
+    { sugarSale
+        | pastBuckets =
+            sugarSale.pastBuckets
+                |> List.map func
+        , activeBucket =
+            sugarSale.activeBucket |> func
+    }
+
+
+updatePastOrActiveBucketAt : Int -> (Bucket -> Bucket) -> SugarSale -> Maybe SugarSale
+updatePastOrActiveBucketAt bucketId updateFunc sugarSale =
+    if bucketId == List.length sugarSale.pastBuckets then
+        Just <|
+            { sugarSale
+                | activeBucket =
+                    sugarSale.activeBucket |> updateFunc
+            }
+
+    else if bucketId < List.length sugarSale.pastBuckets then
+        Just <|
+            { sugarSale
+                | pastBuckets =
+                    sugarSale.pastBuckets
+                        |> List.Extra.updateAt bucketId updateFunc
+            }
+
+    else
+        Nothing
+
+
 focusedBucketId : SugarSale -> BucketView -> Time.Posix -> Bool -> Int
 focusedBucketId sugarSale bucketView now testMode =
     case bucketView of
@@ -104,7 +139,7 @@ getActiveBucketId sugarSale now testMode =
 type alias Bucket =
     { startTime : Time.Posix
     , totalValueEntered : Maybe TokenValue
-    , buysForUser : Maybe (List Buy)
+    , userExitInfo : Maybe BucketUserExitInfo
     }
 
 
@@ -132,16 +167,18 @@ type BucketView
     | ViewId Int
 
 
-getBuysForUserDefaultEmpty : Bucket -> List Buy
-getBuysForUserDefaultEmpty bucket =
-    bucket.buysForUser
-        |> Maybe.withDefault []
+buyToBucketExitInfo : SugarSaleContract.Buy -> BucketUserExitInfo
+buyToBucketExitInfo genBuy =
+    BucketUserExitInfo
+        ((BigInt.compare genBuy.valueEntered (BigInt.fromInt 0) == GT)
+            && (BigInt.compare genBuy.tokensExited (BigInt.fromInt 0) == EQ)
+        )
+        (not <| EthHelpers.addressIs0x0 genBuy.referralAddress)
 
 
-type alias Buy =
-    { valueEntered : TokenValue
-    , tokensExited : TokenValue
-    , referralAddress : Maybe Address
+type alias BucketUserExitInfo =
+    { hasTokensToClaim : Bool
+    , hasReferallBonus : Bool
     }
 
 

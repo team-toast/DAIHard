@@ -1,4 +1,4 @@
-module Helpers.Eth exposing (addressIfNot0x0, getLogAt, httpProviderForFactory, makeViewAddressUrl, makeViewTxUrl, updateCallValue)
+module Helpers.Eth exposing (addressIfNot0x0, addressIs0x0, getLogAt, httpProviderForFactory, makeViewAddressUrl, makeViewTxUrl, updateCallValue)
 
 import Array
 import BigInt exposing (BigInt)
@@ -31,11 +31,16 @@ httpProviderForFactory factoryType =
 
 addressIfNot0x0 : Address -> Maybe Address
 addressIfNot0x0 addr =
-    if addr == Eth.Utils.unsafeToAddress "0x0000000000000000000000000000000000000000" then
+    if addressIs0x0 addr then
         Nothing
 
     else
         Just addr
+
+
+addressIs0x0 : Address -> Bool
+addressIs0x0 addr =
+    addr == Eth.Utils.unsafeToAddress "0x0000000000000000000000000000000000000000"
 
 
 getLogAt : Int -> List Eth.Types.Log -> Maybe Eth.Types.Log

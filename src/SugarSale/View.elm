@@ -145,6 +145,23 @@ viewBucket sugarSale bucketId isFocused testMode dProfile =
         containerAttributes
     <|
         if bucketState == Active || bucketState == Past then
+            let
+                actionMsg =
+                    if bucketState == Active then
+                        Element.text "Can enter!"
+
+                    else
+                        case bucket.userExitInfo of
+                            Just exitInfo ->
+                                if exitInfo.hasTokensToClaim then
+                                    Element.text "Can exit!"
+
+                                else
+                                    Element.none
+
+                            Nothing ->
+                                Element.text "Loading..."
+            in
             Element.column
                 [ Element.width Element.fill
                 , Element.height Element.fill
@@ -159,6 +176,7 @@ viewBucket sugarSale bucketId isFocused testMode dProfile =
                     )
                     bucket.totalValueEntered
                     |> Maybe.withDefault (Element.text "Loading...")
+                , actionMsg
                 ]
 
         else

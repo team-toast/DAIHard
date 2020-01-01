@@ -112,61 +112,96 @@ update msg prevModel =
                     justModelUpdate prevModel
 
         BucketValueEnteredFetched bucketId fetchResult ->
-            case prevModel.sugarSale of
-                Nothing ->
+            case fetchResult of
+                Err httpErr ->
                     let
                         _ =
-                            Debug.log "Warning! Bucket value fetched but there is no sugarSale present!" ""
+                            Debug.log "http error when fetching total bucket value entered" ( bucketId, fetchResult )
                     in
                     justModelUpdate prevModel
 
-                Just oldSugarSale ->
-                    case fetchResult of
-                        Ok valueEnteredBigInt ->
+                Ok valueEnteredBigInt ->
+                    case prevModel.sugarSale of
+                        Nothing ->
+                            let
+                                _ =
+                                    Debug.log "Warning! Bucket value fetched but there is no sugarSale present!" ""
+                            in
+                            justModelUpdate prevModel
+
+                        Just oldSugarSale ->
                             let
                                 valueEntered =
                                     TokenValue.tokenValue valueEnteredBigInt
+
+                                maybeNewSugarSale =
+                                    oldSugarSale
+                                        |> updatePastOrActiveBucketAt
+                                            bucketId
+                                            (\bucket ->
+                                                { bucket | totalValueEntered = Just valueEntered }
+                                            )
                             in
-                            justModelUpdate
-                                { prevModel
-                                    | sugarSale =
-                                        Just <|
-                                            if bucketId == List.length oldSugarSale.pastBuckets then
-                                                let
-                                                    oldActiveBucket =
-                                                        oldSugarSale.activeBucket
-                                                in
-                                                { oldSugarSale
-                                                    | activeBucket =
-                                                        { oldActiveBucket
-                                                            | totalValueEntered = Just valueEntered
-                                                        }
-                                                }
+                            case maybeNewSugarSale of
+                                Nothing ->
+                                    let
+                                        _ =
+                                            Debug.log "Warning! Somehow trying to update a bucket that doesn't exist or is in the future!" ""
+                                    in
+                                    justModelUpdate prevModel
 
-                                            else if bucketId < List.length oldSugarSale.pastBuckets then
-                                                { oldSugarSale
-                                                    | pastBuckets =
-                                                        oldSugarSale.pastBuckets
-                                                            |> List.Extra.updateAt bucketId
-                                                                (\bucket ->
-                                                                    { bucket | totalValueEntered = Just valueEntered }
-                                                                )
-                                                }
+                                Just newSugarSale ->
+                                    justModelUpdate
+                                        { prevModel
+                                            | sugarSale =
+                                                Just newSugarSale
+                                        }
 
-                                            else
-                                                let
-                                                    _ =
-                                                        Debug.log "Warning! Somehow trying to update a bucket that doesn't exist!" ""
-                                                in
-                                                oldSugarSale
-                                }
+        UserBuyFetched userAddress bucketId fetchResult ->
+            case fetchResult of
+                Err httpErr ->
+                    let
+                        _ =
+                            Debug.log "http error when fetching buy for user" ( userAddress, bucketId, fetchResult )
+                    in
+                    justModelUpdate prevModel
 
-                        Err httpErr ->
+                Ok userBuy ->
+                    let
+                        bucketExitInfo =
+                            buyToBucketExitInfo userBuy
+                    in
+                    case prevModel.sugarSale of
+                        Nothing ->
                             let
                                 _ =
-                                    Debug.log "http error when fetching total bucket value entered" ( bucketId, fetchResult )
+                                    Debug.log "Warning! Bucket value fetched but there is no sugarSale present!" ""
                             in
                             justModelUpdate prevModel
+
+                        Just oldSugarSale ->
+                            let
+                                maybeNewSugarSale =
+                                    oldSugarSale
+                                        |> updatePastOrActiveBucketAt
+                                            bucketId
+                                            (\bucket ->
+                                                { bucket
+                                                    | userExitInfo = Just bucketExitInfo
+                                                }
+                                            )
+                            in
+                            case maybeNewSugarSale of
+                                Nothing ->
+                                    let
+                                        _ =
+                                            Debug.log "Warning! Somehow trying to update a bucket that does not exist or is in the future!" ""
+                                    in
+                                    justModelUpdate prevModel
+
+                                Just newSugarSale ->
+                                    justModelUpdate
+                                        { prevModel | sugarSale = Just newSugarSale }
 
 
 initSugarSale : Bool -> Time.Posix -> Time.Posix -> Maybe SugarSale
@@ -239,10 +274,22 @@ fetchInfoForVisibleNonFutureBucketsCmd model =
                 |> List.map
                     (\id ->
                         if id <= getActiveBucketId sugarSale model.now model.testMode then
-                            SugarSaleContract.getTotalValueEnteredForBucket
-                                (httpProvider model.testMode)
-                                id
-                                (SugarSale.Types.BucketValueEnteredFetched id)
+                            Cmd.batch
+                                [ SugarSaleContract.getTotalValueEnteredForBucket
+                                    (httpProvider model.testMode)
+                                    id
+                                    (BucketValueEnteredFetched id)
+                                , case Wallet.userInfo model.wallet of
+                                    Just userInfo ->
+                                        SugarSaleContract.getUserBuyForBucket
+                                            (httpProvider model.testMode)
+                                            userInfo.address
+                                            id
+                                            (UserBuyFetched userInfo.address id)
+
+                                    Nothing ->
+                                        Cmd.none
+                                ]
 
                         else
                             Cmd.none
@@ -270,12 +317,26 @@ fetchSaleStartTimestampCmd test =
         SaleStartTimestampFetched
 
 
+clearSugarSaleExitInfo : SugarSale -> SugarSale
+clearSugarSaleExitInfo =
+    updateAllPastOrActiveBuckets
+        (\bucket ->
+            { bucket | userExitInfo = Nothing }
+        )
+
+
 runCmdDown : CmdDown -> Model -> UpdateResult
 runCmdDown cmdDown prevModel =
     case cmdDown of
         CmdDown.UpdateWallet wallet ->
             UpdateResult
-                { prevModel | wallet = wallet }
+                { prevModel
+                    | wallet = wallet
+                    , sugarSale =
+                        Maybe.map
+                            clearSugarSaleExitInfo
+                            prevModel.sugarSale
+                }
                 Cmd.none
                 ChainCmd.none
                 []
