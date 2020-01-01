@@ -125,7 +125,7 @@ update msg prevModel =
                         Ok valueEnteredBigInt ->
                             let
                                 valueEntered =
-                                    BigIntHelpers.toIntWithWarning valueEnteredBigInt
+                                    TokenValue.tokenValue valueEnteredBigInt
                             in
                             justModelUpdate
                                 { prevModel

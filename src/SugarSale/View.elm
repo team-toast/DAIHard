@@ -119,13 +119,13 @@ viewBucket sugarSale bucketId isFocused testMode dProfile =
                     (Element.text <| String.fromInt bucketId)
             ]
                 ++ (if isFocused then
-                        [ Element.width <| Element.px (150 |> changeForMobile 90 dProfile)
-                        , Element.height <| Element.px (150 |> changeForMobile 90 dProfile)
+                        [ Element.width <| Element.px (200 |> changeForMobile 120 dProfile)
+                        , Element.height <| Element.px (200 |> changeForMobile 120 dProfile)
                         ]
 
                     else
-                        [ Element.width <| Element.px (110 |> changeForMobile 65 dProfile)
-                        , Element.height <| Element.px (110 |> changeForMobile 65 dProfile)
+                        [ Element.width <| Element.px (170 |> changeForMobile 80 dProfile)
+                        , Element.height <| Element.px (170 |> changeForMobile 80 dProfile)
                         ]
                    )
                 ++ (if bucketState /= Future then
@@ -144,13 +144,25 @@ viewBucket sugarSale bucketId isFocused testMode dProfile =
     Element.el
         containerAttributes
     <|
-        Element.column
-            [ Element.width Element.fill
-            , Element.height Element.fill
-            , Element.spaceEvenly
-            , Element.padding 5
-            ]
-            []
+        if bucketState == Active || bucketState == Past then
+            Element.column
+                [ Element.width Element.fill
+                , Element.height Element.fill
+                , Element.spaceEvenly
+                , Element.padding 5
+                ]
+                [ Maybe.map
+                    (\totalValueEntered ->
+                        Element.text <|
+                            TokenValue.toConciseString totalValueEntered
+                                ++ " Dai Entered"
+                    )
+                    bucket.totalValueEntered
+                    |> Maybe.withDefault (Element.text "Loading...")
+                ]
+
+        else
+            Element.text "lol XD"
 
 
 entryUX : Model -> DisplayProfile -> Element Msg

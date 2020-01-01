@@ -103,7 +103,7 @@ getActiveBucketId sugarSale now testMode =
 
 type alias Bucket =
     { startTime : Time.Posix
-    , totalValueEntered : Maybe Int
+    , totalValueEntered : Maybe TokenValue
     , buysForUser : Maybe (List Buy)
     }
 
@@ -146,4 +146,4 @@ type alias Buy =
 
 
 numBucketsToSide =
-    3
+    2
