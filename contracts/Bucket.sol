@@ -81,7 +81,7 @@ contract BucketSale
     {
         require(_amount > 0, "can't buy nothing");
         require(tokenOnSale.balanceOf(address(this)) >= bucketSupply.mul(21).div(10), "insufficient tokens to sell");
-        //TOOD: The above line is not robust; it assumes all previous buckets have already disbursed all they can.
+        //TODO: The above line is not robust; it assumes all previous buckets have already disbursed all they can.
 
         Buy storage buy = buys[currentBucket()][_buyer];
         buy.valueEntered = buy.valueEntered.add(_amount);
