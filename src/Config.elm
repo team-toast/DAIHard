@@ -1,14 +1,11 @@
-module Config exposing (activeFactories, devFeeAddress, factoryAddress, sugarSaleBucketInterval, testSugarSaleAddress, tokenContractAddress, tokenDecimals)
+module Config exposing (activeFactories, devFeeAddress, factoryAddress, sugarSaleAddress, sugarSaleBucketInterval, sugarSaleTokensPerBucket, tokenContractAddress)
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
 import Eth.Types exposing (Address)
 import Eth.Utils
 import Time
-
-
-tokenDecimals =
-    18
+import TokenValue exposing (TokenValue)
 
 
 activeFactories : Bool -> List FactoryType
@@ -70,9 +67,13 @@ devFeeAddress factoryType =
             Eth.Utils.unsafeToAddress "0x092110996699c3E06e998d89F0f4586026e44F0F"
 
 
-testSugarSaleAddress : Address
-testSugarSaleAddress =
-    Eth.Utils.unsafeToAddress "0xb7Cc78C0bb9Eb8a25c8050593b7643922680D97B"
+sugarSaleAddress : Bool -> Address
+sugarSaleAddress testMode =
+    if testMode then
+        Eth.Utils.unsafeToAddress "0xb7Cc78C0bb9Eb8a25c8050593b7643922680D97B"
+
+    else
+        Debug.todo "No address for non-testMode sugarSale"
 
 
 sugarSaleBucketInterval : Bool -> Time.Posix
@@ -82,3 +83,13 @@ sugarSaleBucketInterval testMode =
 
     else
         Debug.todo "blocks per bucket in non-test-mode"
+
+
+sugarSaleTokensPerBucket : Bool -> TokenValue
+sugarSaleTokensPerBucket testMode =
+    TokenValue.fromIntTokenValue <|
+        if testMode then
+            150
+
+        else
+            Debug.todo "tokens per bucket in non-test mode"

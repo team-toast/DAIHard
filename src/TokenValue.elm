@@ -1,11 +1,14 @@
-module TokenValue exposing (TokenValue(..), add, compare, decoder, div, divFloatWithWarning, encode, evmValueToTruncatedUserFloatString, evmValueToUserFloatString, fromFloatWithWarning, fromIntTokenValue, fromString, getEvmValue, getFloatValueWithWarning, isZero, mul, mulFloatWithWarning, negate, pullAnyFirstDecimalOffToRight, removeUnnecessaryZerosAndDots, sub, toConciseString, toFloatString, tokenValue, userStringToEvmValue, zero)
+module TokenValue exposing (TokenValue(..), add, compare, decoder, div, divFloatWithWarning, encode, evmValueToTruncatedUserFloatString, evmValueToUserFloatString, fromFloatWithWarning, fromIntTokenValue, fromString, getEvmValue, isZero, mul, mulFloatWithWarning, negate, pullAnyFirstDecimalOffToRight, removeUnnecessaryZerosAndDots, sub, toConciseString, toFloatString, toFloatWithWarning, tokenValue, userStringToEvmValue, zero)
 
 import BigInt exposing (BigInt)
-import Config
 import FormatFloat exposing (..)
 import Helpers.BigInt as BigIntHelpers
 import Json.Decode
 import Json.Encode
+
+
+tokenDecimals =
+    18
 
 
 type TokenValue
@@ -21,7 +24,7 @@ fromIntTokenValue : Int -> TokenValue
 fromIntTokenValue val =
     BigInt.fromInt val
         |> BigInt.mul
-            (BigInt.pow (BigInt.fromInt 10) (BigInt.fromInt Config.tokenDecimals))
+            (BigInt.pow (BigInt.fromInt 10) (BigInt.fromInt tokenDecimals))
         |> tokenValue
 
 
@@ -61,8 +64,8 @@ getEvmValue (TokenValue tokens) =
     tokens
 
 
-getFloatValueWithWarning : TokenValue -> Float
-getFloatValueWithWarning tokens =
+toFloatWithWarning : TokenValue -> Float
+toFloatWithWarning tokens =
     case tokens |> toFloatString Nothing |> String.toFloat of
         Just f ->
             f
@@ -87,7 +90,7 @@ toFloatString maxDigitsAfterDecimal tokens =
 
 toConciseString : TokenValue -> String
 toConciseString tv =
-    getFloatValueWithWarning tv
+    toFloatWithWarning tv
         |> autoFormatFloat
 
 
@@ -164,7 +167,7 @@ mul t i =
 
 mulFloatWithWarning : TokenValue -> Float -> TokenValue
 mulFloatWithWarning t f =
-    getFloatValueWithWarning t
+    toFloatWithWarning t
         * f
         |> fromFloatWithWarning
 
@@ -179,7 +182,7 @@ div t i =
 
 divFloatWithWarning : TokenValue -> Float -> TokenValue
 divFloatWithWarning t f =
-    getFloatValueWithWarning t
+    toFloatWithWarning t
         / f
         |> fromFloatWithWarning
 
@@ -220,7 +223,7 @@ userStringToEvmValue amountString =
                 pullAnyFirstDecimalOffToRight amountString
 
             numDigitsLeftToMove =
-                Config.tokenDecimals - numDigitsMoved
+                tokenDecimals - numDigitsMoved
 
             maybeBigIntAmount =
                 if numDigitsLeftToMove < 0 then
@@ -295,12 +298,12 @@ evmValueToUserFloatString evmValue =
             zeroPaddedString =
                 evmValue
                     |> BigInt.toString
-                    |> String.padLeft Config.tokenDecimals '0'
+                    |> String.padLeft tokenDecimals '0'
 
             withDecimalString =
-                String.dropRight Config.tokenDecimals zeroPaddedString
+                String.dropRight tokenDecimals zeroPaddedString
                     ++ "."
-                    ++ String.right Config.tokenDecimals zeroPaddedString
+                    ++ String.right tokenDecimals zeroPaddedString
         in
         removeUnnecessaryZerosAndDots withDecimalString
             |> (\s ->

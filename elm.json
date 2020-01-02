@@ -23,7 +23,7 @@
             "elm-community/json-extra": "4.0.0",
             "elm-community/list-extra": "8.1.0",
             "elm-community/maybe-extra": "5.0.0",
-            "elm-community/result-extra": "2.2.1",
+            "elm-community/result-extra": "2.3.0",
             "elm-community/string-extra": "4.0.1",
             "linuss/smooth-scroll": "1.1.0",
             "mdgriffith/elm-ui": "1.1.5",

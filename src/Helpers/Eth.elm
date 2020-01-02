@@ -1,4 +1,4 @@
-module Helpers.Eth exposing (addressIfNot0x0, addressIs0x0, getLogAt, httpProviderForFactory, makeViewAddressUrl, makeViewTxUrl, updateCallValue)
+module Helpers.Eth exposing (addressIfNot0x0, addressIs0x0, getLogAt, httpProviderForFactory, makeViewAddressUrl, makeViewTxUrl, maxUintValue, updateCallValue, zeroAddress)
 
 import Array
 import BigInt exposing (BigInt)
@@ -40,7 +40,12 @@ addressIfNot0x0 addr =
 
 addressIs0x0 : Address -> Bool
 addressIs0x0 addr =
-    addr == Eth.Utils.unsafeToAddress "0x0000000000000000000000000000000000000000"
+    addr == zeroAddress
+
+
+zeroAddress : Address
+zeroAddress =
+    Eth.Utils.unsafeToAddress "0x0000000000000000000000000000000000000000"
 
 
 getLogAt : Int -> List Eth.Types.Log -> Maybe Eth.Types.Log
@@ -92,3 +97,13 @@ updateCallValue value call =
     { call
         | value = Just value
     }
+
+
+maxUintValue : BigInt
+maxUintValue =
+    BigInt.sub
+        (BigInt.pow
+            (BigInt.fromInt 2)
+            (BigInt.fromInt 256)
+        )
+        (BigInt.fromInt 1)

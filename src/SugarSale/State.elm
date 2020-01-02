@@ -6,7 +6,8 @@ import CmdDown exposing (CmdDown)
 import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Config
-import Contracts.SugarSale.Wrappers as SugarSaleContract
+import Contracts.SugarSale.Wrappers as SugarSale
+import Contracts.Wrappers
 import Eth
 import Eth.Types exposing (HttpProvider)
 import Helpers.BigInt as BigIntHelpers
@@ -33,6 +34,11 @@ init testMode wallet now =
           , saleStartTime = Nothing
           , sugarSale = Nothing
           , bucketView = ViewActive
+          , daiInput = ""
+          , dumbCheckboxesClicked = ( False, False )
+          , daiAmount = Nothing
+          , referrer = Nothing
+          , allowanceState = Loading
           }
         , Cmd.batch
             [ fetchSaleStartTimestampCmd testMode
@@ -61,14 +67,25 @@ update msg prevModel =
             justModelUpdate
                 { prevModel | timezone = Just tz }
 
-        Refresh newNow ->
+        Refresh ->
             let
                 cmd =
                     Cmd.batch <|
                         [ fetchInfoForVisibleNonFutureBucketsCmd prevModel
+                        , Maybe.map
+                            (\userInfo -> fetchUserAllowanceForSaleCmd userInfo prevModel.testMode)
+                            (Wallet.userInfo prevModel.wallet)
+                            |> Maybe.withDefault Cmd.none
                         ]
             in
             UpdateResult
+                prevModel
+                cmd
+                ChainCmd.none
+                []
+
+        UpdateNow newNow ->
+            justModelUpdate
                 { prevModel
                     | now = newNow
                     , sugarSale =
@@ -76,9 +93,6 @@ update msg prevModel =
                             (addNewActiveBucketIfNeeded newNow prevModel.testMode)
                             prevModel.sugarSale
                 }
-                cmd
-                ChainCmd.none
-                []
 
         SaleStartTimestampFetched fetchResult ->
             case fetchResult of
@@ -168,7 +182,7 @@ update msg prevModel =
                 Err httpErr ->
                     let
                         _ =
-                            Debug.log "http error when fetching buy for user" ( userAddress, bucketId, fetchResult )
+                            Debug.log "http error when fetching buy for user" ( userAddress, bucketId, httpErr )
                     in
                     justModelUpdate prevModel
 
@@ -209,6 +223,36 @@ update msg prevModel =
                                     justModelUpdate
                                         { prevModel | sugarSale = Just newSugarSale }
 
+        AllowanceFetched fetchResult ->
+            case fetchResult of
+                Err httpErr ->
+                    let
+                        _ =
+                            Debug.log "http error when fetching user allowance" httpErr
+                    in
+                    justModelUpdate prevModel
+
+                Ok allowance ->
+                    case prevModel.allowanceState of
+                        UnlockMining ->
+                            if allowance == EthHelpers.maxUintValue then
+                                justModelUpdate
+                                    { prevModel
+                                        | allowanceState =
+                                            Loaded <| TokenValue.tokenValue allowance
+                                    }
+
+                            else
+                                justModelUpdate prevModel
+
+                        _ ->
+                            justModelUpdate
+                                { prevModel
+                                    | allowanceState =
+                                        Loaded <|
+                                            TokenValue.tokenValue allowance
+                                }
+
         BucketClicked bucketId ->
             case prevModel.sugarSale of
                 Nothing ->
@@ -231,6 +275,114 @@ update msg prevModel =
                         { prevModel
                             | bucketView = newBucketView
                         }
+
+        DaiInputChanged input ->
+            justModelUpdate
+                { prevModel
+                    | daiInput = input
+                    , daiAmount =
+                        if input == "" then
+                            Nothing
+
+                        else
+                            Just <| validateDaiInput input
+                }
+
+        FirstDumbCheckboxClicked flag ->
+            justModelUpdate
+                { prevModel
+                    | dumbCheckboxesClicked =
+                        ( flag, Tuple.second prevModel.dumbCheckboxesClicked )
+                }
+
+        SecondDumbCheckboxClicked flag ->
+            justModelUpdate
+                { prevModel
+                    | dumbCheckboxesClicked =
+                        ( Tuple.first prevModel.dumbCheckboxesClicked, flag )
+                }
+
+        UnlockDaiButtonClicked ->
+            let
+                chainCmd =
+                    let
+                        customSend =
+                            { onMined = Just ( DaiUnlockMined, Nothing )
+                            , onSign = Just DaiUnlockSigned
+                            , onBroadcast = Nothing
+                            }
+
+                        txParams =
+                            SugarSale.unlockDai prevModel.testMode
+                                |> Eth.toSend
+                    in
+                    ChainCmd.custom customSend txParams
+            in
+            UpdateResult
+                prevModel
+                Cmd.none
+                chainCmd
+                []
+
+        DaiUnlockSigned txHashResult ->
+            justModelUpdate
+                { prevModel
+                    | allowanceState = UnlockMining
+                }
+
+        DaiUnlockMined txReceiptResult ->
+            let
+                _ =
+                    Debug.log "txReceiptResult for daiUnlockMined" txReceiptResult
+            in
+            justModelUpdate
+                { prevModel
+                    | allowanceState = Loaded (TokenValue.tokenValue EthHelpers.maxUintValue)
+                }
+
+        EnterButtonClicked userInfo daiAmount maybeReferrer ->
+            let
+                chainCmd =
+                    let
+                        customSend =
+                            { onMined = Just ( EnterMined, Nothing )
+                            , onSign = Just EnterSigned
+                            , onBroadcast = Nothing
+                            }
+
+                        txParams =
+                            SugarSale.enter
+                                userInfo.address
+                                daiAmount
+                                maybeReferrer
+                                prevModel.testMode
+                                |> Eth.toSend
+                    in
+                    ChainCmd.custom customSend txParams
+            in
+            UpdateResult
+                prevModel
+                Cmd.none
+                chainCmd
+                []
+
+        EnterSigned txHashResult ->
+            let
+                _ =
+                    Debug.log "Signed enter tx!" ""
+            in
+            justModelUpdate
+                { prevModel
+                    | daiInput = ""
+                    , daiAmount = Nothing
+                }
+
+        EnterMined txReceiptResult ->
+            let
+                _ =
+                    Debug.log "Mined enter tx!" txReceiptResult
+            in
+            justModelUpdate prevModel
 
 
 initSugarSale : Bool -> Time.Posix -> Time.Posix -> Maybe SugarSale
@@ -304,14 +456,14 @@ fetchInfoForVisibleNonFutureBucketsCmd model =
                     (\id ->
                         if id <= getActiveBucketId sugarSale model.now model.testMode then
                             Cmd.batch
-                                [ SugarSaleContract.getTotalValueEnteredForBucket
-                                    (httpProvider model.testMode)
+                                [ SugarSale.getTotalValueEnteredForBucket
+                                    model.testMode
                                     id
                                     (BucketValueEnteredFetched id)
                                 , case Wallet.userInfo model.wallet of
                                     Just userInfo ->
-                                        SugarSaleContract.getUserBuyForBucket
-                                            (httpProvider model.testMode)
+                                        SugarSale.getUserBuyForBucket
+                                            model.testMode
                                             userInfo.address
                                             id
                                             (UserBuyFetched userInfo.address id)
@@ -330,19 +482,24 @@ fetchInfoForVisibleNonFutureBucketsCmd model =
             Cmd.none
 
 
-httpProvider : Bool -> HttpProvider
-httpProvider test =
-    if test then
-        EthHelpers.httpProviderForFactory <| Token KovanDai
+fetchUserAllowanceForSaleCmd : UserInfo -> Bool -> Cmd Msg
+fetchUserAllowanceForSaleCmd userInfo testMode =
+    Contracts.Wrappers.getAllowanceCmd
+        (if testMode then
+            KovanDai
 
-    else
-        Debug.todo "non-test mode not yet defined for httpProvider"
+         else
+            EthDai
+        )
+        userInfo.address
+        (Config.sugarSaleAddress testMode)
+        AllowanceFetched
 
 
 fetchSaleStartTimestampCmd : Bool -> Cmd Msg
-fetchSaleStartTimestampCmd test =
-    SugarSaleContract.getSaleStartTimestampCmd
-        (httpProvider test)
+fetchSaleStartTimestampCmd testMode =
+    SugarSale.getSaleStartTimestampCmd
+        testMode
         SaleStartTimestampFetched
 
 
@@ -352,6 +509,20 @@ clearSugarSaleExitInfo =
         (\bucket ->
             { bucket | userExitInfo = Nothing }
         )
+
+
+validateDaiInput : String -> Result String TokenValue
+validateDaiInput input =
+    case String.toFloat input of
+        Just floatVal ->
+            if floatVal <= 0 then
+                Err "Value must be greater than 0"
+
+            else
+                Ok <| TokenValue.fromFloatWithWarning floatVal
+
+        Nothing ->
+            Err "Can't interpret that number"
 
 
 runCmdDown : CmdDown -> Model -> UpdateResult
@@ -376,4 +547,7 @@ runCmdDown cmdDown prevModel =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Time.every 1000 Refresh
+    Sub.batch
+        [ Time.every 1000 <| always Refresh
+        , Time.every 500 UpdateNow
+        ]

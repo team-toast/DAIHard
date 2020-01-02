@@ -1,11 +1,11 @@
-module SugarSale.Types exposing (Bucket, BucketState(..), BucketUserExitInfo, BucketView(..), Model, Msg(..), SugarSale, UpdateResult, activeBucketTimeLeft, bucketStartTime, buyToBucketExitInfo, focusedBucketId, getActiveBucketId, getBucketInfo, justModelUpdate, makeBlankBucket, numBucketsToSide, updateAllPastOrActiveBuckets, updatePastOrActiveBucketAt, visibleBucketIds)
+module SugarSale.Types exposing (AllowanceState(..), Bucket, BucketState(..), BucketUserExitInfo, BucketView(..), Model, Msg(..), SugarSale, UpdateResult, activeBucketTimeLeft, bucketStartTime, buyToBucketExitInfo, getActiveBucketId, getBucketInfo, getClaimableTokens, getEffectivePricePerToken, getFocusedBucketId, justModelUpdate, makeBlankBucket, numBucketsToSide, updateAllPastOrActiveBuckets, updatePastOrActiveBucketAt, visibleBucketIds)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
 import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Config
-import Contracts.SugarSale.Generated.BucketSale as SugarSaleContract
+import Contracts.SugarSale.Generated.BucketSale as SugarSaleBindings
 import Eth.Types exposing (Address, TxHash, TxReceipt)
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
@@ -24,6 +24,11 @@ type alias Model =
     , saleStartTime : Maybe Time.Posix
     , sugarSale : Maybe SugarSale
     , bucketView : BucketView
+    , daiInput : String
+    , dumbCheckboxesClicked : ( Bool, Bool )
+    , daiAmount : Maybe (Result String TokenValue)
+    , referrer : Maybe Address
+    , allowanceState : AllowanceState
     }
 
 
@@ -31,11 +36,22 @@ type Msg
     = NoOp
     | CmdUp (CmdUp Msg)
     | TimezoneGot Time.Zone
-    | Refresh Time.Posix
+    | Refresh
+    | UpdateNow Time.Posix
     | SaleStartTimestampFetched (Result Http.Error BigInt)
     | BucketValueEnteredFetched Int (Result Http.Error BigInt)
-    | UserBuyFetched Address Int (Result Http.Error SugarSaleContract.Buy)
+    | UserBuyFetched Address Int (Result Http.Error SugarSaleBindings.Buy)
     | BucketClicked Int
+    | DaiInputChanged String
+    | FirstDumbCheckboxClicked Bool
+    | SecondDumbCheckboxClicked Bool
+    | UnlockDaiButtonClicked
+    | AllowanceFetched (Result Http.Error BigInt)
+    | DaiUnlockSigned (Result String TxHash)
+    | DaiUnlockMined (Result String TxReceipt)
+    | EnterButtonClicked UserInfo TokenValue (Maybe Address)
+    | EnterSigned (Result String TxHash)
+    | EnterMined (Result String TxReceipt)
 
 
 type alias UpdateResult =
@@ -53,6 +69,12 @@ justModelUpdate model =
     , chainCmd = ChainCmd.none
     , cmdUps = []
     }
+
+
+type AllowanceState
+    = Loading
+    | Loaded TokenValue
+    | UnlockMining
 
 
 type alias SugarSale =
@@ -108,8 +130,8 @@ updatePastOrActiveBucketAt bucketId updateFunc sugarSale =
         Nothing
 
 
-focusedBucketId : SugarSale -> BucketView -> Time.Posix -> Bool -> Int
-focusedBucketId sugarSale bucketView now testMode =
+getFocusedBucketId : SugarSale -> BucketView -> Time.Posix -> Bool -> Int
+getFocusedBucketId sugarSale bucketView now testMode =
     case bucketView of
         ViewActive ->
             getActiveBucketId sugarSale now testMode
@@ -122,7 +144,7 @@ visibleBucketIds : SugarSale -> BucketView -> Time.Posix -> Bool -> List Int
 visibleBucketIds sugarSale bucketView now testMode =
     let
         centerBucketId =
-            focusedBucketId sugarSale bucketView now testMode
+            getFocusedBucketId sugarSale bucketView now testMode
     in
     List.range
         (max (centerBucketId - numBucketsToSide) 0)
@@ -191,7 +213,7 @@ type BucketView
     | ViewId Int
 
 
-buyToBucketExitInfo : SugarSaleContract.Buy -> BucketUserExitInfo
+buyToBucketExitInfo : SugarSaleBindings.Buy -> BucketUserExitInfo
 buyToBucketExitInfo genBuy =
     BucketUserExitInfo
         ((BigInt.compare genBuy.valueEntered (BigInt.fromInt 0) == GT)
@@ -207,4 +229,23 @@ type alias BucketUserExitInfo =
 
 
 numBucketsToSide =
-    2
+    3
+
+
+getClaimableTokens : TokenValue -> TokenValue -> Bool -> TokenValue
+getClaimableTokens totalValueEntered daiIn testMode =
+    let
+        claimableRatio =
+            TokenValue.toFloatWithWarning daiIn
+                / TokenValue.toFloatWithWarning totalValueEntered
+    in
+    TokenValue.mulFloatWithWarning
+        (Config.sugarSaleTokensPerBucket testMode)
+        claimableRatio
+
+
+getEffectivePricePerToken : TokenValue -> Bool -> TokenValue
+getEffectivePricePerToken totalValueEntered testMode =
+    TokenValue.toFloatWithWarning totalValueEntered
+        / (TokenValue.toFloatWithWarning <| Config.sugarSaleTokensPerBucket testMode)
+        |> TokenValue.fromFloatWithWarning

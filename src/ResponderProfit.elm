@@ -17,7 +17,7 @@ calculate prices trade =
 
                 tradeAmount =
                     trade.parameters.tradeAmount
-                        |> TokenValue.getFloatValueWithWarning
+                        |> TokenValue.toFloatWithWarning
 
                 ( responderCost, responderGain ) =
                     case trade.parameters.initiatorRole of
