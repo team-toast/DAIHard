@@ -85,11 +85,7 @@ viewBucket sugarSale bucketId isFocused testMode dProfile =
             getBucketInfo sugarSale bucketId testMode
 
         borderColor =
-            if bucketState == Future then
-                Element.rgb 0.9 0.9 0.9
-
-            else
-                Element.rgb 0.8 0.8 0.8
+            Element.rgb 0.8 0.8 0.8
 
         backgroundColor =
             case bucketState of
@@ -141,7 +137,7 @@ viewBucket sugarSale bucketId isFocused testMode dProfile =
                         ]
 
                     else
-                        []
+                        [ Element.Border.dashed ]
                    )
     in
     Element.el
