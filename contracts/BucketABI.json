@@ -307,6 +307,11 @@
         "inputs": [
             {
                 "internalType": "uint256",
+                "name": "_startOfSale",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
                 "name": "_bucketPeriod",
                 "type": "uint256"
             },
