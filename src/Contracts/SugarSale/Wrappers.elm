@@ -1,4 +1,4 @@
-module Contracts.SugarSale.Wrappers exposing (enter, getSaleStartTimestampCmd, getTotalValueEnteredForBucket, getUserBuyForBucket, unlockDai)
+module Contracts.SugarSale.Wrappers exposing (enter, exit, getSaleStartTimestampCmd, getTotalValueEnteredForBucket, getUserBuyForBucket, httpProvider, unlockDai)
 
 import BigInt exposing (BigInt)
 import CommonTypes
@@ -64,3 +64,11 @@ enter userAddress amount maybeReferrer testMode =
         userAddress
         (TokenValue.getEvmValue amount)
         (maybeReferrer |> Maybe.withDefault EthHelpers.zeroAddress)
+
+
+exit : Address -> Int -> Bool -> Call ()
+exit userAddress bucketId testMode =
+    SugarSaleBindings.exit
+        (Config.sugarSaleAddress testMode)
+        userAddress
+        (BigInt.fromInt bucketId)

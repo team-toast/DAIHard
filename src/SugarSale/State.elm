@@ -186,10 +186,10 @@ update msg prevModel =
                     in
                     justModelUpdate prevModel
 
-                Ok userBuy ->
+                Ok bindingBuy ->
                     let
-                        bucketExitInfo =
-                            buyToBucketExitInfo userBuy
+                        buy =
+                            buyFromBindingBuy bindingBuy
                     in
                     case prevModel.sugarSale of
                         Nothing ->
@@ -207,7 +207,7 @@ update msg prevModel =
                                             bucketId
                                             (\bucket ->
                                                 { bucket
-                                                    | userExitInfo = Just bucketExitInfo
+                                                    | userBuy = Just buy
                                                 }
                                             )
                             in
@@ -384,6 +384,45 @@ update msg prevModel =
             in
             justModelUpdate prevModel
 
+        ExitButtonClicked userInfo bucketId ->
+            let
+                chainCmd =
+                    let
+                        customSend =
+                            { onMined = Just ( ExitMined, Nothing )
+                            , onSign = Just ExitSigned
+                            , onBroadcast = Nothing
+                            }
+
+                        txParams =
+                            SugarSale.exit
+                                userInfo.address
+                                bucketId
+                                prevModel.testMode
+                                |> Eth.toSend
+                    in
+                    ChainCmd.custom customSend txParams
+            in
+            UpdateResult
+                prevModel
+                Cmd.none
+                chainCmd
+                []
+
+        ExitSigned txHashResult ->
+            let
+                _ =
+                    Debug.log "ExitSigned" txHashResult
+            in
+            justModelUpdate prevModel
+
+        ExitMined txReceiptResult ->
+            let
+                _ =
+                    Debug.log "ExitMined" txReceiptResult
+            in
+            justModelUpdate prevModel
+
 
 initSugarSale : Bool -> Time.Posix -> Time.Posix -> Maybe SugarSale
 initSugarSale testMode saleStartTimestamp now =
@@ -507,7 +546,7 @@ clearSugarSaleExitInfo : SugarSale -> SugarSale
 clearSugarSaleExitInfo =
     updateAllPastOrActiveBuckets
         (\bucket ->
-            { bucket | userExitInfo = Nothing }
+            { bucket | userBuy = Nothing }
         )
 
 

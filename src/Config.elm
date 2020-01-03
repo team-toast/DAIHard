@@ -70,7 +70,7 @@ devFeeAddress factoryType =
 sugarSaleAddress : Bool -> Address
 sugarSaleAddress testMode =
     if testMode then
-        Eth.Utils.unsafeToAddress "0xb7Cc78C0bb9Eb8a25c8050593b7643922680D97B"
+        Eth.Utils.unsafeToAddress "0x487Ac5423555B1D83F5b8BA13F260B296E9D0777"
 
     else
         Debug.todo "No address for non-testMode sugarSale"

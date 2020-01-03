@@ -153,9 +153,9 @@ viewBucket sugarSale bucketId isFocused testMode dProfile =
                         Element.text "Can enter!"
 
                     else
-                        case bucket.userExitInfo of
-                            Just exitInfo ->
-                                if exitInfo.hasTokensToClaim then
+                        case bucket.userBuy of
+                            Just buy ->
+                                if (not <| TokenValue.isZero buy.valueEntered) && not buy.hasExited then
                                     Element.text "Can exit!"
 
                                 else
@@ -336,10 +336,10 @@ entryOrExitForm model sugarSale bucketId dProfile =
             in
             case bucketState of
                 Past ->
-                    case bucket.userExitInfo of
-                        Just userExitInfo ->
-                            if userExitInfo.hasTokensToClaim then
-                                exitForm userInfo userExitInfo dProfile
+                    case bucket.userBuy of
+                        Just buy ->
+                            if (not <| TokenValue.isZero buy.valueEntered) && not buy.hasExited then
+                                exitForm userInfo bucketId bucket buy model.testMode dProfile
 
                             else
                                 noExitAvailableElement dProfile
@@ -507,9 +507,38 @@ confirmButton userInfo allowanceState dumbCheckboxesClicked daiAmount maybeRefer
                         Nothing
 
 
-exitForm : UserInfo -> BucketUserExitInfo -> DisplayProfile -> Element Msg
-exitForm userInfo userExitInfo dProfile =
-    Debug.todo ""
+exitForm : UserInfo -> Int -> Bucket -> Buy -> Bool -> DisplayProfile -> Element Msg
+exitForm userInfo bucketId bucket buy testMode dProfile =
+    case bucket.totalValueEntered of
+        Just totalValueEntered ->
+            let
+                claimableTokens =
+                    getClaimableTokens totalValueEntered buy.valueEntered testMode
+            in
+            Element.column
+                [ Element.centerX
+                , Element.spacing 10
+                ]
+                [ Element.paragraph
+                    []
+                    [ Element.text "You have "
+                    , formatCalcValue claimableTokens
+                    , Element.text " to claim!"
+                    ]
+                , exitButton userInfo bucketId dProfile
+                ]
+
+        _ ->
+            Element.text "Loading..."
+
+
+exitButton : UserInfo -> Int -> DisplayProfile -> Element Msg
+exitButton userInfo bucketId dProfile =
+    EH.redButton
+        dProfile
+        []
+        [ "Claim Tokens" ]
+        (ExitButtonClicked userInfo bucketId)
 
 
 noExitAvailableElement : DisplayProfile -> Element Msg

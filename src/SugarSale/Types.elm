@@ -1,4 +1,4 @@
-module SugarSale.Types exposing (AllowanceState(..), Bucket, BucketState(..), BucketUserExitInfo, BucketView(..), Model, Msg(..), SugarSale, UpdateResult, activeBucketTimeLeft, bucketStartTime, buyToBucketExitInfo, getActiveBucketId, getBucketInfo, getClaimableTokens, getEffectivePricePerToken, getFocusedBucketId, justModelUpdate, makeBlankBucket, numBucketsToSide, updateAllPastOrActiveBuckets, updatePastOrActiveBucketAt, visibleBucketIds)
+module SugarSale.Types exposing (AllowanceState(..), Bucket, BucketState(..), BucketView(..), Buy, Model, Msg(..), SugarSale, UpdateResult, activeBucketTimeLeft, bucketStartTime, buyFromBindingBuy, getActiveBucketId, getBucketInfo, getClaimableTokens, getEffectivePricePerToken, getFocusedBucketId, justModelUpdate, makeBlankBucket, numBucketsToSide, updateAllPastOrActiveBuckets, updatePastOrActiveBucketAt, visibleBucketIds)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -52,6 +52,9 @@ type Msg
     | EnterButtonClicked UserInfo TokenValue (Maybe Address)
     | EnterSigned (Result String TxHash)
     | EnterMined (Result String TxReceipt)
+    | ExitButtonClicked UserInfo Int
+    | ExitSigned (Result String TxHash)
+    | ExitMined (Result String TxReceipt)
 
 
 type alias UpdateResult =
@@ -185,7 +188,7 @@ bucketStartTime sugarSale bucketId testMode =
 type alias Bucket =
     { startTime : Time.Posix
     , totalValueEntered : Maybe TokenValue
-    , userExitInfo : Maybe BucketUserExitInfo
+    , userBuy : Maybe Buy
     }
 
 
@@ -213,17 +216,17 @@ type BucketView
     | ViewId Int
 
 
-buyToBucketExitInfo : SugarSaleBindings.Buy -> BucketUserExitInfo
-buyToBucketExitInfo genBuy =
-    BucketUserExitInfo
-        ((BigInt.compare genBuy.valueEntered (BigInt.fromInt 0) == GT)
-            && (BigInt.compare genBuy.tokensExited (BigInt.fromInt 0) == EQ)
-        )
-        (not <| EthHelpers.addressIs0x0 genBuy.referralAddress)
+buyFromBindingBuy : SugarSaleBindings.Buy -> Buy
+buyFromBindingBuy bindingBuy =
+    Buy
+        (TokenValue.tokenValue bindingBuy.valueEntered)
+        (BigInt.compare bindingBuy.tokensExited (BigInt.fromInt 0) /= EQ)
+        (not <| EthHelpers.addressIs0x0 bindingBuy.referralAddress)
 
 
-type alias BucketUserExitInfo =
-    { hasTokensToClaim : Bool
+type alias Buy =
+    { valueEntered : TokenValue
+    , hasExited : Bool
     , hasReferallBonus : Bool
     }
 
