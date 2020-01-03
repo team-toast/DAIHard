@@ -36,49 +36,44 @@ root dProfile model =
             }
         ]
         [ EH.simpleSubmodelContainer
-            (1200 |> changeForMobile 400 dProfile)
-            (Element.column
-                [ Element.width Element.fill
-                , Element.spacing (20 |> changeForMobile 10 dProfile)
-                , Element.padding (20 |> changeForMobile 10 dProfile)
-                ]
-                [ viewMaybeBucketsRow model.sugarSale model.bucketView model.now model.testMode dProfile
-                , entryUX model dProfile
-                ]
+            (1600 |> changeForMobile 400 dProfile)
+            (case model.sugarSale of
+                Nothing ->
+                    Element.el [ Element.centerX, Element.Font.size 30 ] <| Element.text "Loading..."
+
+                Just sugarSale ->
+                    Element.column
+                        [ Element.width Element.fill
+                        , Element.spacing (20 |> changeForMobile 10 dProfile)
+                        , Element.padding (20 |> changeForMobile 10 dProfile)
+                        ]
+                        [ viewBucketsRow sugarSale model.bucketView model.now model.testMode dProfile
+                        , activeBucketInfoElement model sugarSale dProfile
+                        , activeBucketActionElement model sugarSale model.testMode dProfile
+                        ]
             )
         ]
     , []
     )
 
 
-viewMaybeBucketsRow : Maybe SugarSale -> BucketView -> Time.Posix -> Bool -> DisplayProfile -> Element Msg
-viewMaybeBucketsRow maybeSugarSale bucketView now testMode dProfile =
-    Element.el
-        [ Element.centerX
-        ]
-    <|
-        case maybeSugarSale of
-            Just sugarSale ->
-                viewBucketsRow sugarSale bucketView now testMode dProfile
-
-            _ ->
-                Element.el [ Element.centerX ] <| Element.text "LOADING...."
-
-
 viewBucketsRow : SugarSale -> BucketView -> Time.Posix -> Bool -> DisplayProfile -> Element Msg
 viewBucketsRow sugarSale bucketView now testMode dProfile =
-    visibleBucketIds sugarSale bucketView now testMode
-        |> List.map
-            (\id ->
-                viewBucket
-                    sugarSale
-                    id
-                    (id == getFocusedBucketId sugarSale bucketView now testMode)
-                    testMode
-                    dProfile
-            )
-        |> Element.row
-            [ Element.spacing 15 ]
+    Element.row
+        [ Element.spacing 15
+        , Element.centerX
+        ]
+        (visibleBucketIds sugarSale bucketView now testMode
+            |> List.map
+                (\id ->
+                    viewBucket
+                        sugarSale
+                        id
+                        (id == getFocusedBucketId sugarSale bucketView now testMode)
+                        testMode
+                        dProfile
+                )
+        )
 
 
 viewBucket : SugarSale -> Int -> Bool -> Bool -> DisplayProfile -> Element Msg
@@ -185,64 +180,167 @@ viewBucket sugarSale bucketId isFocused testMode dProfile =
             Element.text "lol XD"
 
 
-entryUX : Model -> DisplayProfile -> Element Msg
-entryUX model dProfile =
-    case model.sugarSale of
-        Nothing ->
-            Element.text "Loading..."
-
-        Just sugarSale ->
-            let
-                focusedBucketId =
-                    getFocusedBucketId
+activeBucketInfoElement : Model -> SugarSale -> DisplayProfile -> Element Msg
+activeBucketInfoElement model sugarSale dProfile =
+    let
+        bucket =
+            Tuple.second <|
+                getBucketInfo
+                    sugarSale
+                    (getFocusedBucketId
                         sugarSale
                         model.bucketView
                         model.now
                         model.testMode
-
-                ( bucketState, bucket ) =
-                    getBucketInfo
-                        sugarSale
-                        focusedBucketId
-                        model.testMode
-            in
-            Element.column
-                [ Element.width Element.fill
-                , Element.padding 20
-                ]
-                [ timingInfoElement model sugarSale focusedBucketId dProfile
-                , entryOrExitForm model sugarSale focusedBucketId dProfile
-                ]
-
-
-timingInfoElement : Model -> SugarSale -> Int -> DisplayProfile -> Element Msg
-timingInfoElement model sugarSale focusedBucketId dProfile =
+                    )
+                    model.testMode
+    in
     Element.column
         [ Element.centerX
-        , Element.Font.size (22 |> changeForMobile 18 dProfile)
+        , Element.spacing 10
+        , Element.width <| Element.px (500 |> changeForMobile 300 dProfile)
+        , Element.Font.size (28 |> changeForMobile 22 dProfile)
         ]
-    <|
-        List.map
-            Element.text
-            (case Tuple.first <| getBucketInfo sugarSale focusedBucketId model.testMode of
+        [ Element.row
+            [ Element.width Element.fill
+            ]
+            [ Element.el [ Element.alignLeft ] <|
+                bucketIdElement model sugarSale dProfile
+            , Element.el [ Element.alignRight ] <|
+                timingInfoElement model sugarSale dProfile
+            ]
+        , EH.thinGrayHRuler
+        , Element.column
+            [ Element.width Element.fill
+            , Element.spacing 10
+            ]
+            [ totalDaiBidRow bucket dProfile
+            , effectiveTokenPriceRow bucket model.testMode dProfile
+            ]
+        ]
+
+
+bucketIdElement : Model -> SugarSale -> DisplayProfile -> Element Msg
+bucketIdElement model sugarSale dProfile =
+    Element.column
+        [ Element.spacing 5
+        ]
+        [ Element.text "SugarSale Bucket"
+        , Element.text
+            ("#"
+                ++ (getFocusedBucketId sugarSale model.bucketView model.now model.testMode
+                        |> String.fromInt
+                   )
+            )
+        ]
+
+
+timingInfoElement : Model -> SugarSale -> DisplayProfile -> Element Msg
+timingInfoElement model sugarSale dProfile =
+    let
+        focusedBucketId =
+            getFocusedBucketId sugarSale model.bucketView model.now model.testMode
+
+        ( descText, timeText ) =
+            case Tuple.first <| getBucketInfo sugarSale focusedBucketId model.testMode of
                 Past ->
-                    [ "Bucket Ended at "
+                    ( "Bucket Ended at "
                     , bucketStartTime sugarSale (focusedBucketId + 1) model.testMode
                         |> bucketTimestampToString model.now model.timezone
-                    ]
+                    )
 
                 Active ->
-                    [ "Bucket Ends In "
+                    ( "Bucket Ends In "
                     , activeBucketTimeLeft sugarSale model.now model.testMode
                         |> TimeHelpers.toConciseIntervalString
-                    ]
+                    )
 
                 Future ->
-                    [ "Bucket Will Start at "
+                    ( "Bucket Will Start at "
                     , bucketStartTime sugarSale focusedBucketId model.testMode
                         |> bucketTimestampToString model.now model.timezone
-                    ]
+                    )
+    in
+    Element.column
+        [ Element.spacing 5
+        ]
+        [ Element.el
+            [ Element.alignRight
+            ]
+            (Element.text descText)
+        , Element.el
+            [ Element.alignRight
+            ]
+            (Element.text timeText)
+        ]
+
+
+totalDaiBidRow : Bucket -> DisplayProfile -> Element Msg
+totalDaiBidRow bucket dProfile =
+    Element.row
+        [ Element.width Element.fill
+        ]
+        [ Element.el [ Element.alignLeft ] <|
+            Element.text "Total Dai Bid:"
+        , Element.el [ Element.alignRight ] <|
+            (bucket.totalValueEntered
+                |> Maybe.map formatCalcValue
+                |> Maybe.withDefault (Element.text "Loading...")
             )
+        ]
+
+
+effectiveTokenPriceRow : Bucket -> Bool -> DisplayProfile -> Element Msg
+effectiveTokenPriceRow bucket testMode dProfile =
+    Element.row
+        [ Element.width Element.fill
+        ]
+        [ Element.el [ Element.alignLeft ] <|
+            Element.text "Effective ??? Price:"
+        , Element.el [ Element.alignRight ] <|
+            (bucket.totalValueEntered
+                |> Maybe.map
+                    (\totalValueEntered ->
+                        getEffectivePricePerToken totalValueEntered testMode
+                    )
+                |> Maybe.map formatCalcValue
+                |> Maybe.withDefault (Element.text "Loading...")
+            )
+        ]
+
+
+activeBucketActionElement : Model -> SugarSale -> Bool -> DisplayProfile -> Element Msg
+activeBucketActionElement model sugarSale testMode dProfile =
+    Element.text "Darpa derp"
+
+
+
+-- activeBucketUX : Model -> DisplayProfile -> Element Msg
+-- activeBucketUX model dProfile =
+--     case model.sugarSale of
+--         Nothing ->
+--             Element.text "Loading..."
+--         Just sugarSale ->
+--             let
+--                 focusedBucketId =
+--                     getFocusedBucketId
+--                         sugarSale
+--                         model.bucketView
+--                         model.now
+--                         model.testMode
+--                 ( bucketState, bucket ) =
+--                     getBucketInfo
+--                         sugarSale
+--                         focusedBucketId
+--                         model.testMode
+--             in
+--             Element.column
+--                 [ Element.width Element.fill
+--                 , Element.padding 20
+--                 ]
+--                 [ timingInfoElement model sugarSale focusedBucketId dProfile
+--                 , entryOrExitForm model sugarSale focusedBucketId dProfile
+--                 ]
 
 
 bucketTimestampToString : Time.Posix -> Maybe Time.Zone -> Time.Posix -> String
@@ -415,22 +513,37 @@ bidConsequencesElement bidAmount totalDaiAlreadyEntered dumbCheckboxesClicked te
     in
     Element.column
         [ Element.centerX
-        , Element.padding 10
+        , Element.padding (25 |> changeForMobile 15 dProfile)
+        , Element.Background.color <| Element.rgb 0.96 0.9 0.67
+        , Element.Border.color <| Element.rgb 0.9 0.85 0.4
+        , Element.Border.width 1
+        , Element.Border.shadow
+            { offset = ( -5, 5 )
+            , size = 0
+            , blur = 10
+            , color = Element.rgba 0 0 0 0.5
+            }
         ]
     <|
+        let
+            emphasizedText =
+                Element.el [ Element.Font.bold ] << Element.text
+        in
         [ Element.row
             [ Element.width Element.fill
             , Element.spacing 15
             ]
-            [ Element.text "Min ??? price for this bucket becomes"
-            , formatCalcValue newMinPrice
+            [ emphasizedText "If no one else enters before this bucket ends,"
+            , Element.text " you can claim ??? (???% of ??? in the bucket)"
+
+            --, formatCalcValue maxClaimableTokens
             ]
         , Element.row
             [ Element.width Element.fill
             , Element.spacing 15
             ]
-            [ Element.text "If no one else enters in ??? you get"
-            , formatCalcValue maxClaimableTokens
+            [ Element.text "Min ??? price for this bucket becomes"
+            , formatCalcValue newMinPrice
             ]
         , Element.Input.checkbox
             []
