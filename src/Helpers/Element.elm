@@ -49,7 +49,7 @@ softRed =
 
 
 lightRed =
-    Element.rgba 1 0 0 0.2
+    Element.rgb 1 0.8 0.8
 
 
 green =
@@ -61,7 +61,7 @@ blue =
 
 
 lightBlue =
-    Element.rgba 0 0 1 0.2
+    Element.rgb 0.8 0.8 1
 
 
 yellow =

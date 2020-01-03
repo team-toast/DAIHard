@@ -93,7 +93,7 @@ viewBucket sugarSale bucketId isFocused testMode dProfile =
         backgroundColor =
             case bucketState of
                 Past ->
-                    Element.rgba 0 1 0 0.2
+                    Element.rgb 0.8 1 0.8
 
                 Active ->
                     EH.lightBlue
