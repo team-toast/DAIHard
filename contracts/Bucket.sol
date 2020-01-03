@@ -81,7 +81,6 @@ contract BucketSale
     {
         require(_amount > 0, "can't buy nothing");
         require(tokenOnSale.balanceOf(address(this)) >= bucketSupply.mul(21).div(10), "insufficient tokens to sell");
-        //TODO: The above line is not robust; it assumes all previous buckets have already disbursed all they can.
 
         Buy storage buy = buys[currentBucket()][_buyer];
         buy.valueEntered = buy.valueEntered.add(_amount);
@@ -114,9 +113,13 @@ contract BucketSale
         uint rewardAmount = baseAmount.mul(buyerReferralRewardPerc()).div(HUNDRED_PERC);
         uint referralAmount = rewardAmount.mul(referrerReferralRewardPerc(buyToWithdraw.referralAddress)).div(HUNDRED_PERC);
 
-        bool transferSuccess = tokenOnSale.transfer(msg.sender, baseAmount);
+        bool transferSuccess = tokenOnSale.transfer(msg.sender, baseAmount.add(rewardAmount));
         require(transferSuccess, "erc20 base transfer failed");
-
+        
+        uint tokensExited = baseAmount.add(rewardAmount).add(referralAmount);
+        buyToWithdraw.tokensExited = tokensExited;
+        //todo: track total over sale history
+        
         if (buyToWithdraw.referralAddress != address(0))
         {
             bool rewardTransferSuccess = tokenOnSale.transfer(buyToWithdraw.referralAddress, referralAmount);
