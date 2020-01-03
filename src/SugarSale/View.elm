@@ -48,8 +48,8 @@ root dProfile model =
                         , Element.padding (20 |> changeForMobile 10 dProfile)
                         ]
                         [ viewBucketsRow sugarSale model.bucketView model.now model.testMode dProfile
-                        , activeBucketInfoElement model sugarSale dProfile
-                        , activeBucketActionElement model sugarSale model.testMode dProfile
+                        , focusedBucketInfoElement model sugarSale dProfile
+                        , focusedBucketActionElement model sugarSale model.testMode dProfile
                         ]
             )
         ]
@@ -180,8 +180,8 @@ viewBucket sugarSale bucketId isFocused testMode dProfile =
             Element.text "lol XD"
 
 
-activeBucketInfoElement : Model -> SugarSale -> DisplayProfile -> Element Msg
-activeBucketInfoElement model sugarSale dProfile =
+focusedBucketInfoElement : Model -> SugarSale -> DisplayProfile -> Element Msg
+focusedBucketInfoElement model sugarSale dProfile =
     let
         bucket =
             Tuple.second <|
@@ -275,74 +275,6 @@ timingInfoElement model sugarSale dProfile =
         ]
 
 
-totalDaiBidRow : Bucket -> DisplayProfile -> Element Msg
-totalDaiBidRow bucket dProfile =
-    Element.row
-        [ Element.width Element.fill
-        ]
-        [ Element.el [ Element.alignLeft ] <|
-            Element.text "Total Dai Bid:"
-        , Element.el [ Element.alignRight ] <|
-            (bucket.totalValueEntered
-                |> Maybe.map formatCalcValue
-                |> Maybe.withDefault (Element.text "Loading...")
-            )
-        ]
-
-
-effectiveTokenPriceRow : Bucket -> Bool -> DisplayProfile -> Element Msg
-effectiveTokenPriceRow bucket testMode dProfile =
-    Element.row
-        [ Element.width Element.fill
-        ]
-        [ Element.el [ Element.alignLeft ] <|
-            Element.text "Effective ??? Price:"
-        , Element.el [ Element.alignRight ] <|
-            (bucket.totalValueEntered
-                |> Maybe.map
-                    (\totalValueEntered ->
-                        getEffectivePricePerToken totalValueEntered testMode
-                    )
-                |> Maybe.map formatCalcValue
-                |> Maybe.withDefault (Element.text "Loading...")
-            )
-        ]
-
-
-activeBucketActionElement : Model -> SugarSale -> Bool -> DisplayProfile -> Element Msg
-activeBucketActionElement model sugarSale testMode dProfile =
-    Element.text "Darpa derp"
-
-
-
--- activeBucketUX : Model -> DisplayProfile -> Element Msg
--- activeBucketUX model dProfile =
---     case model.sugarSale of
---         Nothing ->
---             Element.text "Loading..."
---         Just sugarSale ->
---             let
---                 focusedBucketId =
---                     getFocusedBucketId
---                         sugarSale
---                         model.bucketView
---                         model.now
---                         model.testMode
---                 ( bucketState, bucket ) =
---                     getBucketInfo
---                         sugarSale
---                         focusedBucketId
---                         model.testMode
---             in
---             Element.column
---                 [ Element.width Element.fill
---                 , Element.padding 20
---                 ]
---                 [ timingInfoElement model sugarSale focusedBucketId dProfile
---                 , entryOrExitForm model sugarSale focusedBucketId dProfile
---                 ]
-
-
 bucketTimestampToString : Time.Posix -> Maybe Time.Zone -> Time.Posix -> String
 bucketTimestampToString now maybeTz timestamp =
     let
@@ -419,6 +351,74 @@ bucketTimestampToString now maybeTz timestamp =
             else
                 ""
            )
+
+
+totalDaiBidRow : Bucket -> DisplayProfile -> Element Msg
+totalDaiBidRow bucket dProfile =
+    Element.row
+        [ Element.width Element.fill
+        ]
+        [ Element.el [ Element.alignLeft ] <|
+            Element.text "Total Dai Bid:"
+        , Element.el [ Element.alignRight ] <|
+            (bucket.totalValueEntered
+                |> Maybe.map formatCalcValue
+                |> Maybe.withDefault (Element.text "Loading...")
+            )
+        ]
+
+
+effectiveTokenPriceRow : Bucket -> Bool -> DisplayProfile -> Element Msg
+effectiveTokenPriceRow bucket testMode dProfile =
+    Element.row
+        [ Element.width Element.fill
+        ]
+        [ Element.el [ Element.alignLeft ] <|
+            Element.text "Effective ??? Price:"
+        , Element.el [ Element.alignRight ] <|
+            (bucket.totalValueEntered
+                |> Maybe.map
+                    (\totalValueEntered ->
+                        getEffectivePricePerToken totalValueEntered testMode
+                    )
+                |> Maybe.map formatCalcValue
+                |> Maybe.withDefault (Element.text "Loading...")
+            )
+        ]
+
+
+focusedBucketActionElement : Model -> SugarSale -> Bool -> DisplayProfile -> Element Msg
+focusedBucketActionElement model sugarSale testMode dProfile =
+    Debug.todo ""
+
+
+
+-- activeBucketUX : Model -> DisplayProfile -> Element Msg
+-- activeBucketUX model dProfile =
+--     case model.sugarSale of
+--         Nothing ->
+--             Element.text "Loading..."
+--         Just sugarSale ->
+--             let
+--                 focusedBucketId =
+--                     getFocusedBucketId
+--                         sugarSale
+--                         model.bucketView
+--                         model.now
+--                         model.testMode
+--                 ( bucketState, bucket ) =
+--                     getBucketInfo
+--                         sugarSale
+--                         focusedBucketId
+--                         model.testMode
+--             in
+--             Element.column
+--                 [ Element.width Element.fill
+--                 , Element.padding 20
+--                 ]
+--                 [ timingInfoElement model sugarSale focusedBucketId dProfile
+--                 , entryOrExitForm model sugarSale focusedBucketId dProfile
+--                 ]
 
 
 entryOrExitForm : Model -> SugarSale -> Int -> DisplayProfile -> Element Msg
