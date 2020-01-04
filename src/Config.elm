@@ -1,4 +1,4 @@
-module Config exposing (activeFactories, devFeeAddress, factoryAddress, sugarSaleAddress, sugarSaleBucketInterval, sugarSaleTokensPerBucket, tokenContractAddress)
+module Config exposing (activeFactories, devFeeAddress, factoryAddress, sugarSaleAddress, sugarSaleBucketInterval, sugarSaleTokensPerBucket, sugarTokenSymbol, tokenContractAddress)
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -93,3 +93,8 @@ sugarSaleTokensPerBucket testMode =
 
         else
             Debug.todo "tokens per bucket in non-test mode"
+
+
+sugarTokenSymbol : String
+sugarTokenSymbol =
+    "SUGR"

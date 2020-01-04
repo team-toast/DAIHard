@@ -3,6 +3,7 @@ module SugarSale.View exposing (root)
 import BigInt exposing (BigInt)
 import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
+import Config
 import Element exposing (Element)
 import Element.Background
 import Element.Border
@@ -389,48 +390,24 @@ effectiveTokenPriceRow bucket testMode dProfile =
 
 focusedBucketActionElement : Model -> SugarSale -> Bool -> DisplayProfile -> Element Msg
 focusedBucketActionElement model sugarSale testMode dProfile =
-    Debug.todo ""
-
-
-
--- activeBucketUX : Model -> DisplayProfile -> Element Msg
--- activeBucketUX model dProfile =
---     case model.sugarSale of
---         Nothing ->
---             Element.text "Loading..."
---         Just sugarSale ->
---             let
---                 focusedBucketId =
---                     getFocusedBucketId
---                         sugarSale
---                         model.bucketView
---                         model.now
---                         model.testMode
---                 ( bucketState, bucket ) =
---                     getBucketInfo
---                         sugarSale
---                         focusedBucketId
---                         model.testMode
---             in
---             Element.column
---                 [ Element.width Element.fill
---                 , Element.padding 20
---                 ]
---                 [ timingInfoElement model sugarSale focusedBucketId dProfile
---                 , entryOrExitForm model sugarSale focusedBucketId dProfile
---                 ]
-
-
-entryOrExitForm : Model -> SugarSale -> Int -> DisplayProfile -> Element Msg
-entryOrExitForm model sugarSale bucketId dProfile =
     case Wallet.userInfo model.wallet of
         Nothing ->
             connectToWeb3Button dProfile
 
         Just userInfo ->
             let
+                bucketId =
+                    getFocusedBucketId
+                        sugarSale
+                        model.bucketView
+                        model.now
+                        model.testMode
+
                 ( bucketState, bucket ) =
-                    getBucketInfo sugarSale bucketId model.testMode
+                    getBucketInfo
+                        sugarSale
+                        bucketId
+                        model.testMode
             in
             case bucketState of
                 Past ->
@@ -453,7 +430,7 @@ entryOrExitForm model sugarSale bucketId dProfile =
 
 
 entryForm : UserInfo -> Bucket -> String -> Maybe (Result String TokenValue) -> Maybe Address -> AllowanceState -> ( Bool, Bool ) -> Bool -> DisplayProfile -> Element Msg
-entryForm userInfo bucket daiInput maybeDaiInputResult maybeReferrer allowanceState dumbCheckboxesClicked testMode dProfile =
+entryForm userInfo bucket daiInput maybeDaiInputResult maybeReferrer allowanceState dumbCheckboxesChecked testMode dProfile =
     let
         maybeInputError =
             maybeDaiInputResult
@@ -461,59 +438,10 @@ entryForm userInfo bucket daiInput maybeDaiInputResult maybeReferrer allowanceSt
                 |> Maybe.Extra.join
     in
     Element.column
-        [ Element.width Element.fill
-        , Element.spacing 10
-        ]
-        ([ amountInputElement daiInput maybeInputError dProfile ]
-            ++ (case ( maybeDaiInputResult, bucket.totalValueEntered ) of
-                    ( Just (Ok daiAmount), Just totalValueEntered ) ->
-                        [ bidConsequencesElement daiAmount totalValueEntered dumbCheckboxesClicked testMode dProfile
-                        , confirmButton userInfo allowanceState dumbCheckboxesClicked daiAmount maybeReferrer dProfile
-                        ]
-
-                    _ ->
-                        []
-               )
-        )
-
-
-amountInputElement : String -> Maybe String -> DisplayProfile -> Element Msg
-amountInputElement val maybeError dProfile =
-    Element.row
-        [ Element.spacing 10
+        [ Element.width <| Element.px (800 |> changeForMobile 500 dProfile)
         , Element.centerX
-        ]
-        [ Element.text "Bid"
-        , EH.inputContainer
-            dProfile
-            []
-            [ Element.Input.text
-                [ Element.Border.width 0
-                , Element.width <| Element.px 100
-                , Element.height Element.fill
-                ]
-                { onChange = DaiInputChanged
-                , text = val
-                , placeholder = Nothing
-                , label = Element.Input.labelHidden "dai amount in"
-                }
-            ]
-        , Element.text "Dai"
-        ]
-
-
-bidConsequencesElement : TokenValue -> TokenValue -> ( Bool, Bool ) -> Bool -> DisplayProfile -> Element Msg
-bidConsequencesElement bidAmount totalDaiAlreadyEntered dumbCheckboxesClicked testMode dProfile =
-    let
-        newMinPrice =
-            getEffectivePricePerToken (TokenValue.add totalDaiAlreadyEntered bidAmount) testMode
-
-        maxClaimableTokens =
-            getClaimableTokens (TokenValue.add totalDaiAlreadyEntered bidAmount) bidAmount testMode
-    in
-    Element.column
-        [ Element.centerX
         , Element.padding (25 |> changeForMobile 15 dProfile)
+        , Element.spacing 20
         , Element.Background.color <| Element.rgb 0.96 0.9 0.67
         , Element.Border.color <| Element.rgb 0.9 0.85 0.4
         , Element.Border.width 1
@@ -524,42 +452,218 @@ bidConsequencesElement bidAmount totalDaiAlreadyEntered dumbCheckboxesClicked te
             , color = Element.rgba 0 0 0 0.5
             }
         ]
-    <|
-        let
-            emphasizedText =
-                Element.el [ Element.Font.bold ] << Element.text
-        in
-        [ Element.row
-            [ Element.width Element.fill
-            , Element.spacing 15
-            ]
-            [ emphasizedText "If no one else enters before this bucket ends,"
-            , Element.text " you can claim ??? (???% of ??? in the bucket)"
+        [ amountInputElement daiInput maybeInputError dProfile
+        , bidConsequencesElement
+            (maybeDaiInputResult
+                |> Maybe.map Result.toMaybe
+                |> Maybe.withDefault (Just (TokenValue.fromIntTokenValue 10))
+            )
+            bucket.totalValueEntered
+            testMode
+            dProfile
+        , EH.thinGrayHRuler
+        , dumbCheckboxesElement
+            dumbCheckboxesChecked
+            dProfile
+        , maybeDepositButton
+            userInfo
+            allowanceState
+            dumbCheckboxesChecked
+            (maybeDaiInputResult
+                |> Maybe.map Result.toMaybe
+                |> Maybe.Extra.join
+            )
+            maybeReferrer
+            dProfile
+        ]
 
-            --, formatCalcValue maxClaimableTokens
+
+maybeDepositButton : UserInfo -> AllowanceState -> ( Bool, Bool ) -> Maybe TokenValue -> Maybe Address -> DisplayProfile -> Element Msg
+maybeDepositButton userInfo allowanceState dumbCheckboxesChecked maybeDaiAmount maybeReferrer dProfile =
+    case ( allowanceState, dumbCheckboxesChecked, maybeDaiAmount ) of
+        ( Loaded allowance, ( True, True ), Just daiAmount ) ->
+            if TokenValue.compare allowance daiAmount == LT then
+                depositButton Nothing dProfile
+
+            else
+                depositButton
+                    (Just <|
+                        EnterButtonClicked
+                            userInfo
+                            daiAmount
+                            maybeReferrer
+                    )
+                    dProfile
+
+        _ ->
+            depositButton Nothing dProfile
+
+
+amountInputElement : String -> Maybe String -> DisplayProfile -> Element Msg
+amountInputElement val maybeError dProfile =
+    Element.row
+        [ Element.spacing 10
+        ]
+        [ Element.text "Bid"
+        , EH.inputContainer
+            dProfile
+            [ Element.Background.color <| Element.rgba 1 1 1 0.3
+            , Element.Border.color <| Element.rgba 0 0 0 0.1
+            , Element.width <| Element.px 70
             ]
-        , Element.row
-            [ Element.width Element.fill
-            , Element.spacing 15
+            [ Element.Input.text
+                [ Element.Border.width 0
+                , Element.width Element.fill
+                , Element.centerY
+                , Element.Background.color <| Element.rgba 0 0 0 0
+                ]
+                { onChange = DaiInputChanged
+                , text = val
+                , placeholder =
+                    Just <|
+                        Element.Input.placeholder
+                            [ Element.Font.color <| Element.rgba 0 0 0 0.2
+                            ]
+                        <|
+                            Element.text "10"
+                , label = Element.Input.labelHidden "dai amount in"
+                }
             ]
-            [ Element.text "Min ??? price for this bucket becomes"
-            , formatCalcValue newMinPrice
-            ]
-        , Element.Input.checkbox
-            []
+        , Element.text "Dai"
+        ]
+
+
+bidConsequencesElement : Maybe TokenValue -> Maybe TokenValue -> Bool -> DisplayProfile -> Element Msg
+bidConsequencesElement maybeBidAmount maybeTotalDaiAlreadyEntered testMode dProfile =
+    Element.column
+        [ Element.spacing 10
+        , Element.width Element.fill
+        , Element.Font.size (18 |> changeForMobile 16 dProfile)
+        , Element.paddingXY 5 0
+        , Element.height <| Element.px (250 |> changeForMobile 250 dProfile)
+        ]
+    <|
+        case maybeTotalDaiAlreadyEntered of
+            Nothing ->
+                [ Element.el [ Element.centerX ] <| Element.text "Fetching Bucket State..." ]
+
+            Just totalDaiAlreadyEntered ->
+                let
+                    ( maybeNewMinPrice, maybeMaxClaimableTokens ) =
+                        Maybe.map
+                            (\bidAmount ->
+                                ( Just <| getEffectivePricePerToken (TokenValue.add totalDaiAlreadyEntered bidAmount) testMode
+                                , Just <| getClaimableTokens (TokenValue.add totalDaiAlreadyEntered bidAmount) bidAmount testMode
+                                )
+                            )
+                            maybeBidAmount
+                            |> Maybe.withDefault ( Nothing, Nothing )
+                in
+                let
+                    emphasizedText =
+                        Element.el [ Element.Font.bold ] << Element.text
+
+                    bulletedEl el =
+                        Element.row
+                            [ Element.width Element.fill
+                            , Element.spacing 20
+                            ]
+                            [ Element.el
+                                [ Element.alignTop
+                                , Element.Font.size 28
+                                ]
+                              <|
+                                Element.text EH.bulletPointString
+                            , el
+                            ]
+                in
+                List.map
+                    (bulletedEl
+                        << Element.paragraph
+                            [ Element.width Element.fill ]
+                    )
+                    [ [ Element.text "This bid of "
+                      , formatMaybeCalcValue maybeBidAmount
+                      , Element.text " is irreversible, and cannot be refunded."
+                      ]
+                    , [ Element.text "This bid will "
+                      , emphasizedText "increase"
+                      , Element.text <| " the effective price per " ++ Config.sugarTokenSymbol ++ " to "
+                      , formatMaybeCalcValue maybeNewMinPrice
+                      , Element.text <| " DAI/" ++ Config.sugarTokenSymbol
+                      ]
+                    , [ emphasizedText "If no other bids are made "
+                      , Element.text "before this bucket ends, you will be able to claim "
+                      , formatMaybeCalcValue maybeMaxClaimableTokens
+                      , Element.text <| " " ++ Config.sugarTokenSymbol ++ "."
+                      ]
+                    , [ emphasizedText "If other bids are made"
+                      , Element.text <|
+                            ", the effective price per token will increase further, and the amount of "
+                                ++ Config.sugarTokenSymbol
+                                ++ " you can claim from the bucket will decrease proportionally. (For example, if the total bid amount doubles, the effective price per token will also double, and your amount of claimable tokens will halve.)"
+                      ]
+                    ]
+
+
+dumbCheckboxesElement : ( Bool, Bool ) -> DisplayProfile -> Element Msg
+dumbCheckboxesElement checkedTuple dProfile =
+    Element.column
+        [ Element.width Element.fill
+        , Element.spacing 20
+        ]
+        [ Element.Input.checkbox
+            [ Element.width Element.fill ]
             { onChange = FirstDumbCheckboxClicked
             , icon = Element.Input.defaultCheckbox
-            , checked = Tuple.first dumbCheckboxesClicked
-            , label = Element.Input.labelRight [] <| Element.text "I understand that this bid is irreversible, and that if others bid I will claim less than ???"
+            , checked = Tuple.first checkedTuple
+            , label =
+                Element.Input.labelRight
+                    [ Element.width Element.fill ]
+                <|
+                    Element.paragraph
+                        [ Element.Font.size (18 |> changeForMobile 16 dProfile)
+                        , Element.width Element.fill
+                        , Element.paddingXY 10 0
+                        ]
+                        [ Element.text <| "I understand that this bid cannot be refunded, and that if other bids are entered before the bucket ends, the amount of " ++ Config.sugarTokenSymbol ++ " I can claim will decrease."
+                        ]
             }
-        , Element.Input.checkbox
-            []
-            { onChange = SecondDumbCheckboxClicked
-            , icon = Element.Input.defaultCheckbox
-            , checked = Tuple.second dumbCheckboxesClicked
-            , label = Element.Input.labelRight [] <| Element.text "I have read and agree to the terms and conditions"
-            }
+        , Element.row
+            [ Element.Font.size (18 |> changeForMobile 16 dProfile)
+            ]
+            [ Element.Input.checkbox
+                [ Element.width Element.fill ]
+                { onChange = SecondDumbCheckboxClicked
+                , icon = Element.Input.defaultCheckbox
+                , checked = Tuple.second checkedTuple
+                , label =
+                    Element.Input.labelRight
+                        [ Element.width Element.fill
+                        , Element.paddingEach
+                            { left = 10
+                            , right = 0
+                            , top = 0
+                            , bottom = 0
+                            }
+                        ]
+                    <|
+                        Element.text "I have read and agree to the "
+                }
+            , Element.newTabLink
+                [ Element.Font.color EH.blue ]
+                { url = "lol wut"
+                , label = Element.text "terms and conditions"
+                }
+            , Element.text "."
+            ]
         ]
+
+
+formatMaybeCalcValue : Maybe TokenValue -> Element Msg
+formatMaybeCalcValue =
+    Maybe.map formatCalcValue
+        >> Maybe.withDefault (Element.text "???")
 
 
 formatCalcValue : TokenValue -> Element Msg
@@ -571,53 +675,26 @@ formatCalcValue value =
         )
 
 
-confirmButton : UserInfo -> AllowanceState -> ( Bool, Bool ) -> TokenValue -> Maybe Address -> DisplayProfile -> Element Msg
-confirmButton userInfo allowanceState dumbCheckboxesClicked daiAmount maybeReferrer dProfile =
+depositButton : Maybe Msg -> DisplayProfile -> Element Msg
+depositButton maybeOnClickMsg dProfile =
     let
         buttonAttributes =
             [ Element.centerX ]
     in
-    case allowanceState of
-        Loading ->
+    case maybeOnClickMsg of
+        Just msg ->
+            EH.redButton
+                dProfile
+                buttonAttributes
+                [ "Deposit Bid" ]
+                msg
+
+        Nothing ->
             EH.disabledButton
                 dProfile
                 buttonAttributes
-                "Loading Dai account..."
+                "Deposit Bid"
                 Nothing
-
-        UnlockMining ->
-            EH.disabledButton
-                dProfile
-                buttonAttributes
-                "Unlocking Dai..."
-                Nothing
-
-        Loaded allowance ->
-            if TokenValue.compare allowance daiAmount == LT then
-                EH.redButton
-                    dProfile
-                    buttonAttributes
-                    [ "Unlock Dai" ]
-                    UnlockDaiButtonClicked
-
-            else
-                let
-                    enabled =
-                        Tuple.first dumbCheckboxesClicked && Tuple.second dumbCheckboxesClicked
-                in
-                if enabled then
-                    EH.redButton
-                        dProfile
-                        buttonAttributes
-                        [ "Deposit This Bid" ]
-                        (EnterButtonClicked userInfo daiAmount maybeReferrer)
-
-                else
-                    EH.disabledButton
-                        dProfile
-                        buttonAttributes
-                        "Deposit This Bid"
-                        Nothing
 
 
 exitForm : UserInfo -> Int -> Bucket -> Buy -> Bool -> DisplayProfile -> Element Msg
