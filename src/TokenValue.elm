@@ -94,46 +94,6 @@ toConciseString tv =
         |> autoFormatFloat
 
 
-
--- oldToConciseString tv =
---     if BigInt.compare (getEvmValue tv) (BigInt.fromInt 0) == LT then
---         "-" ++ toConciseString (negate tv)
---     else
---         let
---             hackyRoundFloatString s =
---                 String.toFloat s
---                     |> Maybe.map ((*) 100.0)
---                     |> Maybe.map round
---                     |> Maybe.map toFloat
---                     |> Maybe.map (\f -> f / 100.0)
---                     |> Maybe.map String.fromFloat
---                     |> Maybe.withDefault s
---                     |> String.left 4
---             floatStr =
---                 evmValueToUserFloatString (getEvmValue tv)
---         in
---         case String.indexes "." floatStr of
---             [] ->
---                 floatStr
---             [ 0 ] ->
---                 "0"
---                     ++ floatStr
---                     |> hackyRoundFloatString
---             [ 1 ] ->
---                 hackyRoundFloatString floatStr
---             [ i ] ->
---                 String.toFloat floatStr
---                     |> Maybe.map round
---                     |> Maybe.map String.fromInt
---                     |> Maybe.withDefault (String.left i floatStr)
---             _ ->
---                 let
---                     _ =
---                         Debug.log "Error interpreting evmValueToString result. More than one decimal??"
---                 in
---                 "???"
-
-
 negate : TokenValue -> TokenValue
 negate t =
     getEvmValue t
