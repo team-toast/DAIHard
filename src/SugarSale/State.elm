@@ -325,10 +325,19 @@ update msg prevModel =
                 []
 
         DaiUnlockSigned txHashResult ->
-            justModelUpdate
-                { prevModel
-                    | allowanceState = UnlockMining
-                }
+            case txHashResult of
+                Ok txHash ->
+                    justModelUpdate
+                        { prevModel
+                            | allowanceState = UnlockMining
+                        }
+
+                Err errStr ->
+                    let
+                        _ =
+                            Debug.log "Error signing unlock" errStr
+                    in
+                    justModelUpdate prevModel
 
         DaiUnlockMined txReceiptResult ->
             let
@@ -575,8 +584,17 @@ runCmdDown cmdDown prevModel =
                         Maybe.map
                             clearSugarSaleExitInfo
                             prevModel.sugarSale
+                    , allowanceState = Loading
                 }
-                Cmd.none
+                (Wallet.userInfo wallet
+                    |> Maybe.map
+                        (\userInfo ->
+                            fetchUserAllowanceForSaleCmd
+                                userInfo
+                                prevModel.testMode
+                        )
+                    |> Maybe.withDefault Cmd.none
+                )
                 ChainCmd.none
                 []
 

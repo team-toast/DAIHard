@@ -13,6 +13,7 @@ import Element.Input
 import Eth.Types exposing (Address)
 import FormatFloat exposing (formatFloat)
 import Helpers.Element as EH
+import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
 import Images
 import List.Extra
@@ -49,8 +50,6 @@ root dProfile model =
                         , Element.padding (20 |> changeForMobile 10 dProfile)
                         ]
                         [ viewBucketsRow sugarSale model.bucketView model.now model.timezone model.testMode dProfile
-
-                        -- , focusedBucketInfoElement sugarSale model.bucketView model.now model.timezone model.testMode dProfile
                         , focusedBucketActionElement model sugarSale model.testMode dProfile
                         ]
             )
@@ -220,13 +219,38 @@ viewBucket sugarSale bucketId isFocused now timezone testMode dProfile =
                                         , Element.text <| " DAI/" ++ Config.sugarTokenSymbol
                                         ]
                                     ]
+
+                            possiblyClaimableTokensEl =
+                                case ( bucketState, bucket.userBuy ) of
+                                    ( Past, Just buy ) ->
+                                        if
+                                            (not <| TokenValue.isZero buy.valueEntered)
+                                                && not buy.hasExited
+                                        then
+                                            [ Element.el
+                                                [ Element.Font.color EH.softRed
+                                                , Element.Font.bold
+                                                , Element.Font.italic
+                                                , Element.centerX
+                                                ]
+                                              <|
+                                                Element.text <|
+                                                    Config.sugarTokenSymbol
+                                                        ++ " to claim!"
+                                            ]
+
+                                        else
+                                            []
+
+                                    _ ->
+                                        []
                         in
                         Element.column
                             [ Element.width Element.fill
                             , Element.centerY
                             , Element.spacing 10
                             ]
-                            ([ totalBidsEl ] ++ bucketResultEls)
+                            ([ totalBidsEl ] ++ bucketResultEls ++ possiblyClaimableTokensEl)
         ]
 
 
@@ -499,7 +523,29 @@ entryForm userInfo bucket daiInput maybeDaiInputResult maybeReferrer allowanceSt
             , color = Element.rgba 0 0 0 0.5
             }
         ]
-        [ amountInputElement daiInput maybeInputError dProfile
+        [ case allowanceState of
+            Loading ->
+                Element.text "Loading Dai Status..."
+
+            UnlockMining ->
+                Element.text "Mining Dai Unlock..."
+
+            Loaded allowance ->
+                let
+                    halfMaxDaiValue =
+                        TokenValue.div
+                            (TokenValue.tokenValue EthHelpers.maxUintValue)
+                            2
+                in
+                if TokenValue.compare allowance halfMaxDaiValue == LT then
+                    EH.redButton
+                        dProfile
+                        []
+                        [ "Unlock Dai" ]
+                        UnlockDaiButtonClicked
+
+                else
+                    amountInputElement daiInput maybeInputError dProfile
         , bidConsequencesElement
             (maybeDaiInputResult
                 |> Maybe.map Result.toMaybe
@@ -773,7 +819,7 @@ exitButton : UserInfo -> Int -> DisplayProfile -> Element Msg
 exitButton userInfo bucketId dProfile =
     EH.redButton
         dProfile
-        []
+        [ Element.centerX ]
         [ "Claim Tokens" ]
         (ExitButtonClicked userInfo bucketId)
 
