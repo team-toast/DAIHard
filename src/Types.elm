@@ -31,6 +31,7 @@ type alias Flags =
     , width : Int
     , height : Int
     , nowInMillis : Int
+    , maybeReferralAddressString : Maybe String
     }
 
 
@@ -46,6 +47,7 @@ type alias Model =
     , submodel : Submodel
     , userNotices : List (UserNotice Msg)
     , dProfile : DisplayProfile
+    , maybeReferrer : Maybe Address
     }
 
 

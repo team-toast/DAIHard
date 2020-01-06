@@ -9,7 +9,7 @@ import Config
 import Contracts.SugarSale.Wrappers as SugarSale
 import Contracts.Wrappers
 import Eth
-import Eth.Types exposing (HttpProvider)
+import Eth.Types exposing (Address, HttpProvider)
 import Helpers.BigInt as BigIntHelpers
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
@@ -24,8 +24,8 @@ import Utils
 import Wallet
 
 
-init : Bool -> Wallet.State -> Time.Posix -> ( Model, Cmd Msg )
-init testMode wallet now =
+init : Maybe Address -> Bool -> Wallet.State -> Time.Posix -> ( Model, Cmd Msg )
+init maybeReferrer testMode wallet now =
     if testMode then
         ( { wallet = wallet
           , testMode = testMode
@@ -37,7 +37,7 @@ init testMode wallet now =
           , daiInput = ""
           , dumbCheckboxesClicked = ( False, False )
           , daiAmount = Nothing
-          , referrer = Nothing
+          , referrer = maybeReferrer
           , allowanceState = Loading
           }
         , Cmd.batch

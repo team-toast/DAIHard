@@ -46,7 +46,7 @@ init : Flags -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init flags url key =
     let
         fullRoute =
-            Routing.urlToRoute url
+            Routing.urlToFullRoute url
 
         ( wallet, cmdUpsFromNetwork ) =
             if flags.networkId == 0 then
@@ -113,6 +113,50 @@ init flags url key =
         dProfile =
             screenWidthToDisplayProfile flags.width
 
+        ( maybeReferrer, maybeReferrerStoreCmd ) =
+            let
+                maybeReferrerFromStorage =
+                    case flags.maybeReferralAddressString |> Maybe.map Eth.Utils.toAddress of
+                        Nothing ->
+                            Nothing
+
+                        Just (Err errStr) ->
+                            let
+                                _ =
+                                    Debug.log "Error decoding stored referrer address" errStr
+                            in
+                            Nothing
+
+                        Just (Ok address) ->
+                            Just address
+
+                maybeReferrerFromUrl =
+                    fullRoute.maybeReferrer
+            in
+            case maybeReferrerFromStorage of
+                Just referrerFromStorage ->
+                    ( Just referrerFromStorage, Cmd.none )
+
+                Nothing ->
+                    case maybeReferrerFromUrl of
+                        Just referrerFromUrl ->
+                            ( Just referrerFromUrl, storeNewReferrerCmd referrerFromUrl )
+
+                        Nothing ->
+                            ( Nothing, Cmd.none )
+
+        newUrlCmd =
+            let
+                urlStringWithoutRefAddr =
+                    Routing.routeToString
+                        { fullRoute | maybeReferrer = Nothing }
+            in
+            if urlStringWithoutRefAddr /= Routing.routeToString fullRoute then
+                Browser.Navigation.pushUrl key urlStringWithoutRefAddr
+
+            else
+                Cmd.none
+
         ( model, fromUrlCmd ) =
             { key = key
             , testMode = fullRoute.testing
@@ -125,6 +169,7 @@ init flags url key =
             , pageRoute = Routing.InitialBlank
             , userNotices = []
             , dProfile = dProfile
+            , maybeReferrer = maybeReferrer
             }
                 |> updateFromPageRoute fullRoute.pageRoute
                 |> runCmdUps cmdUps
@@ -134,6 +179,8 @@ init flags url key =
     , Cmd.batch
         [ tcCmd
         , fromUrlCmd
+        , maybeReferrerStoreCmd
+        , newUrlCmd
         ]
     )
 
@@ -212,7 +259,7 @@ update msg model =
             ( model, cmd )
 
         UrlChanged url ->
-            model |> updateFromPageRoute (url |> Routing.urlToRoute |> .pageRoute)
+            model |> updateFromPageRoute (url |> Routing.urlToFullRoute |> .pageRoute)
 
         GotoRoute pageRoute ->
             model
@@ -227,13 +274,13 @@ update msg model =
                                         "GotoRoute"
                                         "navigation"
                                         (Routing.routeToString
-                                            (Routing.FullRoute model.testMode pageRoute)
+                                            (Routing.FullRoute model.testMode pageRoute Nothing)
                                         )
                                         0
                             , Browser.Navigation.pushUrl
                                 model.key
                                 (Routing.routeToString
-                                    (Routing.FullRoute model.testMode pageRoute)
+                                    (Routing.FullRoute model.testMode pageRoute Nothing)
                                 )
                             ]
                     )
@@ -702,7 +749,7 @@ gotoPageRoute route prevModel =
         Routing.SugarSale ->
             let
                 ( sugarSaleModel, sugarSaleCmd ) =
-                    SugarSale.State.init prevModel.testMode prevModel.wallet prevModel.now
+                    SugarSale.State.init prevModel.maybeReferrer prevModel.testMode prevModel.wallet prevModel.now
             in
             ( { prevModel
                 | submodel = SugarSaleModel sugarSaleModel
@@ -854,6 +901,12 @@ runCmdDown cmdDown prevModel =
                     )
 
 
+storeNewReferrerCmd : Address -> Cmd Msg
+storeNewReferrerCmd refAddress =
+    storeReferrerAddress <|
+        Json.Encode.string (Eth.Utils.addressToString refAddress)
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
     let
@@ -928,3 +981,6 @@ port requestNotifyPermissionPort : () -> Cmd msg
 
 
 port notifyPort : Notifications.NotifyPort msg
+
+
+port storeReferrerAddress : Json.Decode.Value -> Cmd msg
