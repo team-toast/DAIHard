@@ -13,8 +13,9 @@ contract BucketSale
     struct Buy
     {
         uint valueEntered;
-        uint tokensExited;
-        address referralAddress;
+        uint buyerTokensExited;
+        uint referrerTokensExited;
+        address referrerAddress;
     }
 
     struct Bucket
@@ -30,6 +31,7 @@ contract BucketSale
     uint public startOfSale;
     uint public bucketPeriod;
     uint public bucketSupply;
+    uint public totalExitedTokens;
     ERC20Interface public tokenOnSale;
     ERC20Interface public tokenSoldFor;
 
@@ -75,28 +77,46 @@ contract BucketSale
             return timestamp().sub(startOfSale).div(bucketPeriod);
     }
 
-    event Entered(address indexed _buyer, uint256 _bucket, uint _amount);
-    function enter(address _buyer, uint _amount, address _referralAddress)
+    function actualAvailableSupply()
+        public
+        returns (uint)
+    {
+
+    }
+
+    event Entered(
+        uint256 _bucket,
+        address indexed _buyer,
+        address indexed _referrer,
+        uint _valueEntered);
+    function enter(address _buyer, uint _amount, address _referrerAddress)
         public
     {
         require(_amount > 0, "can't buy nothing");
-        require(tokenOnSale.balanceOf(address(this)) >= bucketSupply.mul(21).div(10), "insufficient tokens to sell");
+
+        // todo:fix this to take real available supply into account
+        require(tokenOnSale.balanceOf(address(this)) >= actualAvailableSupply(), "insufficient tokens to sell");
 
         Buy storage buy = buys[currentBucket()][_buyer];
         buy.valueEntered = buy.valueEntered.add(_amount);
-        buy.referralAddress = _referralAddress;
+        buy.referrerAddress = _referrerAddress;
 
         Bucket storage bucket = buckets[currentBucket()];
         bucket.totalValueEntered = bucket.totalValueEntered.add(_amount);
-        referredTotal[_referralAddress] = referredTotal[_referralAddress].add(_amount);
+        referredTotal[_referrerAddress] = referredTotal[_referrerAddress].add(_amount);
 
         bool transferSuccess = tokenSoldFor.transferFrom(_buyer, address(this), _amount);
         require(transferSuccess, "transfer failed");
 
-        emit Entered(_buyer, currentBucket(), _amount);
+        emit Entered(currentBucket(), _buyer, _referrerAddress, _amount);
     }
 
-    event Exited(address indexed _buyer, uint256 _bucket, uint _amount);
+    event Exited(
+        uint256 _bucket,
+        address indexed _buyer,
+        uint _buyerAmount,
+        address indexed _referrer,
+        uint _referrerAmount);
     function exit(address _buyer, uint _bucketID)
         public
     {
@@ -104,47 +124,53 @@ contract BucketSale
             _bucketID < currentBucket(),
             "can only exit from concluded buckets");
 
-        Buy storage buyToWithdraw = buys[_bucketID][msg.sender];
+        Buy storage buyToWithdraw = buys[_bucketID][_buyer];
         require(buyToWithdraw.valueEntered > 0, "can't take out if you didn't put in");
-        require(buyToWithdraw.tokensExited == 0, "already withdrawn");
+        require(buyToWithdraw.buyerTokensExited == 0, "already withdrawn");
 
         Bucket storage bucket = buckets[_bucketID];
         uint baseAmount = bucketSupply.mul(buyToWithdraw.valueEntered).div(bucket.totalValueEntered);
-        uint rewardAmount = baseAmount.mul(buyerReferralRewardPerc()).div(HUNDRED_PERC);
-        uint referralAmount = rewardAmount.mul(referrerReferralRewardPerc(buyToWithdraw.referralAddress)).div(HUNDRED_PERC);
+        uint rewardAmount = baseAmount.mul(buyerReferralRewardPerc(buyToWithdraw.referrerAddress)).div(HUNDRED_PERC);
+        buyToWithdraw.buyerTokensExited = baseAmount.add(rewardAmount);
 
-        bool transferSuccess = tokenOnSale.transfer(msg.sender, baseAmount.add(rewardAmount));
-        require(transferSuccess, "erc20 base transfer failed");
+        bool transferSuccess = tokenOnSale.transfer(_buyer, buyToWithdraw.buyerTokensExited);
+        require(transferSuccess, "erc20 buyer transfer failed");
 
-        uint tokensExited = baseAmount.add(rewardAmount).add(referralAmount);
-        buyToWithdraw.tokensExited = tokensExited;
-        //todo: track total over sale history
-
-        if (buyToWithdraw.referralAddress != address(0))
+        if (buyToWithdraw.referrerAddress != address(0))
         {
-            bool rewardTransferSuccess = tokenOnSale.transfer(buyToWithdraw.referralAddress, referralAmount);
-            require(rewardTransferSuccess, "erc20 referral reward transfer failed");
+            buyToWithdraw.referrerTokensExited = baseAmount.mul(referrerReferralRewardPerc(buyToWithdraw.referrerAddress)).div(HUNDRED_PERC);
+            bool rewardTransferSuccess = tokenOnSale.transfer(buyToWithdraw.referrerAddress, buyToWithdraw.referrerTokensExited);
+            require(rewardTransferSuccess, "erc20 referrer transfer failed");
         }
 
-        emit Exited(_buyer, _bucketID, baseAmount);
+        totalExitedTokens = totalExitedTokens
+            .add(buyToWithdraw.buyerTokensExited)
+            .add(buyToWithdraw.referrerTokensExited);
+
+        emit Exited(
+            _bucketID,
+            _buyer,
+            buyToWithdraw.buyerTokensExited,
+            buyToWithdraw.referrerAddress,
+            buyToWithdraw.referrerTokensExited);
     }
 
-    function buyerReferralRewardPerc()
+    function buyerReferralRewardPerc(address _referrerAddress)
         public
         pure
         returns(uint)
     {
-        return ONE_PERC.mul(11);
+        return _referrerAddress == address(0) ? 0 : ONE_PERC.mul(10);
     }
 
     //perc is between 0 and 100k, so 3 decimal precision.
-    function referrerReferralRewardPerc(address _referralAddress)
+    function referrerReferralRewardPerc(address _referrerAddress)
         public
         view
         returns(uint)
     {
-        uint daiContributed = referredTotal[_referralAddress].div(1000000000000000000);
-        uint multiplier = daiContributed.add(10 * ONE_PERC);
+        uint daiContributed = referredTotal[_referrerAddress].div(1000000000000000000);
+        uint multiplier = daiContributed.add(ONE_PERC.mul(10)); // this guarentees every referrer gets at least 10% of what the buyer is buying
         uint result = SafeMath.min(HUNDRED_PERC, multiplier);
         return result;
     }
