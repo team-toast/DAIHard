@@ -81,7 +81,7 @@ fiatCharsAndImages =
 cryptoImages : Dict Symbol Image
 cryptoImages =
     (foreignCryptoList
-        ++ [ "SAI"
+        ++ [ "DAI"
            , "XDAI"
            ]
     )
@@ -136,7 +136,7 @@ charAndImage symbol =
 
 image : Symbol -> Maybe Image
 image symbol =
-    if symbol == "SAI" then
+    if symbol == "DAI" then
         Just Images.daiSymbol
 
     else

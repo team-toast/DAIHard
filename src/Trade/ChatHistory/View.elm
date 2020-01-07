@@ -215,7 +215,11 @@ commInputElement dProfile model =
             , label = Element.Input.labelHidden "messageInput"
             , spellcheck = False
             }
-        , Element.Input.button [ Element.centerX, Element.Font.size 24 ]
+        , Element.Input.button
+            [ Element.centerX
+            , Element.Font.size 24
+            , EH.noSelectText
+            ]
             { onPress = Just MessageSubmit
             , label = Element.text "Submit"
             }

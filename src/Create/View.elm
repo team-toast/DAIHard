@@ -55,16 +55,16 @@ header dProfile mode =
         descriptionText =
             case mode of
                 CryptoSwap Seller ->
-                    "Trade Sai/xDai for another crypto. Choose the amounts and types of crypto, and fill in your crypto receive address. Advanced users may wish to change the three trade windows."
+                    "Trade Dai/xDai for another crypto. Choose the amounts and types of crypto, and fill in your crypto receive address. Advanced users may wish to change the three trade windows."
 
                 CryptoSwap Buyer ->
-                    "Trade another crypto for Sai/xDai. Choose the amounts and types of crypto, and advanced users may wish to change the three trade windows."
+                    "Trade another crypto for Dai/xDai. Choose the amounts and types of crypto, and advanced users may wish to change the three trade windows."
 
                 OffRamp ->
-                    "Turn your Sai/xDai into any local currency. Choose your amounts and fiat type, describe how you can accept the fiat payment from a Buyer, and if necessary edit the three trade windows."
+                    "Turn your Dai/xDai into any local currency. Choose your amounts and fiat type, describe how you can accept the fiat payment from a Buyer, and if necessary edit the three trade windows."
 
                 OnRamp ->
-                    "Deposit Sai/xDai to begin a fiat purchase to get 3X more Sai/xDai than your deposit. Choose your amounts and fiat type, describe how you can make the fiat payment to a Seller, and if necessary edit the three trade windows."
+                    "Deposit Dai/xDai to begin a fiat purchase to get 3X more Dai/xDai than your deposit. Choose your amounts and fiat type, describe how you can make the fiat payment to a Seller, and if necessary edit the three trade windows."
     in
     Element.column
         [ Element.width Element.fill
@@ -106,7 +106,7 @@ modeHeader dProfile selected mode =
                     "Get Fiat"
 
                 OnRamp ->
-                    "Get More Sai"
+                    "Get More Dai"
     in
     Element.el
         [ Element.Font.size (28 |> changeForMobile 14 dProfile)
@@ -521,6 +521,7 @@ button dProfile bgColor textColor text maybeOnClick =
          , Element.paddingXY 22 16 |> changeForMobile (Element.padding 10) dProfile
          , Element.Font.color textColor
          , Element.Font.size (20 |> changeForMobile 16 dProfile)
+         , EH.noSelectText
          ]
             ++ (case maybeOnClick of
                     Just onClick ->
@@ -997,10 +998,10 @@ intervalModal dProfile intervalType userRole value input maybeError =
                     ( "Burn Window"
                     , case userRole of
                         Buyer ->
-                            "Once you confirm payment, this is how long the Seller will have the option to burn the entire Sai/xDai balance (or manually release early). If the Seller makes no decision before this timer expires, the Sai/xDai balance is yours to claim."
+                            "Once you confirm payment, this is how long the Seller will have the option to burn the entire Dai/xDai balance (or manually release early). If the Seller makes no decision before this timer expires, the Dai/xDai balance is yours to claim."
 
                         Seller ->
-                            "Once the Buyer confirms payment, this is how long you will have the option to burn the entire Sai/xDai balance (or manually release early). If you don't make a decision before this timer expires, the Buyer can then claim the Sai/xDai balance."
+                            "Once the Buyer confirms payment, this is how long you will have the option to burn the entire Dai/xDai balance (or manually release early). If you don't make a decision before this timer expires, the Buyer can then claim the Dai/xDai balance."
                     )
     in
     EH.modal
@@ -1206,6 +1207,7 @@ placeOrderButton dProfile model =
                  , Element.Font.center
                  , Element.Background.color bgColor
                  , Element.Font.color textColor
+                 , EH.noSelectText
                  , Element.above <|
                     case maybeError of
                         Just error ->
@@ -1349,7 +1351,7 @@ txChainStatusModal dProfile txChainStatus model =
             <|
                 EH.txProcessModal
                     [ Element.text "Waiting for user signature for the approve call."
-                    , Element.text "(check Metamask!)"
+                    , Element.text "(check your web3 wallet!)"
                     , Element.text "Note that there will be a second transaction to sign after this."
                     ]
                     NoOp
@@ -1392,7 +1394,7 @@ txChainStatusModal dProfile txChainStatus model =
             <|
                 EH.txProcessModal
                     [ Element.text "Waiting for user signature for the create call."
-                    , Element.text "(check Metamask!)"
+                    , Element.text "(check your web3 wallet!)"
                     ]
                     NoOp
                     CloseTxModalClicked
