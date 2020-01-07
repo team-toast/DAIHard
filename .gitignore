@@ -5,4 +5,4 @@
 /dist/
 index.html
 contracts/tests/fsharp/packages/
-
+build/
