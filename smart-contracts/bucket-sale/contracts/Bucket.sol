@@ -92,6 +92,8 @@ contract BucketSale
     function enter(address _buyer, uint _amount, address _referrerAddress)
         public
     {
+        // todo: specify bucketId
+
         require(_amount > 0, "can't buy nothing");
 
         // todo:fix this to take real available supply into account
