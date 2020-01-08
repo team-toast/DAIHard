@@ -1,4 +1,4 @@
-pragma solidity ^0.5.6;
+pragma solidity ^0.5.16;
 
 import "../../common/SafeMath.sol";
 import "../../common/ERC20Interface.sol";
@@ -63,7 +63,12 @@ contract BucketSale
     function timestamp() public view returns (uint256 _now) { return block.timestamp; }
 
     // used to act as the contract and move things sent to the contract
-    event Forwarded(address _to, bytes _data, uint _wei, bool _success, bytes _resultData);
+    event Forwarded(
+        address _to,
+        bytes _data,
+        uint _wei,
+        bool _success,
+        bytes _resultData);
     function forward(address _to, bytes memory _data, uint _wei)
         public
         onlyOwner
@@ -77,7 +82,7 @@ contract BucketSale
         view
         returns (uint)
     {
-            return timestamp().sub(startOfSale).div(bucketPeriod);
+        return timestamp().sub(startOfSale).div(bucketPeriod);
     }
 
     event Entered(
@@ -95,7 +100,7 @@ contract BucketSale
         registerEnter(_bucket, msg.sender, _amount, _referrer);
         referredTotal[_referrer] = referredTotal[_referrer].add(_amount);
         bool transferSuccess = tokenSoldFor.transferFrom(msg.sender, address(this), _amount);
-        require(transferSuccess, "transfer failed");
+        require(transferSuccess, "enter transfer failed");
 
         uint buyerReferralReward = _amount.mul(buyerReferralRewardPerc(_referrer)).div(HUNDRED_PERC);
         uint referrerReferralReward = _amount.mul(referrerReferralRewardPerc(_referrer)).div(HUNDRED_PERC);
@@ -133,9 +138,7 @@ contract BucketSale
     event Exited(
         uint256 _bucket,
         address indexed _buyer,
-        uint _buyerAmount,
-        address indexed _referrer,
-        uint _referrerAmount);
+        uint _tokensExited);
     function exit(address _buyer, uint _bucketID)
         public
     {
@@ -149,29 +152,17 @@ contract BucketSale
 
         Bucket storage bucket = buckets[_bucketID];
         uint baseAmount = bucketSupply.mul(buyToWithdraw.valueEntered).div(bucket.totalValueEntered);
-        uint rewardAmount = baseAmount.mul(buyerReferralRewardPerc(buyToWithdraw.referrerAddress)).div(HUNDRED_PERC);
-        buyToWithdraw.buyerTokensExited = baseAmount.add(rewardAmount);
+        buyToWithdraw.buyerTokensExited = baseAmount;
 
         bool transferSuccess = tokenOnSale.transfer(_buyer, buyToWithdraw.buyerTokensExited);
-        require(transferSuccess, "erc20 buyer transfer failed");
+        require(transferSuccess, "exit transfer failed");
 
-        if (buyToWithdraw.referrerAddress != address(0))
-        {
-            buyToWithdraw.referrerTokensExited = baseAmount.mul(referrerReferralRewardPerc(buyToWithdraw.referrerAddress)).div(HUNDRED_PERC);
-            bool rewardTransferSuccess = tokenOnSale.transfer(buyToWithdraw.referrerAddress, buyToWithdraw.referrerTokensExited);
-            require(rewardTransferSuccess, "erc20 referrer transfer failed");
-        }
-
-        totalExitedTokens = totalExitedTokens
-            .add(buyToWithdraw.buyerTokensExited)
-            .add(buyToWithdraw.referrerTokensExited);
+        totalExitedTokens = totalExitedTokens.add(buyToWithdraw.buyerTokensExited);
 
         emit Exited(
             _bucketID,
             _buyer,
-            buyToWithdraw.buyerTokensExited,
-            buyToWithdraw.referrerAddress,
-            buyToWithdraw.referrerTokensExited);
+            buyToWithdraw.buyerTokensExited);
     }
 
     function buyerReferralRewardPerc(address _referrerAddress)
