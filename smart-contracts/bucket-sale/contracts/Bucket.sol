@@ -31,6 +31,7 @@ contract BucketSale
     uint public startOfSale;
     uint public bucketPeriod;
     uint public bucketSupply;
+    uint public bucketCount;
     uint public totalExitedTokens;
     ERC20Interface public tokenOnSale;
     ERC20Interface public tokenSoldFor;
@@ -39,6 +40,7 @@ contract BucketSale
             uint _startOfSale,
             uint _bucketPeriod,
             uint _bucketSupply,
+            uint _bucketCount,
             ERC20Interface _tokenOnSale,      // SUGR in our case
             ERC20Interface _tokenSoldFor)    // typically DAI
         public
@@ -47,6 +49,7 @@ contract BucketSale
         startOfSale = _startOfSale;
         bucketPeriod = _bucketPeriod;
         bucketSupply = _bucketSupply;
+        bucketCount = _bucketCount;
         tokenOnSale = _tokenOnSale;
         tokenSoldFor = _tokenSoldFor;
     }
@@ -87,30 +90,49 @@ contract BucketSale
     event Entered(
         uint256 _bucket,
         address indexed _buyer,
+        uint _valueEntered,
+        uint _buyerReferralReward,
         address indexed _referrer,
-        uint _valueEntered);
-    function enter(address _buyer, uint _amount, address _referrerAddress)
+        uint _referrerReferralReward);
+    function enter(uint _bucket, address _buyer, uint _amount, address _referrer)
         public
     {
-        // todo: specify bucketId
+        require(_bucket == currentBucket(), "can only enter the currently open bucket");
 
-        require(_amount > 0, "can't buy nothing");
-
-        // todo:fix this to take real available supply into account
-        require(tokenOnSale.balanceOf(address(this)) >= actualAvailableSupply(), "insufficient tokens to sell");
-
-        Buy storage buy = buys[currentBucket()][_buyer];
-        buy.valueEntered = buy.valueEntered.add(_amount);
-        buy.referrerAddress = _referrerAddress;
-
-        Bucket storage bucket = buckets[currentBucket()];
-        bucket.totalValueEntered = bucket.totalValueEntered.add(_amount);
-        referredTotal[_referrerAddress] = referredTotal[_referrerAddress].add(_amount);
-
+        registerEnter(_bucket, _buyer, _amount, _referrer);
+        referredTotal[_referrer] = referredTotal[_referrer].add(_amount);
         bool transferSuccess = tokenSoldFor.transferFrom(_buyer, address(this), _amount);
         require(transferSuccess, "transfer failed");
 
-        emit Entered(currentBucket(), _buyer, _referrerAddress, _amount);
+        uint buyerReferralReward = _amount.mul(buyerReferralRewardPerc(_referrer)).div(HUNDRED_PERC);
+        uint referrerReferralReward = _amount.mul(referrerReferralRewardPerc(_referrer)).div(HUNDRED_PERC);
+
+        registerEnter(_bucket.add(1), _buyer, buyerReferralReward, address(0));
+        registerEnter(_bucket.add(1), _referrer, referrerReferralReward, address(0));
+
+        emit Entered(
+            _bucket,
+            _buyer,
+            _amount,
+            buyerReferralReward,
+            _referrer,
+            referrerReferralReward);
+    }
+
+    function registerEnter(uint _bucket, address _buyer, uint _amount, address _referrer)
+        internal
+    {
+        require(_bucket >= currentBucket(), "cannot enter past buckets");
+        require(_bucket <= bucketCount, "the sale has ended");
+        require(_amount > 0, "can't buy nothing");
+        require(tokenOnSale.balanceOf(address(this)) >= bucketSupply.mul(2), "insufficient tokens to sell");
+
+        Buy storage buy = buys[_bucket][_buyer];
+        buy.valueEntered = buy.valueEntered.add(_amount);
+        buy.referrerAddress = _referrer;
+
+        Bucket storage bucket = buckets[_bucket];
+        bucket.totalValueEntered = bucket.totalValueEntered.add(_amount);
     }
 
     event Exited(
