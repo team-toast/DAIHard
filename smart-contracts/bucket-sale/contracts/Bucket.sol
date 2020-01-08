@@ -41,8 +41,8 @@ contract BucketSale
             uint _bucketPeriod,
             uint _bucketSupply,
             uint _bucketCount,
-            ERC20Interface _tokenOnSale,      // SUGR in our case
-            ERC20Interface _tokenSoldFor)    // typically DAI
+            ERC20Interface _tokenOnSale,      // FRY in our case
+            ERC20Interface _tokenSoldFor)     // typically DAI
         public
     {
         owner = msg.sender;
@@ -78,13 +78,6 @@ contract BucketSale
         returns (uint)
     {
             return timestamp().sub(startOfSale).div(bucketPeriod);
-    }
-
-    function actualAvailableSupply()
-        public
-        returns (uint)
-    {
-
     }
 
     event Entered(
@@ -125,7 +118,9 @@ contract BucketSale
         require(_bucket >= currentBucket(), "cannot enter past buckets");
         require(_bucket <= bucketCount, "the sale has ended");
         require(_amount > 0, "can't buy nothing");
-        require(tokenOnSale.balanceOf(address(this)) >= bucketSupply.mul(2), "insufficient tokens to sell");
+        require(
+            tokenOnSale.balanceOf(address(this)) >= bucketCount.sub(_bucket).mul(bucketSupply),
+            "insufficient tokens to sell");
 
         Buy storage buy = buys[_bucket][_buyer];
         buy.valueEntered = buy.valueEntered.add(_amount);
