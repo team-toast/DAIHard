@@ -14,8 +14,6 @@ contract BucketSale
     {
         uint valueEntered;
         uint buyerTokensExited;
-        uint referrerTokensExited;
-        address referrerAddress;
     }
 
     struct Bucket
@@ -37,6 +35,7 @@ contract BucketSale
     ERC20Interface public tokenSoldFor;
 
     constructor (
+            address _owner,
             uint _startOfSale,
             uint _bucketPeriod,
             uint _bucketSupply,
@@ -45,7 +44,7 @@ contract BucketSale
             ERC20Interface _tokenSoldFor)     // typically DAI
         public
     {
-        owner = msg.sender;
+        owner = _owner;
         startOfSale = _startOfSale;
         bucketPeriod = _bucketPeriod;
         bucketSupply = _bucketSupply;
@@ -97,7 +96,7 @@ contract BucketSale
     {
         require(_bucket == currentBucket(), "can only enter the currently open bucket");
 
-        registerEnter(_bucket, msg.sender, _amount, _referrer);
+        registerEnter(_bucket, msg.sender, _amount);
         referredTotal[_referrer] = referredTotal[_referrer].add(_amount);
         bool transferSuccess = tokenSoldFor.transferFrom(msg.sender, address(this), _amount);
         require(transferSuccess, "enter transfer failed");
@@ -105,8 +104,8 @@ contract BucketSale
         uint buyerReferralReward = _amount.mul(buyerReferralRewardPerc(_referrer)).div(HUNDRED_PERC);
         uint referrerReferralReward = _amount.mul(referrerReferralRewardPerc(_referrer)).div(HUNDRED_PERC);
 
-        registerEnter(_bucket.add(1), msg.sender, buyerReferralReward, address(0));
-        registerEnter(_bucket.add(1), _referrer, referrerReferralReward, address(0));
+        registerEnter(_bucket.add(1), msg.sender, buyerReferralReward);
+        registerEnter(_bucket.add(1), _referrer, referrerReferralReward);
 
         emit Entered(
             _bucket,
@@ -117,7 +116,7 @@ contract BucketSale
             referrerReferralReward);
     }
 
-    function registerEnter(uint _bucket, address _buyer, uint _amount, address _referrer)
+    function registerEnter(uint _bucket, address _buyer, uint _amount)
         internal
     {
         require(_bucket >= currentBucket(), "cannot enter past buckets");
@@ -129,7 +128,6 @@ contract BucketSale
 
         Buy storage buy = buys[_bucket][_buyer];
         buy.valueEntered = buy.valueEntered.add(_amount);
-        buy.referrerAddress = _referrer;
 
         Bucket storage bucket = buckets[_bucket];
         bucket.totalValueEntered = bucket.totalValueEntered.add(_amount);
