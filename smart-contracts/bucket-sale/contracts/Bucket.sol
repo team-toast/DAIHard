@@ -94,25 +94,25 @@ contract BucketSale
         uint _buyerReferralReward,
         address indexed _referrer,
         uint _referrerReferralReward);
-    function enter(uint _bucket, address _buyer, uint _amount, address _referrer)
+    function enter(uint _bucket, uint _amount, address _referrer)
         public
     {
         require(_bucket == currentBucket(), "can only enter the currently open bucket");
 
-        registerEnter(_bucket, _buyer, _amount, _referrer);
+        registerEnter(_bucket, msg.sender, _amount, _referrer);
         referredTotal[_referrer] = referredTotal[_referrer].add(_amount);
-        bool transferSuccess = tokenSoldFor.transferFrom(_buyer, address(this), _amount);
+        bool transferSuccess = tokenSoldFor.transferFrom(msg.sender, address(this), _amount);
         require(transferSuccess, "transfer failed");
 
         uint buyerReferralReward = _amount.mul(buyerReferralRewardPerc(_referrer)).div(HUNDRED_PERC);
         uint referrerReferralReward = _amount.mul(referrerReferralRewardPerc(_referrer)).div(HUNDRED_PERC);
 
-        registerEnter(_bucket.add(1), _buyer, buyerReferralReward, address(0));
+        registerEnter(_bucket.add(1), msg.sender, buyerReferralReward, address(0));
         registerEnter(_bucket.add(1), _referrer, referrerReferralReward, address(0));
 
         emit Entered(
             _bucket,
-            _buyer,
+            msg.sender,
             _amount,
             buyerReferralReward,
             _referrer,
