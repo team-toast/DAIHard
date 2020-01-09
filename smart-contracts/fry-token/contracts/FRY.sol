@@ -16,16 +16,16 @@ contract FRY is Context, ERC20Detailed, ERC20Mintable, ERC20Burnable
         public
         ERC20Detailed("Foundry Logistics Token", "FRY", 18)
     {
-        // Out of 1 million tokens,
+        // Out of 100 million tokens,
 
         // 30% disbursed to Team Toast
-        _mint(_teamToastTokenReceiver, uint(300000).mul(10 ** uint256(decimals())));
+        _mint(_teamToastTokenReceiver, uint(30000000).mul(10 ** uint256(decimals())));
 
         // 10% given to the Foundry Foundation
-        _mint(_foundationMultisig, uint(100000).mul(10 ** uint256(decimals())));
+        _mint(_foundationMultisig, uint(10000000).mul(10 ** uint256(decimals())));
 
         // 60% set aside to be disbursed via one or more public token events
-        _mint(_forPublicTokenReceiver, uint(600000).mul(10 ** uint256(decimals())));
+        _mint(_forPublicTokenReceiver, uint(60000000).mul(10 ** uint256(decimals())));
 
         // MinterRole constructor makes msg.sender a minter. Remove this role.
         _removeMinter(_msgSender());
