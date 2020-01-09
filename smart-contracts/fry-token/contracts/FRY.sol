@@ -19,7 +19,7 @@ contract FRY is Context, ERC20Detailed, ERC20Mintable, ERC20Burnable
     {
         // Out of 1 million tokens,
 
-        // 30% disbursed to Team Toast contributors
+        // 30% disbursed to Team Toast
         _mint(_teamToastTokenReceiver, uint(300000).mul(10 ** uint256(decimals())));
 
         // 10% given to the Foundry Foundation
@@ -30,5 +30,8 @@ contract FRY is Context, ERC20Detailed, ERC20Mintable, ERC20Burnable
 
         // Team Toast will control a minting address via a multisig, to be renounced as various Foundry contracts prove stable and self-organizing
         _addMinter(_teamToastMultisig);
+
+        // MinterRole constructor makes msg.sender a minter. Remove this role.
+        _removeMinter(_msgSender());
     }
 }
