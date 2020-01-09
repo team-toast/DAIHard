@@ -10,9 +10,8 @@ contract FRY is Context, ERC20Detailed, ERC20Mintable, ERC20Burnable
     using SafeMath for uint;
 
     constructor(
-            address _teamToastMultisig,
             address _teamToastTokenReceiver,
-            address _foundationTokenReceiver,
+            address _foundationMultisig,
             address _forPublicTokenReceiver)
         public
         ERC20Detailed("Foundry Logistics Token", "FRY", 18)
@@ -23,15 +22,15 @@ contract FRY is Context, ERC20Detailed, ERC20Mintable, ERC20Burnable
         _mint(_teamToastTokenReceiver, uint(300000).mul(10 ** uint256(decimals())));
 
         // 10% given to the Foundry Foundation
-        _mint(_foundationTokenReceiver, uint(100000).mul(10 ** uint256(decimals())));
+        _mint(_foundationMultisig, uint(100000).mul(10 ** uint256(decimals())));
 
         // 60% set aside to be disbursed via one or more public token events
         _mint(_forPublicTokenReceiver, uint(600000).mul(10 ** uint256(decimals())));
 
-        // Team Toast will control a minting address via a multisig, to be renounced as various Foundry contracts prove stable and self-organizing
-        _addMinter(_teamToastMultisig);
-
         // MinterRole constructor makes msg.sender a minter. Remove this role.
         _removeMinter(_msgSender());
+
+        // The Foundation will control a minting address via a multisig, to be renounced as various Foundry contracts prove stable and self-organizing
+        _addMinter(_foundationMultisig);
     }
 }
