@@ -94,9 +94,6 @@ contract BucketSale
     function enter(uint _bucketId, uint _amount, address _referrer)
         public
     {
-        require(_bucketId >= currentBucket(), "cannot enter past bucket");
-        // shouldn't we require bucketId < (bucketCount - 1)?
-
         registerEnter(_bucketId, msg.sender, _amount);
         referredTotal[_referrer] = referredTotal[_referrer].add(_amount);
         bool transferSuccess = tokenSoldFor.transferFrom(msg.sender, address(this), _amount);
@@ -120,12 +117,12 @@ contract BucketSale
     function registerEnter(uint _bucketId, address _buyer, uint _amount)
         internal
     {
-        require(_bucketId >= currentBucket(), "cannot enter past buckets"); // is this needed?
+        require(_bucketId >= currentBucket(), "cannot enter past buckets");
         require(_bucketId < bucketCount, "invalid bucket id--past end of sale");
         require(_amount > 0, "can't buy nothing");
         require(
-            tokenOnSale.balanceOf(address(this)) >= bucketCount.sub(_bucketId).mul(bucketSupply),
-            "insufficient tokens to sell"); // This seems wrong
+            tokenOnSale.balanceOf(address(this)).add(totalExitedTokens) >= _bucketId.add(1).mul(bucketSupply),
+            "insufficient tokens to sell");
 
         Buy storage buy = buys[_bucketId][_buyer];
         buy.valueEntered = buy.valueEntered.add(_amount);
@@ -150,13 +147,11 @@ contract BucketSale
         require(buyToWithdraw.buyerTokensExited == 0, "already withdrawn");
 
         Bucket storage bucket = buckets[_bucketId];
-        uint baseAmount = bucketSupply.mul(buyToWithdraw.valueEntered).div(bucket.totalValueEntered);
-        buyToWithdraw.buyerTokensExited = baseAmount;
+        buyToWithdraw.buyerTokensExited = bucketSupply.mul(buyToWithdraw.valueEntered).div(bucket.totalValueEntered);
+        totalExitedTokens = totalExitedTokens.add(buyToWithdraw.buyerTokensExited);
 
         bool transferSuccess = tokenOnSale.transfer(_buyer, buyToWithdraw.buyerTokensExited);
         require(transferSuccess, "exit transfer failed");
-
-        totalExitedTokens = totalExitedTokens.add(buyToWithdraw.buyerTokensExited);
 
         emit Exited(
             _bucketId,
@@ -178,7 +173,7 @@ contract BucketSale
         view
         returns(uint)
     {
-        uint daiContributed = referredTotal[_referrerAddress].div(1000000000000000000);
+        uint daiContributed = referredTotal[_referrerAddress].div(10 ** 18);
         uint multiplier = daiContributed.add(ONE_PERC.mul(10)); // this guarentees every referrer gets at least 10% of what the buyer is buying
         uint result = SafeMath.min(HUNDRED_PERC, multiplier);
         return result;
