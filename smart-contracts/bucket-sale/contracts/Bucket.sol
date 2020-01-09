@@ -1,4 +1,4 @@
-pragma solidity ^0.5.16;
+pragma solidity ^0.5.11;
 
 import "../../common/SafeMath.sol";
 import "../../common/ERC20Interface.sol";
@@ -85,18 +85,19 @@ contract BucketSale
     }
 
     event Entered(
-        uint256 _bucket,
+        uint256 _bucketId,
         address indexed _buyer,
         uint _valueEntered,
         uint _buyerReferralReward,
         address indexed _referrer,
         uint _referrerReferralReward);
-    function enter(uint _bucket, uint _amount, address _referrer)
+    function enter(uint _bucketId, uint _amount, address _referrer)
         public
     {
-        require(_bucket == currentBucket(), "can only enter the currently open bucket");
+        require(_bucketId >= currentBucket(), "cannot enter past bucket");
+        // shouldn't we require bucketId < (bucketCount - 1)?
 
-        registerEnter(_bucket, msg.sender, _amount);
+        registerEnter(_bucketId, msg.sender, _amount);
         referredTotal[_referrer] = referredTotal[_referrer].add(_amount);
         bool transferSuccess = tokenSoldFor.transferFrom(msg.sender, address(this), _amount);
         require(transferSuccess, "enter transfer failed");
@@ -104,11 +105,11 @@ contract BucketSale
         uint buyerReferralReward = _amount.mul(buyerReferralRewardPerc(_referrer)).div(HUNDRED_PERC);
         uint referrerReferralReward = _amount.mul(referrerReferralRewardPerc(_referrer)).div(HUNDRED_PERC);
 
-        registerEnter(_bucket.add(1), msg.sender, buyerReferralReward);
-        registerEnter(_bucket.add(1), _referrer, referrerReferralReward);
+        registerEnter(_bucketId.add(1), msg.sender, buyerReferralReward);
+        registerEnter(_bucketId.add(1), _referrer, referrerReferralReward);
 
         emit Entered(
-            _bucket,
+            _bucketId,
             msg.sender,
             _amount,
             buyerReferralReward,
@@ -116,39 +117,39 @@ contract BucketSale
             referrerReferralReward);
     }
 
-    function registerEnter(uint _bucket, address _buyer, uint _amount)
+    function registerEnter(uint _bucketId, address _buyer, uint _amount)
         internal
     {
-        require(_bucket >= currentBucket(), "cannot enter past buckets");
-        require(_bucket <= bucketCount, "the sale has ended");
+        require(_bucketId >= currentBucket(), "cannot enter past buckets"); // is this needed?
+        require(_bucketId < bucketCount, "invalid bucket id--past end of sale");
         require(_amount > 0, "can't buy nothing");
         require(
-            tokenOnSale.balanceOf(address(this)) >= bucketCount.sub(_bucket).mul(bucketSupply),
-            "insufficient tokens to sell");
+            tokenOnSale.balanceOf(address(this)) >= bucketCount.sub(_bucketId).mul(bucketSupply),
+            "insufficient tokens to sell"); // This seems wrong
 
-        Buy storage buy = buys[_bucket][_buyer];
+        Buy storage buy = buys[_bucketId][_buyer];
         buy.valueEntered = buy.valueEntered.add(_amount);
 
-        Bucket storage bucket = buckets[_bucket];
+        Bucket storage bucket = buckets[_bucketId];
         bucket.totalValueEntered = bucket.totalValueEntered.add(_amount);
     }
 
     event Exited(
-        uint256 _bucket,
+        uint256 _bucketId,
         address indexed _buyer,
         uint _tokensExited);
-    function exit(address _buyer, uint _bucketID)
+    function exit(address _buyer, uint _bucketId)
         public
     {
         require(
-            _bucketID < currentBucket(),
+            _bucketId < currentBucket(),
             "can only exit from concluded buckets");
 
-        Buy storage buyToWithdraw = buys[_bucketID][_buyer];
+        Buy storage buyToWithdraw = buys[_bucketId][_buyer];
         require(buyToWithdraw.valueEntered > 0, "can't take out if you didn't put in");
         require(buyToWithdraw.buyerTokensExited == 0, "already withdrawn");
 
-        Bucket storage bucket = buckets[_bucketID];
+        Bucket storage bucket = buckets[_bucketId];
         uint baseAmount = bucketSupply.mul(buyToWithdraw.valueEntered).div(bucket.totalValueEntered);
         buyToWithdraw.buyerTokensExited = baseAmount;
 
@@ -158,7 +159,7 @@ contract BucketSale
         totalExitedTokens = totalExitedTokens.add(buyToWithdraw.buyerTokensExited);
 
         emit Exited(
-            _bucketID,
+            _bucketId,
             _buyer,
             buyToWithdraw.buyerTokensExited);
     }
