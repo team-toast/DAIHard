@@ -85,6 +85,7 @@ contract BucketSale
     }
 
     event Entered(
+        address _sender,
         uint256 _bucketId,
         address indexed _buyer,
         uint _valueEntered,
@@ -106,8 +107,9 @@ contract BucketSale
         registerEnter(_bucketId.add(1), _referrer, referrerReferralReward);
 
         emit Entered(
-            _bucketId,
             msg.sender,
+            _bucketId,
+            _buyer,
             _amount,
             buyerReferralReward,
             _referrer,
