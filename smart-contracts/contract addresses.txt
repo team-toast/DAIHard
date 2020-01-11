@@ -19,5 +19,5 @@ Team Toast Forwarder:
 Public Token Forwarder:
     0xF00605E5690061447a589Bd147616849E53175e6
 
-Fry Token Smart Contract:
+FRY:
     0x4EBcf1cE0A3A3829D52C91C7A2675CE00dC62293
