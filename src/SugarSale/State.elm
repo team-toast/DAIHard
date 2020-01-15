@@ -434,40 +434,44 @@ update msg prevModel =
 
 
 initSugarSale : Bool -> Time.Posix -> Time.Posix -> Maybe SugarSale
-initSugarSale testMode saleStartTimestamp now =
+initSugarSale testMode saleStartTime now =
     let
-        bucketInterval =
-            Config.sugarSaleBucketInterval testMode
-
-        allBuckets =
-            List.Extra.iterate
-                (\lastBucketAdded ->
-                    let
-                        nextBucketStartTime =
-                            TimeHelpers.add
-                                lastBucketAdded.startTime
-                                bucketInterval
-                    in
-                    if TimeHelpers.compare nextBucketStartTime now == GT then
-                        Nothing
-
-                    else
-                        Just <|
-                            Bucket
-                                nextBucketStartTime
-                                Nothing
-                                Nothing
-                )
-                (Bucket
-                    saleStartTimestamp
-                    Nothing
-                    Nothing
-                )
+        numBuckets =
+            TimeHelpers.sub
+                now
+                saleStartTime
+                |> TimeHelpers.posixToSeconds
+                |> (\seconds ->
+                        (seconds // (Config.sugarSaleBucketInterval testMode |> TimeHelpers.posixToSeconds))
+                            + 1
+                            |> max 0
+                   )
     in
-    Maybe.map2
-        (SugarSale saleStartTimestamp)
-        (List.Extra.init allBuckets)
-        (List.Extra.last allBuckets)
+    if numBuckets == 0 then
+        Nothing
+
+    else
+        let
+            allBuckets =
+                List.range 0 (numBuckets - 1)
+                    |> List.map
+                        (\id ->
+                            Bucket
+                                (TimeHelpers.add
+                                    saleStartTime
+                                    (TimeHelpers.mul
+                                        (Config.sugarSaleBucketInterval testMode)
+                                        id
+                                    )
+                                )
+                                Nothing
+                                Nothing
+                        )
+        in
+        Maybe.map2
+            (SugarSale saleStartTime)
+            (List.Extra.init allBuckets)
+            (List.Extra.last allBuckets)
 
 
 addNewActiveBucketIfNeeded : Time.Posix -> Bool -> SugarSale -> SugarSale
