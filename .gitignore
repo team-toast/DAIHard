@@ -6,3 +6,7 @@
 index.html
 contracts/tests/fsharp/packages/
 build/
+bin/
+obj/
+.ionide/
+/.ionide/

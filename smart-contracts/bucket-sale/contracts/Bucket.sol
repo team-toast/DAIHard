@@ -71,9 +71,11 @@ contract BucketSale
     function forward(address _to, bytes memory _data, uint _wei)
         public
         onlyOwner
+        returns (bool, bytes memory)
     {
         (bool success, bytes memory resultData) = _to.call.value(_wei)(_data);
         emit Forwarded(_to, _data, _wei, success, resultData);
+        return (success, resultData);
     }
 
     function currentBucket()
@@ -92,7 +94,11 @@ contract BucketSale
         uint _buyerReferralReward,
         address indexed _referrer,
         uint _referrerReferralReward);
-    function enter(address _buyer, uint _bucketId, uint _amount, address _referrer)
+    function enter(
+            address _buyer,
+            uint _bucketId,
+            uint _amount,
+            address _referrer)
         public
     {
         registerEnter(_bucketId, _buyer, _amount);
@@ -137,7 +143,7 @@ contract BucketSale
         uint256 _bucketId,
         address indexed _buyer,
         uint _tokensExited);
-    function exit(address _buyer, uint _bucketId)
+    function exit(uint _bucketId, address _buyer)
         public
     {
         require(
