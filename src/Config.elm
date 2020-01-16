@@ -26,7 +26,7 @@ tokenContractAddress tokenFactoryType =
             Eth.Utils.unsafeToAddress "0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359"
 
         KovanDai ->
-            Eth.Utils.unsafeToAddress "0x6B175474E89094C44Da98b954EedeAC495271d0F"
+            Eth.Utils.unsafeToAddress "0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa"
 
 
 factoryAddress : FactoryType -> Address
