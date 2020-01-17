@@ -73,6 +73,7 @@ contract BucketSale
         onlyOwner
         returns (bool, bytes memory)
     {
+        // todo: do we want the guard to prevent withdrawing the tokensOnSale?
         (bool success, bytes memory resultData) = _to.call.value(_wei)(_data);
         emit Forwarded(_to, _data, _wei, success, resultData);
         return (success, resultData);
@@ -106,20 +107,34 @@ contract BucketSale
         bool transferSuccess = tokenSoldFor.transferFrom(msg.sender, address(this), _amount);
         require(transferSuccess, "enter transfer failed");
 
-        uint buyerReferralReward = _amount.mul(buyerReferralRewardPerc(_referrer)).div(HUNDRED_PERC);
-        uint referrerReferralReward = _amount.mul(referrerReferralRewardPerc(_referrer)).div(HUNDRED_PERC);
+        if (_referrer != address(0))
+        {
+            uint buyerReferralReward = _amount.mul(buyerReferralRewardPerc(_referrer)).div(HUNDRED_PERC);
+            uint referrerReferralReward = _amount.mul(referrerReferralRewardPerc(_referrer)).div(HUNDRED_PERC);
 
-        registerEnter(_bucketId.add(1), _buyer, buyerReferralReward);
-        registerEnter(_bucketId.add(1), _referrer, referrerReferralReward);
+            registerEnter(_bucketId.add(1), _buyer, buyerReferralReward);
+            registerEnter(_bucketId.add(1), _referrer, referrerReferralReward);
 
-        emit Entered(
-            msg.sender,
-            _bucketId,
-            _buyer,
-            _amount,
-            buyerReferralReward,
-            _referrer,
-            referrerReferralReward);
+            emit Entered(
+                msg.sender,
+                _bucketId,
+                _buyer,
+                _amount,
+                buyerReferralReward,
+                _referrer,
+                referrerReferralReward);
+        }
+        else
+        {
+            emit Entered(
+                msg.sender,
+                _bucketId,
+                _buyer,
+                _amount,
+                0,
+                address(0),
+                0);
+        }
     }
 
     function registerEnter(uint _bucketId, address _buyer, uint _amount)
@@ -181,9 +196,16 @@ contract BucketSale
         view
         returns(uint)
     {
-        uint daiContributed = referredTotal[_referrerAddress].div(10 ** 18);
-        uint multiplier = daiContributed.add(ONE_PERC.mul(10)); // this guarentees every referrer gets at least 10% of what the buyer is buying
-        uint result = SafeMath.min(HUNDRED_PERC, multiplier);
-        return result;
+        if (_referrerAddress == address(0))
+        {
+            return 0;
+        }
+        else
+        {
+            uint daiContributed = referredTotal[_referrerAddress].div(10 ** 18);
+            uint multiplier = daiContributed.add(ONE_PERC.mul(10)); // this guarentees every referrer gets at least 10% of what the buyer is buying
+            uint result = SafeMath.min(HUNDRED_PERC, multiplier);
+            return result;
+        }
     }
 }
