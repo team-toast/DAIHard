@@ -1,13 +1,11 @@
-module Config exposing (activeFactories, devFeeAddress, factoryAddress, tokenContractAddress, tokenDecimals)
+module Config exposing (activeFactories, bucketSaleAddress, bucketSaleBucketInterval, bucketSaleTokensPerBucket, bucketTokenSymbol, devFeeAddress, factoryAddress, tokenContractAddress)
 
+import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
-import Eth.Net
 import Eth.Types exposing (Address)
 import Eth.Utils
-
-
-tokenDecimals =
-    18
+import Time
+import TokenValue exposing (TokenValue)
 
 
 activeFactories : Bool -> List FactoryType
@@ -28,7 +26,7 @@ tokenContractAddress tokenFactoryType =
             Eth.Utils.unsafeToAddress "0x6B175474E89094C44Da98b954EedeAC495271d0F"
 
         KovanDai ->
-            Eth.Utils.unsafeToAddress "0xB64964e9C0B658Aa7B448cDbDdfCdcCaB26CC584"
+            Eth.Utils.unsafeToAddress "0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa"
 
 
 factoryAddress : FactoryType -> Address
@@ -67,3 +65,36 @@ devFeeAddress factoryType =
 
         Native XDai ->
             Eth.Utils.unsafeToAddress "0x092110996699c3E06e998d89F0f4586026e44F0F"
+
+
+bucketSaleAddress : Bool -> Address
+bucketSaleAddress testMode =
+    if testMode then
+        Eth.Utils.unsafeToAddress "0x487Ac5423555B1D83F5b8BA13F260B296E9D0777"
+
+    else
+        Debug.todo "No address for non-testMode bucketSale"
+
+
+bucketSaleBucketInterval : Bool -> Time.Posix
+bucketSaleBucketInterval testMode =
+    if testMode then
+        Time.millisToPosix <| 1000 * 60 * 2
+
+    else
+        Debug.todo "blocks per bucket in non-test-mode"
+
+
+bucketSaleTokensPerBucket : Bool -> TokenValue
+bucketSaleTokensPerBucket testMode =
+    TokenValue.fromIntTokenValue <|
+        if testMode then
+            150
+
+        else
+            Debug.todo "tokens per bucket in non-test mode"
+
+
+bucketTokenSymbol : String
+bucketTokenSymbol =
+    "SUGR"

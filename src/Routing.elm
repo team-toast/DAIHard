@@ -1,4 +1,4 @@
-module Routing exposing (FullRoute, PageRoute(..), routeToString, urlToRoute)
+module Routing exposing (FullRoute, PageRoute(..), routeToString, urlToFullRoute)
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -8,11 +8,13 @@ import Eth.Utils
 import Url exposing (Url)
 import Url.Builder
 import Url.Parser exposing ((</>), (<?>), Parser)
+import Url.Parser.Query
 
 
 type alias FullRoute =
     { testing : Bool
     , pageRoute : PageRoute
+    , maybeReferrer : Maybe Address
     }
 
 
@@ -24,14 +26,15 @@ type PageRoute
     | Trade TradeReference
     | Marketplace
     | AgentHistory Address
+    | BucketSale
     | NotFound
 
 
 fullRouteParser : Parser (FullRoute -> a) a
 fullRouteParser =
     Url.Parser.oneOf
-        [ Url.Parser.s "DAIHard" </> Url.Parser.s "test" </> Url.Parser.map (FullRoute True) pageRouteParser
-        , Url.Parser.s "DAIHard" </> Url.Parser.map (FullRoute False) pageRouteParser
+        [ Url.Parser.s "DAIHard" </> Url.Parser.s "test" </> Url.Parser.map (FullRoute True) (pageRouteParser <?> refQueryParser)
+        , Url.Parser.s "DAIHard" </> Url.Parser.map (FullRoute False) (pageRouteParser <?> refQueryParser)
         ]
 
 
@@ -45,6 +48,7 @@ pageRouteParser =
         , Url.Parser.map Marketplace (Url.Parser.s "marketplace")
         , Url.Parser.map AgentHistory (Url.Parser.s "history" </> addressParser)
         , Url.Parser.map (\address -> AgentHistory address) (Url.Parser.s "history" </> addressParser)
+        , Url.Parser.map BucketSale (Url.Parser.s "foundry")
         ]
 
 
@@ -79,11 +83,20 @@ routeToString fullRoute =
                     AgentHistory address ->
                         [ "history", Eth.Utils.addressToString address ]
 
+                    BucketSale ->
+                        [ "foundry" ]
+
                     NotFound ->
                         []
                )
         )
-        []
+        (case fullRoute.maybeReferrer of
+            Just address ->
+                [ Url.Builder.string "ref" (Eth.Utils.addressToChecksumString address) ]
+
+            Nothing ->
+                []
+        )
 
 
 addressParser : Parser (Address -> a) a
@@ -91,6 +104,12 @@ addressParser =
     Url.Parser.custom
         "ADDRESS"
         (Eth.Utils.toAddress >> Result.toMaybe)
+
+
+refQueryParser : Url.Parser.Query.Parser (Maybe Address)
+refQueryParser =
+    Url.Parser.Query.string "ref"
+        |> Url.Parser.Query.map (Maybe.andThen (Eth.Utils.toAddress >> Result.toMaybe))
 
 
 tradeRefParser : Parser (TradeReference -> a) a
@@ -172,6 +191,6 @@ buyerOrSellerToString buyerOrSeller =
             "seller"
 
 
-urlToRoute : Url -> FullRoute
-urlToRoute url =
-    Maybe.withDefault (FullRoute False NotFound) (Url.Parser.parse fullRouteParser url)
+urlToFullRoute : Url -> FullRoute
+urlToFullRoute url =
+    Maybe.withDefault (FullRoute False NotFound Nothing) (Url.Parser.parse fullRouteParser url)

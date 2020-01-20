@@ -7,9 +7,17 @@ import Json.Encode
 
 toInt : BigInt -> Maybe Int
 toInt val =
-    val
-        |> BigInt.toString
-        |> String.toInt
+    let
+        converted =
+            val
+                |> BigInt.toString
+                |> String.toInt
+    in
+    if Maybe.map BigInt.fromInt converted == Just val then
+        converted
+
+    else
+        Nothing
 
 
 toIntWithWarning : BigInt -> Int

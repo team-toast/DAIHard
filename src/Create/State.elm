@@ -71,13 +71,13 @@ init testMode wallet modeOrTrade =
                 ( amountIn, amountOut ) =
                     case userParameters.initiatorRole of
                         Seller ->
-                            ( TokenValue.getFloatValueWithWarning userParameters.tradeAmount
+                            ( TokenValue.toFloatWithWarning userParameters.tradeAmount
                             , userParameters.price.amount
                             )
 
                         Buyer ->
                             ( userParameters.price.amount
-                            , TokenValue.getFloatValueWithWarning userParameters.tradeAmount
+                            , TokenValue.toFloatWithWarning userParameters.tradeAmount
                             )
 
                 inputs =
@@ -117,7 +117,7 @@ init testMode wallet modeOrTrade =
             , margin = 0
             , dhTokenType = trade.reference.factory
             , dhTokenAmount =
-                Just <| TokenValue.getFloatValueWithWarning trade.parameters.tradeAmount
+                Just <| TokenValue.toFloatWithWarning trade.parameters.tradeAmount
             , foreignCurrencyType = trade.terms.price.symbol
             , foreignCurrencyAmount = Just trade.terms.price.amount
             , intervals =
@@ -992,7 +992,7 @@ update msg prevModel =
                 }
                 Cmd.none
                 ChainCmd.none
-                [ CmdUp.gTag "place order clicked" "txchain" prevModel.inputs.paymentMethod (createParameters.tradeAmount |> TokenValue.getFloatValueWithWarning |> floor) ]
+                [ CmdUp.gTag "place order clicked" "txchain" prevModel.inputs.paymentMethod (createParameters.tradeAmount |> TokenValue.toFloatWithWarning |> floor) ]
 
         TradeTermsRight ->
             justModelUpdate

@@ -2,6 +2,7 @@ module View exposing (root)
 
 import AgentHistory.View
 import Browser
+import BucketSale.View
 import CommonTypes exposing (..)
 import Config
 import Contracts.Types as CTypes
@@ -184,6 +185,28 @@ headerContent dProfile model =
                         ConnectToWeb3
                         Important
             ]
+        , case dProfile of
+            Desktop ->
+                Element.el
+                    [ Element.centerX
+                    , Element.alignTop
+                    ]
+                <|
+                    headerLink
+                        dProfile
+                        Nothing
+                        "Sugar"
+                        (GotoRoute <| Routing.BucketSale)
+                        (case model.submodel of
+                            BucketSaleModel _ ->
+                                Active
+
+                            _ ->
+                                Normal
+                        )
+
+            Mobile ->
+                Element.none
         , let
             smLinks =
                 [ Element.el
@@ -495,21 +518,27 @@ submodelElementAndModal dProfile model =
                     )
 
                 TradeModel tradeModel ->
-                    Trade.View.root dProfile model.time model.tradeCaches tradeModel
+                    Trade.View.root dProfile model.now model.tradeCaches tradeModel
                         |> Tuple.mapBoth
                             (Element.map TradeMsg)
                             (List.map (Element.map TradeMsg))
 
                 MarketplaceModel marketplaceModel ->
-                    Marketplace.View.root model.time dProfile model.tradeCaches marketplaceModel
+                    Marketplace.View.root model.now dProfile model.tradeCaches marketplaceModel
                         |> Tuple.mapBoth
                             (Element.map MarketplaceMsg)
                             (List.map (Element.map MarketplaceMsg))
 
                 AgentHistoryModel agentHistoryModel ->
-                    ( Element.map AgentHistoryMsg (AgentHistory.View.root model.time dProfile model.tradeCaches agentHistoryModel)
+                    ( Element.map AgentHistoryMsg (AgentHistory.View.root model.now dProfile model.tradeCaches agentHistoryModel)
                     , []
                     )
+
+                BucketSaleModel bucketSaleModel ->
+                    BucketSale.View.root dProfile bucketSaleModel
+                        |> Tuple.mapBoth
+                            (Element.map BucketSaleMsg)
+                            (List.map (Element.map BucketSaleMsg))
     in
     ( Element.el
         [ Element.width Element.fill

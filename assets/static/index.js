@@ -29,12 +29,15 @@ function startDapp() {
                 flags: {
                     networkId: id,
                     width: window.innerWidth,
-                    height: window.innerHeight
+                    height: window.innerHeight,
+                    nowInMillis: Date.now(),
+                    maybeReferralAddressString: getReferralAddressStringFromStorageOrNull()
                 }
             });
 
             gtagPortStuff(app);
             notificationPortStuff(app);
+            referrerStoragePortStuff(app);
 
             web3PortStuff(app, web3);
         });
@@ -44,14 +47,26 @@ function startDapp() {
             flags: {
                 networkId: 0, // 0 indicates no network set by provider
                 width: window.innerWidth,
-                height: window.innerHeight
+                height: window.innerHeight,
+                nowInMillis: Date.now(),
+                maybeReferralAddressString: getReferralAddressStringFromStorageOrNull()
             }
         });
 
         gtagPortStuff(app);
         notificationPortStuff(app);
+        referrerStoragePortStuff(app);
 
         console.log("Metamask not detected.");
+    }
+}
+
+function getReferralAddressStringFromStorageOrNull() {
+    if (typeof (Storage) !== "undefined") {
+        return localStorage.getItem("referralAddressString");
+    }
+    else {
+        return null;
     }
 }
 
@@ -72,6 +87,14 @@ function gtagPortStuff(app) {
             'event_label': data.label,
             'value': data.value
         });
+    });
+}
+
+function referrerStoragePortStuff(app) {
+    app.ports.storeReferrerAddress.subscribe(function (data) {
+        if (typeof (Storage !== "undefined")) {
+            localStorage.setItem("referralAddressString", data);
+        }
     });
 }
 

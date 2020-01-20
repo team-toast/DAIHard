@@ -7,6 +7,8 @@ import Browser
 import Browser.Dom
 import Browser.Events
 import Browser.Navigation
+import BucketSale.State
+import BucketSale.Types as BucketSale
 import ChainCmd exposing (ChainCmd)
 import CmdDown
 import CmdUp
@@ -44,7 +46,7 @@ init : Flags -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init flags url key =
     let
         fullRoute =
-            Routing.urlToRoute url
+            Routing.urlToFullRoute url
 
         ( wallet, cmdUpsFromNetwork ) =
             if flags.networkId == 0 then
@@ -111,18 +113,63 @@ init flags url key =
         dProfile =
             screenWidthToDisplayProfile flags.width
 
+        ( maybeReferrer, maybeReferrerStoreCmd ) =
+            let
+                maybeReferrerFromStorage =
+                    case flags.maybeReferralAddressString |> Maybe.map Eth.Utils.toAddress of
+                        Nothing ->
+                            Nothing
+
+                        Just (Err errStr) ->
+                            let
+                                _ =
+                                    Debug.log "Error decoding stored referrer address" errStr
+                            in
+                            Nothing
+
+                        Just (Ok address) ->
+                            Just address
+
+                maybeReferrerFromUrl =
+                    fullRoute.maybeReferrer
+            in
+            case maybeReferrerFromStorage of
+                Just referrerFromStorage ->
+                    ( Just referrerFromStorage, Cmd.none )
+
+                Nothing ->
+                    case maybeReferrerFromUrl of
+                        Just referrerFromUrl ->
+                            ( Just referrerFromUrl, storeNewReferrerCmd referrerFromUrl )
+
+                        Nothing ->
+                            ( Nothing, Cmd.none )
+
+        newUrlCmd =
+            let
+                urlStringWithoutRefAddr =
+                    Routing.routeToString
+                        { fullRoute | maybeReferrer = Nothing }
+            in
+            if urlStringWithoutRefAddr /= Routing.routeToString fullRoute then
+                Browser.Navigation.pushUrl key urlStringWithoutRefAddr
+
+            else
+                Cmd.none
+
         ( model, fromUrlCmd ) =
             { key = key
             , testMode = fullRoute.testing
             , wallet = wallet
             , userAddress = Nothing
-            , time = Time.millisToPosix 0
+            , now = Time.millisToPosix flags.nowInMillis
             , txSentry = txSentry
             , tradeCaches = tradeCaches
             , submodel = InitialBlank
             , pageRoute = Routing.InitialBlank
             , userNotices = []
             , dProfile = dProfile
+            , maybeReferrer = maybeReferrer
             }
                 |> updateFromPageRoute fullRoute.pageRoute
                 |> runCmdUps cmdUps
@@ -132,6 +179,8 @@ init flags url key =
     , Cmd.batch
         [ tcCmd
         , fromUrlCmd
+        , maybeReferrerStoreCmd
+        , newUrlCmd
         ]
     )
 
@@ -210,7 +259,7 @@ update msg model =
             ( model, cmd )
 
         UrlChanged url ->
-            model |> updateFromPageRoute (url |> Routing.urlToRoute |> .pageRoute)
+            model |> updateFromPageRoute (url |> Routing.urlToFullRoute |> .pageRoute)
 
         GotoRoute pageRoute ->
             model
@@ -225,19 +274,19 @@ update msg model =
                                         "GotoRoute"
                                         "navigation"
                                         (Routing.routeToString
-                                            (Routing.FullRoute model.testMode pageRoute)
+                                            (Routing.FullRoute model.testMode pageRoute Nothing)
                                         )
                                         0
                             , Browser.Navigation.pushUrl
                                 model.key
                                 (Routing.routeToString
-                                    (Routing.FullRoute model.testMode pageRoute)
+                                    (Routing.FullRoute model.testMode pageRoute Nothing)
                                 )
                             ]
                     )
 
         Tick newTime ->
-            ( { model | time = newTime }, Cmd.none )
+            ( { model | now = newTime }, Cmd.none )
 
         ConnectToWeb3 ->
             case model.wallet of
@@ -435,6 +484,33 @@ update msg model =
                     )
                         |> runCmdUps
                             (CmdUp.mapList AgentHistoryMsg updateResult.cmdUps
+                                ++ List.map CmdUp.UserNotice userNotices
+                            )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        BucketSaleMsg bucketSaleMsg ->
+            case model.submodel of
+                BucketSaleModel bucketSaleModel ->
+                    let
+                        updateResult =
+                            BucketSale.State.update bucketSaleMsg bucketSaleModel
+
+                        ( newTxSentry, chainCmd, userNotices ) =
+                            ChainCmd.execute model.txSentry (ChainCmd.map BucketSaleMsg updateResult.chainCmd)
+                    in
+                    ( { model
+                        | submodel = BucketSaleModel updateResult.model
+                        , txSentry = newTxSentry
+                      }
+                    , Cmd.batch
+                        [ Cmd.map BucketSaleMsg updateResult.cmd
+                        , chainCmd
+                        ]
+                    )
+                        |> runCmdUps
+                            (CmdUp.mapList BucketSaleMsg updateResult.cmdUps
                                 ++ List.map CmdUp.UserNotice userNotices
                             )
 
@@ -670,6 +746,19 @@ gotoPageRoute route prevModel =
                 ]
             )
 
+        Routing.BucketSale ->
+            let
+                ( bucketSaleModel, bucketSaleCmd ) =
+                    BucketSale.State.init prevModel.maybeReferrer prevModel.testMode prevModel.wallet prevModel.now
+            in
+            ( { prevModel
+                | submodel = BucketSaleModel bucketSaleModel
+              }
+            , Cmd.batch
+                [ Cmd.map BucketSaleMsg bucketSaleCmd
+                ]
+            )
+
         Routing.NotFound ->
             ( prevModel |> addUserNotice UN.invalidUrl
             , Cmd.none
@@ -789,6 +878,34 @@ runCmdDown cmdDown prevModel =
                         ++ List.map CmdUp.UserNotice userNotices
                     )
 
+        BucketSaleModel bucketSaleModel ->
+            let
+                updateResult =
+                    bucketSaleModel |> BucketSale.State.runCmdDown cmdDown
+
+                ( newTxSentry, chainCmd, userNotices ) =
+                    ChainCmd.execute prevModel.txSentry (ChainCmd.map BucketSaleMsg updateResult.chainCmd)
+            in
+            ( { prevModel
+                | submodel = BucketSaleModel updateResult.model
+                , txSentry = newTxSentry
+              }
+            , Cmd.batch
+                [ Cmd.map BucketSaleMsg updateResult.cmd
+                , chainCmd
+                ]
+            )
+                |> runCmdUps
+                    (CmdUp.mapList BucketSaleMsg updateResult.cmdUps
+                        ++ List.map CmdUp.UserNotice userNotices
+                    )
+
+
+storeNewReferrerCmd : Address -> Cmd Msg
+storeNewReferrerCmd refAddress =
+    storeReferrerAddress <|
+        Json.Encode.string (Eth.Utils.addressToString refAddress)
+
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
@@ -835,6 +952,9 @@ submodelSubscriptions model =
         AgentHistoryModel agentHistoryModel ->
             Sub.map AgentHistoryMsg <| AgentHistory.State.subscriptions agentHistoryModel
 
+        BucketSaleModel bucketSaleModel ->
+            Sub.map BucketSaleMsg <| BucketSale.State.subscriptions bucketSaleModel
+
 
 port walletSentryPort : (Json.Decode.Value -> msg) -> Sub msg
 
@@ -861,3 +981,6 @@ port requestNotifyPermissionPort : () -> Cmd msg
 
 
 port notifyPort : Notifications.NotifyPort msg
+
+
+port storeReferrerAddress : Json.Decode.Value -> Cmd msg
