@@ -1,11 +1,11 @@
-module SugarSale.Types exposing (AllowanceState(..), Bucket, BucketState(..), BucketView(..), Buy, Model, Msg(..), SugarSale, UpdateResult, activeBucketTimeLeft, bucketStartTime, buyFromBindingBuy, getActiveBucketId, getBucketInfo, getClaimableTokens, getEffectivePricePerToken, getFocusedBucketId, justModelUpdate, makeBlankBucket, numBucketsToSide, updateAllPastOrActiveBuckets, updatePastOrActiveBucketAt, visibleBucketIds)
+module BucketSale.Types exposing (AllowanceState(..), Bucket, BucketSale, BucketState(..), BucketView(..), Buy, Model, Msg(..), UpdateResult, activeBucketTimeLeft, bucketStartTime, buyFromBindingBuy, getActiveBucketId, getBucketInfo, getClaimableTokens, getEffectivePricePerToken, getFocusedBucketId, justModelUpdate, makeBlankBucket, numBucketsToSide, updateAllPastOrActiveBuckets, updatePastOrActiveBucketAt, visibleBucketIds)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
 import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Config
-import Contracts.SugarSale.Generated.BucketSale as SugarSaleBindings
+import Contracts.BucketSale.Generated.BucketSale as BucketSaleBindings
 import Eth.Types exposing (Address, TxHash, TxReceipt)
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
@@ -22,7 +22,7 @@ type alias Model =
     , now : Time.Posix
     , timezone : Maybe Time.Zone
     , saleStartTime : Maybe Time.Posix
-    , sugarSale : Maybe SugarSale
+    , bucketSale : Maybe BucketSale
     , bucketView : BucketView
     , daiInput : String
     , dumbCheckboxesClicked : ( Bool, Bool )
@@ -40,7 +40,7 @@ type Msg
     | UpdateNow Time.Posix
     | SaleStartTimestampFetched (Result Http.Error BigInt)
     | BucketValueEnteredFetched Int (Result Http.Error BigInt)
-    | UserBuyFetched Address Int (Result Http.Error SugarSaleBindings.Buy)
+    | UserBuyFetched Address Int (Result Http.Error BucketSaleBindings.Buy)
     | BucketClicked Int
     | DaiInputChanged String
     | FirstDumbCheckboxClicked Bool
@@ -49,7 +49,7 @@ type Msg
     | AllowanceFetched (Result Http.Error BigInt)
     | DaiUnlockSigned (Result String TxHash)
     | DaiUnlockMined (Result String TxReceipt)
-    | EnterButtonClicked UserInfo TokenValue (Maybe Address)
+    | EnterButtonClicked UserInfo Int TokenValue (Maybe Address)
     | EnterSigned (Result String TxHash)
     | EnterMined (Result String TxReceipt)
     | ExitButtonClicked UserInfo Int
@@ -80,52 +80,52 @@ type AllowanceState
     | UnlockMining
 
 
-type alias SugarSale =
+type alias BucketSale =
     { startTime : Time.Posix
     , pastBuckets : List Bucket
     , activeBucket : Bucket
     }
 
 
-getBucketInfo : SugarSale -> Int -> Bool -> ( BucketState, Bucket )
-getBucketInfo sugarSale bucketId testMode =
-    case sugarSale.pastBuckets |> List.Extra.getAt bucketId of
+getBucketInfo : BucketSale -> Int -> Bool -> ( BucketState, Bucket )
+getBucketInfo bucketSale bucketId testMode =
+    case bucketSale.pastBuckets |> List.Extra.getAt bucketId of
         Just pastBucket ->
             ( Past, pastBucket )
 
         Nothing ->
-            if bucketId == List.length sugarSale.pastBuckets then
-                ( Active, sugarSale.activeBucket )
+            if bucketId == List.length bucketSale.pastBuckets then
+                ( Active, bucketSale.activeBucket )
 
             else
-                ( Future, makeBlankBucket testMode sugarSale.startTime bucketId )
+                ( Future, makeBlankBucket testMode bucketSale.startTime bucketId )
 
 
-updateAllPastOrActiveBuckets : (Bucket -> Bucket) -> SugarSale -> SugarSale
-updateAllPastOrActiveBuckets func sugarSale =
-    { sugarSale
+updateAllPastOrActiveBuckets : (Bucket -> Bucket) -> BucketSale -> BucketSale
+updateAllPastOrActiveBuckets func bucketSale =
+    { bucketSale
         | pastBuckets =
-            sugarSale.pastBuckets
+            bucketSale.pastBuckets
                 |> List.map func
         , activeBucket =
-            sugarSale.activeBucket |> func
+            bucketSale.activeBucket |> func
     }
 
 
-updatePastOrActiveBucketAt : Int -> (Bucket -> Bucket) -> SugarSale -> Maybe SugarSale
-updatePastOrActiveBucketAt bucketId updateFunc sugarSale =
-    if bucketId == List.length sugarSale.pastBuckets then
+updatePastOrActiveBucketAt : Int -> (Bucket -> Bucket) -> BucketSale -> Maybe BucketSale
+updatePastOrActiveBucketAt bucketId updateFunc bucketSale =
+    if bucketId == List.length bucketSale.pastBuckets then
         Just <|
-            { sugarSale
+            { bucketSale
                 | activeBucket =
-                    sugarSale.activeBucket |> updateFunc
+                    bucketSale.activeBucket |> updateFunc
             }
 
-    else if bucketId < List.length sugarSale.pastBuckets then
+    else if bucketId < List.length bucketSale.pastBuckets then
         Just <|
-            { sugarSale
+            { bucketSale
                 | pastBuckets =
-                    sugarSale.pastBuckets
+                    bucketSale.pastBuckets
                         |> List.Extra.updateAt bucketId updateFunc
             }
 
@@ -133,54 +133,54 @@ updatePastOrActiveBucketAt bucketId updateFunc sugarSale =
         Nothing
 
 
-getFocusedBucketId : SugarSale -> BucketView -> Time.Posix -> Bool -> Int
-getFocusedBucketId sugarSale bucketView now testMode =
+getFocusedBucketId : BucketSale -> BucketView -> Time.Posix -> Bool -> Int
+getFocusedBucketId bucketSale bucketView now testMode =
     case bucketView of
         ViewActive ->
-            getActiveBucketId sugarSale now testMode
+            getActiveBucketId bucketSale now testMode
 
         ViewId id ->
             id
 
 
-visibleBucketIds : SugarSale -> BucketView -> Time.Posix -> Bool -> List Int
-visibleBucketIds sugarSale bucketView now testMode =
+visibleBucketIds : BucketSale -> BucketView -> Time.Posix -> Bool -> List Int
+visibleBucketIds bucketSale bucketView now testMode =
     let
         centerBucketId =
-            getFocusedBucketId sugarSale bucketView now testMode
+            getFocusedBucketId bucketSale bucketView now testMode
     in
     List.range
         (max (centerBucketId - numBucketsToSide) 0)
         (centerBucketId + numBucketsToSide)
 
 
-getActiveBucketId : SugarSale -> Time.Posix -> Bool -> Int
-getActiveBucketId sugarSale now testMode =
-    (TimeHelpers.sub now sugarSale.startTime
+getActiveBucketId : BucketSale -> Time.Posix -> Bool -> Int
+getActiveBucketId bucketSale now testMode =
+    (TimeHelpers.sub now bucketSale.startTime
         |> TimeHelpers.posixToSeconds
     )
-        // (Config.sugarSaleBucketInterval testMode
+        // (Config.bucketSaleBucketInterval testMode
                 |> TimeHelpers.posixToSeconds
            )
 
 
-activeBucketTimeLeft : SugarSale -> Time.Posix -> Bool -> Time.Posix
-activeBucketTimeLeft sugarSale now testMode =
+activeBucketTimeLeft : BucketSale -> Time.Posix -> Bool -> Time.Posix
+activeBucketTimeLeft bucketSale now testMode =
     let
         nextBucketId =
-            getActiveBucketId sugarSale now testMode + 1
+            getActiveBucketId bucketSale now testMode + 1
     in
     TimeHelpers.sub
-        (bucketStartTime sugarSale nextBucketId testMode)
+        (bucketStartTime bucketSale nextBucketId testMode)
         now
 
 
-bucketStartTime : SugarSale -> Int -> Bool -> Time.Posix
-bucketStartTime sugarSale bucketId testMode =
+bucketStartTime : BucketSale -> Int -> Bool -> Time.Posix
+bucketStartTime bucketSale bucketId testMode =
     TimeHelpers.add
-        sugarSale.startTime
+        bucketSale.startTime
         (TimeHelpers.secondsToPosix <|
-            TimeHelpers.posixToSeconds (Config.sugarSaleBucketInterval testMode)
+            TimeHelpers.posixToSeconds (Config.bucketSaleBucketInterval testMode)
                 * bucketId
         )
 
@@ -193,10 +193,10 @@ type alias Bucket =
 
 
 makeBlankBucket : Bool -> Time.Posix -> Int -> Bucket
-makeBlankBucket testMode sugarSaleStartTime bucketId =
+makeBlankBucket testMode bucketSaleStartTime bucketId =
     Bucket
-        (TimeHelpers.posixToSeconds sugarSaleStartTime
-            + (TimeHelpers.posixToSeconds (Config.sugarSaleBucketInterval testMode)
+        (TimeHelpers.posixToSeconds bucketSaleStartTime
+            + (TimeHelpers.posixToSeconds (Config.bucketSaleBucketInterval testMode)
                 * bucketId
               )
             |> TimeHelpers.secondsToPosix
@@ -216,18 +216,16 @@ type BucketView
     | ViewId Int
 
 
-buyFromBindingBuy : SugarSaleBindings.Buy -> Buy
+buyFromBindingBuy : BucketSaleBindings.Buy -> Buy
 buyFromBindingBuy bindingBuy =
     Buy
         (TokenValue.tokenValue bindingBuy.valueEntered)
-        (BigInt.compare bindingBuy.tokensExited (BigInt.fromInt 0) /= EQ)
-        (not <| EthHelpers.addressIs0x0 bindingBuy.referralAddress)
+        (BigInt.compare bindingBuy.buyerTokensExited (BigInt.fromInt 0) /= EQ)
 
 
 type alias Buy =
     { valueEntered : TokenValue
     , hasExited : Bool
-    , hasReferallBonus : Bool
     }
 
 
@@ -243,12 +241,12 @@ getClaimableTokens totalValueEntered daiIn testMode =
                 / TokenValue.toFloatWithWarning totalValueEntered
     in
     TokenValue.mulFloatWithWarning
-        (Config.sugarSaleTokensPerBucket testMode)
+        (Config.bucketSaleTokensPerBucket testMode)
         claimableRatio
 
 
 getEffectivePricePerToken : TokenValue -> Bool -> TokenValue
 getEffectivePricePerToken totalValueEntered testMode =
     TokenValue.toFloatWithWarning totalValueEntered
-        / (TokenValue.toFloatWithWarning <| Config.sugarSaleTokensPerBucket testMode)
+        / (TokenValue.toFloatWithWarning <| Config.bucketSaleTokensPerBucket testMode)
         |> TokenValue.fromFloatWithWarning

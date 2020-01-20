@@ -1,12 +1,13 @@
-module SugarSale.State exposing (init, runCmdDown, subscriptions, update)
+module BucketSale.State exposing (init, runCmdDown, subscriptions, update)
 
 import BigInt exposing (BigInt)
+import BucketSale.Types exposing (..)
 import ChainCmd exposing (ChainCmd)
 import CmdDown exposing (CmdDown)
 import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Config
-import Contracts.SugarSale.Wrappers as SugarSale
+import Contracts.BucketSale.Wrappers as BucketSale
 import Contracts.Wrappers
 import Eth
 import Eth.Types exposing (Address, HttpProvider)
@@ -15,7 +16,6 @@ import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
 import List.Extra
 import Maybe.Extra
-import SugarSale.Types exposing (..)
 import Task
 import Time
 import TokenValue exposing (TokenValue)
@@ -32,7 +32,7 @@ init maybeReferrer testMode wallet now =
           , now = now
           , timezone = Nothing
           , saleStartTime = Nothing
-          , sugarSale = Nothing
+          , bucketSale = Nothing
           , bucketView = ViewActive
           , daiInput = ""
           , dumbCheckboxesClicked = ( False, False )
@@ -88,39 +88,39 @@ update msg prevModel =
             justModelUpdate
                 { prevModel
                     | now = newNow
-                    , sugarSale =
+                    , bucketSale =
                         Maybe.map
                             (addNewActiveBucketIfNeeded newNow prevModel.testMode)
-                            prevModel.sugarSale
+                            prevModel.bucketSale
                 }
 
         SaleStartTimestampFetched fetchResult ->
             case fetchResult of
                 Ok startTimestampBigInt ->
                     if BigInt.compare startTimestampBigInt (BigInt.fromInt 0) == EQ then
-                        Debug.todo "Failed to init sugar sale; sale startTime == 0."
+                        Debug.todo "Failed to init bucket sale; sale startTime == 0."
 
                     else
                         let
                             startTimestamp =
                                 TimeHelpers.secondsBigIntToPosixWithWarning startTimestampBigInt
 
-                            newMaybeSugarSale =
-                                case prevModel.sugarSale of
+                            newMaybeBucketSale =
+                                case prevModel.bucketSale of
                                     Nothing ->
-                                        case initSugarSale prevModel.testMode startTimestamp prevModel.now of
+                                        case initBucketSale prevModel.testMode startTimestamp prevModel.now of
                                             Just s ->
                                                 Just s
 
                                             Nothing ->
-                                                Debug.todo "Failed to init sugar sale. Is it started yet?"
+                                                Debug.todo "Failed to init bucket sale. Is it started yet?"
 
                                     _ ->
-                                        prevModel.sugarSale
+                                        prevModel.bucketSale
                         in
                         justModelUpdate
                             { prevModel
-                                | sugarSale = newMaybeSugarSale
+                                | bucketSale = newMaybeBucketSale
                                 , saleStartTime = Just startTimestamp
                             }
 
@@ -141,28 +141,28 @@ update msg prevModel =
                     justModelUpdate prevModel
 
                 Ok valueEnteredBigInt ->
-                    case prevModel.sugarSale of
+                    case prevModel.bucketSale of
                         Nothing ->
                             let
                                 _ =
-                                    Debug.log "Warning! Bucket value fetched but there is no sugarSale present!" ""
+                                    Debug.log "Warning! Bucket value fetched but there is no bucketSale present!" ""
                             in
                             justModelUpdate prevModel
 
-                        Just oldSugarSale ->
+                        Just oldBucketSale ->
                             let
                                 valueEntered =
                                     TokenValue.tokenValue valueEnteredBigInt
 
-                                maybeNewSugarSale =
-                                    oldSugarSale
+                                maybeNewBucketSale =
+                                    oldBucketSale
                                         |> updatePastOrActiveBucketAt
                                             bucketId
                                             (\bucket ->
                                                 { bucket | totalValueEntered = Just valueEntered }
                                             )
                             in
-                            case maybeNewSugarSale of
+                            case maybeNewBucketSale of
                                 Nothing ->
                                     let
                                         _ =
@@ -170,11 +170,11 @@ update msg prevModel =
                                     in
                                     justModelUpdate prevModel
 
-                                Just newSugarSale ->
+                                Just newBucketSale ->
                                     justModelUpdate
                                         { prevModel
-                                            | sugarSale =
-                                                Just newSugarSale
+                                            | bucketSale =
+                                                Just newBucketSale
                                         }
 
         UserBuyFetched userAddress bucketId fetchResult ->
@@ -191,18 +191,18 @@ update msg prevModel =
                         buy =
                             buyFromBindingBuy bindingBuy
                     in
-                    case prevModel.sugarSale of
+                    case prevModel.bucketSale of
                         Nothing ->
                             let
                                 _ =
-                                    Debug.log "Warning! Bucket value fetched but there is no sugarSale present!" ""
+                                    Debug.log "Warning! Bucket value fetched but there is no bucketSale present!" ""
                             in
                             justModelUpdate prevModel
 
-                        Just oldSugarSale ->
+                        Just oldBucketSale ->
                             let
-                                maybeNewSugarSale =
-                                    oldSugarSale
+                                maybeNewBucketSale =
+                                    oldBucketSale
                                         |> updatePastOrActiveBucketAt
                                             bucketId
                                             (\bucket ->
@@ -211,7 +211,7 @@ update msg prevModel =
                                                 }
                                             )
                             in
-                            case maybeNewSugarSale of
+                            case maybeNewBucketSale of
                                 Nothing ->
                                     let
                                         _ =
@@ -219,9 +219,9 @@ update msg prevModel =
                                     in
                                     justModelUpdate prevModel
 
-                                Just newSugarSale ->
+                                Just newBucketSale ->
                                     justModelUpdate
-                                        { prevModel | sugarSale = Just newSugarSale }
+                                        { prevModel | bucketSale = Just newBucketSale }
 
         AllowanceFetched fetchResult ->
             case fetchResult of
@@ -254,18 +254,18 @@ update msg prevModel =
                                 }
 
         BucketClicked bucketId ->
-            case prevModel.sugarSale of
+            case prevModel.bucketSale of
                 Nothing ->
                     let
                         _ =
-                            Debug.log "Bucket clicked, but sugarSale isn't loaded! What??" ""
+                            Debug.log "Bucket clicked, but bucketSale isn't loaded! What??" ""
                     in
                     justModelUpdate prevModel
 
-                Just sugarSale ->
+                Just bucketSale ->
                     let
                         newBucketView =
-                            if bucketId == getActiveBucketId sugarSale prevModel.now prevModel.testMode then
+                            if bucketId == getActiveBucketId bucketSale prevModel.now prevModel.testMode then
                                 ViewActive
 
                             else
@@ -313,7 +313,7 @@ update msg prevModel =
                             }
 
                         txParams =
-                            SugarSale.unlockDai prevModel.testMode
+                            BucketSale.unlockDai prevModel.testMode
                                 |> Eth.toSend
                     in
                     ChainCmd.custom customSend txParams
@@ -349,7 +349,7 @@ update msg prevModel =
                     | allowanceState = Loaded (TokenValue.tokenValue EthHelpers.maxUintValue)
                 }
 
-        EnterButtonClicked userInfo daiAmount maybeReferrer ->
+        EnterButtonClicked userInfo bucketId daiAmount maybeReferrer ->
             let
                 chainCmd =
                     let
@@ -360,8 +360,9 @@ update msg prevModel =
                             }
 
                         txParams =
-                            SugarSale.enter
+                            BucketSale.enter
                                 userInfo.address
+                                bucketId
                                 daiAmount
                                 maybeReferrer
                                 prevModel.testMode
@@ -404,7 +405,7 @@ update msg prevModel =
                             }
 
                         txParams =
-                            SugarSale.exit
+                            BucketSale.exit
                                 userInfo.address
                                 bucketId
                                 prevModel.testMode
@@ -433,8 +434,8 @@ update msg prevModel =
             justModelUpdate prevModel
 
 
-initSugarSale : Bool -> Time.Posix -> Time.Posix -> Maybe SugarSale
-initSugarSale testMode saleStartTime now =
+initBucketSale : Bool -> Time.Posix -> Time.Posix -> Maybe BucketSale
+initBucketSale testMode saleStartTime now =
     let
         numBuckets =
             TimeHelpers.sub
@@ -442,7 +443,7 @@ initSugarSale testMode saleStartTime now =
                 saleStartTime
                 |> TimeHelpers.posixToSeconds
                 |> (\seconds ->
-                        (seconds // (Config.sugarSaleBucketInterval testMode |> TimeHelpers.posixToSeconds))
+                        (seconds // (Config.bucketSaleBucketInterval testMode |> TimeHelpers.posixToSeconds))
                             + 1
                             |> max 0
                    )
@@ -460,7 +461,7 @@ initSugarSale testMode saleStartTime now =
                                 (TimeHelpers.add
                                     saleStartTime
                                     (TimeHelpers.mul
-                                        (Config.sugarSaleBucketInterval testMode)
+                                        (Config.bucketSaleBucketInterval testMode)
                                         id
                                     )
                                 )
@@ -469,25 +470,25 @@ initSugarSale testMode saleStartTime now =
                         )
         in
         Maybe.map2
-            (SugarSale saleStartTime)
+            (BucketSale saleStartTime)
             (List.Extra.init allBuckets)
             (List.Extra.last allBuckets)
 
 
-addNewActiveBucketIfNeeded : Time.Posix -> Bool -> SugarSale -> SugarSale
-addNewActiveBucketIfNeeded now testMode prevSugarSale =
+addNewActiveBucketIfNeeded : Time.Posix -> Bool -> BucketSale -> BucketSale
+addNewActiveBucketIfNeeded now testMode prevBucketSale =
     let
         nextBucketStartTime =
             TimeHelpers.add
-                prevSugarSale.activeBucket.startTime
-                (Config.sugarSaleBucketInterval testMode)
+                prevBucketSale.activeBucket.startTime
+                (Config.bucketSaleBucketInterval testMode)
     in
     if TimeHelpers.compare nextBucketStartTime now /= GT then
-        { prevSugarSale
+        { prevBucketSale
             | pastBuckets =
                 List.append
-                    prevSugarSale.pastBuckets
-                    [ prevSugarSale.activeBucket ]
+                    prevBucketSale.pastBuckets
+                    [ prevBucketSale.activeBucket ]
             , activeBucket =
                 Bucket
                     nextBucketStartTime
@@ -496,25 +497,25 @@ addNewActiveBucketIfNeeded now testMode prevSugarSale =
         }
 
     else
-        prevSugarSale
+        prevBucketSale
 
 
 fetchInfoForVisibleNonFutureBucketsCmd : Model -> Cmd Msg
 fetchInfoForVisibleNonFutureBucketsCmd model =
-    case model.sugarSale of
-        Just sugarSale ->
-            visibleBucketIds sugarSale model.bucketView model.now model.testMode
+    case model.bucketSale of
+        Just bucketSale ->
+            visibleBucketIds bucketSale model.bucketView model.now model.testMode
                 |> List.map
                     (\id ->
-                        if id <= getActiveBucketId sugarSale model.now model.testMode then
+                        if id <= getActiveBucketId bucketSale model.now model.testMode then
                             Cmd.batch
-                                [ SugarSale.getTotalValueEnteredForBucket
+                                [ BucketSale.getTotalValueEnteredForBucket
                                     model.testMode
                                     id
                                     (BucketValueEnteredFetched id)
                                 , case Wallet.userInfo model.wallet of
                                     Just userInfo ->
-                                        SugarSale.getUserBuyForBucket
+                                        BucketSale.getUserBuyForBucket
                                             model.testMode
                                             userInfo.address
                                             id
@@ -544,19 +545,19 @@ fetchUserAllowanceForSaleCmd userInfo testMode =
             EthDai
         )
         userInfo.address
-        (Config.sugarSaleAddress testMode)
+        (Config.bucketSaleAddress testMode)
         AllowanceFetched
 
 
 fetchSaleStartTimestampCmd : Bool -> Cmd Msg
 fetchSaleStartTimestampCmd testMode =
-    SugarSale.getSaleStartTimestampCmd
+    BucketSale.getSaleStartTimestampCmd
         testMode
         SaleStartTimestampFetched
 
 
-clearSugarSaleExitInfo : SugarSale -> SugarSale
-clearSugarSaleExitInfo =
+clearBucketSaleExitInfo : BucketSale -> BucketSale
+clearBucketSaleExitInfo =
     updateAllPastOrActiveBuckets
         (\bucket ->
             { bucket | userBuy = Nothing }
@@ -584,10 +585,10 @@ runCmdDown cmdDown prevModel =
             UpdateResult
                 { prevModel
                     | wallet = wallet
-                    , sugarSale =
+                    , bucketSale =
                         Maybe.map
-                            clearSugarSaleExitInfo
-                            prevModel.sugarSale
+                            clearBucketSaleExitInfo
+                            prevModel.bucketSale
                     , allowanceState = Loading
                 }
                 (Wallet.userInfo wallet

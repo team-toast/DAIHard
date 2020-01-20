@@ -1,10 +1,10 @@
-module Contracts.SugarSale.Wrappers exposing (enter, exit, getSaleStartTimestampCmd, getTotalValueEnteredForBucket, getUserBuyForBucket, httpProvider, unlockDai)
+module Contracts.BucketSale.Wrappers exposing (enter, exit, getSaleStartTimestampCmd, getTotalValueEnteredForBucket, getUserBuyForBucket, httpProvider, unlockDai)
 
 import BigInt exposing (BigInt)
 import CommonTypes
 import Config
+import Contracts.BucketSale.Generated.BucketSale as BucketSaleBindings
 import Contracts.Generated.ERC20Token as Token
-import Contracts.SugarSale.Generated.BucketSale as SugarSaleBindings
 import Eth
 import Eth.Types exposing (Address, Call, HttpProvider)
 import Helpers.Eth as EthHelpers
@@ -24,21 +24,21 @@ httpProvider test =
 
 getSaleStartTimestampCmd : Bool -> (Result Http.Error BigInt -> msg) -> Cmd msg
 getSaleStartTimestampCmd testMode msgConstructor =
-    SugarSaleBindings.startOfSale (Config.sugarSaleAddress testMode)
+    BucketSaleBindings.startOfSale (Config.bucketSaleAddress testMode)
         |> Eth.call (httpProvider testMode)
         |> Task.attempt msgConstructor
 
 
 getTotalValueEnteredForBucket : Bool -> Int -> (Result Http.Error BigInt -> msg) -> Cmd msg
 getTotalValueEnteredForBucket testMode bucketId msgConstructor =
-    SugarSaleBindings.buckets (Config.sugarSaleAddress testMode) (BigInt.fromInt bucketId)
+    BucketSaleBindings.buckets (Config.bucketSaleAddress testMode) (BigInt.fromInt bucketId)
         |> Eth.call (httpProvider testMode)
         |> Task.attempt msgConstructor
 
 
-getUserBuyForBucket : Bool -> Address -> Int -> (Result Http.Error SugarSaleBindings.Buy -> msg) -> Cmd msg
+getUserBuyForBucket : Bool -> Address -> Int -> (Result Http.Error BucketSaleBindings.Buy -> msg) -> Cmd msg
 getUserBuyForBucket testMode userAddress bucketId msgConstructor =
-    SugarSaleBindings.buys (Config.sugarSaleAddress testMode) (BigInt.fromInt bucketId) userAddress
+    BucketSaleBindings.buys (Config.bucketSaleAddress testMode) (BigInt.fromInt bucketId) userAddress
         |> Eth.call (httpProvider testMode)
         |> Task.attempt msgConstructor
 
@@ -53,22 +53,23 @@ unlockDai testMode =
             else
                 CommonTypes.EthDai
         )
-        (Config.sugarSaleAddress testMode)
+        (Config.bucketSaleAddress testMode)
         EthHelpers.maxUintValue
 
 
-enter : Address -> TokenValue -> Maybe Address -> Bool -> Call ()
-enter userAddress amount maybeReferrer testMode =
-    SugarSaleBindings.enter
-        (Config.sugarSaleAddress testMode)
+enter : Address -> Int -> TokenValue -> Maybe Address -> Bool -> Call ()
+enter userAddress bucketId amount maybeReferrer testMode =
+    BucketSaleBindings.enter
+        (Config.bucketSaleAddress testMode)
         userAddress
+        (BigInt.fromInt bucketId)
         (TokenValue.getEvmValue amount)
         (maybeReferrer |> Maybe.withDefault EthHelpers.zeroAddress)
 
 
 exit : Address -> Int -> Bool -> Call ()
 exit userAddress bucketId testMode =
-    SugarSaleBindings.exit
-        (Config.sugarSaleAddress testMode)
-        userAddress
+    BucketSaleBindings.exit
+        (Config.bucketSaleAddress testMode)
         (BigInt.fromInt bucketId)
+        userAddress

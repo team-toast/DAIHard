@@ -2,6 +2,7 @@ module View exposing (root)
 
 import AgentHistory.View
 import Browser
+import BucketSale.View
 import CommonTypes exposing (..)
 import Config
 import Contracts.Types as CTypes
@@ -20,7 +21,6 @@ import Images exposing (Image)
 import Marketplace.Types
 import Marketplace.View
 import Routing
-import SugarSale.View
 import Trade.View
 import Types exposing (..)
 import UserNotice as UN exposing (UserNotice)
@@ -196,9 +196,9 @@ headerContent dProfile model =
                         dProfile
                         Nothing
                         "Sugar"
-                        (GotoRoute <| Routing.SugarSale)
+                        (GotoRoute <| Routing.BucketSale)
                         (case model.submodel of
-                            SugarSaleModel _ ->
+                            BucketSaleModel _ ->
                                 Active
 
                             _ ->
@@ -534,11 +534,11 @@ submodelElementAndModal dProfile model =
                     , []
                     )
 
-                SugarSaleModel sugarSaleModel ->
-                    SugarSale.View.root dProfile sugarSaleModel
+                BucketSaleModel bucketSaleModel ->
+                    BucketSale.View.root dProfile bucketSaleModel
                         |> Tuple.mapBoth
-                            (Element.map SugarSaleMsg)
-                            (List.map (Element.map SugarSaleMsg))
+                            (Element.map BucketSaleMsg)
+                            (List.map (Element.map BucketSaleMsg))
     in
     ( Element.el
         [ Element.width Element.fill
