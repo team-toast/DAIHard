@@ -21,15 +21,20 @@ type ABIType = JsonProvider<"../build/contracts/BucketSale.json">
 let minutes = 60UL
 let hours = 60UL * minutes
 let days = 24UL * hours
-let startOfSale = DateTimeOffset(DateTime.Now.AddDays(-1.0)).ToUnixTimeSeconds() |> uint64
-let bucketPeriod = 7UL * hours
-let bucketSupply = 50000UL
-let bucketCount = 100UL
+let startOfSale = DateTimeOffset(DateTime.Now.AddDays(-1.0)).ToUnixTimeSeconds() |> BigInteger
+let bucketPeriod = 7UL * hours |> BigInteger
+let bucketSupply = 50000UL |> BigInteger
+let bucketCount = 100UL |> BigInteger
 let zeroAddress = "0x0000000000000000000000000000000000000000"
 let tokenOnSale = zeroAddress
 let tokenSoldFor = zeroAddress
 let bigInt (value: uint64) = BigInteger(value)
 let hexBigInt (value: uint64) = HexBigInteger(bigInt value)
+
+let runNow task =
+    task
+    |> Async.AwaitTask
+    |> Async.RunSynchronously
 
 type Abi(filename) =
     member _.JsonString = File.OpenText(filename).ReadToEnd()
@@ -52,6 +57,13 @@ type EthereumConnection(nodeURI: string, privKey: string) =
 
         this.Web3.Eth.TransactionManager.SendTransactionAndWaitForReceiptAsync(input, null)
 
+type ContractPlug(ethConn: EthereumConnection, abi: Abi, address) =
+    member _.Address = address
+    member _.Contract = ethConn.Web3.Eth.GetContract(abi.AbiString, address)
+    member this.Function functionName = this.Contract.GetFunction(functionName)
+    member this.CallFunctionAsync functionName arguments = (this.Function functionName).CallAsync(arguments)
+    member this.CallFunction functionName arguments = this.CallFunctionAsync functionName arguments |> runNow
+
 let useRinkeby = false
 let ganacheURI = "http://localhost:7545"
 let rinkebyURI = "https://rinkeby.infura.io/v3/c48bc466281c4fefb3decad63c4fc815"
@@ -68,11 +80,6 @@ let ethConn =
 
 let abi = ABIType.Load("../../../../build/contracts/BucketSale.json")
 let shouldSucceed (txr: TransactionReceipt) = txr.Status |> should equal (hexBigInt 1UL)
-
-let runNow task =
-    task
-    |> Async.AwaitTask
-    |> Async.RunSynchronously
 
 let noParams: obj array = [||]
 
@@ -99,7 +106,7 @@ let ``Can send eth``() =
 let query (contract: Contract) functionName paramArray =
     contract.GetFunction(functionName).CallAsync(paramArray) |> runNow
 
-let shouldEqualIgnoringCase a b =
+let shouldEqualIgnoringCase (a: string) (b: string) =
     let aString = a |> string
     let bString = b |> string
     should equal (aString.ToLower()) (bString.ToLower())
@@ -121,14 +128,12 @@ let ``Can construct the contract``() =
     deployTxReceipt |> shouldSucceed
 
     // Assert
-    let contract = ethConn.Web3.Eth.GetContract(abi.AbiString, deployTxReceipt.ContractAddress)
-    let contractFunction = query contract
-    let contractProperty functionName = contractFunction functionName [||]
+    let contract = ContractPlug(ethConn, abi, deployTxReceipt.ContractAddress)
 
-    contractProperty "owner" |> shouldEqualIgnoringCase ethConn.Account.Address
-    contractProperty "startOfSale" |> shouldEqualBigInteger startOfSale
-    contractProperty "bucketPeriod" |> shouldEqualBigInteger bucketPeriod
-    contractProperty "bucketSupply" |> shouldEqualBigInteger bucketSupply
-    contractProperty "bucketCount" |> shouldEqualBigInteger bucketCount
-    contractProperty "tokenOnSale" |> shouldEqualIgnoringCase tokenOnSale
-    contractProperty "tokenSoldFor" |> shouldEqualIgnoringCase tokenSoldFor
+    contract.CallFunction "owner" [||] |> shouldEqualIgnoringCase ethConn.Account.Address
+    contract.CallFunction "startOfSale" [||] |> should equal startOfSale
+    contract.CallFunction "bucketPeriod" [||] |> should equal bucketPeriod
+    contract.CallFunction "bucketSupply" [||] |> should equal bucketSupply
+    contract.CallFunction "bucketCount" [||] |> should equal bucketCount
+    contract.CallFunction "tokenOnSale" [||] |> shouldEqualIgnoringCase tokenOnSale
+    contract.CallFunction "tokenSoldFor" [||] |> shouldEqualIgnoringCase tokenSoldFor
