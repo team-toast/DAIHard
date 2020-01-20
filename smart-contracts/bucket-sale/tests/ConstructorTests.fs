@@ -64,14 +64,6 @@ let ``Can send eth``() =
     let balanceAfter = ethConn.Web3.Eth.GetBalance.SendRequestAsync(zeroAddress) |> runNow
     balanceAfter.Value |> should greaterThan (bigInt 1UL)
 
-let query (contract: Contract) functionName paramArray =
-    contract.GetFunction(functionName).CallAsync(paramArray) |> runNow
-
-let shouldEqualIgnoringCase (a: string) (b: string) =
-    let aString = a |> string
-    let bString = b |> string
-    should equal (aString.ToLower()) (bString.ToLower())
-
 [<Specification("BucketSale", "constructor", 1)>]
 [<Fact>]
 let ``Can construct the contract``() =

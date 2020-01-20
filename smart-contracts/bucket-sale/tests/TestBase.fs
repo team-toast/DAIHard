@@ -83,5 +83,10 @@ let isRinkeby rinkeby notRinkeby =
 let ethConn =
     isRinkeby (EthereumConnection(rinkebyURI, rinkebyPrivKey)) (EthereumConnection(ganacheURI, ganachePrivKey))
 
+let shouldEqualIgnoringCase (a: string) (b: string) =
+    let aString = a |> string
+    let bString = b |> string
+    should equal (aString.ToLower()) (bString.ToLower())
+
 let shouldSucceed (txr: TransactionReceipt) = txr.Status |> should equal (hexBigInt 1UL)
-let shouldFail (txr: TransactionReceipt) = txr.Status |> should equal (hexBigInt 1UL)
+let shouldFail (txr: TransactionReceipt) = txr.Status |> should equal (hexBigInt 0UL)
