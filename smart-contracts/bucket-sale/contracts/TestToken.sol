@@ -17,6 +17,6 @@ contract TestToken is Context, ERC20Detailed, ERC20Mintable, ERC20Burnable
         public
         ERC20Detailed(_tokenName, _tokenCode, 18)
     {
-        _mint(_tokenReceiver, _amount ** decimals());
+        _mint(_tokenReceiver, _amount.mul(10 ** uint256(decimals())));
     }
 }
