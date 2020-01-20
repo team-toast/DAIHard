@@ -7,14 +7,26 @@ contract BucketSale
 {
     using SafeMath for uint256;
 
+    // When passing around bonuses, we use 3 decimals of precision.
     uint constant HUNDRED_PERC = 100000;
     uint constant ONE_PERC = 1000;
+
+    /*
+    Every pair of (uint bucketId, address buyer) identifies exactly one 'buy'.
+    This buy tracks the total value entered by the user (of the tokens the sale accepts),
+    and the total value exited (of the tokens being sold).
+    */
 
     struct Buy
     {
         uint valueEntered;
         uint buyerTokensExited;
     }
+
+    /*
+    Each Bucket tracks the total value entered (of the tokens the sale accepts);
+    this is used to determine what proportion of the tokens on sale the user can later exit with.
+    */
 
     struct Bucket
     {
@@ -23,6 +35,8 @@ contract BucketSale
 
     mapping (uint => Bucket) public buckets;
     mapping (uint => mapping (address => Buy)) public buys;
+
+    // For each address, this tallies how much value (of the tokens the sale accepts) the user has referred.
     mapping (address => uint) public referredTotal;
 
     address public owner;
@@ -61,7 +75,10 @@ contract BucketSale
 
     function timestamp() public view returns (uint256 _now) { return block.timestamp; }
 
-    // used to act as the contract and move things sent to the contract
+    /*
+    Allows the owner to execute any transaction in the sale's name. This is the only 'onlyOwner' method.
+    This will be used to send away the tokens accumulated by the sale, but can be used for general transactions as well.
+    */
     event Forwarded(
         address _to,
         bytes _data,
@@ -73,7 +90,6 @@ contract BucketSale
         onlyOwner
         returns (bool, bytes memory)
     {
-        // todo: do we want the guard to prevent withdrawing the tokensOnSale?
         (bool success, bytes memory resultData) = _to.call.value(_wei)(_data);
         emit Forwarded(_to, _data, _wei, success, resultData);
         return (success, resultData);
@@ -107,11 +123,12 @@ contract BucketSale
         bool transferSuccess = tokenSoldFor.transferFrom(msg.sender, address(this), _amount);
         require(transferSuccess, "enter transfer failed");
 
-        if (_referrer != address(0))
+        if (_referrer != address(0)) // If there is a referrer
         {
-            uint buyerReferralReward = _amount.mul(buyerReferralRewardPerc(_referrer)).div(HUNDRED_PERC);
+            uint buyerReferralReward = _amount.mul(buyerReferralRewardPerc()).div(HUNDRED_PERC);
             uint referrerReferralReward = _amount.mul(referrerReferralRewardPerc(_referrer)).div(HUNDRED_PERC);
 
+            // Both rewards are registered as buys in the next bucket
             registerEnter(_bucketId.add(1), _buyer, buyerReferralReward);
             registerEnter(_bucketId.add(1), _referrer, referrerReferralReward);
 
@@ -143,6 +160,8 @@ contract BucketSale
         require(_bucketId >= currentBucket(), "cannot enter past buckets");
         require(_bucketId < bucketCount, "invalid bucket id--past end of sale");
         require(_amount > 0, "can't buy nothing");
+
+        // If at any point the sale cannot support all planned buckets, prevent all entry for any bucket.
         require(
             tokenOnSale.balanceOf(address(this)).add(totalExitedTokens) >= _bucketId.add(1).mul(bucketSupply),
             "insufficient tokens to sell");
@@ -169,6 +188,14 @@ contract BucketSale
         require(buyToWithdraw.valueEntered > 0, "can't take out if you didn't put in");
         require(buyToWithdraw.buyerTokensExited == 0, "already withdrawn");
 
+        /*
+        Note that buyToWithdraw.buyerTokensExited serves a dual purpose:
+        First, it is always set to a non-zero value when a buy has been exited from,
+        and checked in the line above to guard against repeated exits.
+        Second, it's used as simple record-keeping for future analysis; hence the use of uint
+        rather than something like bool buyerTokensHaveExited.
+        */
+
         Bucket storage bucket = buckets[_bucketId];
         buyToWithdraw.buyerTokensExited = bucketSupply.mul(buyToWithdraw.valueEntered).div(bucket.totalValueEntered);
         totalExitedTokens = totalExitedTokens.add(buyToWithdraw.buyerTokensExited);
@@ -182,15 +209,14 @@ contract BucketSale
             buyToWithdraw.buyerTokensExited);
     }
 
-    function buyerReferralRewardPerc(address _referrerAddress)
+    function buyerReferralRewardPerc()
         public
         pure
         returns(uint)
     {
-        return _referrerAddress == address(0) ? 0 : ONE_PERC.mul(10);
+        return ONE_PERC.mul(10);
     }
 
-    //perc is between 0 and 100k, so 3 decimal precision.
     function referrerReferralRewardPerc(address _referrerAddress)
         public
         view
@@ -202,9 +228,22 @@ contract BucketSale
         }
         else
         {
+            // integer number of dai contributed
             uint daiContributed = referredTotal[_referrerAddress].div(10 ** 18);
+
+            /*
+            A more explicit way to do the following 'uint multiplier' line would be something like:
+
+            float bonusFromDaiContributed = daiContributed / 100000.0;
+            float multiplier = bonusFromDaiContributed + 0.1;
+
+            However, because we are already using 3 digits of precision for bonus values,
+            the integer amount of Dai happens to exactly equal the bonusPercent value we want
+            (i.e. 10,000 Dai == 10000 == 10*ONE_PERC)
+            */
             uint multiplier = daiContributed.add(ONE_PERC.mul(10)); // this guarentees every referrer gets at least 10% of what the buyer is buying
-            uint result = SafeMath.min(HUNDRED_PERC, multiplier);
+
+            uint result = SafeMath.min(HUNDRED_PERC, multiplier); // Cap it at 100% bonus
             return result;
         }
     }
