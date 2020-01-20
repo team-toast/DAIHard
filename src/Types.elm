@@ -5,6 +5,7 @@ import Array exposing (Array)
 import BigInt exposing (BigInt)
 import Browser
 import Browser.Navigation
+import BucketSale.Types
 import CmdDown
 import CmdUp
 import CommonTypes exposing (..)
@@ -17,7 +18,6 @@ import Helpers.Eth as EthHelpers
 import Json.Decode
 import Marketplace.Types
 import Routing
-import SugarSale.Types
 import Time
 import Trade.Types
 import TradeCache.Types as TradeCache exposing (TradeCache)
@@ -58,7 +58,7 @@ type Submodel
     | TradeModel Trade.Types.Model
     | MarketplaceModel Marketplace.Types.Model
     | AgentHistoryModel AgentHistory.Types.Model
-    | SugarSaleModel SugarSale.Types.Model
+    | BucketSaleModel BucketSale.Types.Model
 
 
 type Msg
@@ -78,7 +78,7 @@ type Msg
     | TradeMsg Trade.Types.Msg
     | MarketplaceMsg Marketplace.Types.Msg
     | AgentHistoryMsg AgentHistory.Types.Msg
-    | SugarSaleMsg SugarSale.Types.Msg
+    | BucketSaleMsg BucketSale.Types.Msg
     | DismissNotice Int
     | ClickHappened
     | NoOp

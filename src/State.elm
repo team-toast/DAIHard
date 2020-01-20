@@ -7,6 +7,8 @@ import Browser
 import Browser.Dom
 import Browser.Events
 import Browser.Navigation
+import BucketSale.State
+import BucketSale.Types as BucketSale
 import ChainCmd exposing (ChainCmd)
 import CmdDown
 import CmdUp
@@ -30,8 +32,6 @@ import Marketplace.State
 import Maybe.Extra
 import Notifications
 import Routing
-import SugarSale.State
-import SugarSale.Types as SugarSale
 import Time
 import Trade.State
 import TradeCache.State as TradeCache
@@ -490,27 +490,27 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        SugarSaleMsg sugarSaleMsg ->
+        BucketSaleMsg bucketSaleMsg ->
             case model.submodel of
-                SugarSaleModel sugarSaleModel ->
+                BucketSaleModel bucketSaleModel ->
                     let
                         updateResult =
-                            SugarSale.State.update sugarSaleMsg sugarSaleModel
+                            BucketSale.State.update bucketSaleMsg bucketSaleModel
 
                         ( newTxSentry, chainCmd, userNotices ) =
-                            ChainCmd.execute model.txSentry (ChainCmd.map SugarSaleMsg updateResult.chainCmd)
+                            ChainCmd.execute model.txSentry (ChainCmd.map BucketSaleMsg updateResult.chainCmd)
                     in
                     ( { model
-                        | submodel = SugarSaleModel updateResult.model
+                        | submodel = BucketSaleModel updateResult.model
                         , txSentry = newTxSentry
                       }
                     , Cmd.batch
-                        [ Cmd.map SugarSaleMsg updateResult.cmd
+                        [ Cmd.map BucketSaleMsg updateResult.cmd
                         , chainCmd
                         ]
                     )
                         |> runCmdUps
-                            (CmdUp.mapList SugarSaleMsg updateResult.cmdUps
+                            (CmdUp.mapList BucketSaleMsg updateResult.cmdUps
                                 ++ List.map CmdUp.UserNotice userNotices
                             )
 
@@ -746,16 +746,16 @@ gotoPageRoute route prevModel =
                 ]
             )
 
-        Routing.SugarSale ->
+        Routing.BucketSale ->
             let
-                ( sugarSaleModel, sugarSaleCmd ) =
-                    SugarSale.State.init prevModel.maybeReferrer prevModel.testMode prevModel.wallet prevModel.now
+                ( bucketSaleModel, bucketSaleCmd ) =
+                    BucketSale.State.init prevModel.maybeReferrer prevModel.testMode prevModel.wallet prevModel.now
             in
             ( { prevModel
-                | submodel = SugarSaleModel sugarSaleModel
+                | submodel = BucketSaleModel bucketSaleModel
               }
             , Cmd.batch
-                [ Cmd.map SugarSaleMsg sugarSaleCmd
+                [ Cmd.map BucketSaleMsg bucketSaleCmd
                 ]
             )
 
@@ -878,25 +878,25 @@ runCmdDown cmdDown prevModel =
                         ++ List.map CmdUp.UserNotice userNotices
                     )
 
-        SugarSaleModel sugarSaleModel ->
+        BucketSaleModel bucketSaleModel ->
             let
                 updateResult =
-                    sugarSaleModel |> SugarSale.State.runCmdDown cmdDown
+                    bucketSaleModel |> BucketSale.State.runCmdDown cmdDown
 
                 ( newTxSentry, chainCmd, userNotices ) =
-                    ChainCmd.execute prevModel.txSentry (ChainCmd.map SugarSaleMsg updateResult.chainCmd)
+                    ChainCmd.execute prevModel.txSentry (ChainCmd.map BucketSaleMsg updateResult.chainCmd)
             in
             ( { prevModel
-                | submodel = SugarSaleModel updateResult.model
+                | submodel = BucketSaleModel updateResult.model
                 , txSentry = newTxSentry
               }
             , Cmd.batch
-                [ Cmd.map SugarSaleMsg updateResult.cmd
+                [ Cmd.map BucketSaleMsg updateResult.cmd
                 , chainCmd
                 ]
             )
                 |> runCmdUps
-                    (CmdUp.mapList SugarSaleMsg updateResult.cmdUps
+                    (CmdUp.mapList BucketSaleMsg updateResult.cmdUps
                         ++ List.map CmdUp.UserNotice userNotices
                     )
 
@@ -952,8 +952,8 @@ submodelSubscriptions model =
         AgentHistoryModel agentHistoryModel ->
             Sub.map AgentHistoryMsg <| AgentHistory.State.subscriptions agentHistoryModel
 
-        SugarSaleModel sugarSaleModel ->
-            Sub.map SugarSaleMsg <| SugarSale.State.subscriptions sugarSaleModel
+        BucketSaleModel bucketSaleModel ->
+            Sub.map BucketSaleMsg <| BucketSale.State.subscriptions bucketSaleModel
 
 
 port walletSentryPort : (Json.Decode.Value -> msg) -> Sub msg

@@ -1,6 +1,7 @@
-module SugarSale.View exposing (root)
+module BucketSale.View exposing (root)
 
 import BigInt exposing (BigInt)
+import BucketSale.Types exposing (..)
 import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Config
@@ -20,7 +21,6 @@ import List.Extra
 import Maybe.Extra
 import Result.Extra
 import Routing
-import SugarSale.Types exposing (..)
 import Time
 import TokenValue exposing (TokenValue)
 import Wallet
@@ -39,18 +39,18 @@ root dProfile model =
         ]
         [ EH.simpleSubmodelContainer
             (1600 |> changeForMobile 400 dProfile)
-            (case model.sugarSale of
+            (case model.bucketSale of
                 Nothing ->
                     Element.el [ Element.centerX, Element.Font.size 30 ] <| Element.text "Loading..."
 
-                Just sugarSale ->
+                Just bucketSale ->
                     Element.column
                         [ Element.width Element.fill
                         , Element.spacing (20 |> changeForMobile 10 dProfile)
                         , Element.padding (20 |> changeForMobile 10 dProfile)
                         ]
-                        [ viewBucketsRow sugarSale model.bucketView model.now model.timezone model.testMode dProfile
-                        , focusedBucketActionElement model sugarSale model.testMode dProfile
+                        [ viewBucketsRow bucketSale model.bucketView model.now model.timezone model.testMode dProfile
+                        , focusedBucketActionElement model bucketSale model.testMode dProfile
                         ]
             )
         ]
@@ -58,19 +58,19 @@ root dProfile model =
     )
 
 
-viewBucketsRow : SugarSale -> BucketView -> Time.Posix -> Maybe Time.Zone -> Bool -> DisplayProfile -> Element Msg
-viewBucketsRow sugarSale bucketView now timezone testMode dProfile =
+viewBucketsRow : BucketSale -> BucketView -> Time.Posix -> Maybe Time.Zone -> Bool -> DisplayProfile -> Element Msg
+viewBucketsRow bucketSale bucketView now timezone testMode dProfile =
     Element.row
         [ Element.spacing 15
         , Element.centerX
         ]
-        (visibleBucketIds sugarSale bucketView now testMode
+        (visibleBucketIds bucketSale bucketView now testMode
             |> List.map
                 (\id ->
                     viewBucket
-                        sugarSale
+                        bucketSale
                         id
-                        (id == getFocusedBucketId sugarSale bucketView now testMode)
+                        (id == getFocusedBucketId bucketSale bucketView now testMode)
                         now
                         timezone
                         testMode
@@ -79,11 +79,11 @@ viewBucketsRow sugarSale bucketView now timezone testMode dProfile =
         )
 
 
-viewBucket : SugarSale -> Int -> Bool -> Time.Posix -> Maybe Time.Zone -> Bool -> DisplayProfile -> Element Msg
-viewBucket sugarSale bucketId isFocused now timezone testMode dProfile =
+viewBucket : BucketSale -> Int -> Bool -> Time.Posix -> Maybe Time.Zone -> Bool -> DisplayProfile -> Element Msg
+viewBucket bucketSale bucketId isFocused now timezone testMode dProfile =
     let
         ( bucketState, bucket ) =
-            getBucketInfo sugarSale bucketId testMode
+            getBucketInfo bucketSale bucketId testMode
 
         borderColor =
             Element.rgb 0.8 0.8 0.8
@@ -149,7 +149,7 @@ viewBucket sugarSale bucketId isFocused now timezone testMode dProfile =
         columnAttributes
     <|
         [ Element.el [ Element.alignRight ] <|
-            timingInfoElement sugarSale bucketId now timezone testMode dProfile
+            timingInfoElement bucketSale bucketId now timezone testMode dProfile
         , case bucketState of
             Future ->
                 Element.column
@@ -162,10 +162,10 @@ viewBucket sugarSale bucketId isFocused now timezone testMode dProfile =
                     , Element.el [ Element.centerX ] <|
                         Element.text <|
                             (TokenValue.toConciseString <|
-                                Config.sugarSaleTokensPerBucket testMode
+                                Config.bucketSaleTokensPerBucket testMode
                             )
                                 ++ " "
-                                ++ Config.sugarTokenSymbol
+                                ++ Config.bucketTokenSymbol
                     ]
 
             _ ->
@@ -189,14 +189,14 @@ viewBucket sugarSale bucketId isFocused now timezone testMode dProfile =
 
                             bucketResultEls =
                                 if TokenValue.isZero totalValueEntered && bucketState == Past then
-                                    [ Element.text <| "No " ++ Config.sugarTokenSymbol ++ " Released" ]
+                                    [ Element.text <| "No " ++ Config.bucketTokenSymbol ++ " Released" ]
 
                                 else
                                     [ Element.el [ Element.centerX ] <|
                                         Element.text <|
-                                            TokenValue.toConciseString (Config.sugarSaleTokensPerBucket testMode)
+                                            TokenValue.toConciseString (Config.bucketSaleTokensPerBucket testMode)
                                                 ++ " "
-                                                ++ Config.sugarTokenSymbol
+                                                ++ Config.bucketTokenSymbol
                                                 ++ (if bucketState == Past then
                                                         " Released"
 
@@ -216,7 +216,7 @@ viewBucket sugarSale bucketId isFocused now timezone testMode dProfile =
                                                 totalValueEntered
                                                 testMode
                                             )
-                                        , Element.text <| " DAI/" ++ Config.sugarTokenSymbol
+                                        , Element.text <| " DAI/" ++ Config.bucketTokenSymbol
                                         ]
                                     ]
 
@@ -235,7 +235,7 @@ viewBucket sugarSale bucketId isFocused now timezone testMode dProfile =
                                                 ]
                                               <|
                                                 Element.text <|
-                                                    Config.sugarTokenSymbol
+                                                    Config.bucketTokenSymbol
                                                         ++ " to claim!"
                                             ]
 
@@ -255,15 +255,15 @@ viewBucket sugarSale bucketId isFocused now timezone testMode dProfile =
 
 
 
--- focusedBucketInfoElement : SugarSale -> BucketView -> Time.Posix -> Maybe Time.Zone -> Bool -> DisplayProfile -> Element Msg
--- focusedBucketInfoElement sugarSale bucketView now timezone testMode dProfile =
+-- focusedBucketInfoElement : BucketSale -> BucketView -> Time.Posix -> Maybe Time.Zone -> Bool -> DisplayProfile -> Element Msg
+-- focusedBucketInfoElement bucketSale bucketView now timezone testMode dProfile =
 --     let
 --         bucket =
 --             Tuple.second <|
 --                 getBucketInfo
---                     sugarSale
+--                     bucketSale
 --                     (getFocusedBucketId
---                         sugarSale
+--                         bucketSale
 --                         bucketView
 --                         now
 --                         testMode
@@ -280,12 +280,12 @@ viewBucket sugarSale bucketId isFocused now timezone testMode dProfile =
 --             [ Element.width Element.fill
 --             ]
 --             [ Element.el [ Element.alignLeft ] <|
---                 bucketIdElement sugarSale bucketView now testMode dProfile
+--                 bucketIdElement bucketSale bucketView now testMode dProfile
 --             , Element.el [ Element.alignRight ] <|
 --                 timingInfoElement
---                     sugarSale
+--                     bucketSale
 --                     (getFocusedBucketId
---                         sugarSale
+--                         bucketSale
 --                         bucketView
 --                         now
 --                         testMode
@@ -306,41 +306,41 @@ viewBucket sugarSale bucketId isFocused now timezone testMode dProfile =
 --         ]
 
 
-bucketIdElement : SugarSale -> BucketView -> Time.Posix -> Bool -> DisplayProfile -> Element Msg
-bucketIdElement sugarSale bucketView now testMode dProfile =
+bucketIdElement : BucketSale -> BucketView -> Time.Posix -> Bool -> DisplayProfile -> Element Msg
+bucketIdElement bucketSale bucketView now testMode dProfile =
     Element.column
         [ Element.spacing 5
         ]
-        [ Element.text "SugarSale Bucket"
+        [ Element.text "BucketSale Bucket"
         , Element.text
             ("#"
-                ++ (getFocusedBucketId sugarSale bucketView now testMode
+                ++ (getFocusedBucketId bucketSale bucketView now testMode
                         |> String.fromInt
                    )
             )
         ]
 
 
-timingInfoElement : SugarSale -> Int -> Time.Posix -> Maybe Time.Zone -> Bool -> DisplayProfile -> Element Msg
-timingInfoElement sugarSale bucketId now timezone testMode dProfile =
+timingInfoElement : BucketSale -> Int -> Time.Posix -> Maybe Time.Zone -> Bool -> DisplayProfile -> Element Msg
+timingInfoElement bucketSale bucketId now timezone testMode dProfile =
     let
         ( descText, timeText ) =
-            case Tuple.first <| getBucketInfo sugarSale bucketId testMode of
+            case Tuple.first <| getBucketInfo bucketSale bucketId testMode of
                 Past ->
                     ( "Ended at "
-                    , bucketStartTime sugarSale (bucketId + 1) testMode
+                    , bucketStartTime bucketSale (bucketId + 1) testMode
                         |> bucketTimestampToString now timezone
                     )
 
                 Active ->
                     ( "Ends In "
-                    , activeBucketTimeLeft sugarSale now testMode
+                    , activeBucketTimeLeft bucketSale now testMode
                         |> TimeHelpers.toConciseIntervalString
                     )
 
                 Future ->
                     ( "Starts at "
-                    , bucketStartTime sugarSale bucketId testMode
+                    , bucketStartTime bucketSale bucketId testMode
                         |> bucketTimestampToString now timezone
                     )
     in
@@ -459,8 +459,8 @@ effectiveTokenPriceRow bucket testMode dProfile =
         ]
 
 
-focusedBucketActionElement : Model -> SugarSale -> Bool -> DisplayProfile -> Element Msg
-focusedBucketActionElement model sugarSale testMode dProfile =
+focusedBucketActionElement : Model -> BucketSale -> Bool -> DisplayProfile -> Element Msg
+focusedBucketActionElement model bucketSale testMode dProfile =
     case Wallet.userInfo model.wallet of
         Nothing ->
             connectToWeb3Button dProfile
@@ -469,14 +469,14 @@ focusedBucketActionElement model sugarSale testMode dProfile =
             let
                 bucketId =
                     getFocusedBucketId
-                        sugarSale
+                        bucketSale
                         model.bucketView
                         model.now
                         model.testMode
 
                 ( bucketState, bucket ) =
                     getBucketInfo
-                        sugarSale
+                        bucketSale
                         bucketId
                         model.testMode
             in
@@ -494,14 +494,14 @@ focusedBucketActionElement model sugarSale testMode dProfile =
                             Element.text "Loading..."
 
                 Active ->
-                    entryForm userInfo bucket model.daiInput model.daiAmount model.referrer model.allowanceState model.dumbCheckboxesClicked model.testMode dProfile
+                    entryForm userInfo bucketId bucket model.daiInput model.daiAmount model.referrer model.allowanceState model.dumbCheckboxesClicked model.testMode dProfile
 
                 Future ->
                     Element.none
 
 
-entryForm : UserInfo -> Bucket -> String -> Maybe (Result String TokenValue) -> Maybe Address -> AllowanceState -> ( Bool, Bool ) -> Bool -> DisplayProfile -> Element Msg
-entryForm userInfo bucket daiInput maybeDaiInputResult maybeReferrer allowanceState dumbCheckboxesChecked testMode dProfile =
+entryForm : UserInfo -> Int -> Bucket -> String -> Maybe (Result String TokenValue) -> Maybe Address -> AllowanceState -> ( Bool, Bool ) -> Bool -> DisplayProfile -> Element Msg
+entryForm userInfo bucketId bucket daiInput maybeDaiInputResult maybeReferrer allowanceState dumbCheckboxesChecked testMode dProfile =
     let
         maybeInputError =
             maybeDaiInputResult
@@ -559,6 +559,7 @@ entryForm userInfo bucket daiInput maybeDaiInputResult maybeReferrer allowanceSt
             dumbCheckboxesChecked
             dProfile
         , maybeDepositButton
+            bucketId
             userInfo
             allowanceState
             dumbCheckboxesChecked
@@ -571,8 +572,8 @@ entryForm userInfo bucket daiInput maybeDaiInputResult maybeReferrer allowanceSt
         ]
 
 
-maybeDepositButton : UserInfo -> AllowanceState -> ( Bool, Bool ) -> Maybe TokenValue -> Maybe Address -> DisplayProfile -> Element Msg
-maybeDepositButton userInfo allowanceState dumbCheckboxesChecked maybeDaiAmount maybeReferrer dProfile =
+maybeDepositButton : Int -> UserInfo -> AllowanceState -> ( Bool, Bool ) -> Maybe TokenValue -> Maybe Address -> DisplayProfile -> Element Msg
+maybeDepositButton bucketId userInfo allowanceState dumbCheckboxesChecked maybeDaiAmount maybeReferrer dProfile =
     case ( allowanceState, dumbCheckboxesChecked, maybeDaiAmount ) of
         ( Loaded allowance, ( True, True ), Just daiAmount ) ->
             if TokenValue.compare allowance daiAmount == LT then
@@ -583,6 +584,7 @@ maybeDepositButton userInfo allowanceState dumbCheckboxesChecked maybeDaiAmount 
                     (Just <|
                         EnterButtonClicked
                             userInfo
+                            bucketId
                             daiAmount
                             maybeReferrer
                     )
@@ -681,19 +683,19 @@ bidConsequencesElement maybeBidAmount maybeTotalDaiAlreadyEntered testMode dProf
                       ]
                     , [ Element.text "This bid will "
                       , emphasizedText "increase"
-                      , Element.text <| " the effective price per " ++ Config.sugarTokenSymbol ++ " to "
+                      , Element.text <| " the effective price per " ++ Config.bucketTokenSymbol ++ " to "
                       , formatMaybeCalcValue maybeNewMinPrice
-                      , Element.text <| " DAI/" ++ Config.sugarTokenSymbol
+                      , Element.text <| " DAI/" ++ Config.bucketTokenSymbol
                       ]
                     , [ emphasizedText "If no other bids are made "
                       , Element.text "before this bucket ends, you will be able to claim "
                       , formatMaybeCalcValue maybeMaxClaimableTokens
-                      , Element.text <| " " ++ Config.sugarTokenSymbol ++ "."
+                      , Element.text <| " " ++ Config.bucketTokenSymbol ++ "."
                       ]
                     , [ emphasizedText "If other bids are made"
                       , Element.text <|
                             ", the effective price per token will increase further, and the amount of "
-                                ++ Config.sugarTokenSymbol
+                                ++ Config.bucketTokenSymbol
                                 ++ " you can claim from the bucket will decrease proportionally. (For example, if the total bid amount doubles, the effective price per token will also double, and your amount of claimable tokens will halve.)"
                       ]
                     ]
@@ -719,7 +721,7 @@ dumbCheckboxesElement checkedTuple dProfile =
                         , Element.width Element.fill
                         , Element.paddingXY 10 0
                         ]
-                        [ Element.text <| "I understand that this bid cannot be refunded, and that if other bids are entered before the bucket ends, the amount of " ++ Config.sugarTokenSymbol ++ " I can claim will decrease."
+                        [ Element.text <| "I understand that this bid cannot be refunded, and that if other bids are entered before the bucket ends, the amount of " ++ Config.bucketTokenSymbol ++ " I can claim will decrease."
                         ]
             }
         , Element.row
