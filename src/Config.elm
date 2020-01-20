@@ -23,7 +23,7 @@ tokenContractAddress : TokenFactoryType -> Address
 tokenContractAddress tokenFactoryType =
     case tokenFactoryType of
         EthDai ->
-            Eth.Utils.unsafeToAddress "0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359"
+            Eth.Utils.unsafeToAddress "0x6B175474E89094C44Da98b954EedeAC495271d0F"
 
         KovanDai ->
             Eth.Utils.unsafeToAddress "0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa"
@@ -33,19 +33,19 @@ factoryAddress : FactoryType -> Address
 factoryAddress factoryType =
     case factoryType of
         Token EthDai ->
-            Eth.Utils.unsafeToAddress "0x5677CFbA35a0Db0469d3d56020d556B942E9ce90"
+            Eth.Utils.unsafeToAddress "0x3BCd42008DF139Bac1b710605bB7b7839d52672B"
 
         Token KovanDai ->
-            Eth.Utils.unsafeToAddress "0xbC69Aff9d93C5EA4a841166C46C68518D02aF818"
+            Eth.Utils.unsafeToAddress "0x780cE226c3bB57C61BaeF6e4D1Bab5Ff89c7684D"
 
         Native Eth ->
-            Eth.Utils.unsafeToAddress "0xD3b1e8F2bDe0a2DdfC9F6e2EB6e2589e5Ba955b6"
+            Eth.Utils.unsafeToAddress "0x716C806eC6f4703B35a5F613519C607c72c60408"
 
         Native Kovan ->
-            Eth.Utils.unsafeToAddress "0xA30773FD520cdf845E1a00441aB09cE39B31F676"
+            Eth.Utils.unsafeToAddress "0xE3C549cCE69CB9d19d50C57743b1C5d2D84841e0"
 
         Native XDai ->
-            Eth.Utils.unsafeToAddress "0x7E370099a7a789dC28810a72381bcd7Be834Ad74"
+            Eth.Utils.unsafeToAddress "0x237CFfc6c21DF0c58a0b4CcD1d5fe3d43818A27B"
 
 
 devFeeAddress : FactoryType -> Address
