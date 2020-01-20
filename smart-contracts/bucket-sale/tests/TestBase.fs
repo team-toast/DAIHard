@@ -84,3 +84,4 @@ let ethConn =
     isRinkeby (EthereumConnection(rinkebyURI, rinkebyPrivKey)) (EthereumConnection(ganacheURI, ganachePrivKey))
 
 let shouldSucceed (txr: TransactionReceipt) = txr.Status |> should equal (hexBigInt 1UL)
+let shouldFail (txr: TransactionReceipt) = txr.Status |> should equal (hexBigInt 1UL)

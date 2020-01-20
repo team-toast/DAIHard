@@ -5,6 +5,46 @@ open Xunit
 open Nethereum.RPC.Eth.DTOs
 open Nethereum.Contracts
 open TestBase
+open System.Numerics
+
+
+let DAI =
+    let abi = Abi("../../../../build/contracts/TestToken.json")
+
+    let deployTxReceipt =
+        ethConn.DeployContractAsync abi
+            [| "MCD DAI stable coin"
+               "DAI"
+               ethConn.Account.Address
+               BigInteger(1000000UL) |]
+        |> runNow
+
+    let result = ContractPlug(ethConn, abi, deployTxReceipt.ContractAddress)
+    result.QueryFunction "balanceOf" [| ethConn.Account.Address |]
+    |> should equal (BigInteger(1000000UL) * BigInteger(1000000000000000000UL))
+    result
+
+let FRY =
+    let abi = Abi("../../../../build/contracts/TestToken.json")
+
+    let deployTxReceipt =
+        ethConn.DeployContractAsync abi
+            [| "Foundry logistics token"
+               "FRY"
+               ethConn.Account.Address
+               BigInteger(1000000UL) |]
+        |> runNow
+
+    let result = ContractPlug(ethConn, abi, deployTxReceipt.ContractAddress)
+    result
+
+let bucketSale =
+    let abi = Abi("../../../../build/contracts/BucketSale.json")
+    let deployTxReceipt =
+        ethConn.DeployContractAsync abi
+            [| ethConn.Account.Address; startOfSale; bucketPeriod; bucketSupply; bucketCount; DAI.Address; FRY.Address |]
+        |> runNow
+    ContractPlug(ethConn, abi, deployTxReceipt.ContractAddress)
 
 [<Specification("BucketSale", "misc", 0)>]
 [<Fact>]
@@ -36,7 +76,6 @@ let shouldEqualIgnoringCase (a: string) (b: string) =
 [<Fact>]
 let ``Can construct the contract``() =
     let abi = Abi("../../../../build/contracts/BucketSale.json")
-
     let deployTxReceipt =
         ethConn.DeployContractAsync abi
             [| ethConn.Account.Address; startOfSale; bucketPeriod; bucketSupply; bucketCount; zeroAddress; zeroAddress |]
@@ -54,3 +93,9 @@ let ``Can construct the contract``() =
     contract.QueryFunction "bucketCount" [||] |> should equal bucketCount
     contract.QueryFunction "tokenOnSale" [||] |> shouldEqualIgnoringCase tokenOnSale
     contract.QueryFunction "tokenSoldFor" [||] |> shouldEqualIgnoringCase tokenSoldFor
+
+[<Fact>]
+let ``Cannot enter bucket sale with 0 amount``() =
+    let data = bucketSale.FunctionData "enter" [| ethConn.Account.Address; 0; 0UL; zeroAddress |]
+    let receipt = ethConn.SendTxAsync bucketSale.Address data (BigInteger(0)) |> runNow
+    receipt |> shouldFail
