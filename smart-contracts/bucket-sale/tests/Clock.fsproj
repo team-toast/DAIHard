@@ -1,17 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>netcoreapp2.1</TargetFramework>
-
-    <IsPackable>false</IsPackable>
   </PropertyGroup>
-
   <ItemGroup>
-    <Compile Include="Clock.fs" />
-    <Compile Include="ClockTest.fs" />
     <Compile Include="ConstructorTests.fs" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="FSharp.Data" Version="3.3.3" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.4.0" />
@@ -20,5 +13,4 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.4.1" />
     <PackageReference Include="FsUnit.xUnit" Version="3.7.0" />
   </ItemGroup>
-
 </Project>

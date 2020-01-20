@@ -9,43 +9,126 @@ open System
 open Nethereum.RPC.Eth.DTOs
 open System.Numerics
 open Nethereum.Hex.HexTypes
+open System.Threading
+open Newtonsoft
+open System.IO
+open Newtonsoft.Json
+open Newtonsoft.Json.Linq
+open Nethereum.Contracts
 
 type ABIType = JsonProvider<"../build/contracts/BucketSale.json">
 
-let account = Accounts.Account("67b3534fb704a30cdb8c541b61becd5683662942a1b308e81822faf43c5d58ac")
+let minutes = 60UL
+let hours = 60UL * minutes
+let days = 24UL * hours
+let startOfSale = DateTimeOffset(DateTime.Now.AddDays(-1.0)).ToUnixTimeSeconds() |> uint64
+let bucketPeriod = 7UL * hours
+let bucketSupply = 50000UL
+let bucketCount = 100UL
+let zeroAddress = "0x0000000000000000000000000000000000000000"
+let tokenOnSale = zeroAddress
+let tokenSoldFor = zeroAddress
+let bigInt (value: uint64) = BigInteger(value)
+let hexBigInt (value: uint64) = HexBigInteger(bigInt value)
+
+type Abi(filename) =
+    member _.JsonString = File.OpenText(filename).ReadToEnd()
+    member this.AbiString = JsonConvert.DeserializeObject<JObject>(this.JsonString).GetValue("abi").ToString()
+    member this.Bytecode = JsonConvert.DeserializeObject<JObject>(this.JsonString).GetValue("bytecode").ToString()
+
+type EthereumConnection(nodeURI: string, privKey: string) =
+    member _.Gas = hexBigInt 4000000UL
+    member _.GasPrice = hexBigInt 1000000000UL
+    member _.Account = Accounts.Account(privKey)
+    member this.Web3 = Web3(this.Account, nodeURI)
+
+    member this.DeployContractAsync (abi: Abi) (arguments: obj array) =
+        this.Web3.Eth.DeployContract.SendRequestAndWaitForReceiptAsync
+            (abi.AbiString, abi.Bytecode, this.Account.Address, this.Gas, this.GasPrice, hexBigInt 0UL, null, arguments)
+
+    member this.SendTxAsync toAddress data (value: BigInteger) =
+        let input: TransactionInput =
+            TransactionInput(data, toAddress, this.Account.Address, this.Gas, this.GasPrice, HexBigInteger(value))
+
+        this.Web3.Eth.TransactionManager.SendTransactionAndWaitForReceiptAsync(input, null)
+
+let useRinkeby = false
+let ganacheURI = "http://localhost:7545"
+let rinkebyURI = "https://rinkeby.infura.io/v3/c48bc466281c4fefb3decad63c4fc815"
+let ganachePrivKey = "67b3534fb704a30cdb8c541b61becd5683662942a1b308e81822faf43c5d58ac"
+let rinkebyPrivKey = "5ca35a65adbd49af639a3686d7d438dba1bcef97cf1593cd5dd8fd79ca89fa3c"
+
+let isRinkeby rinkeby notRinkeby =
+    match useRinkeby with
+    | true -> rinkeby
+    | false -> notRinkeby
+
+let ethConn =
+    isRinkeby (EthereumConnection(rinkebyURI, rinkebyPrivKey)) (EthereumConnection(ganacheURI, ganachePrivKey))
 
 let abi = ABIType.Load("../../../../build/contracts/BucketSale.json")
+let shouldSucceed (txr: TransactionReceipt) = txr.Status |> should equal (hexBigInt 1UL)
 
-let minute = 60
-let hour = minute * 60
-let day = hour * 24
-let startOfSale = DateTimeOffset(DateTime.Now.AddDays(-1.0)).ToUnixTimeSeconds
-let bucketPeriod = 7 * hour
-let bucketSupply = 50000
-let zeroAddress = "0x0000000000000000000000000000000000000000"
+let runNow task =
+    task
+    |> Async.AwaitTask
+    |> Async.RunSynchronously
 
-let shouldSucceed (txr: TransactionReceipt) = txr.Status |> should equal "0x1"
-let hexBigInteger (value: uint64) = HexBigInteger(BigInteger(value))
-let maxGas = hexBigInteger 4000000UL
+let noParams: obj array = [||]
+
+let getData abi functionName paramObj =
+    ethConn.Web3.Eth.GetContract(abi, zeroAddress).GetFunction(functionName).GetData(paramObj)
+
+[<Fact>]
+let ``Can send eth``() =
+    let balance = ethConn.Web3.Eth.GetBalance.SendRequestAsync(ethConn.Account.Address) |> runNow
+    balance.Value |> should greaterThan (bigInt 0UL)
+
+    let transactionInput =
+        TransactionInput
+            ("", zeroAddress, ethConn.Account.Address, hexBigInt 4000000UL, hexBigInt 1000000000UL, hexBigInt 1UL)
+
+    let sendEthTxReceipt =
+        ethConn.Web3.Eth.TransactionManager.SendTransactionAndWaitForReceiptAsync(transactionInput, null) |> runNow
+
+    sendEthTxReceipt |> shouldSucceed
+
+    let balanceAfter = ethConn.Web3.Eth.GetBalance.SendRequestAsync(zeroAddress) |> runNow
+    balanceAfter.Value |> should greaterThan (bigInt 1UL)
+
+let query (contract: Contract) functionName paramArray =
+    contract.GetFunction(functionName).CallAsync(paramArray) |> runNow
+
+let shouldEqualIgnoringCase a b =
+    let aString = a |> string
+    let bString = b |> string
+    should equal (aString.ToLower()) (bString.ToLower())
+
+let shouldEqualBigInteger a b =
+    let aBig = a |> uint64
+    let bBig = b |> uint64
+    should equal aBig bBig
 
 [<Fact>]
 let ``Can construct the contract``() =
-    let w3 = Web3(account, "http://localhost:8545")
-
-    let accounts =
-        w3.Eth.Accounts.SendRequestAsync()
-        |> Async.AwaitTask
-        |> Async.RunSynchronously
-
-    accounts.Length |> should equal 10
-
-    let constructorParams: obj list =
-        [ account.Address; startOfSale; bucketPeriod; bucketSupply; zeroAddress; zeroAddress ]
+    let abi = Abi("../../../../build/contracts/BucketSale.json")
 
     let deployTxReceipt =
-        w3.Eth.DeployContract.SendRequestAndWaitForReceiptAsync
-            (abi.Bytecode, account.Address, maxGas, constructorParams)
-        |> Async.AwaitTask
-        |> Async.RunSynchronously
+        ethConn.DeployContractAsync abi
+            [| ethConn.Account.Address; startOfSale; bucketPeriod; bucketSupply; bucketCount; zeroAddress; zeroAddress |]
+        |> runNow
 
     deployTxReceipt |> shouldSucceed
+
+    // Assert
+    let contract = ethConn.Web3.Eth.GetContract(abi.AbiString, deployTxReceipt.ContractAddress)
+    let contractFunction = query contract
+    let contractProperty functionName = contractFunction functionName [||]
+
+    contractProperty "owner" |> shouldEqualIgnoringCase ethConn.Account.Address
+    contractProperty "startOfSale" |> shouldEqualBigInteger startOfSale
+    contractProperty "bucketPeriod" |> shouldEqualBigInteger bucketPeriod
+    contractProperty "bucketSupply" |> shouldEqualBigInteger bucketSupply
+    contractProperty "bucketCount" |> shouldEqualBigInteger bucketCount
+    contractProperty "tokenOnSale" |> shouldEqualIgnoringCase tokenOnSale
+    contractProperty "tokenSoldFor" |> shouldEqualIgnoringCase tokenSoldFor
