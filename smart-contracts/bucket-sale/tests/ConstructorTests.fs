@@ -6,6 +6,7 @@ open Nethereum.RPC.Eth.DTOs
 open Nethereum.Contracts
 open TestBase
 open System.Numerics
+open System.Linq
 
 
 let DAI =
@@ -88,6 +89,8 @@ let ``Can construct the contract``() =
 
 [<Fact>]
 let ``Cannot enter bucket sale with 0 amount``() =
-    let data = bucketSale.FunctionData "enter" [| ethConn.Account.Address; 0; 0UL; zeroAddress |]
-    let receipt = ethConn.SendTxAsync bucketSale.Address data (BigInteger(0)) |> runNow
-    receipt |> shouldFail
+    let currentBucket = bucketSale.QueryFunction "currentBucket" [||]
+    let data = bucketSale.FunctionData "enter" [| ethConn.Account.Address; currentBucket; 0UL; zeroAddress |]
+    let receipt = forwarder.SendTxAsync bucketSale.Address data (BigInteger(0)) |> runNow
+    let event = forwarder.DecodeForwardedEvents receipt |> Seq.head
+    event.Event.ResultAsRevertMessage |> should contain "can't buy nothing"

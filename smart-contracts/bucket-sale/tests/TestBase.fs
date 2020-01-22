@@ -13,6 +13,9 @@ open System.IO
 open Newtonsoft.Json
 open Newtonsoft.Json.Linq
 open Nethereum.Contracts
+open Nethereum.ABI.FunctionEncoding.Attributes
+open Nethereum.Hex.HexConvertors.Extensions
+open System.Text
 
 type ABIType = JsonProvider<"../build/contracts/BucketSale.json">
 
@@ -63,6 +66,46 @@ type ContractPlug(ethConn: EthereumConnection, abi: Abi, address) =
     member this.QueryFunction functionName arguments = this.QueryFunctionAsync functionName arguments |> runNow
     member this.FunctionData functionName arguments = (this.Function functionName).GetData(arguments)
 
+[<Event("Forwarded")>]
+type ForwardedEvent() =
+
+    [<Parameter("address", "_mgSender", 1, true)>]
+    member val MsgSender: string = zeroAddress with get, set
+
+    [<Parameter("address", "_to", 2, true)>]
+    member val To: string = zeroAddress with get, set
+
+    [<Parameter("bytes", "_data", 3, false)>]
+    member val Data: byte array = [||] with get, set
+
+    [<Parameter("uint256", "_wei", 4, false)>]
+    member val Wei: BigInteger = BigInteger(0) with get, set
+
+    [<Parameter("bool", "_success", 5, false)>]
+    member val Success: bool = false with get, set
+
+    [<Parameter("bytes", "_resultData", 6, false)>]
+    member val ResultData: byte array = [||] with get, set
+
+    member this.ResultAsRevertMessage = Encoding.ASCII.GetString(this.ResultData)
+
+type Forwarder(ethConn: EthereumConnection) =
+    member _.EthConn = ethConn
+
+    member _.ContractPlug =
+        let abi = Abi("../../../../build/contracts/Forwarder.json")
+        let deployTxReceipt = ethConn.DeployContractAsync abi [||] |> runNow
+        ContractPlug(ethConn, abi, deployTxReceipt.ContractAddress)
+
+    member this.SendTxAsync (toAddress: string) (data: string) (value: BigInteger) =
+        let data =
+            this.ContractPlug.FunctionData "forward"
+                [| toAddress
+                   data.HexToByteArray() |]
+        ethConn.SendTxAsync this.ContractPlug.Address data value
+
+    member this.DecodeForwardedEvents(receipt: TransactionReceipt) = receipt.DecodeAllEvents<ForwardedEvent>()
+
 type SpecificationAttribute(contractName, functionName, specCode) =
     inherit Attribute()
     member _.ContractName: string = contractName
@@ -82,6 +125,8 @@ let isRinkeby rinkeby notRinkeby =
 
 let ethConn =
     isRinkeby (EthereumConnection(rinkebyURI, rinkebyPrivKey)) (EthereumConnection(ganacheURI, ganachePrivKey))
+
+let forwarder = Forwarder(ethConn)
 
 let shouldEqualIgnoringCase (a: string) (b: string) =
     let aString = a |> string
