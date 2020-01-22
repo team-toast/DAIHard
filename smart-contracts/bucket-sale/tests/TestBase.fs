@@ -87,7 +87,10 @@ type ForwardedEvent() =
     [<Parameter("bytes", "_resultData", 6, false)>]
     member val ResultData: byte array = [||] with get, set
 
-    member this.ResultAsRevertMessage = Encoding.ASCII.GetString(this.ResultData)
+    member this.ResultAsRevertMessage =
+        match this.Success with
+        | true -> None
+        | _ -> Some(Encoding.ASCII.GetString(this.ResultData))
 
 type Forwarder(ethConn: EthereumConnection) =
     member _.EthConn = ethConn
@@ -104,8 +107,10 @@ type Forwarder(ethConn: EthereumConnection) =
                    data.HexToByteArray() |]
         ethConn.SendTxAsync this.ContractPlug.Address data value
 
-    member this.DecodeForwardedEvents(receipt: TransactionReceipt) = receipt.DecodeAllEvents<ForwardedEvent>()
+    member this.DecodeForwardedEvents(receipt: TransactionReceipt) =
+        receipt.DecodeAllEvents<ForwardedEvent>() |> Seq.map (fun i -> i.Event)
 
+[<System.AttributeUsage(AttributeTargets.Method, AllowMultiple = true)>]
 type SpecificationAttribute(contractName, functionName, specCode) =
     inherit Attribute()
     member _.ContractName: string = contractName
