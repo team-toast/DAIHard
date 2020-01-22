@@ -93,4 +93,4 @@ let ``Cannot enter bucket sale with 0 amount``() =
     let data = bucketSale.FunctionData "enter" [| ethConn.Account.Address; currentBucket; 0UL; zeroAddress |]
     let receipt = forwarder.SendTxAsync bucketSale.Address data (BigInteger(0)) |> runNow
     let event = forwarder.DecodeForwardedEvents receipt |> Seq.head
-    event.Event.ResultAsRevertMessage |> should contain "can't buy nothing"
+    event.Event.ResultAsRevertMessage |> should haveSubstring "can't buy nothing"
