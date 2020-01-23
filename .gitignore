@@ -10,3 +10,4 @@ bin/
 obj/
 .ionide/
 /.ionide/
+.ionide/symbolCache.db
