@@ -196,8 +196,7 @@ contract BucketSale
         rather than something like bool buyerTokensHaveExited.
         */
 
-        Bucket storage bucket = buckets[_bucketId];
-        buyToWithdraw.buyerTokensExited = bucketSupply.mul(buyToWithdraw.valueEntered).div(bucket.totalValueEntered);
+        buyToWithdraw.buyerTokensExited = calculateExitableTokens(_bucketId, _buyer);
         totalExitedTokens = totalExitedTokens.add(buyToWithdraw.buyerTokensExited);
 
         bool transferSuccess = tokenOnSale.transfer(_buyer, buyToWithdraw.buyerTokensExited);
@@ -246,5 +245,57 @@ contract BucketSale
             uint result = SafeMath.min(HUNDRED_PERC, multiplier); // Cap it at 100% bonus
             return result;
         }
+    }
+
+    function calculateExitableTokens(uint _bucketId, address _buyer)
+        public
+        view
+        returns(uint)
+    {
+        Bucket storage bucket = buckets[_bucketId];
+        Buy storage buyToWithdraw = buys[_bucketId][_buyer];
+        return bucketSupply
+            .mul(buyToWithdraw.valueEntered)
+            .div(bucket.totalValueEntered);
+    }
+}
+
+contract Query
+{
+    using SafeMath for uint;
+
+    function getExitInfo(BucketSale _bucketSale, address _buyer)
+        public
+        view
+        returns (uint[1400] memory)
+    {
+        // goal:
+        // 1. return the total FRY the buyer can extract
+        // 2. return the bucketIds of each bucket they can extract from
+
+        // logic:
+        // *loop over all concluded buckets
+        //   *check the .buys for this _buyer
+        //   *if there is a buy
+        //      *add to the first array element
+        //      *add the bucketId to the array
+
+        uint[1400] memory results;
+        uint pointer = 0;
+        for (uint bucketId = 0; bucketId < _bucketSale.currentBucket(); bucketId = bucketId.add(1))
+        {
+            BucketSale.Buy memory buy = _bucketSale.buys(bucketId, _buyer);
+            if (buy.valueEntered > 0 && buy.buyerTokensExited != 0)
+            {
+                // update the running total for this buyer
+                results[0] = results[0].add(_bucketSale.calculateExitableTokens(bucketId, _buyer));
+
+                // append the bucketId to the results array
+                pointer = pointer.add(1);
+                results[pointer] = bucketId;
+            }
+        }
+
+        return results;
     }
 }

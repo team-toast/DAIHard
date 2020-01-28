@@ -8,6 +8,8 @@ open TestBase
 open System.Numerics
 open System.Linq
 open Nethereum.Hex.HexConvertors.Extensions
+open Constants
+open DTOs
 
 let DAI =
     let abi = Abi("../../../../build/contracts/TestToken.json")
@@ -17,12 +19,12 @@ let DAI =
             [| "MCD DAI stable coin"
                "DAI"
                ethConn.Account.Address
-               BigInteger(1000000UL) |]
+               bucketSupply * bucketCount * BigInteger(100UL) |]
         |> runNow
 
     let result = ContractPlug(ethConn, abi, deployTxReceipt.ContractAddress)
     result.QueryFunction "balanceOf" [| ethConn.Account.Address |]
-    |> should equal (BigInteger(1000000UL) * BigInteger(1000000000000000000UL))
+    |> should equal (bucketSupply * bucketCount * BigInteger(100UL) * BigInteger(1000000000000000000UL))
     result
 
 
@@ -46,17 +48,27 @@ let bucketSale =
 
     let deployTxReceipt =
         ethConn.DeployContractAsync abi
-            [| ethConn.Account.Address; startOfSale; bucketPeriod; bucketSupply; bucketCount; DAI.Address; FRY.Address |]
+            [| ethConn.Account.Address; startOfSale; bucketPeriod; bucketSupply; bucketCount; FRY.Address; DAI.Address |]
         |> runNow
 
-    let transferFryData =
-        FRY.FunctionData "transfer"
-            [| DAI.Address
-               bucketSupply * bucketCount |]
-    let transferFryTxReceipt = ethConn.SendTxAsync DAI.Address transferFryData (BigInteger(0UL)) |> runNow
-    transferFryTxReceipt |> shouldSucceed
-
     ContractPlug(ethConn, abi, deployTxReceipt.ContractAddress)
+
+let seedBucketWithFries() =
+    let transferFryTxReceipt =
+        FRY.ExecuteFunction "transfer"
+            [| bucketSale.Address
+               bucketSupply * bucketCount |]
+    transferFryTxReceipt |> shouldSucceed
+    FRY.QueryFunction "balanceOf" [| bucketSale.Address |] |> should equal (bucketSupply * bucketCount)
+
+let seedWithDAI (recipient:string) (amount:BigInteger) =
+    let balanceBefore = DAI.QueryFunction "balanceOf" [| recipient |] 
+    let transferDaiTxReceipt =
+        DAI.ExecuteFunction "transfer"
+            [| recipient
+               bucketSupply * bucketCount |]
+    transferDaiTxReceipt |> shouldSucceed
+    DAI.QueryFunction "balanceOf" [| recipient |] |> should equal (balanceBefore + amount)
 
 
 [<Specification("BucketSale", "misc", 0)>]
@@ -76,6 +88,7 @@ let ``Can send eth``() =
 
     let balanceAfter = ethConn.Web3.Eth.GetBalance.SendRequestAsync(zeroAddress) |> runNow
     balanceAfter.Value |> should greaterThan (bigInt 1UL)
+
 
 [<Specification("BucketSale", "constructor", 1)>]
 [<Fact>]
@@ -100,18 +113,17 @@ let ``Can construct the contract``() =
     contract.QueryFunction "tokenSoldFor" [||] |> shouldEqualIgnoringCase tokenSoldFor
 
 
-let shouldRevertWithMessage msg (forwardedEvent: ForwardedEvent) =
-    match forwardedEvent.ResultAsRevertMessage with
-    | None -> failwith "not a revert message"
-    | Some msg -> msg |> should haveSubstring msg
-
-
 [<Specification("BucketSale", "enter", 1)>]
 [<Fact>]
 let ``Cannot enter bucket sale without putting some money down``() =
     let currentBucket = bucketSale.QueryFunction "currentBucket" [||]
     let data = bucketSale.FunctionData "enter" [| ethConn.Account.Address; currentBucket; 0UL; zeroAddress |]
-    let receipt = forwarder.SendTxAsync bucketSale.Address data (BigInteger(0)) |> runNow
+
+    let receipt =
+        data
+        |> forwarder.SendTxAsync bucketSale.Address (BigInteger(0))
+        |> runNow
+
     let forwardEvent = forwarder.DecodeForwardedEvents receipt |> Seq.head
     forwardEvent |> shouldRevertWithMessage "can't buy nothing"
 
@@ -126,7 +138,12 @@ let ``Cannot enter a past bucket``() =
     let currentBucket = bucketSale.QueryFunction "currentBucket" [||] |> uint64
     let incorrectBucket = currentBucket - 1UL
     let data = bucketSale.FunctionData "enter" [| ethConn.Account.Address; incorrectBucket; 1UL; zeroAddress |]
-    let receipt = forwarder.SendTxAsync bucketSale.Address data (BigInteger(0)) |> runNow
+
+    let receipt =
+        data
+        |> forwarder.SendTxAsync bucketSale.Address (BigInteger(0))
+        |> runNow
+
     let forwardEvent = forwarder.DecodeForwardedEvents receipt |> Seq.head
     forwardEvent |> shouldRevertWithMessage "cannot enter past buckets"
 
@@ -142,11 +159,20 @@ let ``Cannot enter bucket sale if there are not enough tokens to payout``() =
             [| DAI.Address
                moveDaiData.HexToByteArray()
                BigInteger(0UL) |]
-    let moveDaiTxReceipt = ethConn.SendTxAsync bucketSale.Address moveDaiForwardData (BigInteger(0)) |> runNow
+
+    let moveDaiTxReceipt =
+        moveDaiForwardData
+        |> ethConn.SendTxAsync bucketSale.Address (BigInteger(0))
+        |> runNow
     moveDaiTxReceipt |> shouldSucceed
 
     let data = bucketSale.FunctionData "enter" [| ethConn.Account.Address; currentBucket; 1UL; zeroAddress |]
-    let receipt = forwarder.SendTxAsync bucketSale.Address data (BigInteger(0)) |> runNow
+
+    let receipt =
+        data
+        |> forwarder.SendTxAsync bucketSale.Address (BigInteger(0))
+        |> runNow
+
     let forwardEvent = forwarder.DecodeForwardedEvents receipt |> Seq.head
     forwardEvent |> shouldRevertWithMessage "insufficient tokens to sell"
 
@@ -157,7 +183,12 @@ let ``Cannot enter bucket sale if there are not enough tokens to payout``() =
 let ``Cannot enter bucket sale with 0 amount``() =
     let currentBucket = bucketSale.QueryFunction "currentBucket" [||]
     let data = bucketSale.FunctionData "enter" [| ethConn.Account.Address; currentBucket; 0UL; zeroAddress |]
-    let receipt = forwarder.SendTxAsync bucketSale.Address data (BigInteger(0)) |> runNow
+
+    let receipt =
+        data
+        |> forwarder.SendTxAsync bucketSale.Address (BigInteger(0))
+        |> runNow
+
     let forwardEvent = forwarder.DecodeForwardedEvents receipt |> Seq.head
     forwardEvent |> shouldRevertWithMessage "can't buy nothing"
 
@@ -167,16 +198,69 @@ let ``Cannot enter bucket sale with 0 amount``() =
 let ``Cannot enter a bucket after the designated bucket count if there is no referrer``() =
     let bucketCount = bucketSale.QueryFunction "bucketCount" [||] // will be one bucket beyond what is allowed
     let data = bucketSale.FunctionData "enter" [| ethConn.Account.Address; bucketCount; 1UL; zeroAddress |]
-    let receipt = forwarder.SendTxAsync bucketSale.Address data (BigInteger(0)) |> runNow
+
+    let receipt =
+        data
+        |> forwarder.SendTxAsync bucketSale.Address (BigInteger(0))
+        |> runNow
+
     let forwardEvent = forwarder.DecodeForwardedEvents receipt |> Seq.head
     forwardEvent |> shouldRevertWithMessage "invalid bucket id--past end of sale"
+
 
 [<Specification("BucketSale", "enter", 5)>]
 [<Specification("BucketSale", "enter", 9)>]
 [<Fact>]
 let ``Cannot enter a bucket if payment reverts``() =
+    seedBucketWithFries |> ignore
+    seedWithDAI forwarder.ContractPlug.Address (BigInteger(10UL))
     let currentBucket = bucketSale.QueryFunction "currentBucket" [||] // will be one bucket beyond what is allowed
     let data = bucketSale.FunctionData "enter" [| ethConn.Account.Address; currentBucket; 1UL; zeroAddress |]
-    let receipt = forwarder.SendTxAsync bucketSale.Address data (BigInteger(0)) |> runNow
+
+    let receipt =
+        data
+        |> forwarder.SendTxAsync bucketSale.Address (BigInteger(0))
+        |> runNow
+
     let forwardEvent = forwarder.DecodeForwardedEvents receipt |> Seq.head
     forwardEvent |> shouldRevertWithMessage "insufficient tokens to sell"
+
+    
+[<Specification("BucketSale", "enter", 6)>]
+[<Fact>]
+let ``Can enter a bucket with no referrer``() =
+    // arrange
+    seedBucketWithFries |> ignore
+
+    let valueToEnter = BigInteger(10UL)
+    let approveDaiTxReceipt = DAI.ExecuteFunction "approve" [| bucketSale.Address; valueToEnter |]
+    approveDaiTxReceipt |> shouldSucceed
+
+    let currentBucket = bucketSale.QueryFunction "currentBucket" [||] // will be one bucket beyond what is allowed
+
+    // act
+    let receipt =
+        bucketSale.ExecuteFunction "enter" [| ethConn.Account.Address; currentBucket; valueToEnter; zeroAddress |]
+
+    // assert
+    receipt |> shouldSucceed
+    // event validation
+    let enteredEvent = receipt |> decodeFirstEvent<EnteredEvent>
+    enteredEvent.BucketId |> should equal currentBucket
+    enteredEvent.Buyer |> should equal ethConn.Account.Address
+    enteredEvent.BuyerReferralReward |> should equal (BigInteger(0UL))
+    enteredEvent.MsgSender |> should equal ethConn.Account.Address
+    enteredEvent.Referrer |> should equal zeroAddress
+    enteredEvent.ReferrerReferralReward |> should equal (BigInteger(0UL))
+    enteredEvent.ValueEntered |> should equal (BigInteger(1UL))
+    // state validation
+    // unchanged state
+    bucketSale.QueryFunction "owner" [||] |> shouldEqualIgnoringCase ethConn.Account.Address
+    bucketSale.QueryFunction "startOfSale" [||] |> should equal startOfSale
+    bucketSale.QueryFunction "bucketPeriod" [||] |> should equal bucketPeriod
+    bucketSale.QueryFunction "bucketSupply" [||] |> should equal bucketSupply
+    bucketSale.QueryFunction "bucketCount" [||] |> should equal bucketCount
+    bucketSale.QueryFunction "tokenOnSale" [||] |> shouldEqualIgnoringCase tokenOnSale
+    bucketSale.QueryFunction "tokenSoldFor" [||] |> shouldEqualIgnoringCase tokenSoldFor
+    // changed state
+    bucketSale.QueryFunction "buckets" [| currentBucket |] |> printf "%A"
