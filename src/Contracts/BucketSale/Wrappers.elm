@@ -59,56 +59,7 @@ getUserExitInfo testMode userAddress msgConstructor =
         (Config.bucketSaleAddress testMode)
         userAddress
         |> Eth.call (httpProvider testMode)
-        |> Task.map
-            (\bigIntList ->
-                case ( List.head bigIntList, List.tail bigIntList ) of
-                    ( Just totalBigInt, Just idBigInts ) ->
-                        let
-                            totalTokenValue =
-                                TokenValue.tokenValue totalBigInt
-                        in
-                        if TokenValue.isZero totalTokenValue then
-                            Just <|
-                                ExitInfo
-                                    TokenValue.zero
-                                    []
-
-                        else
-                            let
-                                exitableBucketIds =
-                                    {-
-                                       Because of limitations in Solidity, and to reduce scope, what we now have is a huge array
-                                       of mostly 0s, with the first N values being the id's of the buckets the user can exit from
-                                       (where N is the number of such buckets).
-
-                                       However, if the user can exit from bucket 0, then the first uint will be 0. Fortunately,
-                                       we now know that the user can exit from SOME buckets (because we're in this 'else'). Therefore,
-                                       if the first value is 0 it must mean that the 0th bucket is exitable, not that there are no
-                                       exitable buckets.
-
-                                       Therefore we will read the first value of this list as a bucket id straight, then after that
-                                       value read until we encounter a zero.
-                                    -}
-                                    idBigInts
-                                        |> List.map BigIntHelpers.toIntWithWarning
-                                        |> List.Extra.uncons
-                                        |> Maybe.map
-                                            (\( firstBucketId, otherIdsFollowedByZeroes ) ->
-                                                firstBucketId
-                                                    :: (otherIdsFollowedByZeroes
-                                                            |> List.Extra.takeWhile ((/=) 0)
-                                                       )
-                                            )
-                                        |> Maybe.withDefault []
-                            in
-                            Just <|
-                                ExitInfo
-                                    totalTokenValue
-                                    exitableBucketIds
-
-                    _ ->
-                        Nothing
-            )
+        |> Task.map queryBigIntListToMaybExitInfo
         |> Task.attempt msgConstructor
 
 
@@ -142,3 +93,54 @@ exit userAddress bucketId testMode =
         (Config.bucketSaleAddress testMode)
         (BigInt.fromInt bucketId)
         userAddress
+
+
+queryBigIntListToMaybExitInfo : List BigInt -> Maybe ExitInfo
+queryBigIntListToMaybExitInfo bigIntList =
+    case ( List.head bigIntList, List.tail bigIntList ) of
+        ( Just totalBigInt, Just idBigInts ) ->
+            let
+                totalTokenValue =
+                    TokenValue.tokenValue totalBigInt
+            in
+            if TokenValue.isZero totalTokenValue then
+                Just <|
+                    ExitInfo
+                        TokenValue.zero
+                        []
+
+            else
+                let
+                    exitableBucketIds =
+                        {-
+                           Because of limitations in Solidity, and to reduce scope, what we now have is a huge array
+                           of mostly 0s, with the first N values being the id's of the buckets the user can exit from
+                           (where N is the number of such buckets).
+
+                           However, if the user can exit from bucket 0, then the first uint will be 0. Fortunately,
+                           we now know that the user can exit from SOME buckets (because we're in this 'else'). Therefore,
+                           if the first value is 0 it must mean that the 0th bucket is exitable, not that there are no
+                           exitable buckets.
+
+                           Therefore we will read the first value of this list as a bucket id straight, then after that
+                           value read until we encounter a zero.
+                        -}
+                        idBigInts
+                            |> List.map BigIntHelpers.toIntWithWarning
+                            |> List.Extra.uncons
+                            |> Maybe.map
+                                (\( firstBucketId, otherIdsFollowedByZeroes ) ->
+                                    firstBucketId
+                                        :: (otherIdsFollowedByZeroes
+                                                |> List.Extra.takeWhile ((/=) 0)
+                                           )
+                                )
+                            |> Maybe.withDefault []
+                in
+                Just <|
+                    ExitInfo
+                        totalTokenValue
+                        exitableBucketIds
+
+        _ ->
+            Nothing
