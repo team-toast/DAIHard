@@ -35,7 +35,7 @@ contract Query {
         ) {
             (uint256 valueEntered, uint256 buyerTokensExited) = _bucketSale
                 .buys(bucketId, _buyer);
-            if (valueEntered > 0 && buyerTokensExited != 0) {
+            if (valueEntered > 0 && buyerTokensExited == 0) {
                 // update the running total for this buyer
                 results[0] = results[0].add(
                     _bucketSale.calculateExitableTokens(bucketId, _buyer)
