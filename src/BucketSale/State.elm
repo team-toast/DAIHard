@@ -33,7 +33,7 @@ init maybeReferrer testMode wallet now =
           , timezone = Nothing
           , saleStartTime = Nothing
           , bucketSale = Nothing
-          , bucketView = ViewActive
+          , bucketView = ViewCurrent
           , daiInput = ""
           , dumbCheckboxesClicked = ( False, False )
           , daiAmount = Nothing
@@ -71,7 +71,7 @@ update msg prevModel =
             let
                 cmd =
                     Cmd.batch <|
-                        [ fetchInfoForVisibleNonFutureBucketsCmd prevModel
+                        [ fetchUserExitInfoCmd prevModel
                         , Maybe.map
                             (\userInfo -> fetchUserAllowanceForSaleCmd userInfo prevModel.testMode)
                             (Wallet.userInfo prevModel.wallet)
@@ -88,10 +88,11 @@ update msg prevModel =
             justModelUpdate
                 { prevModel
                     | now = newNow
-                    , bucketSale =
-                        Maybe.map
-                            (addNewActiveBucketIfNeeded newNow prevModel.testMode)
-                            prevModel.bucketSale
+
+                    -- , bucketSale =
+                    --     Maybe.map
+                    --         (addNewActiveBucketIfNeeded newNow prevModel.testMode)
+                    --         prevModel.bucketSale
                 }
 
         SaleStartTimestampFetched fetchResult ->
@@ -156,7 +157,7 @@ update msg prevModel =
 
                                 maybeNewBucketSale =
                                     oldBucketSale
-                                        |> updatePastOrActiveBucketAt
+                                        |> updateBucketAt
                                             bucketId
                                             (\bucket ->
                                                 { bucket | totalValueEntered = Just valueEntered }
@@ -166,7 +167,7 @@ update msg prevModel =
                                 Nothing ->
                                     let
                                         _ =
-                                            Debug.log "Warning! Somehow trying to update a bucket that doesn't exist or is in the future!" ""
+                                            Debug.log "Warning! Somehow trying to update a bucket that doesn't exist!" ""
                                     in
                                     justModelUpdate prevModel
 
@@ -203,7 +204,7 @@ update msg prevModel =
                             let
                                 maybeNewBucketSale =
                                     oldBucketSale
-                                        |> updatePastOrActiveBucketAt
+                                        |> updateBucketAt
                                             bucketId
                                             (\bucket ->
                                                 { bucket
@@ -265,8 +266,8 @@ update msg prevModel =
                 Just bucketSale ->
                     let
                         newBucketView =
-                            if bucketId == getActiveBucketId bucketSale prevModel.now prevModel.testMode then
-                                ViewActive
+                            if bucketId == getCurrentBucketId bucketSale prevModel.now prevModel.testMode then
+                                ViewCurrent
 
                             else
                                 ViewId bucketId
@@ -445,16 +446,16 @@ initBucketSale testMode saleStartTime now =
                 |> (\seconds ->
                         (seconds // (Config.bucketSaleBucketInterval testMode |> TimeHelpers.posixToSeconds))
                             + 1
-                            |> max 0
                    )
     in
-    if numBuckets == 0 then
+    if numBuckets <= 0 then
         Nothing
 
     else
-        let
-            allBuckets =
-                List.range 0 (numBuckets - 1)
+        Just <|
+            BucketSale
+                saleStartTime
+                (List.range 0 (numBuckets - 1)
                     |> List.map
                         (\id ->
                             Bucket
@@ -468,71 +469,12 @@ initBucketSale testMode saleStartTime now =
                                 Nothing
                                 Nothing
                         )
-        in
-        Maybe.map2
-            (BucketSale saleStartTime)
-            (List.Extra.init allBuckets)
-            (List.Extra.last allBuckets)
+                )
 
 
-addNewActiveBucketIfNeeded : Time.Posix -> Bool -> BucketSale -> BucketSale
-addNewActiveBucketIfNeeded now testMode prevBucketSale =
-    let
-        nextBucketStartTime =
-            TimeHelpers.add
-                prevBucketSale.activeBucket.startTime
-                (Config.bucketSaleBucketInterval testMode)
-    in
-    if TimeHelpers.compare nextBucketStartTime now /= GT then
-        { prevBucketSale
-            | pastBuckets =
-                List.append
-                    prevBucketSale.pastBuckets
-                    [ prevBucketSale.activeBucket ]
-            , activeBucket =
-                Bucket
-                    nextBucketStartTime
-                    Nothing
-                    Nothing
-        }
-
-    else
-        prevBucketSale
-
-
-fetchInfoForVisibleNonFutureBucketsCmd : Model -> Cmd Msg
-fetchInfoForVisibleNonFutureBucketsCmd model =
-    case model.bucketSale of
-        Just bucketSale ->
-            visibleBucketIds bucketSale model.bucketView model.now model.testMode
-                |> List.map
-                    (\id ->
-                        if id <= getActiveBucketId bucketSale model.now model.testMode then
-                            Cmd.batch
-                                [ BucketSale.getTotalValueEnteredForBucket
-                                    model.testMode
-                                    id
-                                    (BucketValueEnteredFetched id)
-                                , case Wallet.userInfo model.wallet of
-                                    Just userInfo ->
-                                        BucketSale.getUserBuyForBucket
-                                            model.testMode
-                                            userInfo.address
-                                            id
-                                            (UserBuyFetched userInfo.address id)
-
-                                    Nothing ->
-                                        Cmd.none
-                                ]
-
-                        else
-                            Cmd.none
-                     -- Don't try to fetch values for future buckets
-                    )
-                |> Cmd.batch
-
-        _ ->
-            Cmd.none
+fetchUserExitInfoCmd : Model -> Cmd Msg
+fetchUserExitInfoCmd model =
+    Debug.todo ""
 
 
 fetchUserAllowanceForSaleCmd : UserInfo -> Bool -> Cmd Msg
@@ -558,7 +500,7 @@ fetchSaleStartTimestampCmd testMode =
 
 clearBucketSaleExitInfo : BucketSale -> BucketSale
 clearBucketSaleExitInfo =
-    updateAllPastOrActiveBuckets
+    updateAllBuckets
         (\bucket ->
             { bucket | userBuy = Nothing }
         )

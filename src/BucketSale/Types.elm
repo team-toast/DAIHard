@@ -1,4 +1,4 @@
-module BucketSale.Types exposing (AllowanceState(..), Bucket, BucketSale, BucketState(..), BucketView(..), Buy, Model, Msg(..), UpdateResult, activeBucketTimeLeft, bucketStartTime, buyFromBindingBuy, getActiveBucketId, getBucketInfo, getClaimableTokens, getEffectivePricePerToken, getFocusedBucketId, justModelUpdate, makeBlankBucket, numBucketsToSide, updateAllPastOrActiveBuckets, updatePastOrActiveBucketAt, visibleBucketIds)
+module BucketSale.Types exposing (AllowanceState(..), Bucket, BucketSale, BucketState(..), BucketView(..), Buy, Model, Msg(..), UpdateResult, buyFromBindingBuy, calcClaimableTokens, calcEffectivePricePerToken, currentBucketTimeLeft, getBucketEndTime, getBucketInfo, getCurrentBucket, getCurrentBucketId, getFocusedBucketId, justModelUpdate, makeBlankBucket, updateAllBuckets, updateBucketAt)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -80,82 +80,96 @@ type AllowanceState
     | UnlockMining
 
 
+type BucketView
+    = ViewCurrent
+    | ViewId Int
+
+
 type alias BucketSale =
     { startTime : Time.Posix
-    , pastBuckets : List Bucket
-    , activeBucket : Bucket
+    , buckets : List Bucket
     }
 
 
-getBucketInfo : BucketSale -> Int -> Bool -> ( BucketState, Bucket )
-getBucketInfo bucketSale bucketId testMode =
-    case bucketSale.pastBuckets |> List.Extra.getAt bucketId of
-        Just pastBucket ->
-            ( Past, pastBucket )
-
-        Nothing ->
-            if bucketId == List.length bucketSale.pastBuckets then
-                ( Active, bucketSale.activeBucket )
-
-            else
-                ( Future, makeBlankBucket testMode bucketSale.startTime bucketId )
+type alias Bucket =
+    { startTime : Time.Posix
+    , totalValueEntered : Maybe TokenValue
+    , userBuy : Maybe Buy
+    }
 
 
-updateAllPastOrActiveBuckets : (Bucket -> Bucket) -> BucketSale -> BucketSale
-updateAllPastOrActiveBuckets func bucketSale =
+type BucketState
+    = Closed
+    | Current
+    | Future
+
+
+type alias Buy =
+    { valueEntered : TokenValue
+    , hasExited : Bool
+    }
+
+
+updateAllBuckets : (Bucket -> Bucket) -> BucketSale -> BucketSale
+updateAllBuckets func bucketSale =
     { bucketSale
-        | pastBuckets =
-            bucketSale.pastBuckets
+        | buckets =
+            bucketSale.buckets
                 |> List.map func
-        , activeBucket =
-            bucketSale.activeBucket |> func
     }
 
 
-updatePastOrActiveBucketAt : Int -> (Bucket -> Bucket) -> BucketSale -> Maybe BucketSale
-updatePastOrActiveBucketAt bucketId updateFunc bucketSale =
-    if bucketId == List.length bucketSale.pastBuckets then
-        Just <|
+updateBucketAt : Int -> (Bucket -> Bucket) -> BucketSale -> Maybe BucketSale
+updateBucketAt id func bucketSale =
+    if id < List.length bucketSale.buckets then
+        Just
             { bucketSale
-                | activeBucket =
-                    bucketSale.activeBucket |> updateFunc
-            }
-
-    else if bucketId < List.length bucketSale.pastBuckets then
-        Just <|
-            { bucketSale
-                | pastBuckets =
-                    bucketSale.pastBuckets
-                        |> List.Extra.updateAt bucketId updateFunc
+                | buckets =
+                    bucketSale.buckets
+                        |> List.Extra.updateAt id func
             }
 
     else
         Nothing
 
 
+getBucketInfo : BucketSale -> Int -> Time.Posix -> Bool -> Maybe ( BucketState, Bucket )
+getBucketInfo bucketSale bucketId now testMode =
+    List.Extra.getAt bucketId bucketSale.buckets
+        |> Maybe.map
+            (\bucket ->
+                ( if TimeHelpers.compare bucket.startTime now == GT then
+                    Future
+
+                  else if TimeHelpers.compare (getBucketEndTime bucket testMode) now == GT then
+                    Current
+
+                  else
+                    Closed
+                , bucket
+                )
+            )
+
+
+getBucketEndTime : Bucket -> Bool -> Time.Posix
+getBucketEndTime bucket testMode =
+    TimeHelpers.add
+        bucket.startTime
+        (Config.bucketSaleBucketInterval testMode)
+
+
 getFocusedBucketId : BucketSale -> BucketView -> Time.Posix -> Bool -> Int
 getFocusedBucketId bucketSale bucketView now testMode =
     case bucketView of
-        ViewActive ->
-            getActiveBucketId bucketSale now testMode
+        ViewCurrent ->
+            getCurrentBucketId bucketSale now testMode
 
         ViewId id ->
             id
 
 
-visibleBucketIds : BucketSale -> BucketView -> Time.Posix -> Bool -> List Int
-visibleBucketIds bucketSale bucketView now testMode =
-    let
-        centerBucketId =
-            getFocusedBucketId bucketSale bucketView now testMode
-    in
-    List.range
-        (max (centerBucketId - numBucketsToSide) 0)
-        (centerBucketId + numBucketsToSide)
-
-
-getActiveBucketId : BucketSale -> Time.Posix -> Bool -> Int
-getActiveBucketId bucketSale now testMode =
+getCurrentBucketId : BucketSale -> Time.Posix -> Bool -> Int
+getCurrentBucketId bucketSale now testMode =
     (TimeHelpers.sub now bucketSale.startTime
         |> TimeHelpers.posixToSeconds
     )
@@ -164,32 +178,26 @@ getActiveBucketId bucketSale now testMode =
            )
 
 
-activeBucketTimeLeft : BucketSale -> Time.Posix -> Bool -> Time.Posix
-activeBucketTimeLeft bucketSale now testMode =
-    let
-        nextBucketId =
-            getActiveBucketId bucketSale now testMode + 1
-    in
-    TimeHelpers.sub
-        (bucketStartTime bucketSale nextBucketId testMode)
+getCurrentBucket : BucketSale -> Time.Posix -> Bool -> Maybe Bucket
+getCurrentBucket bucketSale now testMode =
+    getBucketInfo
+        bucketSale
+        (getCurrentBucketId bucketSale now testMode)
         now
+        testMode
+        |> Maybe.map Tuple.second
 
 
-bucketStartTime : BucketSale -> Int -> Bool -> Time.Posix
-bucketStartTime bucketSale bucketId testMode =
-    TimeHelpers.add
-        bucketSale.startTime
-        (TimeHelpers.secondsToPosix <|
-            TimeHelpers.posixToSeconds (Config.bucketSaleBucketInterval testMode)
-                * bucketId
-        )
+currentBucketTimeLeft : BucketSale -> Time.Posix -> Bool -> Time.Posix
+currentBucketTimeLeft bucketSale now testMode =
+    case getCurrentBucket bucketSale now testMode of
+        Nothing ->
+            Time.millisToPosix 0
 
-
-type alias Bucket =
-    { startTime : Time.Posix
-    , totalValueEntered : Maybe TokenValue
-    , userBuy : Maybe Buy
-    }
+        Just currentBucket ->
+            TimeHelpers.sub
+                (getBucketEndTime currentBucket testMode)
+                now
 
 
 makeBlankBucket : Bool -> Time.Posix -> Int -> Bucket
@@ -205,17 +213,6 @@ makeBlankBucket testMode bucketSaleStartTime bucketId =
         Nothing
 
 
-type BucketState
-    = Past
-    | Active
-    | Future
-
-
-type BucketView
-    = ViewActive
-    | ViewId Int
-
-
 buyFromBindingBuy : BucketSaleBindings.Buy -> Buy
 buyFromBindingBuy bindingBuy =
     Buy
@@ -223,18 +220,8 @@ buyFromBindingBuy bindingBuy =
         (BigInt.compare bindingBuy.buyerTokensExited (BigInt.fromInt 0) /= EQ)
 
 
-type alias Buy =
-    { valueEntered : TokenValue
-    , hasExited : Bool
-    }
-
-
-numBucketsToSide =
-    3
-
-
-getClaimableTokens : TokenValue -> TokenValue -> Bool -> TokenValue
-getClaimableTokens totalValueEntered daiIn testMode =
+calcClaimableTokens : TokenValue -> TokenValue -> Bool -> TokenValue
+calcClaimableTokens totalValueEntered daiIn testMode =
     let
         claimableRatio =
             TokenValue.toFloatWithWarning daiIn
@@ -245,8 +232,8 @@ getClaimableTokens totalValueEntered daiIn testMode =
         claimableRatio
 
 
-getEffectivePricePerToken : TokenValue -> Bool -> TokenValue
-getEffectivePricePerToken totalValueEntered testMode =
+calcEffectivePricePerToken : TokenValue -> Bool -> TokenValue
+calcEffectivePricePerToken totalValueEntered testMode =
     TokenValue.toFloatWithWarning totalValueEntered
         / (TokenValue.toFloatWithWarning <| Config.bucketSaleTokensPerBucket testMode)
         |> TokenValue.fromFloatWithWarning
