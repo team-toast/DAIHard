@@ -1,4 +1,4 @@
-module Config exposing (activeFactories, bucketSaleAddress, bucketSaleBucketInterval, bucketSaleTokensPerBucket, bucketTokenSymbol, devFeeAddress, factoryAddress, tokenContractAddress)
+module Config exposing (activeFactories, bucketSaleAddress, bucketSaleBucketInterval, bucketSaleQueryAddress, bucketSaleTokensPerBucket, bucketTokenSymbol, devFeeAddress, factoryAddress, tokenContractAddress)
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -74,6 +74,15 @@ bucketSaleAddress testMode =
 
     else
         Debug.todo "No address for non-testMode bucketSale"
+
+
+bucketSaleQueryAddress : Bool -> Address
+bucketSaleQueryAddress testMode =
+    if testMode then
+        Eth.Utils.unsafeToAddress "0x49C6B6892c8229c00D537Bed5d7e60B1E9B4Fd83"
+
+    else
+        Debug.todo ""
 
 
 bucketSaleBucketInterval : Bool -> Time.Posix

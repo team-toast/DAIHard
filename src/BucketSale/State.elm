@@ -7,7 +7,7 @@ import CmdDown exposing (CmdDown)
 import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Config
-import Contracts.BucketSale.Wrappers as BucketSale
+import Contracts.BucketSale.Wrappers as BucketSaleWrappers
 import Contracts.Wrappers
 import Eth
 import Eth.Types exposing (Address, HttpProvider)
@@ -39,6 +39,7 @@ init maybeReferrer testMode wallet now =
           , daiAmount = Nothing
           , referrer = maybeReferrer
           , allowanceState = Loading
+          , exitInfo = Nothing
           }
         , Cmd.batch
             [ fetchSaleStartTimestampCmd testMode
@@ -70,13 +71,15 @@ update msg prevModel =
         Refresh ->
             let
                 cmd =
-                    Cmd.batch <|
-                        [ fetchUserExitInfoCmd prevModel
-                        , Maybe.map
-                            (\userInfo -> fetchUserAllowanceForSaleCmd userInfo prevModel.testMode)
-                            (Wallet.userInfo prevModel.wallet)
-                            |> Maybe.withDefault Cmd.none
-                        ]
+                    Maybe.map
+                        (\userInfo ->
+                            Cmd.batch <|
+                                [ fetchUserExitInfoCmd userInfo prevModel.testMode
+                                , fetchUserAllowanceForSaleCmd userInfo prevModel.testMode
+                                ]
+                        )
+                        (Wallet.userInfo prevModel.wallet)
+                        |> Maybe.withDefault Cmd.none
             in
             UpdateResult
                 prevModel
@@ -179,50 +182,80 @@ update msg prevModel =
                                         }
 
         UserBuyFetched userAddress bucketId fetchResult ->
-            case fetchResult of
-                Err httpErr ->
-                    let
-                        _ =
-                            Debug.log "http error when fetching buy for user" ( userAddress, bucketId, httpErr )
-                    in
-                    justModelUpdate prevModel
+            if (Wallet.userInfo prevModel.wallet |> Maybe.map .address) /= Just userAddress then
+                justModelUpdate prevModel
 
-                Ok bindingBuy ->
-                    let
-                        buy =
-                            buyFromBindingBuy bindingBuy
-                    in
-                    case prevModel.bucketSale of
-                        Nothing ->
-                            let
-                                _ =
-                                    Debug.log "Warning! Bucket value fetched but there is no bucketSale present!" ""
-                            in
-                            justModelUpdate prevModel
+            else
+                case fetchResult of
+                    Err httpErr ->
+                        let
+                            _ =
+                                Debug.log "http error when fetching buy for user" ( userAddress, bucketId, httpErr )
+                        in
+                        justModelUpdate prevModel
 
-                        Just oldBucketSale ->
-                            let
-                                maybeNewBucketSale =
-                                    oldBucketSale
-                                        |> updateBucketAt
-                                            bucketId
-                                            (\bucket ->
-                                                { bucket
-                                                    | userBuy = Just buy
-                                                }
-                                            )
-                            in
-                            case maybeNewBucketSale of
-                                Nothing ->
-                                    let
-                                        _ =
-                                            Debug.log "Warning! Somehow trying to update a bucket that does not exist or is in the future!" ""
-                                    in
-                                    justModelUpdate prevModel
+                    Ok bindingBuy ->
+                        let
+                            buy =
+                                buyFromBindingBuy bindingBuy
+                        in
+                        case prevModel.bucketSale of
+                            Nothing ->
+                                let
+                                    _ =
+                                        Debug.log "Warning! Bucket value fetched but there is no bucketSale present!" ""
+                                in
+                                justModelUpdate prevModel
 
-                                Just newBucketSale ->
-                                    justModelUpdate
-                                        { prevModel | bucketSale = Just newBucketSale }
+                            Just oldBucketSale ->
+                                let
+                                    maybeNewBucketSale =
+                                        oldBucketSale
+                                            |> updateBucketAt
+                                                bucketId
+                                                (\bucket ->
+                                                    { bucket
+                                                        | userBuy = Just buy
+                                                    }
+                                                )
+                                in
+                                case maybeNewBucketSale of
+                                    Nothing ->
+                                        let
+                                            _ =
+                                                Debug.log "Warning! Somehow trying to update a bucket that does not exist or is in the future!" ""
+                                        in
+                                        justModelUpdate prevModel
+
+                                    Just newBucketSale ->
+                                        justModelUpdate
+                                            { prevModel | bucketSale = Just newBucketSale }
+
+        UserExitInfoFetched userAddress fetchResult ->
+            if (Wallet.userInfo prevModel.wallet |> Maybe.map .address) /= Just userAddress then
+                justModelUpdate prevModel
+
+            else
+                case fetchResult of
+                    Err httpErr ->
+                        let
+                            _ =
+                                Debug.log "http error when userExitInfo" ( userAddress, httpErr )
+                        in
+                        justModelUpdate prevModel
+
+                    Ok Nothing ->
+                        let
+                            _ =
+                                Debug.log "Query contract returned an invalid result" userAddress
+                        in
+                        justModelUpdate prevModel
+
+                    Ok (Just exitInfo) ->
+                        justModelUpdate
+                            { prevModel
+                                | exitInfo = Just exitInfo
+                            }
 
         AllowanceFetched fetchResult ->
             case fetchResult of
@@ -314,7 +347,7 @@ update msg prevModel =
                             }
 
                         txParams =
-                            BucketSale.unlockDai prevModel.testMode
+                            BucketSaleWrappers.unlockDai prevModel.testMode
                                 |> Eth.toSend
                     in
                     ChainCmd.custom customSend txParams
@@ -361,7 +394,7 @@ update msg prevModel =
                             }
 
                         txParams =
-                            BucketSale.enter
+                            BucketSaleWrappers.enter
                                 userInfo.address
                                 bucketId
                                 daiAmount
@@ -406,7 +439,7 @@ update msg prevModel =
                             }
 
                         txParams =
-                            BucketSale.exit
+                            BucketSaleWrappers.exit
                                 userInfo.address
                                 bucketId
                                 prevModel.testMode
@@ -472,9 +505,12 @@ initBucketSale testMode saleStartTime now =
                 )
 
 
-fetchUserExitInfoCmd : Model -> Cmd Msg
-fetchUserExitInfoCmd model =
-    Debug.todo ""
+fetchUserExitInfoCmd : UserInfo -> Bool -> Cmd Msg
+fetchUserExitInfoCmd userInfo testMode =
+    BucketSaleWrappers.getUserExitInfo
+        testMode
+        userInfo.address
+        (UserExitInfoFetched userInfo.address)
 
 
 fetchUserAllowanceForSaleCmd : UserInfo -> Bool -> Cmd Msg
@@ -493,7 +529,7 @@ fetchUserAllowanceForSaleCmd userInfo testMode =
 
 fetchSaleStartTimestampCmd : Bool -> Cmd Msg
 fetchSaleStartTimestampCmd testMode =
-    BucketSale.getSaleStartTimestampCmd
+    BucketSaleWrappers.getSaleStartTimestampCmd
         testMode
         SaleStartTimestampFetched
 

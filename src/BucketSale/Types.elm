@@ -6,6 +6,7 @@ import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Config
 import Contracts.BucketSale.Generated.BucketSale as BucketSaleBindings
+import Contracts.BucketSale.Wrappers as BucketSaleWrappers
 import Eth.Types exposing (Address, TxHash, TxReceipt)
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
@@ -29,6 +30,7 @@ type alias Model =
     , daiAmount : Maybe (Result String TokenValue)
     , referrer : Maybe Address
     , allowanceState : AllowanceState
+    , exitInfo : Maybe BucketSaleWrappers.ExitInfo
     }
 
 
@@ -41,6 +43,7 @@ type Msg
     | SaleStartTimestampFetched (Result Http.Error BigInt)
     | BucketValueEnteredFetched Int (Result Http.Error BigInt)
     | UserBuyFetched Address Int (Result Http.Error BucketSaleBindings.Buy)
+    | UserExitInfoFetched Address (Result Http.Error (Maybe BucketSaleWrappers.ExitInfo))
     | BucketClicked Int
     | DaiInputChanged String
     | FirstDumbCheckboxClicked Bool
