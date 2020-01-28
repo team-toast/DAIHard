@@ -93,9 +93,9 @@ getUserExitInfo testMode userAddress msgConstructor =
                                         |> List.map BigIntHelpers.toIntWithWarning
                                         |> List.Extra.uncons
                                         |> Maybe.map
-                                            (\( firstBucketId, otherIdsAndZeros ) ->
+                                            (\( firstBucketId, otherIdsFollowedByZeroes ) ->
                                                 firstBucketId
-                                                    :: (otherIdsAndZeros
+                                                    :: (otherIdsFollowedByZeroes
                                                             |> List.Extra.takeWhile ((/=) 0)
                                                        )
                                             )
