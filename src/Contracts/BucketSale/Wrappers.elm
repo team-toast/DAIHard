@@ -86,7 +86,7 @@ getUserExitInfo testMode userAddress msgConstructor =
                                        if the first value is 0 it must mean that the 0th bucket is exitable, not that there are no
                                        exitable buckets.
 
-                                       Tehrefore we will read the first value of this list as a bucket id straight, then after that
+                                       Therefore we will read the first value of this list as a bucket id straight, then after that
                                        value read until we encounter a zero.
                                     -}
                                     idBigInts
