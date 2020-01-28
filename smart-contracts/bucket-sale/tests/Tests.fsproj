@@ -3,6 +3,8 @@
     <TargetFramework>netcoreapp2.1</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Constants.fs" />
+    <Compile Include="DTOs.fs" />
     <Compile Include="TestBase.fs" />
     <Compile Include="ConstructorTests.fs" />
   </ItemGroup>
