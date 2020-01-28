@@ -88,7 +88,7 @@ bucketSaleAddress testMode =
 bucketSaleQueryAddress : Bool -> Address
 bucketSaleQueryAddress testMode =
     if testMode then
-        Eth.Utils.unsafeToAddress "0x49C6B6892c8229c00D537Bed5d7e60B1E9B4Fd83"
+        Eth.Utils.unsafeToAddress "0x0Ca3626c9ef3E8b1DBb2b8a53D11E8b4c2d503CC"
 
     else
         Debug.todo ""
