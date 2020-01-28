@@ -67,10 +67,19 @@ devFeeAddress factoryType =
             Eth.Utils.unsafeToAddress "0x092110996699c3E06e998d89F0f4586026e44F0F"
 
 
+fryAddress : Bool -> Address
+fryAddress testMode =
+    if testMode then
+        Eth.Utils.unsafeToAddress "0x4F1bee416CEcB7Bc3d4A0b94F78e401fb664F4eF"
+
+    else
+        Debug.todo "no address for non-testmode FRY"
+
+
 bucketSaleAddress : Bool -> Address
 bucketSaleAddress testMode =
     if testMode then
-        Eth.Utils.unsafeToAddress "0x487Ac5423555B1D83F5b8BA13F260B296E9D0777"
+        Eth.Utils.unsafeToAddress "0xe0d2136293F7c924d6d8a41D58601c43256CC2b7"
 
     else
         Debug.todo "No address for non-testMode bucketSale"
@@ -106,4 +115,4 @@ bucketSaleTokensPerBucket testMode =
 
 bucketTokenSymbol : String
 bucketTokenSymbol =
-    "SUGR"
+    "FRY"
