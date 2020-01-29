@@ -196,8 +196,7 @@ contract BucketSale
         rather than something like bool buyerTokensHaveExited.
         */
 
-        Bucket storage bucket = buckets[_bucketId];
-        buyToWithdraw.buyerTokensExited = bucketSupply.mul(buyToWithdraw.valueEntered).div(bucket.totalValueEntered);
+        buyToWithdraw.buyerTokensExited = calculateExitableTokens(_bucketId, _buyer);
         totalExitedTokens = totalExitedTokens.add(buyToWithdraw.buyerTokensExited);
 
         bool transferSuccess = tokenOnSale.transfer(_buyer, buyToWithdraw.buyerTokensExited);
@@ -246,5 +245,17 @@ contract BucketSale
             uint result = SafeMath.min(HUNDRED_PERC, multiplier); // Cap it at 100% bonus
             return result;
         }
+    }
+
+    function calculateExitableTokens(uint _bucketId, address _buyer)
+        public
+        view
+        returns(uint)
+    {
+        Bucket storage bucket = buckets[_bucketId];
+        Buy storage buyToWithdraw = buys[_bucketId][_buyer];
+        return bucketSupply
+            .mul(buyToWithdraw.valueEntered)
+            .div(bucket.totalValueEntered);
     }
 }
