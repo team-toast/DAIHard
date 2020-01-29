@@ -182,7 +182,7 @@ maybeClaimBlock wallet maybeExitInfo =
                         ( PassiveStyle, Nothing )
 
                     else
-                        ( ActiveStyle, Just <| makeExitButton userInfo exitInfo )
+                        ( ActiveStyle, Just <| makeClaimButton userInfo exitInfo )
             in
             commonBlockContainer blockStyle
                 [ bigNumberElement
@@ -288,9 +288,13 @@ bigNumberElement attributes numberVal numberLabel blockStyle =
         )
 
 
-makeExitButton : UserInfo -> ExitInfo -> Element Msg
-makeExitButton userInfo exitInfo =
-    Element.text "I should be a button"
+makeClaimButton : UserInfo -> ExitInfo -> Element Msg
+makeClaimButton userInfo exitInfo =
+    EH.lightBlueButton
+        Desktop
+        [ Element.width Element.fill ]
+        [ "Claim your FRY" ]
+        (ClaimClicked userInfo exitInfo)
 
 
 loadingElement : Element Msg

@@ -6,7 +6,7 @@ import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Config
 import Contracts.BucketSale.Generated.BucketSale as BucketSaleBindings
-import Contracts.BucketSale.Wrappers as BucketSaleWrappers
+import Contracts.BucketSale.Wrappers as BucketSaleWrappers exposing (ExitInfo)
 import Eth.Types exposing (Address, TxHash, TxReceipt)
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
@@ -48,6 +48,7 @@ type Msg
     | UserExitInfoFetched Address (Result Http.Error (Maybe BucketSaleWrappers.ExitInfo))
     | TotalTokensExitedFetched (Result Http.Error TokenValue)
     | UserFryBalanceFetched Address (Result Http.Error TokenValue)
+    | ClaimClicked UserInfo ExitInfo
     | BucketClicked Int
     | DaiInputChanged String
     | FirstDumbCheckboxClicked Bool

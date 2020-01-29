@@ -333,6 +333,31 @@ update msg prevModel =
                                             TokenValue.tokenValue allowance
                                 }
 
+        ClaimClicked userInfo exitInfo ->
+            let
+                chainCmd =
+                    let
+                        customSend =
+                            { onMined = Just ( ExitMined, Nothing )
+                            , onSign = Nothing
+                            , onBroadcast = Nothing
+                            }
+
+                        txParams =
+                            BucketSaleWrappers.exitMany
+                                userInfo.address
+                                exitInfo.exitableBuckets
+                                prevModel.testMode
+                                |> Eth.toSend
+                    in
+                    ChainCmd.custom customSend txParams
+            in
+            UpdateResult
+                prevModel
+                Cmd.none
+                chainCmd
+                []
+
         BucketClicked bucketId ->
             case prevModel.bucketSale of
                 Nothing ->
