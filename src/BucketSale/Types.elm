@@ -24,6 +24,8 @@ type alias Model =
     , timezone : Maybe Time.Zone
     , saleStartTime : Maybe Time.Posix
     , bucketSale : Maybe BucketSale
+    , userFryBalance : Maybe TokenValue
+    , totalTokensExited : Maybe TokenValue
     , bucketView : BucketView
     , daiInput : String
     , dumbCheckboxesClicked : ( Bool, Bool )
@@ -44,6 +46,8 @@ type Msg
     | BucketValueEnteredFetched Int (Result Http.Error BigInt)
     | UserBuyFetched Address Int (Result Http.Error BucketSaleBindings.Buy)
     | UserExitInfoFetched Address (Result Http.Error (Maybe BucketSaleWrappers.ExitInfo))
+    | TotalTokensExitedFetched (Result Http.Error TokenValue)
+    | UserFryBalanceFetched Address (Result Http.Error TokenValue)
     | BucketClicked Int
     | DaiInputChanged String
     | FirstDumbCheckboxClicked Bool

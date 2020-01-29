@@ -33,6 +33,8 @@ init maybeReferrer testMode wallet now =
           , timezone = Nothing
           , saleStartTime = Nothing
           , bucketSale = Nothing
+          , totalTokensExited = Nothing
+          , userFryBalance = Nothing
           , bucketView = ViewCurrent
           , daiInput = ""
           , dumbCheckboxesClicked = ( False, False )
@@ -42,9 +44,21 @@ init maybeReferrer testMode wallet now =
           , exitInfo = Nothing
           }
         , Cmd.batch
-            [ fetchSaleStartTimestampCmd testMode
-            , Task.perform TimezoneGot Time.here
-            ]
+            ([ fetchSaleStartTimestampCmd testMode
+             , fetchTotalTokensExitedCmd testMode
+             , Task.perform TimezoneGot Time.here
+             ]
+                ++ (case Wallet.userInfo wallet of
+                        Just userInfo ->
+                            [ fetchUserExitInfoCmd userInfo testMode
+                            , fetchUserAllowanceForSaleCmd userInfo testMode
+                            , fetchUserFryBalance userInfo testMode
+                            ]
+
+                        Nothing ->
+                            []
+                   )
+            )
         )
 
     else
@@ -71,15 +85,18 @@ update msg prevModel =
         Refresh ->
             let
                 cmd =
-                    Maybe.map
-                        (\userInfo ->
-                            Cmd.batch <|
-                                [ fetchUserExitInfoCmd userInfo prevModel.testMode
-                                , fetchUserAllowanceForSaleCmd userInfo prevModel.testMode
-                                ]
-                        )
-                        (Wallet.userInfo prevModel.wallet)
-                        |> Maybe.withDefault Cmd.none
+                    Cmd.batch <|
+                        [ fetchTotalTokensExitedCmd prevModel.testMode ]
+                            ++ (Maybe.map
+                                    (\userInfo ->
+                                        [ fetchUserExitInfoCmd userInfo prevModel.testMode
+                                        , fetchUserAllowanceForSaleCmd userInfo prevModel.testMode
+                                        , fetchUserFryBalance userInfo prevModel.testMode
+                                        ]
+                                    )
+                                    (Wallet.userInfo prevModel.wallet)
+                                    |> Maybe.withDefault []
+                               )
             in
             UpdateResult
                 prevModel
@@ -91,11 +108,6 @@ update msg prevModel =
             justModelUpdate
                 { prevModel
                     | now = newNow
-
-                    -- , bucketSale =
-                    --     Maybe.map
-                    --         (addNewActiveBucketIfNeeded newNow prevModel.testMode)
-                    --         prevModel.bucketSale
                 }
 
         SaleStartTimestampFetched fetchResult ->
@@ -240,7 +252,7 @@ update msg prevModel =
                     Err httpErr ->
                         let
                             _ =
-                                Debug.log "http error when userExitInfo" ( userAddress, httpErr )
+                                Debug.log "http error when fetching userExitInfo" ( userAddress, httpErr )
                         in
                         justModelUpdate prevModel
 
@@ -256,6 +268,40 @@ update msg prevModel =
                             { prevModel
                                 | exitInfo = Just exitInfo
                             }
+
+        UserFryBalanceFetched userAddress fetchResult ->
+            if (Wallet.userInfo prevModel.wallet |> Maybe.map .address) /= Just userAddress then
+                justModelUpdate prevModel
+
+            else
+                case fetchResult of
+                    Err httpErr ->
+                        let
+                            _ =
+                                Debug.log "http error when fetching userFryBalance" ( userAddress, httpErr )
+                        in
+                        justModelUpdate prevModel
+
+                    Ok userFryBalance ->
+                        justModelUpdate
+                            { prevModel
+                                | userFryBalance = Just userFryBalance
+                            }
+
+        TotalTokensExitedFetched fetchResult ->
+            case fetchResult of
+                Err httpErr ->
+                    let
+                        _ =
+                            Debug.log "http error when fetching totalTokensExited" httpErr
+                    in
+                    justModelUpdate prevModel
+
+                Ok totalTokensExited ->
+                    justModelUpdate
+                        { prevModel
+                            | totalTokensExited = Just totalTokensExited
+                        }
 
         AllowanceFetched fetchResult ->
             case fetchResult of
@@ -532,6 +578,21 @@ fetchSaleStartTimestampCmd testMode =
     BucketSaleWrappers.getSaleStartTimestampCmd
         testMode
         SaleStartTimestampFetched
+
+
+fetchTotalTokensExitedCmd : Bool -> Cmd Msg
+fetchTotalTokensExitedCmd testMode =
+    BucketSaleWrappers.getTotalExitedTokens
+        testMode
+        TotalTokensExitedFetched
+
+
+fetchUserFryBalance : UserInfo -> Bool -> Cmd Msg
+fetchUserFryBalance userInfo testMode =
+    BucketSaleWrappers.getFryBalance
+        testMode
+        userInfo.address
+        (UserFryBalanceFetched userInfo.address)
 
 
 clearBucketSaleExitInfo : BucketSale -> BucketSale

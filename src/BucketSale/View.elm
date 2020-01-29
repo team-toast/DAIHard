@@ -5,7 +5,7 @@ import BucketSale.Types exposing (..)
 import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Config
-import Element exposing (Element)
+import Element exposing (Attribute, Element)
 import Element.Background
 import Element.Border
 import Element.Events
@@ -26,8 +26,8 @@ import TokenValue exposing (TokenValue)
 import Wallet
 
 
-root : DisplayProfile -> Model -> ( Element Msg, List (Element Msg) )
-root dProfile model =
+root : Model -> ( Element Msg, List (Element Msg) )
+root model =
     ( Element.column
         [ Element.width Element.fill
         , Element.paddingEach
@@ -37,111 +37,220 @@ root dProfile model =
             , left = 0
             }
         ]
-        [ EH.simpleSubmodelContainer
-            (1600 |> changeForMobile 400 dProfile)
-            (case model.bucketSale of
-                Nothing ->
-                    Element.el [ Element.centerX, Element.Font.size 30 ] <| Element.text "Loading..."
+        [ case model.bucketSale of
+            Nothing ->
+                Element.el [ Element.centerX, Element.Font.size 30 ] <| Element.text "Loading..."
 
-                Just bucketSale ->
-                    Element.column
-                        [ Element.width Element.fill
-                        , Element.spacing (20 |> changeForMobile 10 dProfile)
-                        , Element.padding (20 |> changeForMobile 10 dProfile)
-                        ]
-                        [ testOutputElement model ]
-            )
+            Just bucketSale ->
+                Element.row
+                    [ Element.centerX
+                    , Element.spacing 50
+                    ]
+                    [ closedBucketsPane model
+                    , focusedBucketPane model
+                    , futureBucketsPane model
+                    ]
         ]
     , []
     )
 
 
-testOutputElement : Model -> Element Msg
-testOutputElement model =
-    Element.text <|
-        case model.exitInfo of
-            Nothing ->
-                "not loaded"
+commonPaneAttributes : List (Attribute Msg)
+commonPaneAttributes =
+    [ Element.Background.color EH.white
+    , Element.Border.rounded 8
+    , Element.centerY
+    , Element.Border.shadow
+        { offset = ( 0, 3 )
+        , size = 0
+        , blur = 20
+        , color = Element.rgba 0 0 0 0.06
+        }
+    ]
 
-            Just exitInfo ->
-                TokenValue.toConciseString exitInfo.totalExitable
-                    ++ " - "
-                    ++ String.fromInt (List.length exitInfo.exitableBuckets)
+
+closedBucketsPane : Model -> Element Msg
+closedBucketsPane model =
+    Element.column
+        (commonPaneAttributes
+            ++ [ Element.width <| Element.px 430
+               , Element.paddingXY 32 25
+               , Element.spacing 7
+               ]
+        )
+        [ Element.el
+            [ Element.Font.size 25
+            , Element.Font.bold
+            ]
+          <|
+            Element.text "Previous Buckets"
+        , Element.paragraph
+            [ Element.Font.color <| Element.rgba255 1 31 52 0.75
+            , Element.Font.size 15
+            ]
+            [ Element.text "These are the previous buckets of FRY that have been claimed. If you have FRY to claim it will show below." ]
+        , maybeUserBalanceBlock model.wallet model.userFryBalance
+        ]
 
 
-bucketTimestampToString : Time.Posix -> Maybe Time.Zone -> Time.Posix -> String
-bucketTimestampToString now maybeTz timestamp =
-    let
-        tz =
-            maybeTz |> Maybe.withDefault Time.utc
+focusedBucketPane : Model -> Element Msg
+focusedBucketPane model =
+    Element.column
+        (commonPaneAttributes
+            ++ [ Element.width <| Element.px 650
+               , Element.paddingXY 35 31
+               , Element.spacing 7
+               ]
+        )
+        [ Element.el
+            [ Element.Font.size 30
+            , Element.Font.bold
+            ]
+          <|
+            Element.text <|
+                "Current bucket of "
+                    ++ TokenValue.toConciseString (Config.bucketSaleTokensPerBucket model.testMode)
+                    ++ " "
+                    ++ Config.bucketTokenSymbol
+        , Element.el
+            [ Element.height <| Element.px 600
+            ]
+          <|
+            Element.text "hi"
+        ]
 
-        timeDiff =
-            TimeHelpers.secondsToPosix <|
-                abs <|
-                    TimeHelpers.posixToSeconds now
-                        - TimeHelpers.posixToSeconds timestamp
 
-        maybeDayString =
-            let
-                isSameDay =
-                    (Time.toDay tz now == Time.toDay tz timestamp)
-                        && (TimeHelpers.compare timeDiff TimeHelpers.oneDay == LT)
+futureBucketsPane : Model -> Element Msg
+futureBucketsPane model =
+    Element.column
+        (commonPaneAttributes
+            ++ [ Element.paddingXY 32 25
+               , Element.spacing 7
+               ]
+        )
+        [ Element.el
+            [ Element.width <| Element.px 430
+            , Element.Font.size 25
+            , Element.Font.bold
+            ]
+          <|
+            Element.text "Upcoming Buckets"
+        ]
 
-                isSameYear =
-                    Time.toYear tz now == Time.toYear tz timestamp
-            in
-            if isSameDay then
-                Nothing
 
-            else if TimeHelpers.compare timeDiff TimeHelpers.oneWeek == LT then
-                Just
-                    (Time.toWeekday tz timestamp
-                        |> TimeHelpers.weekdayToShortString
+maybeUserBalanceBlock : Wallet.State -> Maybe TokenValue -> Element Msg
+maybeUserBalanceBlock wallet maybeFryBalance =
+    case ( Wallet.userInfo wallet, maybeFryBalance ) of
+        ( Nothing, _ ) ->
+            Element.none
+
+        ( _, Nothing ) ->
+            loadingElement
+
+        ( Just userInfo, Just fryBalance ) ->
+            commonBlockContainer PassiveStyle
+                [ bigNumberElement
+                    [ Element.centerX ]
+                    (TokenNum fryBalance)
+                    Config.bucketTokenSymbol
+                    PassiveStyle
+                , Element.paragraph
+                    [ Element.centerX
+                    , Element.width Element.shrink
+                    ]
+                    [ Element.text "in your wallet"
+                    ]
+                ]
+
+
+type CommonBlockStyle
+    = ActiveStyle
+    | PassiveStyle
+
+
+emphasizedText : CommonBlockStyle -> (String -> Element Msg)
+emphasizedText styleType =
+    Element.el
+        (case styleType of
+            ActiveStyle ->
+                [ Element.Font.color EH.white ]
+
+            PassiveStyle ->
+                [ Element.Font.color deepBlue ]
+        )
+        << Element.text
+
+
+commonBlockContainer : CommonBlockStyle -> List (Element Msg) -> Element Msg
+commonBlockContainer styleType elements =
+    Element.column
+        ([ Element.width Element.fill
+         , Element.Border.rounded 4
+         , Element.paddingXY 22 18
+         , Element.spacing 3
+         , Element.Font.color <| deepBlueWithAlpha 0.3
+         ]
+            ++ (case styleType of
+                    ActiveStyle ->
+                        [ Element.Background.color deepBlue ]
+
+                    PassiveStyle ->
+                        [ Element.Background.color <| deepBlueWithAlpha 0.05 ]
+               )
+        )
+        elements
+
+
+type NumberVal
+    = IntegerNum Int
+    | TokenNum TokenValue
+
+
+numberValToString : NumberVal -> String
+numberValToString numberVal =
+    case numberVal of
+        IntegerNum intVal ->
+            formatFloat 0 (toFloat intVal)
+
+        TokenNum tokenValue ->
+            TokenValue.toConciseString tokenValue
+
+
+bigNumberElement : List (Attribute Msg) -> NumberVal -> String -> CommonBlockStyle -> Element Msg
+bigNumberElement attributes numberVal numberLabel blockStyle =
+    Element.el
+        (attributes
+            ++ [ Element.Font.size 27
+               , Element.Font.bold
+               , Element.Font.color
+                    (case blockStyle of
+                        ActiveStyle ->
+                            EH.white
+
+                        PassiveStyle ->
+                            deepBlue
                     )
-
-            else if isSameYear then
-                Just <|
-                    (Time.toMonth tz timestamp
-                        |> TimeHelpers.monthToShortString
-                    )
-                        ++ " "
-                        ++ (Time.toDay tz timestamp
-                                |> String.fromInt
-                           )
-
-            else
-                Just <|
-                    (Time.toMonth tz timestamp
-                        |> TimeHelpers.monthToShortString
-                    )
-                        ++ " "
-                        ++ (Time.toDay tz timestamp
-                                |> String.fromInt
-                           )
-                        ++ ", "
-                        ++ (Time.toYear tz timestamp
-                                |> String.fromInt
-                           )
-
-        timeString =
-            (Time.toHour tz timestamp
-                |> String.fromInt
-                |> String.padLeft 2 '0'
+               ]
+        )
+        (Element.text
+            (numberValToString numberVal
+                ++ " "
+                ++ numberLabel
             )
-                ++ ":"
-                ++ (Time.toMinute tz timestamp
-                        |> String.fromInt
-                        |> String.padLeft 2 '0'
-                   )
-    in
-    (maybeDayString
-        |> Maybe.map (\s -> s ++ " ")
-        |> Maybe.withDefault ""
-    )
-        ++ timeString
-        ++ (if maybeTz == Nothing then
-                " (UTC)"
+        )
 
-            else
-                ""
-           )
+
+loadingElement : Element Msg
+loadingElement =
+    Element.text "Loading"
+
+
+deepBlue : Element.Color
+deepBlue =
+    Element.rgb255 10 33 109
+
+
+deepBlueWithAlpha : Float -> Element.Color
+deepBlueWithAlpha a =
+    deepBlue
+        |> EH.addAlpha a

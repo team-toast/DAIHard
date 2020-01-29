@@ -1,4 +1,4 @@
-module Contracts.BucketSale.Wrappers exposing (ExitInfo, enter, exit, getSaleStartTimestampCmd, getTotalValueEnteredForBucket, getUserBuyForBucket, getUserExitInfo, httpProvider, unlockDai)
+module Contracts.BucketSale.Wrappers exposing (ExitInfo, enter, exit, getFryBalance, getSaleStartTimestampCmd, getTotalExitedTokens, getTotalValueEnteredForBucket, getUserBuyForBucket, getUserExitInfo, httpProvider, queryBigIntListToMaybExitInfo, unlockDai)
 
 import BigInt exposing (BigInt)
 import CommonTypes
@@ -32,10 +32,11 @@ getSaleStartTimestampCmd testMode msgConstructor =
         |> Task.attempt msgConstructor
 
 
-getTotalValueEnteredForBucket : Bool -> Int -> (Result Http.Error BigInt -> msg) -> Cmd msg
+getTotalValueEnteredForBucket : Bool -> Int -> (Result Http.Error TokenValue -> msg) -> Cmd msg
 getTotalValueEnteredForBucket testMode bucketId msgConstructor =
     BucketSaleBindings.buckets (Config.bucketSaleAddress testMode) (BigInt.fromInt bucketId)
         |> Eth.call (httpProvider testMode)
+        |> Task.map TokenValue.tokenValue
         |> Task.attempt msgConstructor
 
 
@@ -43,6 +44,24 @@ getUserBuyForBucket : Bool -> Address -> Int -> (Result Http.Error BucketSaleBin
 getUserBuyForBucket testMode userAddress bucketId msgConstructor =
     BucketSaleBindings.buys (Config.bucketSaleAddress testMode) (BigInt.fromInt bucketId) userAddress
         |> Eth.call (httpProvider testMode)
+        |> Task.attempt msgConstructor
+
+
+getTotalExitedTokens : Bool -> (Result Http.Error TokenValue -> msg) -> Cmd msg
+getTotalExitedTokens testMode msgConstructor =
+    BucketSaleBindings.totalExitedTokens (Config.bucketSaleAddress testMode)
+        |> Eth.call (httpProvider testMode)
+        |> Task.map TokenValue.tokenValue
+        |> Task.attempt msgConstructor
+
+
+getFryBalance : Bool -> Address -> (Result Http.Error TokenValue -> msg) -> Cmd msg
+getFryBalance testMode userAddress msgConstructor =
+    Token.balanceOf
+        (Config.fryAddress testMode)
+        userAddress
+        |> Eth.call (httpProvider testMode)
+        |> Task.map TokenValue.tokenValue
         |> Task.attempt msgConstructor
 
 

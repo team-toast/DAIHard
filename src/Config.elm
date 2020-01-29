@@ -1,4 +1,4 @@
-module Config exposing (activeFactories, bucketSaleAddress, bucketSaleBucketInterval, bucketSaleQueryAddress, bucketSaleTokensPerBucket, bucketTokenSymbol, devFeeAddress, factoryAddress, tokenContractAddress)
+module Config exposing (activeFactories, bucketSaleAddress, bucketSaleBucketInterval, bucketSaleQueryAddress, bucketSaleTokensPerBucket, bucketTokenSymbol, devFeeAddress, factoryAddress, fryAddress, tokenContractAddress)
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
