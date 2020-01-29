@@ -5,6 +5,7 @@ import BucketSale.Types exposing (..)
 import CmdUp exposing (CmdUp)
 import CommonTypes exposing (..)
 import Config
+import Contracts.BucketSale.Wrappers exposing (ExitInfo)
 import Element exposing (Attribute, Element)
 import Element.Background
 import Element.Border
@@ -90,6 +91,8 @@ closedBucketsPane model =
             ]
             [ Element.text "These are the previous buckets of FRY that have been claimed. If you have FRY to claim it will show below." ]
         , maybeUserBalanceBlock model.wallet model.userFryBalance
+        , maybeClaimBlock model.wallet model.exitInfo
+        , totalExitedBlock model.totalTokensExited
         ]
 
 
@@ -163,6 +166,48 @@ maybeUserBalanceBlock wallet maybeFryBalance =
                 ]
 
 
+maybeClaimBlock : Wallet.State -> Maybe ExitInfo -> Element Msg
+maybeClaimBlock wallet maybeExitInfo =
+    case ( Wallet.userInfo wallet, maybeExitInfo ) of
+        ( Nothing, _ ) ->
+            Element.none
+
+        ( _, Nothing ) ->
+            loadingElement
+
+        ( Just userInfo, Just exitInfo ) ->
+            let
+                ( blockStyle, maybeClaimButton ) =
+                    if TokenValue.isZero exitInfo.totalExitable then
+                        ( PassiveStyle, Nothing )
+
+                    else
+                        ( ActiveStyle, Just <| makeExitButton userInfo exitInfo )
+            in
+            commonBlockContainer blockStyle
+                [ bigNumberElement
+                    [ Element.centerX ]
+                    (TokenNum exitInfo.totalExitable)
+                    Config.bucketTokenSymbol
+                    blockStyle
+                , Element.paragraph
+                    [ Element.centerX
+                    , Element.width Element.shrink
+                    ]
+                    [ Element.text "ready to be claimed now" ]
+                , Element.el
+                    [ Element.centerX ]
+                    (maybeClaimButton
+                        |> Maybe.withDefault Element.none
+                    )
+                ]
+
+
+totalExitedBlock : Maybe TokenValue -> Element Msg
+totalExitedBlock maybeTotalExited =
+    Element.text "exited block"
+
+
 type CommonBlockStyle
     = ActiveStyle
     | PassiveStyle
@@ -187,15 +232,18 @@ commonBlockContainer styleType elements =
         ([ Element.width Element.fill
          , Element.Border.rounded 4
          , Element.paddingXY 22 18
-         , Element.spacing 3
-         , Element.Font.color <| deepBlueWithAlpha 0.3
+         , Element.spacing 8
          ]
             ++ (case styleType of
                     ActiveStyle ->
-                        [ Element.Background.color deepBlue ]
+                        [ Element.Background.color deepBlue
+                        , Element.Font.color <| Element.rgba 1 1 1 0.6
+                        ]
 
                     PassiveStyle ->
-                        [ Element.Background.color <| deepBlueWithAlpha 0.05 ]
+                        [ Element.Background.color <| deepBlueWithAlpha 0.05
+                        , Element.Font.color <| deepBlueWithAlpha 0.3
+                        ]
                )
         )
         elements
@@ -238,6 +286,11 @@ bigNumberElement attributes numberVal numberLabel blockStyle =
                 ++ numberLabel
             )
         )
+
+
+makeExitButton : UserInfo -> ExitInfo -> Element Msg
+makeExitButton userInfo exitInfo =
+    Element.text "I should be a button"
 
 
 loadingElement : Element Msg
