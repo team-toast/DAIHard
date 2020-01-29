@@ -1,10 +1,10 @@
-module Contracts.BucketSale.Wrappers exposing (ExitInfo, enter, exit, getFryBalance, getSaleStartTimestampCmd, getTotalExitedTokens, getTotalValueEnteredForBucket, getUserBuyForBucket, getUserExitInfo, httpProvider, queryBigIntListToMaybExitInfo, unlockDai)
+module Contracts.BucketSale.Wrappers exposing (ExitInfo, enter, exit, exitMany, getFryBalance, getSaleStartTimestampCmd, getTotalExitedTokens, getTotalValueEnteredForBucket, getUserBuyForBucket, getUserExitInfo, httpProvider, queryBigIntListToMaybExitInfo, unlockDai)
 
 import BigInt exposing (BigInt)
 import CommonTypes
 import Config
 import Contracts.BucketSale.Generated.BucketSale as BucketSaleBindings
-import Contracts.BucketSale.Generated.BucketSaleQuery as BucketSaleBindings
+import Contracts.BucketSale.Generated.BucketSaleScripts as BucketSaleBindings
 import Contracts.Generated.ERC20Token as Token
 import Eth
 import Eth.Types exposing (Address, Call, HttpProvider)
@@ -74,7 +74,7 @@ type alias ExitInfo =
 getUserExitInfo : Bool -> Address -> (Result Http.Error (Maybe ExitInfo) -> msg) -> Cmd msg
 getUserExitInfo testMode userAddress msgConstructor =
     BucketSaleBindings.getExitInfo
-        (Config.bucketSaleQueryAddress testMode)
+        (Config.bucketSaleScriptsAddress testMode)
         (Config.bucketSaleAddress testMode)
         userAddress
         |> Eth.call (httpProvider testMode)
@@ -112,6 +112,15 @@ exit userAddress bucketId testMode =
         (Config.bucketSaleAddress testMode)
         (BigInt.fromInt bucketId)
         userAddress
+
+
+exitMany : Address -> List Int -> Bool -> Call ()
+exitMany userAddress bucketIds testMode =
+    BucketSaleBindings.exitMany
+        (Config.bucketSaleScriptsAddress testMode)
+        (Config.bucketSaleAddress testMode)
+        userAddress
+        (List.map BigInt.fromInt bucketIds)
 
 
 queryBigIntListToMaybExitInfo : List BigInt -> Maybe ExitInfo
