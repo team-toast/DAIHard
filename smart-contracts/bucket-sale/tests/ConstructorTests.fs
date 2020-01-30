@@ -9,7 +9,10 @@ open System.Numerics
 open System.Linq
 open Nethereum.Hex.HexConvertors.Extensions
 open Constants
-open DTOs
+open System
+open DAIHard.Contracts.BucketSale.ContractDefinition
+open DAIHard.Contracts.TestToken.ContractDefinition
+open DAIHard.Contracts.TestToken
 
 let DAI =
     let abi = Abi("../../../../build/contracts/TestToken.json")
@@ -23,7 +26,7 @@ let DAI =
         |> runNow
 
     let result = ContractPlug(ethConn, abi, deployTxReceipt.ContractAddress)
-    result.QueryFunction "balanceOf" [| ethConn.Account.Address |]
+    result.Query "balanceOf" [| ethConn.Account.Address |] 
     |> should equal (bucketSupply * bucketCount * BigInteger(100UL) * BigInteger(1000000000000000000UL))
     result
 
@@ -54,21 +57,19 @@ let bucketSale =
     ContractPlug(ethConn, abi, deployTxReceipt.ContractAddress)
 
 let seedBucketWithFries() =
+    let frySupplyBefore = FRY.Query "balanceOf" [| bucketSale.Address |]
     let transferFryTxReceipt =
         FRY.ExecuteFunction "transfer"
             [| bucketSale.Address
                bucketSupply * bucketCount |]
     transferFryTxReceipt |> shouldSucceed
-    FRY.QueryFunction "balanceOf" [| bucketSale.Address |] |> should equal (bucketSupply * bucketCount)
+    FRY.Query "balanceOf" [| bucketSale.Address |] |> should equal (frySupplyBefore + bucketSupply * bucketCount)
 
 let seedWithDAI (recipient:string) (amount:BigInteger) =
-    let balanceBefore = DAI.QueryFunction "balanceOf" [| recipient |] 
-    let transferDaiTxReceipt =
-        DAI.ExecuteFunction "transfer"
-            [| recipient
-               bucketSupply * bucketCount |]
+    let balanceBefore = DAI.Query "balanceOf" [| recipient |] 
+    let transferDaiTxReceipt = DAI.ExecuteFunction "transfer" [| recipient; bucketSupply * bucketCount |]
     transferDaiTxReceipt |> shouldSucceed
-    DAI.QueryFunction "balanceOf" [| recipient |] |> should equal (balanceBefore + amount)
+    DAI.Query "balanceOf" [| recipient |] |> should equal (balanceBefore + amount)
 
 
 [<Specification("BucketSale", "misc", 0)>]
@@ -104,19 +105,19 @@ let ``Can construct the contract``() =
     // Assert
     let contract = ContractPlug(ethConn, abi, deployTxReceipt.ContractAddress)
 
-    contract.QueryFunction "owner" [||] |> shouldEqualIgnoringCase ethConn.Account.Address
-    contract.QueryFunction "startOfSale" [||] |> should equal startOfSale
-    contract.QueryFunction "bucketPeriod" [||] |> should equal bucketPeriod
-    contract.QueryFunction "bucketSupply" [||] |> should equal bucketSupply
-    contract.QueryFunction "bucketCount" [||] |> should equal bucketCount
-    contract.QueryFunction "tokenOnSale" [||] |> shouldEqualIgnoringCase tokenOnSale
-    contract.QueryFunction "tokenSoldFor" [||] |> shouldEqualIgnoringCase tokenSoldFor
+    contract.Query "owner" [||] |> shouldEqualIgnoringCase ethConn.Account.Address
+    contract.Query "startOfSale" [||] |> should equal startOfSale
+    contract.Query "bucketPeriod" [||] |> should equal bucketPeriod
+    contract.Query "bucketSupply" [||] |> should equal bucketSupply
+    contract.Query "bucketCount" [||] |> should equal bucketCount
+    contract.Query "tokenOnSale" [||] |> shouldEqualIgnoringCase tokenOnSale
+    contract.Query "tokenSoldFor" [||] |> shouldEqualIgnoringCase tokenSoldFor
 
 
 [<Specification("BucketSale", "enter", 1)>]
 [<Fact>]
 let ``Cannot enter bucket sale without putting some money down``() =
-    let currentBucket = bucketSale.QueryFunction "currentBucket" [||]
+    let currentBucket = bucketSale.Query "currentBucket" [||]
     let data = bucketSale.FunctionData "enter" [| ethConn.Account.Address; currentBucket; 0UL; zeroAddress |]
 
     let receipt =
@@ -135,7 +136,7 @@ let ``Cannot enter bucket sale without putting some money down``() =
 // [<InlineData(3)>]
 [<Fact>]
 let ``Cannot enter a past bucket``() =
-    let currentBucket = bucketSale.QueryFunction "currentBucket" [||] |> uint64
+    let currentBucket = bucketSale.Query "currentBucket" [||] |> uint64
     let incorrectBucket = currentBucket - 1UL
     let data = bucketSale.FunctionData "enter" [| ethConn.Account.Address; incorrectBucket; 1UL; zeroAddress |]
 
@@ -151,14 +152,14 @@ let ``Cannot enter a past bucket``() =
 [<Specification("BucketSale", "enter", 2)>]
 [<Fact>]
 let ``Cannot enter bucket sale if there are not enough tokens to payout``() =
-    let currentBucket = bucketSale.QueryFunction "currentBucket" [||]
+    let currentBucket = bucketSale.Query "currentBucket" [||]
 
     let moveDaiData = DAI.FunctionData "transfer" [| zeroAddress; 1UL |]
     let moveDaiForwardData =
         bucketSale.FunctionData "forward"
             [| DAI.Address
                moveDaiData.HexToByteArray()
-               BigInteger(0UL) |]
+               BigInteger.Zero |]
 
     let moveDaiTxReceipt =
         moveDaiForwardData
@@ -181,7 +182,7 @@ let ``Cannot enter bucket sale if there are not enough tokens to payout``() =
 [<Specification("BucketSale", "enter", 7)>]
 [<Fact>]
 let ``Cannot enter bucket sale with 0 amount``() =
-    let currentBucket = bucketSale.QueryFunction "currentBucket" [||]
+    let currentBucket = bucketSale.Query "currentBucket" [||]
     let data = bucketSale.FunctionData "enter" [| ethConn.Account.Address; currentBucket; 0UL; zeroAddress |]
 
     let receipt =
@@ -196,7 +197,7 @@ let ``Cannot enter bucket sale with 0 amount``() =
 [<Specification("BucketSale", "enter", 4)>]
 [<Fact>]
 let ``Cannot enter a bucket after the designated bucket count if there is no referrer``() =
-    let bucketCount = bucketSale.QueryFunction "bucketCount" [||] // will be one bucket beyond what is allowed
+    let bucketCount = bucketSale.Query "bucketCount" [||] // will be one bucket beyond what is allowed
     let data = bucketSale.FunctionData "enter" [| ethConn.Account.Address; bucketCount; 1UL; zeroAddress |]
 
     let receipt =
@@ -212,9 +213,9 @@ let ``Cannot enter a bucket after the designated bucket count if there is no ref
 [<Specification("BucketSale", "enter", 9)>]
 [<Fact>]
 let ``Cannot enter a bucket if payment reverts``() =
-    seedBucketWithFries |> ignore
+    seedBucketWithFries()
     seedWithDAI forwarder.ContractPlug.Address (BigInteger(10UL))
-    let currentBucket = bucketSale.QueryFunction "currentBucket" [||] // will be one bucket beyond what is allowed
+    let currentBucket = bucketSale.Query "currentBucket" [||] // will be one bucket beyond what is allowed
     let data = bucketSale.FunctionData "enter" [| ethConn.Account.Address; currentBucket; 1UL; zeroAddress |]
 
     let receipt =
@@ -225,42 +226,79 @@ let ``Cannot enter a bucket if payment reverts``() =
     let forwardEvent = forwarder.DecodeForwardedEvents receipt |> Seq.head
     forwardEvent |> shouldRevertWithMessage "insufficient tokens to sell"
 
-    
+
+let enterBucket sender buyer bucketToEnter valueToEnter referrer =
+    let currentBucket = bucketSale.Query "currentBucket" [||]
+    let approveDaiTxReceipt = DAI.ExecuteFunction "approve" [| bucketSale.Address; valueToEnter |]
+    approveDaiTxReceipt |> shouldSucceed
+
+    let referredTotalBefore = bucketSale.Query "referredTotal" [| referrer |]
+    let senderDaiBalanceBefore = DAI.Query "balanceOf" [| sender |]
+    let bucketDaiBalanceBefore = DAI.Query "balanceOf" [| bucketSale.Address |]
+    let buyForBucketBefore = bucketSale.QueryObj<BuysOutputDTO> "buys" [| bucketToEnter; buyer |]
+    let bucketBefore = bucketSale.QueryObj<BucketsOutputDTO> "buckets" [| bucketToEnter |] 
+
+    // act
+    let receipt = bucketSale.ExecuteFunction "enter" [| buyer; bucketToEnter; valueToEnter; referrer |]
+
+    // assert
+    receipt |> shouldSucceed
+
+    // event validation
+    let enteredEvent = receipt |> decodeFirstEvent<EnteredEventDTO>
+    enteredEvent.BucketId |> should equal bucketToEnter
+    enteredEvent.Buyer |> shouldEqualIgnoringCase buyer
+    enteredEvent.BuyerReferralReward |> should equal (BigInteger.Zero)
+    enteredEvent.Sender |> shouldEqualIgnoringCase sender
+    enteredEvent.Referrer |> shouldEqualIgnoringCase referrer
+    enteredEvent.ReferrerReferralReward |> should equal (BigInteger.Zero)
+    enteredEvent.ValueEntered |> should equal valueToEnter
+
+    // state validation
+    // unchanged state
+    bucketSale.Query "owner" [||] |> shouldEqualIgnoringCase ethConn.Account.Address
+    bucketSale.Query "startOfSale" [||] |> should equal startOfSale
+    bucketSale.Query "bucketPeriod" [||] |> should equal bucketPeriod
+    bucketSale.Query "bucketSupply" [||] |> should equal bucketSupply
+    bucketSale.Query "bucketCount" [||] |> should equal bucketCount
+    bucketSale.Query "tokenOnSale" [||] |> shouldEqualIgnoringCase FRY.Address
+    bucketSale.Query "tokenSoldFor" [||] |> shouldEqualIgnoringCase DAI.Address
+
+    // changed state
+    let referredTotalAfter = bucketSale.Query "referredTotal" [| referrer |]
+    referredTotalAfter |> should equal (referredTotalBefore + valueToEnter)
+
+    let senderDaiBalanceAfter = DAI.Query "balanceOf" [| sender |]
+    senderDaiBalanceAfter |> should equal (senderDaiBalanceBefore - valueToEnter) 
+    let bucketDaiBalanceAfter = DAI.Query "balanceOf" [| bucketSale.Address |]
+    bucketDaiBalanceAfter |> should equal (bucketDaiBalanceBefore + valueToEnter)
+
+    let buyForBucketAfter = bucketSale.QueryObj<BuysOutputDTO> "buys" [| bucketToEnter; buyer |] 
+    buyForBucketAfter.ValueEntered |> should equal (buyForBucketBefore.ValueEntered + valueToEnter)
+    buyForBucketAfter.BuyerTokensExited |> should equal BigInteger.Zero
+
+    let bucketAfter = bucketSale.QueryObj<BucketsOutputDTO> "buckets" [| bucketToEnter |]
+    bucketAfter.TotalValueEntered |> should equal (bucketBefore.TotalValueEntered + valueToEnter)
+
 [<Specification("BucketSale", "enter", 6)>]
 [<Fact>]
 let ``Can enter a bucket with no referrer``() =
     // arrange
-    seedBucketWithFries |> ignore
+    seedBucketWithFries()
 
-    let valueToEnter = BigInteger(10UL)
-    let approveDaiTxReceipt = DAI.ExecuteFunction "approve" [| bucketSale.Address; valueToEnter |]
-    approveDaiTxReceipt |> shouldSucceed
+    let currentBucket:BigInteger = bucketSale.Query "currentBucket" [||] // will be one bucket beyond what is allowed
+    
+    let valueToEnter = BigInteger 10UL
+    let referrer = zeroAddress
+    let buyer = ethConn.Account.Address
+    let sender = ethConn.Account.Address
 
-    let currentBucket = bucketSale.QueryFunction "currentBucket" [||] // will be one bucket beyond what is allowed
+    let bucketsToEnter = 
+        rndRange (currentBucket |> int) (bucketCount - BigInteger.One |> int) 
+        |> Seq.take 5
+        |> Seq.toArray
+        |> Array.append [| currentBucket; bucketCount - BigInteger.One |]
 
-    // act
-    let receipt =
-        bucketSale.ExecuteFunction "enter" [| ethConn.Account.Address; currentBucket; valueToEnter; zeroAddress |]
-
-    // assert
-    receipt |> shouldSucceed
-    // event validation
-    let enteredEvent = receipt |> decodeFirstEvent<EnteredEvent>
-    enteredEvent.BucketId |> should equal currentBucket
-    enteredEvent.Buyer |> should equal ethConn.Account.Address
-    enteredEvent.BuyerReferralReward |> should equal (BigInteger(0UL))
-    enteredEvent.MsgSender |> should equal ethConn.Account.Address
-    enteredEvent.Referrer |> should equal zeroAddress
-    enteredEvent.ReferrerReferralReward |> should equal (BigInteger(0UL))
-    enteredEvent.ValueEntered |> should equal (BigInteger(1UL))
-    // state validation
-    // unchanged state
-    bucketSale.QueryFunction "owner" [||] |> shouldEqualIgnoringCase ethConn.Account.Address
-    bucketSale.QueryFunction "startOfSale" [||] |> should equal startOfSale
-    bucketSale.QueryFunction "bucketPeriod" [||] |> should equal bucketPeriod
-    bucketSale.QueryFunction "bucketSupply" [||] |> should equal bucketSupply
-    bucketSale.QueryFunction "bucketCount" [||] |> should equal bucketCount
-    bucketSale.QueryFunction "tokenOnSale" [||] |> shouldEqualIgnoringCase tokenOnSale
-    bucketSale.QueryFunction "tokenSoldFor" [||] |> shouldEqualIgnoringCase tokenSoldFor
-    // changed state
-    bucketSale.QueryFunction "buckets" [| currentBucket |] |> printf "%A"
+    Array.ForEach(
+        bucketsToEnter, 
+        fun bucketToEnter -> enterBucket sender buyer bucketToEnter valueToEnter referrer)

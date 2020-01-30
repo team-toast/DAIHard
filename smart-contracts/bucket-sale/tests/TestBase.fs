@@ -17,9 +17,19 @@ open Nethereum.ABI.FunctionEncoding.Attributes
 open Nethereum.Hex.HexConvertors.Extensions
 open System.Text
 open Constants
-open DTOs
+open DAIHard.Contracts.BucketSale.ContractDefinition
+open DAIHard.Contracts.BucketSale
 
 type ABIType = JsonProvider<"../build/contracts/BucketSale.json">
+
+let rnd = Random()
+
+let rec rndRange min max  = 
+    seq { 
+        yield rnd.Next(min,max) |> BigInteger
+        yield! rndRange min max
+        }
+    
 
 let startOfSale = DateTimeOffset(DateTime.Now.AddDays(-1.0)).ToUnixTimeSeconds() |> BigInteger
 let bucketPeriod = 7UL * hours |> BigInteger
@@ -37,42 +47,63 @@ let runNow task =
     |> Async.RunSynchronously
 
 type Abi(filename) =
-    member _.JsonString = File.OpenText(filename).ReadToEnd()
+    member val JsonString = File.OpenText(filename).ReadToEnd()
     member this.AbiString = JsonConvert.DeserializeObject<JObject>(this.JsonString).GetValue("abi").ToString()
     member this.Bytecode = JsonConvert.DeserializeObject<JObject>(this.JsonString).GetValue("bytecode").ToString()
 
 type EthereumConnection(nodeURI: string, privKey: string) =
-    member _.Gas = hexBigInt 4000000UL
-    member _.GasPrice = hexBigInt 1000000000UL
-    member _.Account = Accounts.Account(privKey)
-    member this.Web3 = Web3(this.Account, nodeURI)
+    member val public Gas = hexBigInt 4000000UL
+    member val public GasPrice = hexBigInt 1000000000UL
+    member val public Account = Accounts.Account(privKey)
+    member val public Web3 = Web3(Accounts.Account(privKey), nodeURI)
 
     member this.DeployContractAsync (abi: Abi) (arguments: obj array) =
-        this.Web3.Eth.DeployContract.SendRequestAndWaitForReceiptAsync
-            (abi.AbiString, abi.Bytecode, this.Account.Address, this.Gas, this.GasPrice, hexBigInt 0UL, null, arguments)
+        this.Web3.Eth.DeployContract.SendRequestAndWaitForReceiptAsync(
+            abi.AbiString, 
+            abi.Bytecode, 
+            this.Account.Address, 
+            this.Gas, this.GasPrice, 
+            hexBigInt 0UL, 
+            null, 
+            arguments)
 
     member this.SendTxAsync toAddress (value: BigInteger) data =
         let input: TransactionInput =
-            TransactionInput(data, toAddress, this.Account.Address, this.Gas, this.GasPrice, HexBigInteger(value))
+            TransactionInput(
+                data, 
+                toAddress, 
+                this.Account.Address, 
+                this.Gas, this.GasPrice, 
+                HexBigInteger(value))
 
         this.Web3.Eth.TransactionManager.SendTransactionAndWaitForReceiptAsync(input, null)
 
-type ContractPlug(ethConn: EthereumConnection, abi: Abi, address) =
-    member _.Address = address
-    member _.Contract = ethConn.Web3.Eth.GetContract(abi.AbiString, address)
-    member this.Function functionName = this.Contract.GetFunction(functionName)
-    member this.QueryFunctionAsync functionName arguments = (this.Function functionName).CallAsync(arguments)
-    member this.QueryFunction functionName arguments = this.QueryFunctionAsync functionName arguments |> runNow
-    member this.FunctionData functionName arguments = (this.Function functionName).GetData(arguments)
-    member this.ExecuteFunctionAsync functionName arguments =
-        this.FunctionData functionName arguments |> ethConn.SendTxAsync this.Address (BigInteger(0))
-    member this.ExecuteFunction functionName arguments = this.ExecuteFunctionAsync functionName arguments |> runNow
+type Profile = { FunctionName: string; Duration: string }
 
+let profileMe f =
+    let start = DateTime.Now
+    let result = f()
+    let duration = DateTime.Now - start
+    (f.GetType(), duration) |> printf "(Functio, Duration) = %A\n"
+    result
+
+type ContractPlug(ethConn: EthereumConnection, abi: Abi, address) =
+    member val public Address = address
+    member val public Contract = ethConn.Web3.Eth.GetContract(abi.AbiString, address)
+    member this.Function functionName = this.Contract.GetFunction(functionName)
+    member this.QueryObjAsync<'a when 'a: (new: unit -> 'a)> functionName arguments = (this.Function functionName).CallDeserializingToObjectAsync<'a> (arguments)
+    member this.QueryObj<'a when 'a: (new: unit -> 'a)> functionName arguments = this.QueryObjAsync<'a> functionName arguments |> runNow
+    member this.QueryAsync<'a> functionName arguments = (this.Function functionName).CallAsync<'a> (arguments)
+    member this.Query<'a> functionName arguments = this.QueryAsync<'a> functionName arguments |> runNow
+    member this.FunctionData functionName arguments = (this.Function functionName).GetData(arguments)
+    member this.ExecuteFunctionAsync functionName arguments = this.FunctionData functionName arguments |> ethConn.SendTxAsync this.Address (BigInteger(0))
+    member this.ExecuteFunction functionName arguments = this.ExecuteFunctionAsync functionName arguments |> runNow
+        
 
 type Forwarder(ethConn: EthereumConnection) =
-    member _.EthConn = ethConn
+    member val public EthConn = ethConn
 
-    member _.ContractPlug =
+    member val public  ContractPlug =
         let abi = Abi("../../../../build/contracts/Forwarder.json")
         let deployTxReceipt = ethConn.DeployContractAsync abi [||] |> runNow
         ContractPlug(ethConn, abi, deployTxReceipt.ContractAddress)
@@ -85,9 +116,14 @@ type Forwarder(ethConn: EthereumConnection) =
         data |> ethConn.SendTxAsync this.ContractPlug.Address value
 
     member this.DecodeForwardedEvents(receipt: TransactionReceipt) =
-        receipt.DecodeAllEvents<ForwardedEvent>() |> Seq.map (fun i -> i.Event)
+        receipt.DecodeAllEvents<ForwardedEventDTO>() |> Seq.map (fun i -> i.Event)
 
-        
+type ForwardedEventDTO with
+    member this.ResultAsRevertMessage =
+        match this.Success with
+        | true -> None
+        | _ -> Some(Encoding.ASCII.GetString(this.ResultData))
+
 [<System.AttributeUsage(AttributeTargets.Method, AllowMultiple = true)>]
 type SpecificationAttribute(contractName, functionName, specCode) =
     inherit Attribute()
@@ -120,7 +156,7 @@ let shouldEqualIgnoringCase (a: string) (b: string) =
 let shouldSucceed (txr: TransactionReceipt) = txr.Status |> should equal (hexBigInt 1UL)
 let shouldFail (txr: TransactionReceipt) = txr.Status |> should equal (hexBigInt 0UL)
 
-let shouldRevertWithMessage expectedMessage (forwardedEvent: ForwardedEvent) =
+let shouldRevertWithMessage expectedMessage (forwardedEvent: ForwardedEventDTO) =
     match forwardedEvent.ResultAsRevertMessage with
     | None -> failwith "not a revert message"
     | Some actualMessage -> actualMessage |> should haveSubstring expectedMessage
