@@ -12,7 +12,9 @@
     <Compile Include="DTOs/QueryDefinition.fs" />
     <Compile Include="Constants.fs" />
     <Compile Include="TestBase.fs" />
+    <Compile Include="BucketSaleTestBase.fs" />
     <Compile Include="ConstructorTests.fs" />
+    <Compile Include="EnterTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>

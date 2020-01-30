@@ -162,3 +162,4 @@ let decodeEvents<'a when 'a: (new: unit -> 'a)> (receipt: TransactionReceipt) =
 
 let decodeFirstEvent<'a when 'a: (new: unit -> 'a)> (receipt: TransactionReceipt) =
     decodeEvents<'a> receipt |> Seq.head
+
