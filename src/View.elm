@@ -535,7 +535,7 @@ submodelElementAndModal dProfile model =
                     )
 
                 BucketSaleModel bucketSaleModel ->
-                    BucketSale.View.root dProfile bucketSaleModel
+                    BucketSale.View.root bucketSaleModel
                         |> Tuple.mapBoth
                             (Element.map BucketSaleMsg)
                             (List.map (Element.map BucketSaleMsg))
