@@ -59,6 +59,7 @@ root model =
 commonPaneAttributes : List (Attribute Msg)
 commonPaneAttributes =
     [ Element.Background.color EH.white
+    , Element.spacing 20
     , Element.Border.rounded 8
     , Element.centerY
     , Element.Border.shadow
@@ -76,7 +77,6 @@ closedBucketsPane model =
         (commonPaneAttributes
             ++ [ Element.width <| Element.px 430
                , Element.paddingXY 32 25
-               , Element.spacing 7
                ]
         )
         [ Element.el
@@ -194,18 +194,38 @@ maybeClaimBlock wallet maybeExitInfo =
                     [ Element.centerX
                     , Element.width Element.shrink
                     ]
-                    [ Element.text "ready to be claimed now" ]
-                , Element.el
-                    [ Element.centerX ]
-                    (maybeClaimButton
-                        |> Maybe.withDefault Element.none
-                    )
+                    [ Element.text "available for "
+                    , emphasizedText blockStyle "you"
+                    , Element.text " to claim"
+                    ]
+                , Maybe.map
+                    (Element.el [ Element.centerX ])
+                    maybeClaimButton
+                    |> Maybe.withDefault Element.none
                 ]
 
 
 totalExitedBlock : Maybe TokenValue -> Element Msg
 totalExitedBlock maybeTotalExited =
-    Element.text "exited block"
+    case maybeTotalExited of
+        Nothing ->
+            loadingElement
+
+        Just totalExited ->
+            commonBlockContainer PassiveStyle
+                [ bigNumberElement
+                    [ Element.centerX ]
+                    (TokenNum totalExited)
+                    Config.bucketTokenSymbol
+                    PassiveStyle
+                , Element.paragraph
+                    [ Element.centerX
+                    , Element.width Element.shrink
+                    ]
+                    [ Element.text "claimed by "
+                    , emphasizedText PassiveStyle "others"
+                    ]
+                ]
 
 
 type CommonBlockStyle
@@ -232,7 +252,7 @@ commonBlockContainer styleType elements =
         ([ Element.width Element.fill
          , Element.Border.rounded 4
          , Element.paddingXY 22 18
-         , Element.spacing 8
+         , Element.spacing 16
          ]
             ++ (case styleType of
                     ActiveStyle ->
