@@ -36,11 +36,7 @@ init maybeReferrer testMode wallet now =
           , totalTokensExited = Nothing
           , userFryBalance = Nothing
           , bucketView = ViewCurrent
-          , daiInput = ""
-          , dumbCheckboxesClicked = ( False, False )
-          , daiAmount = Nothing
-          , referrer = maybeReferrer
-          , allowanceState = Loading
+          , enterUXModel = initEnterUXModel maybeReferrer
           , exitInfo = Nothing
           }
         , Cmd.batch
@@ -63,6 +59,15 @@ init maybeReferrer testMode wallet now =
 
     else
         Debug.todo "must use test mode"
+
+
+initEnterUXModel : Maybe Address -> EnterUXModel
+initEnterUXModel maybeReferrer =
+    { daiInput = ""
+    , daiAmount = Nothing
+    , referrer = maybeReferrer
+    , allowanceState = Loading
+    }
 
 
 update : Msg -> Model -> UpdateResult
@@ -313,13 +318,20 @@ update msg prevModel =
                     justModelUpdate prevModel
 
                 Ok allowance ->
-                    case prevModel.allowanceState of
+                    case prevModel.enterUXModel.allowanceState of
                         UnlockMining ->
                             if allowance == EthHelpers.maxUintValue then
                                 justModelUpdate
                                     { prevModel
-                                        | allowanceState =
-                                            Loaded <| TokenValue.tokenValue allowance
+                                        | enterUXModel =
+                                            let
+                                                oldEnterUXModel =
+                                                    prevModel.enterUXModel
+                                            in
+                                            { oldEnterUXModel
+                                                | allowanceState =
+                                                    Loaded <| TokenValue.tokenValue allowance
+                                            }
                                     }
 
                             else
@@ -328,9 +340,16 @@ update msg prevModel =
                         _ ->
                             justModelUpdate
                                 { prevModel
-                                    | allowanceState =
-                                        Loaded <|
-                                            TokenValue.tokenValue allowance
+                                    | enterUXModel =
+                                        let
+                                            oldEnterUXModel =
+                                                prevModel.enterUXModel
+                                        in
+                                        { oldEnterUXModel
+                                            | allowanceState =
+                                                Loaded <|
+                                                    TokenValue.tokenValue allowance
+                                        }
                                 }
 
         ClaimClicked userInfo exitInfo ->
@@ -384,27 +403,20 @@ update msg prevModel =
         DaiInputChanged input ->
             justModelUpdate
                 { prevModel
-                    | daiInput = input
-                    , daiAmount =
-                        if input == "" then
-                            Nothing
+                    | enterUXModel =
+                        let
+                            oldEnterUXModel =
+                                prevModel.enterUXModel
+                        in
+                        { oldEnterUXModel
+                            | daiInput = input
+                            , daiAmount =
+                                if input == "" then
+                                    Nothing
 
-                        else
-                            Just <| validateDaiInput input
-                }
-
-        FirstDumbCheckboxClicked flag ->
-            justModelUpdate
-                { prevModel
-                    | dumbCheckboxesClicked =
-                        ( flag, Tuple.second prevModel.dumbCheckboxesClicked )
-                }
-
-        SecondDumbCheckboxClicked flag ->
-            justModelUpdate
-                { prevModel
-                    | dumbCheckboxesClicked =
-                        ( Tuple.first prevModel.dumbCheckboxesClicked, flag )
+                                else
+                                    Just <| validateDaiInput input
+                        }
                 }
 
         UnlockDaiButtonClicked ->
@@ -434,7 +446,14 @@ update msg prevModel =
                 Ok txHash ->
                     justModelUpdate
                         { prevModel
-                            | allowanceState = UnlockMining
+                            | enterUXModel =
+                                let
+                                    oldEnterUXModel =
+                                        prevModel.enterUXModel
+                                in
+                                { oldEnterUXModel
+                                    | allowanceState = UnlockMining
+                                }
                         }
 
                 Err errStr ->
@@ -451,7 +470,14 @@ update msg prevModel =
             in
             justModelUpdate
                 { prevModel
-                    | allowanceState = Loaded (TokenValue.tokenValue EthHelpers.maxUintValue)
+                    | enterUXModel =
+                        let
+                            oldEnterUXModel =
+                                prevModel.enterUXModel
+                        in
+                        { oldEnterUXModel
+                            | allowanceState = Loaded (TokenValue.tokenValue EthHelpers.maxUintValue)
+                        }
                 }
 
         EnterButtonClicked userInfo bucketId daiAmount maybeReferrer ->
@@ -482,21 +508,20 @@ update msg prevModel =
                 []
 
         EnterSigned txHashResult ->
-            let
-                _ =
-                    Debug.log "Signed enter tx!" ""
-            in
             justModelUpdate
                 { prevModel
-                    | daiInput = ""
-                    , daiAmount = Nothing
+                    | enterUXModel =
+                        let
+                            oldEnterUXModel =
+                                prevModel.enterUXModel
+                        in
+                        { oldEnterUXModel
+                            | daiInput = ""
+                            , daiAmount = Nothing
+                        }
                 }
 
         EnterMined txReceiptResult ->
-            let
-                _ =
-                    Debug.log "Mined enter tx!" txReceiptResult
-            in
             justModelUpdate prevModel
 
         ExitButtonClicked userInfo bucketId ->
@@ -653,7 +678,14 @@ runCmdDown cmdDown prevModel =
                         Maybe.map
                             clearBucketSaleExitInfo
                             prevModel.bucketSale
-                    , allowanceState = Loading
+                    , enterUXModel =
+                        let
+                            oldEnterUXModel =
+                                prevModel.enterUXModel
+                        in
+                        { oldEnterUXModel
+                            | allowanceState = Loading
+                        }
                 }
                 (Wallet.userInfo wallet
                     |> Maybe.map

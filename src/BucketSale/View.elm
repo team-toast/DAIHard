@@ -48,7 +48,7 @@ root model =
                     , Element.spacing 50
                     ]
                     [ closedBucketsPane model
-                    , focusedBucketPane model
+                    , focusedBucketPane model bucketSale
                     , futureBucketsPane model
                     ]
         ]
@@ -96,8 +96,8 @@ closedBucketsPane model =
         ]
 
 
-focusedBucketPane : Model -> Element Msg
-focusedBucketPane model =
+focusedBucketPane : Model -> BucketSale -> Element Msg
+focusedBucketPane model bucketSale =
     Element.column
         (commonPaneAttributes
             ++ [ Element.width <| Element.px 650
@@ -105,21 +105,9 @@ focusedBucketPane model =
                , Element.spacing 7
                ]
         )
-        [ Element.el
-            [ Element.Font.size 30
-            , Element.Font.bold
-            ]
-          <|
-            Element.text <|
-                "Current bucket of "
-                    ++ TokenValue.toConciseString (Config.bucketSaleTokensPerBucket model.testMode)
-                    ++ " "
-                    ++ Config.bucketTokenSymbol
-        , Element.el
-            [ Element.height <| Element.px 600
-            ]
-          <|
-            Element.text "hi"
+        [ focusedBucketHeaderEl model.testMode
+        , focusedBucketTimeLeftEl (getBucketTimeleftInfo model.now bucketSale model.bucketView)
+        , enterBidUX model.enterUXModel
         ]
 
 
@@ -226,6 +214,43 @@ totalExitedBlock maybeTotalExited =
                     , emphasizedText PassiveStyle "others"
                     ]
                 ]
+
+
+focusedBucketHeaderEl : Bool -> Element Msg
+focusedBucketHeaderEl testMode =
+    Element.column
+        [ Element.spacing 8
+        , Element.width Element.fill
+        ]
+        [ Element.el
+            [ Element.Font.size 30
+            , Element.Font.bold
+            ]
+          <|
+            Element.text <|
+                "Current bucket of "
+                    ++ TokenValue.toConciseString (Config.bucketSaleTokensPerBucket testMode)
+                    ++ " "
+                    ++ Config.bucketTokenSymbol
+        ]
+
+
+focusedBucketTimeLeftEl : BucketTimeleftInfo -> Element Msg
+focusedBucketTimeLeftEl timeleftInfo =
+    case timeleftInfo of
+        NotStarted ->
+            Debug.todo ""
+
+        Active timeLeft ->
+            Debug.todo ""
+
+        Finished ->
+            Debug.todo ""
+
+
+enterBidUX : EnterUXModel -> Element Msg
+enterBidUX enterUXModel =
+    Debug.todo ""
 
 
 type CommonBlockStyle

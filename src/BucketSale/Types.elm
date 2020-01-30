@@ -1,4 +1,4 @@
-module BucketSale.Types exposing (AllowanceState(..), Bucket, BucketSale, BucketState(..), BucketView(..), Buy, Model, Msg(..), UpdateResult, buyFromBindingBuy, calcClaimableTokens, calcEffectivePricePerToken, currentBucketTimeLeft, getBucketEndTime, getBucketInfo, getCurrentBucket, getCurrentBucketId, getFocusedBucketId, justModelUpdate, makeBlankBucket, updateAllBuckets, updateBucketAt)
+module BucketSale.Types exposing (AllowanceState(..), Bucket, BucketSale, BucketState(..), BucketTimeleftInfo(..), BucketView(..), Buy, EnterUXModel, Model, Msg(..), UpdateResult, buyFromBindingBuy, calcClaimableTokens, calcEffectivePricePerToken, currentBucketTimeLeft, getBucketEndTime, getBucketInfo, getBucketTimeleftInfo, getCurrentBucket, getCurrentBucketId, getFocusedBucketId, justModelUpdate, makeBlankBucket, updateAllBuckets, updateBucketAt)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -27,12 +27,16 @@ type alias Model =
     , userFryBalance : Maybe TokenValue
     , totalTokensExited : Maybe TokenValue
     , bucketView : BucketView
-    , daiInput : String
-    , dumbCheckboxesClicked : ( Bool, Bool )
+    , enterUXModel : EnterUXModel
+    , exitInfo : Maybe BucketSaleWrappers.ExitInfo
+    }
+
+
+type alias EnterUXModel =
+    { daiInput : String
     , daiAmount : Maybe (Result String TokenValue)
     , referrer : Maybe Address
     , allowanceState : AllowanceState
-    , exitInfo : Maybe BucketSaleWrappers.ExitInfo
     }
 
 
@@ -51,8 +55,6 @@ type Msg
     | ClaimClicked UserInfo ExitInfo
     | BucketClicked Int
     | DaiInputChanged String
-    | FirstDumbCheckboxClicked Bool
-    | SecondDumbCheckboxClicked Bool
     | UnlockDaiButtonClicked
     | AllowanceFetched (Result Http.Error BigInt)
     | DaiUnlockSigned (Result String TxHash)
@@ -245,3 +247,14 @@ calcEffectivePricePerToken totalValueEntered testMode =
     TokenValue.toFloatWithWarning totalValueEntered
         / (TokenValue.toFloatWithWarning <| Config.bucketSaleTokensPerBucket testMode)
         |> TokenValue.fromFloatWithWarning
+
+
+type BucketTimeleftInfo
+    = NotStarted
+    | Active Time.Posix
+    | Finished
+
+
+getBucketTimeleftInfo : Time.Posix -> BucketSale -> BucketView -> BucketTimeleftInfo
+getBucketTimeleftInfo now bucketSale bucketView =
+    Debug.todo ""
