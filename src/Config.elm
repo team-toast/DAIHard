@@ -97,7 +97,7 @@ bucketSaleScriptsAddress testMode =
 bucketSaleBucketInterval : Bool -> Time.Posix
 bucketSaleBucketInterval testMode =
     if testMode then
-        Time.millisToPosix <| 1000 * 60 * 2
+        Time.millisToPosix <| 1000 * 60 * 3
 
     else
         Debug.todo "blocks per bucket in non-test-mode"
@@ -105,12 +105,12 @@ bucketSaleBucketInterval testMode =
 
 bucketSaleTokensPerBucket : Bool -> TokenValue
 bucketSaleTokensPerBucket testMode =
-    TokenValue.fromIntTokenValue <|
-        if testMode then
-            150
+    if testMode then
+        TokenValue.tokenValue <|
+            BigInt.fromInt 150
 
-        else
-            Debug.todo "tokens per bucket in non-test mode"
+    else
+        Debug.todo "tokens per bucket in non-test mode"
 
 
 bucketTokenSymbol : String
