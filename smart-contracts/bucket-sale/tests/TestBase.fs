@@ -2,7 +2,6 @@ module TestBase
 
 open Nethereum.Web3
 open FsUnit.Xunit
-open Xunit
 open Microsoft.FSharp.Control
 open FSharp.Data
 open System
@@ -13,12 +12,10 @@ open System.IO
 open Newtonsoft.Json
 open Newtonsoft.Json.Linq
 open Nethereum.Contracts
-open Nethereum.ABI.FunctionEncoding.Attributes
 open Nethereum.Hex.HexConvertors.Extensions
 open System.Text
 open Constants
-open DAIHard.Contracts.BucketSale.ContractDefinition
-open DAIHard.Contracts.BucketSale
+open DAIHard.Contracts.Forwarder.ContractDefinition
 
 type ABIType = JsonProvider<"../build/contracts/BucketSale.json">
 
@@ -98,7 +95,6 @@ type ContractPlug(ethConn: EthereumConnection, abi: Abi, address) =
     member this.FunctionData functionName arguments = (this.Function functionName).GetData(arguments)
     member this.ExecuteFunctionAsync functionName arguments = this.FunctionData functionName arguments |> ethConn.SendTxAsync this.Address (BigInteger(0))
     member this.ExecuteFunction functionName arguments = this.ExecuteFunctionAsync functionName arguments |> runNow
-        
 
 type Forwarder(ethConn: EthereumConnection) =
     member val public EthConn = ethConn

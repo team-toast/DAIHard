@@ -1,18 +1,8 @@
 namespace DAIHard.Contracts.BucketSale.ContractDefinition
 
-open System
-open System.Threading.Tasks
-open System.Collections.Generic
 open System.Numerics
-open Nethereum.Hex.HexTypes
 open Nethereum.ABI.FunctionEncoding.Attributes
-open Nethereum.Web3
-open Nethereum.RPC.Eth.DTOs
-open Nethereum.Contracts.CQS
 open Nethereum.Contracts
-open System.Threading
-
-
 
 type BucketSaleDeployment(byteCode: string) =
     inherit ContractDeploymentMessage(byteCode)

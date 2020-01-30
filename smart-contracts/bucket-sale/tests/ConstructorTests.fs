@@ -67,7 +67,7 @@ let seedBucketWithFries() =
 
 let seedWithDAI (recipient:string) (amount:BigInteger) =
     let balanceBefore = DAI.Query "balanceOf" [| recipient |] 
-    let transferDaiTxReceipt = DAI.ExecuteFunction "transfer" [| recipient; bucketSupply * bucketCount |]
+    let transferDaiTxReceipt = DAI.ExecuteFunction "transfer" [| recipient; amount |]
     transferDaiTxReceipt |> shouldSucceed
     DAI.Query "balanceOf" [| recipient |] |> should equal (balanceBefore + amount)
 
@@ -224,7 +224,7 @@ let ``Cannot enter a bucket if payment reverts``() =
         |> runNow
 
     let forwardEvent = forwarder.DecodeForwardedEvents receipt |> Seq.head
-    forwardEvent |> shouldRevertWithMessage "insufficient tokens to sell"
+    forwardEvent |> shouldRevertWithMessage ""
 
 
 let enterBucket sender buyer bucketToEnter valueToEnter referrer =

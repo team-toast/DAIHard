@@ -12,8 +12,6 @@ open Nethereum.Contracts.CQS
 open Nethereum.Contracts
 open System.Threading
 
-
-
 type TestTokenDeployment(byteCode: string) =
     inherit ContractDeploymentMessage(byteCode)
 
