@@ -8,7 +8,7 @@ open Constants
 
 [<Specification("BucketSale", "misc", 0)>]
 [<Fact>]
-let ``Can send eth``() =
+let ``M0 - Can send eth``() =
     let balance = ethConn.Web3.Eth.GetBalance.SendRequestAsync(ethConn.Account.Address) |> runNow
     balance.Value |> should greaterThan (bigInt 0UL)
 
@@ -27,7 +27,7 @@ let ``Can send eth``() =
 
 [<Specification("BucketSale", "constructor", 1)>]
 [<Fact>]
-let ``Can construct the contract``() =
+let ``C0 - Can construct the contract``() =
     let abi = Abi("../../../../build/contracts/BucketSale.json")
     let deployTxReceipt =
         ethConn.DeployContractAsync abi

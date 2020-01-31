@@ -26,7 +26,6 @@ let rec rndRange min max  =
         yield rnd.Next(min,max) |> BigInteger
         yield! rndRange min max
         }
-    
 
 let startOfSale = DateTimeOffset(DateTime.Now.AddDays(-1.0)).ToUnixTimeSeconds() |> BigInteger
 let bucketPeriod = 7UL * hours |> BigInteger

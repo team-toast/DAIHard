@@ -9,11 +9,12 @@ open Constants
 open System
 open DAIHard.Contracts.BucketSale.ContractDefinition
 open BucketSaleTestBase
+open Nethereum.Web3.Accounts
 
 
 [<Specification("BucketSale", "enter", 1)>]
 [<Fact>]
-let ``Cannot enter bucket sale without putting some money down``() =
+let ``E1 - Cannot enter bucket sale without putting some money down``() =
     let currentBucket = bucketSale.Query "currentBucket" [||]
     let data = bucketSale.FunctionData "enter" [| ethConn.Account.Address; currentBucket; 0UL; zeroAddress |]
 
@@ -25,30 +26,9 @@ let ``Cannot enter bucket sale without putting some money down``() =
     let forwardEvent = forwarder.DecodeForwardedEvents receipt |> Seq.head
     forwardEvent |> shouldRevertWithMessage "can't buy nothing"
 
-
-[<Specification("BucketSale", "enter", 2)>]
-// [<Theory>]
-// [<InlineData(1)>]
-// [<InlineData(2)>]
-// [<InlineData(3)>]
-[<Fact>]
-let ``Cannot enter a past bucket``() =
-    let currentBucket = bucketSale.Query "currentBucket" [||] |> uint64
-    let incorrectBucket = currentBucket - 1UL
-    let data = bucketSale.FunctionData "enter" [| ethConn.Account.Address; incorrectBucket; 1UL; zeroAddress |]
-
-    let receipt =
-        data
-        |> forwarder.SendTxAsync bucketSale.Address (BigInteger(0))
-        |> runNow
-
-    let forwardEvent = forwarder.DecodeForwardedEvents receipt |> Seq.head
-    forwardEvent |> shouldRevertWithMessage "cannot enter past buckets"
-
-
 [<Specification("BucketSale", "enter", 2)>]
 [<Fact>]
-let ``Cannot enter bucket sale if there are not enough tokens to payout``() =
+let ``E2 - Cannot enter bucket sale if there are not enough tokens to payout``() =
     let currentBucket = bucketSale.Query "currentBucket" [||]
 
     let moveDaiData = DAI.FunctionData "transfer" [| zeroAddress; 1UL |]
@@ -76,11 +56,11 @@ let ``Cannot enter bucket sale if there are not enough tokens to payout``() =
 
 
 [<Specification("BucketSale", "enter", 3)>]
-[<Specification("BucketSale", "enter", 7)>]
 [<Fact>]
-let ``Cannot enter bucket sale with 0 amount``() =
-    let currentBucket = bucketSale.Query "currentBucket" [||]
-    let data = bucketSale.FunctionData "enter" [| ethConn.Account.Address; currentBucket; 0UL; zeroAddress |]
+let ``E3 - Cannot enter a past bucket``() =
+    let currentBucket = bucketSale.Query "currentBucket" [||] |> uint64
+    let incorrectBucket = currentBucket - 1UL
+    let data = bucketSale.FunctionData "enter" [| ethConn.Account.Address; incorrectBucket; 1UL; zeroAddress |]
 
     let receipt =
         data
@@ -88,12 +68,13 @@ let ``Cannot enter bucket sale with 0 amount``() =
         |> runNow
 
     let forwardEvent = forwarder.DecodeForwardedEvents receipt |> Seq.head
-    forwardEvent |> shouldRevertWithMessage "can't buy nothing"
+    forwardEvent |> shouldRevertWithMessage "cannot enter past buckets"
 
 
 [<Specification("BucketSale", "enter", 4)>]
 [<Fact>]
-let ``Cannot enter a bucket after the designated bucket count if there is no referrer``() =
+let ``E4 - Cannot enter a bucket beyond the designated bucket count (no referrer)``() =
+    seedBucketWithFries() 
     let bucketCount = bucketSale.Query "bucketCount" [||] // will be one bucket beyond what is allowed
     let data = bucketSale.FunctionData "enter" [| ethConn.Account.Address; bucketCount; 1UL; zeroAddress |]
 
@@ -109,7 +90,7 @@ let ``Cannot enter a bucket after the designated bucket count if there is no ref
 [<Specification("BucketSale", "enter", 5)>]
 [<Specification("BucketSale", "enter", 9)>]
 [<Fact>]
-let ``Cannot enter a bucket if payment reverts``() =
+let ``E5|E9 - Cannot enter a bucket if payment reverts``() =
     seedBucketWithFries()
     seedWithDAI forwarder.ContractPlug.Address (BigInteger(10UL))
     let currentBucket = bucketSale.Query "currentBucket" [||] // will be one bucket beyond what is allowed
@@ -179,7 +160,7 @@ let enterBucket sender buyer bucketToEnter valueToEnter referrer =
 
 [<Specification("BucketSale", "enter", 6)>]
 [<Fact>]
-let ``Can enter a bucket with no referrer``() =
+let ``E6 - Can enter a bucket with no referrer``() =
     // arrange
     seedBucketWithFries()
 
@@ -199,3 +180,19 @@ let ``Can enter a bucket with no referrer``() =
     Array.ForEach(
         bucketsToEnter, 
         fun bucketToEnter -> enterBucket sender buyer bucketToEnter valueToEnter referrer)
+
+[<Specification("BucketSale", "enter", 8)>]
+[<Fact>]
+let ``E8 - Cannot enter a bucket beyond the designated bucket count - 1 (because of referrer)``() =
+    seedBucketWithFries()
+    seedWithDAI forwarder.ContractPlug.Address (BigInteger(10L))
+    let bucketCount = bucketSale.Query "bucketCount" [||] // will be one bucket beyond what is allowed
+    let data = bucketSale.FunctionData "enter" [| ethConn.Account.Address; bucketCount - 1; 1UL; forwarder.ContractPlug.Address |]
+
+    let receipt =
+        data
+        |> forwarder.SendTxAsync bucketSale.Address (BigInteger(0))
+        |> runNow
+
+    let forwardEvent = forwarder.DecodeForwardedEvents receipt |> Seq.head
+    forwardEvent |> shouldRevertWithMessage "invalid bucket id--past end of sale"
