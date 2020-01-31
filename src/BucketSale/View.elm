@@ -330,8 +330,10 @@ focusedBucketTimeLeftEl timingInfo testMode =
             (case timingInfo.state of
                 Current ->
                     Just <|
-                        (Time.posixToMillis timingInfo.relevantTimeFromNow |> toFloat)
-                            / (Time.posixToMillis (Config.bucketSaleBucketInterval testMode) |> toFloat)
+                        1
+                            - ((Time.posixToMillis timingInfo.relevantTimeFromNow |> toFloat)
+                                / (Time.posixToMillis (Config.bucketSaleBucketInterval testMode) |> toFloat)
+                              )
 
                 _ ->
                     Nothing
@@ -374,9 +376,11 @@ progressBarElement maybeRatioComplete =
         (case maybeRatioComplete of
             Just ratioComplete ->
                 [ Element.el
-                    [ Element.width <| Element.fillPortion (ratioComplete * 200 |> floor)
-                    , Element.Background.color <| Element.rgb255 255 0 120
-                    ]
+                    (commonStyles
+                        ++ [ Element.width <| Element.fillPortion (ratioComplete * 200 |> floor)
+                           , Element.Background.color <| Element.rgb255 255 0 120
+                           ]
+                    )
                     Element.none
                 , Element.el
                     [ Element.width <| Element.fillPortion ((1 - ratioComplete) * 200 |> floor) ]
