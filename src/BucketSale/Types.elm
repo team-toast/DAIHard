@@ -1,4 +1,4 @@
-module BucketSale.Types exposing (AllowanceState(..), Bucket, BucketSale, BucketState(..), BucketTimeleftInfo(..), BucketView(..), Buy, EnterUXModel, Model, Msg(..), UpdateResult, buyFromBindingBuy, calcClaimableTokens, calcEffectivePricePerToken, currentBucketTimeLeft, getBucketEndTime, getBucketInfo, getBucketTimeleftInfo, getCurrentBucket, getCurrentBucketId, getFocusedBucketId, justModelUpdate, makeBlankBucket, updateAllBuckets, updateBucketAt)
+module BucketSale.Types exposing (AllowanceState(..), BucketData, BucketSale, BucketState(..), BucketView(..), Buy, EnterUXModel, FetchedBucketInfo(..), Model, Msg(..), RelevantTimingInfo, UpdateResult, ValidBucketInfo, buyFromBindingBuy, calcClaimableTokens, calcEffectivePricePerToken, currentBucketTimeLeft, getBucketEndTime, getBucketInfo, getCurrentBucket, getCurrentBucketId, getFocusedBucketId, getRelevantTimingInfo, justModelUpdate, makeBlankBucket, updateAllBuckets, updateBucketAt)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -24,8 +24,8 @@ type alias Model =
     , timezone : Maybe Time.Zone
     , saleStartTime : Maybe Time.Posix
     , bucketSale : Maybe BucketSale
-    , userFryBalance : Maybe TokenValue
     , totalTokensExited : Maybe TokenValue
+    , userFryBalance : Maybe TokenValue
     , bucketView : BucketView
     , enterUXModel : EnterUXModel
     , exitInfo : Maybe BucketSaleWrappers.ExitInfo
@@ -47,7 +47,7 @@ type Msg
     | Refresh
     | UpdateNow Time.Posix
     | SaleStartTimestampFetched (Result Http.Error BigInt)
-    | BucketValueEnteredFetched Int (Result Http.Error BigInt)
+    | BucketValueEnteredFetched Int (Result Http.Error TokenValue)
     | UserBuyFetched Address Int (Result Http.Error BucketSaleBindings.Buy)
     | UserExitInfoFetched Address (Result Http.Error (Maybe BucketSaleWrappers.ExitInfo))
     | TotalTokensExitedFetched (Result Http.Error TokenValue)
@@ -97,11 +97,23 @@ type BucketView
 
 type alias BucketSale =
     { startTime : Time.Posix
-    , buckets : List Bucket
+    , buckets : List BucketData
     }
 
 
-type alias Bucket =
+type FetchedBucketInfo
+    = InvalidBucket
+    | ValidBucket ValidBucketInfo
+
+
+type alias ValidBucketInfo =
+    { id : Int
+    , state : BucketState
+    , bucketData : BucketData
+    }
+
+
+type alias BucketData =
     { startTime : Time.Posix
     , totalValueEntered : Maybe TokenValue
     , userBuy : Maybe Buy
@@ -120,7 +132,7 @@ type alias Buy =
     }
 
 
-updateAllBuckets : (Bucket -> Bucket) -> BucketSale -> BucketSale
+updateAllBuckets : (BucketData -> BucketData) -> BucketSale -> BucketSale
 updateAllBuckets func bucketSale =
     { bucketSale
         | buckets =
@@ -129,7 +141,7 @@ updateAllBuckets func bucketSale =
     }
 
 
-updateBucketAt : Int -> (Bucket -> Bucket) -> BucketSale -> Maybe BucketSale
+updateBucketAt : Int -> (BucketData -> BucketData) -> BucketSale -> Maybe BucketSale
 updateBucketAt id func bucketSale =
     if id < List.length bucketSale.buckets then
         Just
@@ -143,25 +155,29 @@ updateBucketAt id func bucketSale =
         Nothing
 
 
-getBucketInfo : BucketSale -> Int -> Time.Posix -> Bool -> Maybe ( BucketState, Bucket )
+getBucketInfo : BucketSale -> Int -> Time.Posix -> Bool -> FetchedBucketInfo
 getBucketInfo bucketSale bucketId now testMode =
     List.Extra.getAt bucketId bucketSale.buckets
         |> Maybe.map
             (\bucket ->
-                ( if TimeHelpers.compare bucket.startTime now == GT then
-                    Future
+                ValidBucket <|
+                    ValidBucketInfo
+                        bucketId
+                        (if TimeHelpers.compare bucket.startTime now == GT then
+                            Future
 
-                  else if TimeHelpers.compare (getBucketEndTime bucket testMode) now == GT then
-                    Current
+                         else if TimeHelpers.compare (getBucketEndTime bucket testMode) now == GT then
+                            Current
 
-                  else
-                    Closed
-                , bucket
-                )
+                         else
+                            Closed
+                        )
+                        bucket
             )
+        |> Maybe.withDefault InvalidBucket
 
 
-getBucketEndTime : Bucket -> Bool -> Time.Posix
+getBucketEndTime : BucketData -> Bool -> Time.Posix
 getBucketEndTime bucket testMode =
     TimeHelpers.add
         bucket.startTime
@@ -188,31 +204,31 @@ getCurrentBucketId bucketSale now testMode =
            )
 
 
-getCurrentBucket : BucketSale -> Time.Posix -> Bool -> Maybe Bucket
+getCurrentBucket : BucketSale -> Time.Posix -> Bool -> FetchedBucketInfo
 getCurrentBucket bucketSale now testMode =
     getBucketInfo
         bucketSale
         (getCurrentBucketId bucketSale now testMode)
         now
         testMode
-        |> Maybe.map Tuple.second
 
 
-currentBucketTimeLeft : BucketSale -> Time.Posix -> Bool -> Time.Posix
+currentBucketTimeLeft : BucketSale -> Time.Posix -> Bool -> Maybe Time.Posix
 currentBucketTimeLeft bucketSale now testMode =
     case getCurrentBucket bucketSale now testMode of
-        Nothing ->
-            Time.millisToPosix 0
+        InvalidBucket ->
+            Nothing
 
-        Just currentBucket ->
-            TimeHelpers.sub
-                (getBucketEndTime currentBucket testMode)
-                now
+        ValidBucket validBucketInfo ->
+            Just <|
+                TimeHelpers.sub
+                    (getBucketEndTime validBucketInfo.bucketData testMode)
+                    now
 
 
-makeBlankBucket : Bool -> Time.Posix -> Int -> Bucket
+makeBlankBucket : Bool -> Time.Posix -> Int -> BucketData
 makeBlankBucket testMode bucketSaleStartTime bucketId =
-    Bucket
+    BucketData
         (TimeHelpers.posixToSeconds bucketSaleStartTime
             + (TimeHelpers.posixToSeconds (Config.bucketSaleBucketInterval testMode)
                 * bucketId
@@ -249,11 +265,32 @@ calcEffectivePricePerToken totalValueEntered testMode =
         |> TokenValue.fromFloatWithWarning
 
 
-type BucketTimeleftInfo
-    = StartsIn Time.Posix
-    | StartedAndEndsIn Time.Posix
+type alias RelevantTimingInfo =
+    { state : BucketState
+    , relevantTimeFromNow : Time.Posix
+    }
 
 
-getBucketTimeleftInfo : Time.Posix -> BucketSale -> BucketView -> BucketTimeleftInfo
-getBucketTimeleftInfo now bucketSale bucketView =
-    Debug.todo ""
+getRelevantTimingInfo : ValidBucketInfo -> Time.Posix -> Bool -> RelevantTimingInfo
+getRelevantTimingInfo bucketInfo now testMode =
+    RelevantTimingInfo
+        bucketInfo.state
+        (case bucketInfo.state of
+            Closed ->
+                -- How long ago did the bucket end?
+                TimeHelpers.sub
+                    now
+                    bucketInfo.bucketData.startTime
+
+            Current ->
+                -- How soon will the bucket end?
+                TimeHelpers.sub
+                    (getBucketEndTime bucketInfo.bucketData testMode)
+                    now
+
+            Future ->
+                -- How soon will the bucket start?
+                TimeHelpers.sub
+                    bucketInfo.bucketData.startTime
+                    now
+        )

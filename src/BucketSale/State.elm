@@ -126,24 +126,38 @@ update msg prevModel =
                             startTimestamp =
                                 TimeHelpers.secondsBigIntToPosixWithWarning startTimestampBigInt
 
-                            newMaybeBucketSale =
+                            ( newMaybeBucketSale, cmd ) =
                                 case prevModel.bucketSale of
                                     Nothing ->
                                         case initBucketSale prevModel.testMode startTimestamp prevModel.now of
-                                            Just s ->
-                                                Just s
+                                            Just sale ->
+                                                ( Just sale
+                                                , fetchBucketDataCmd
+                                                    (getCurrentBucketId
+                                                        sale
+                                                        prevModel.now
+                                                        prevModel.testMode
+                                                    )
+                                                    (Wallet.userInfo prevModel.wallet)
+                                                    prevModel.testMode
+                                                )
 
                                             Nothing ->
                                                 Debug.todo "Failed to init bucket sale. Is it started yet?"
 
                                     _ ->
-                                        prevModel.bucketSale
+                                        ( prevModel.bucketSale
+                                        , Cmd.none
+                                        )
                         in
-                        justModelUpdate
+                        UpdateResult
                             { prevModel
                                 | bucketSale = newMaybeBucketSale
                                 , saleStartTime = Just startTimestamp
                             }
+                            cmd
+                            ChainCmd.none
+                            []
 
                 Err httpErr ->
                     let
@@ -161,7 +175,7 @@ update msg prevModel =
                     in
                     justModelUpdate prevModel
 
-                Ok valueEnteredBigInt ->
+                Ok valueEntered ->
                     case prevModel.bucketSale of
                         Nothing ->
                             let
@@ -172,9 +186,6 @@ update msg prevModel =
 
                         Just oldBucketSale ->
                             let
-                                valueEntered =
-                                    TokenValue.tokenValue valueEnteredBigInt
-
                                 maybeNewBucketSale =
                                     oldBucketSale
                                         |> updateBucketAt
@@ -393,12 +404,66 @@ update msg prevModel =
                                 ViewCurrent
 
                             else
-                                ViewId bucketId
+                                ViewId
+                                    (bucketId
+                                        |> min Config.bucketSaleNumBuckets
+                                        |> max 0
+                                    )
+
+                        maybeBucketData =
+                            getBucketInfo
+                                bucketSale
+                                (getFocusedBucketId
+                                    bucketSale
+                                    newBucketView
+                                    prevModel.now
+                                    prevModel.testMode
+                                )
+                                prevModel.now
+                                prevModel.testMode
+                                |> (\fetchedBucketInfo ->
+                                        case fetchedBucketInfo of
+                                            ValidBucket bucketInfo ->
+                                                Just bucketInfo.bucketData
+
+                                            _ ->
+                                                Nothing
+                                   )
+
+                        cmd =
+                            maybeBucketData
+                                |> Maybe.map
+                                    (\bucketData ->
+                                        case ( bucketData.totalValueEntered, bucketData.userBuy ) of
+                                            ( Just _, Just _ ) ->
+                                                Cmd.none
+
+                                            ( Nothing, _ ) ->
+                                                fetchBucketDataCmd
+                                                    bucketId
+                                                    (Wallet.userInfo prevModel.wallet)
+                                                    prevModel.testMode
+
+                                            ( Just _, Nothing ) ->
+                                                case Wallet.userInfo prevModel.wallet of
+                                                    Just userInfo ->
+                                                        fetchBucketUserBuyCmd
+                                                            bucketId
+                                                            userInfo
+                                                            prevModel.testMode
+
+                                                    Nothing ->
+                                                        Cmd.none
+                                    )
+                                |> Maybe.withDefault Cmd.none
                     in
-                    justModelUpdate
+                    UpdateResult
                         { prevModel
                             | bucketView = newBucketView
                         }
+                        cmd
+                        ChainCmd.none
+                        []
 
         DaiInputChanged input ->
             justModelUpdate
@@ -566,28 +631,17 @@ update msg prevModel =
 
 initBucketSale : Bool -> Time.Posix -> Time.Posix -> Maybe BucketSale
 initBucketSale testMode saleStartTime now =
-    let
-        numBuckets =
-            TimeHelpers.sub
-                now
-                saleStartTime
-                |> TimeHelpers.posixToSeconds
-                |> (\seconds ->
-                        (seconds // (Config.bucketSaleBucketInterval testMode |> TimeHelpers.posixToSeconds))
-                            + 1
-                   )
-    in
-    if numBuckets <= 0 then
+    if TimeHelpers.compare saleStartTime now == GT then
         Nothing
 
     else
         Just <|
             BucketSale
                 saleStartTime
-                (List.range 0 (numBuckets - 1)
+                (List.range 0 (Config.bucketSaleNumBuckets - 1)
                     |> List.map
                         (\id ->
-                            Bucket
+                            BucketData
                                 (TimeHelpers.add
                                     saleStartTime
                                     (TimeHelpers.mul
@@ -599,6 +653,34 @@ initBucketSale testMode saleStartTime now =
                                 Nothing
                         )
                 )
+
+
+fetchBucketDataCmd : Int -> Maybe UserInfo -> Bool -> Cmd Msg
+fetchBucketDataCmd id maybeUserInfo testMode =
+    Cmd.batch
+        [ fetchTotalValueEnteredCmd id testMode
+        , case maybeUserInfo of
+            Just userInfo ->
+                fetchBucketUserBuyCmd id userInfo testMode
+
+            Nothing ->
+                Cmd.none
+        ]
+
+fetchTotalValueEnteredCmd : Int -> Bool -> Cmd Msg
+fetchTotalValueEnteredCmd id testMode =
+    BucketSaleWrappers.getTotalValueEnteredForBucket
+            testMode
+            id
+            (BucketValueEnteredFetched id)
+
+fetchBucketUserBuyCmd : Int -> UserInfo -> Bool -> Cmd Msg
+fetchBucketUserBuyCmd id userInfo testMode =
+    BucketSaleWrappers.getUserBuyForBucket
+        testMode
+        userInfo.address
+        id
+        (UserBuyFetched userInfo.address id)
 
 
 fetchUserExitInfoCmd : UserInfo -> Bool -> Cmd Msg

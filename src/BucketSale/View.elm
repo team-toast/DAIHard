@@ -48,7 +48,18 @@ root model =
                     , Element.spacing 50
                     ]
                     [ closedBucketsPane model
-                    , focusedBucketPane model bucketSale
+                    , focusedBucketPane
+                        bucketSale
+                        (getFocusedBucketId
+                            bucketSale
+                            model.bucketView
+                            model.now
+                            model.testMode
+                        )
+                        model.wallet
+                        model.enterUXModel
+                        model.now
+                        model.testMode
                     , futureBucketsPane model
                     ]
         ]
@@ -96,36 +107,40 @@ closedBucketsPane model =
         ]
 
 
-focusedBucketPane : Model -> BucketSale -> Element Msg
-focusedBucketPane model bucketSale =
-    let
-        bucketId =
-            getCurrentBucketId
-                bucketSale
-                model.now
-                model.testMode
-    in
+focusedBucketPane : BucketSale -> Int -> Wallet.State -> EnterUXModel -> Time.Posix -> Bool -> Element Msg
+focusedBucketPane bucketSale bucketId wallet enterUXModel now testMode =
     Element.column
         (commonPaneAttributes
             ++ [ Element.width <| Element.px 650
                , Element.paddingXY 35 31
                , Element.spacing 7
+               , Element.height <| Element.px 800
                ]
         )
-        [ focusedBucketHeaderEl
+        ([ focusedBucketHeaderEl
             bucketId
-            (getBucketInfo
-                bucketSale
-                bucketId
-                model.now
-                model.testMode
-            )
-            (Wallet.userInfo model.wallet)
-            model.enterUXModel.referrer
-            model.testMode
-        , focusedBucketTimeLeftEl (getBucketTimeleftInfo model.now bucketSale model.bucketView)
-        , enterBidUX model.enterUXModel
-        ]
+            (Wallet.userInfo wallet)
+            enterUXModel.referrer
+            testMode
+         ]
+            ++ (case getBucketInfo bucketSale bucketId now testMode of
+                    InvalidBucket ->
+                        [ Element.el
+                            [ Element.Font.size 20
+                            , Element.centerX
+                            ]
+                            (Element.text "Invalid bucket Id")
+                        ]
+
+                    ValidBucket bucketInfo ->
+                        [ focusedBucketSubheaderEl bucketInfo
+                        , focusedBucketTimeLeftEl
+                            (getRelevantTimingInfo bucketInfo now testMode)
+                            testMode
+                        , enterBidUX enterUXModel
+                        ]
+               )
+        )
 
 
 futureBucketsPane : Model -> Element Msg
@@ -142,7 +157,7 @@ futureBucketsPane model =
             , Element.Font.bold
             ]
           <|
-            Element.text "Upcoming Buckets"
+            Element.text "Future Buckets"
         ]
 
 
@@ -233,53 +248,49 @@ totalExitedBlock maybeTotalExited =
                 ]
 
 
-focusedBucketHeaderEl : Int -> Maybe ( BucketState, Bucket ) -> Maybe UserInfo -> Maybe Address -> Bool -> Element Msg
-focusedBucketHeaderEl bucketId maybeBucketStateAndBucket maybeUserInfo maybeReferrer testMode =
-    case maybeBucketStateAndBucket of
-        Nothing ->
-            Debug.todo "invalid shit yo"
-
-        Just ( bucketState, bucket ) ->
-            Element.column
-                [ Element.spacing 8
-                , Element.width Element.fill
+focusedBucketHeaderEl : Int -> Maybe UserInfo -> Maybe Address -> Bool -> Element Msg
+focusedBucketHeaderEl bucketId maybeUserInfo maybeReferrer testMode =
+    Element.column
+        [ Element.spacing 8
+        , Element.width Element.fill
+        ]
+        [ Element.row
+            [ Element.width Element.fill ]
+            [ Element.row
+                [ Element.Font.size 30
+                , Element.Font.bold
+                , Element.alignLeft
+                , Element.spacing 10
                 ]
-                ([ Element.row
-                    [ Element.width Element.fill ]
-                    [ Element.row
-                        [ Element.Font.size 30
-                        , Element.Font.bold
-                        , Element.alignLeft
-                        , Element.spacing 10
-                        ]
-                        [ prevBucketArrow bucketId
-                        , Element.text <|
-                            "Bucket #"
-                                ++ String.fromInt bucketId
-                        , nextBucketArrow bucketId
-                        ]
-                    , Element.el
-                        [ Element.alignRight ]
-                      <|
-                        referralBonusIndicator maybeUserInfo maybeReferrer
-                    ]
-                 ]
-                    ++ (case ( bucket.totalValueEntered, bucket.userBuy ) of
-                            ( Just totalValueEntered, Just userBuy ) ->
-                                [ Element.paragraph
-                                    [ Element.Font.color <| Element.rgba255 1 31 52 0.75
-                                    , Element.Font.size 15
-                                    ]
-                                    [ emphasizedText PassiveStyle <|
-                                        TokenValue.toConciseString totalValueEntered
-                                    , Element.text " DAI has been bid on this bcuket so far. All bids are irreversible."
-                                    ]
-                                ]
+                [ prevBucketArrow bucketId
+                , Element.text <|
+                    "Bucket #"
+                        ++ String.fromInt bucketId
+                , nextBucketArrow bucketId
+                ]
+            , Element.el
+                [ Element.alignRight ]
+              <|
+                referralBonusIndicator maybeUserInfo maybeReferrer
+            ]
+        ]
 
-                            _ ->
-                                [ loadingElement ]
-                       )
-                )
+
+focusedBucketSubheaderEl : ValidBucketInfo -> Element Msg
+focusedBucketSubheaderEl bucketInfo =
+    case ( bucketInfo.bucketData.totalValueEntered, bucketInfo.bucketData.userBuy ) of
+        ( Just totalValueEntered, Just userBuy ) ->
+            Element.paragraph
+                [ Element.Font.color <| Element.rgba255 1 31 52 0.75
+                , Element.Font.size 15
+                ]
+                [ emphasizedText PassiveStyle <|
+                    TokenValue.toConciseString totalValueEntered
+                , Element.text " DAI has been bid on this bcuket so far. All bids are irreversible."
+                ]
+
+        _ ->
+            loadingElement
 
 
 nextBucketArrow : Int -> Element Msg
@@ -290,7 +301,7 @@ nextBucketArrow currentBucketId =
         , Element.Events.onClick (FocusToBucket (currentBucketId + 1))
         , Element.Font.extraBold
         ]
-        (Element.text "<")
+        (Element.text ">")
 
 
 prevBucketArrow : Int -> Element Msg
@@ -301,7 +312,7 @@ prevBucketArrow currentBucketId =
         , Element.Events.onClick (FocusToBucket (currentBucketId - 1))
         , Element.Font.extraBold
         ]
-        (Element.text ">")
+        (Element.text "<")
 
 
 referralBonusIndicator : Maybe UserInfo -> Maybe Address -> Element Msg
@@ -309,19 +320,80 @@ referralBonusIndicator maybeUserInfo maybeReferrer =
     Element.text "refferer!?"
 
 
-focusedBucketTimeLeftEl : BucketTimeleftInfo -> Element Msg
-focusedBucketTimeLeftEl timeleftInfo =
-    case timeleftInfo of
-        StartsIn timeTilStart ->
-            Debug.todo ""
+focusedBucketTimeLeftEl : RelevantTimingInfo -> Bool -> Element Msg
+focusedBucketTimeLeftEl timingInfo testMode =
+    Element.row
+        [ Element.width Element.fill
+        , Element.spacing 22
+        ]
+        [ progressBarElement
+            (case timingInfo.state of
+                Current ->
+                    Just <|
+                        (Time.posixToMillis timingInfo.relevantTimeFromNow |> toFloat)
+                            / (Time.posixToMillis (Config.bucketSaleBucketInterval testMode) |> toFloat)
 
-        StartedAndEndsIn timeLeft ->
-            Debug.todo ""
+                _ ->
+                    Nothing
+            )
+        , let
+            intervalString =
+                TimeHelpers.toConciseIntervalString timingInfo.relevantTimeFromNow
+          in
+          (Element.el
+            [ Element.Font.color deepBlue ]
+            << Element.text
+          )
+            (case timingInfo.state of
+                Closed ->
+                    "ended " ++ intervalString ++ " ago"
+
+                Current ->
+                    intervalString ++ " left"
+
+                Future ->
+                    "starts in " ++ intervalString
+            )
+        ]
+
+
+progressBarElement : Maybe Float -> Element Msg
+progressBarElement maybeRatioComplete =
+    let
+        commonStyles =
+            [ Element.Border.rounded 4
+            , Element.height <| Element.px 8
+            ]
+    in
+    Element.row
+        (commonStyles
+            ++ [ Element.width Element.fill
+               , Element.Background.color <| Element.rgba255 235 237 243 0.6
+               ]
+        )
+        (case maybeRatioComplete of
+            Just ratioComplete ->
+                [ Element.el
+                    [ Element.width <| Element.fillPortion (ratioComplete * 200 |> floor)
+                    , Element.Background.color <| Element.rgb255 255 0 120
+                    ]
+                    Element.none
+                , Element.el
+                    [ Element.width <| Element.fillPortion ((1 - ratioComplete) * 200 |> floor) ]
+                    Element.none
+                ]
+
+            Nothing ->
+                []
+        )
 
 
 enterBidUX : EnterUXModel -> Element Msg
 enterBidUX enterUXModel =
-    Debug.todo ""
+    Element.column [ Element.padding 30 ]
+        [ Element.text "wowowowo replace me plz"
+        , Element.text "I JUST WANNA DIE, EXISTENCE IS PAIN"
+        ]
 
 
 type CommonBlockStyle
