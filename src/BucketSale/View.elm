@@ -84,12 +84,12 @@ closedBucketsPane model =
             , Element.Font.bold
             ]
           <|
-            Element.text "Previous Buckets"
+            Element.text "Concluded Buckets"
         , Element.paragraph
             [ Element.Font.color <| Element.rgba255 1 31 52 0.75
             , Element.Font.size 15
             ]
-            [ Element.text "These are the previous buckets of FRY that have been claimed. If you have FRY to claim it will show below." ]
+            [ Element.text "These are the concluded buckets of FRY that have been claimed. If you have FRY to claim it will show below." ]
         , maybeUserBalanceBlock model.wallet model.userFryBalance
         , maybeClaimBlock model.wallet model.exitInfo
         , totalExitedBlock model.totalTokensExited
@@ -98,6 +98,13 @@ closedBucketsPane model =
 
 focusedBucketPane : Model -> BucketSale -> Element Msg
 focusedBucketPane model bucketSale =
+    let
+        bucketId =
+            getCurrentBucketId
+                bucketSale
+                model.now
+                model.testMode
+    in
     Element.column
         (commonPaneAttributes
             ++ [ Element.width <| Element.px 650
@@ -105,7 +112,17 @@ focusedBucketPane model bucketSale =
                , Element.spacing 7
                ]
         )
-        [ focusedBucketHeaderEl model.testMode
+        [ focusedBucketHeaderEl
+            bucketId
+            (getBucketInfo
+                bucketSale
+                bucketId
+                model.now
+                model.testMode
+            )
+            (Wallet.userInfo model.wallet)
+            model.enterUXModel.referrer
+            model.testMode
         , focusedBucketTimeLeftEl (getBucketTimeleftInfo model.now bucketSale model.bucketView)
         , enterBidUX model.enterUXModel
         ]
@@ -216,35 +233,89 @@ totalExitedBlock maybeTotalExited =
                 ]
 
 
-focusedBucketHeaderEl : Bool -> Element Msg
-focusedBucketHeaderEl testMode =
-    Element.column
-        [ Element.spacing 8
-        , Element.width Element.fill
+focusedBucketHeaderEl : Int -> Maybe ( BucketState, Bucket ) -> Maybe UserInfo -> Maybe Address -> Bool -> Element Msg
+focusedBucketHeaderEl bucketId maybeBucketStateAndBucket maybeUserInfo maybeReferrer testMode =
+    case maybeBucketStateAndBucket of
+        Nothing ->
+            Debug.todo "invalid shit yo"
+
+        Just ( bucketState, bucket ) ->
+            Element.column
+                [ Element.spacing 8
+                , Element.width Element.fill
+                ]
+                ([ Element.row
+                    [ Element.width Element.fill ]
+                    [ Element.row
+                        [ Element.Font.size 30
+                        , Element.Font.bold
+                        , Element.alignLeft
+                        , Element.spacing 10
+                        ]
+                        [ prevBucketArrow bucketId
+                        , Element.text <|
+                            "Bucket #"
+                                ++ String.fromInt bucketId
+                        , nextBucketArrow bucketId
+                        ]
+                    , Element.el
+                        [ Element.alignRight ]
+                      <|
+                        referralBonusIndicator maybeUserInfo maybeReferrer
+                    ]
+                 ]
+                    ++ (case ( bucket.totalValueEntered, bucket.userBuy ) of
+                            ( Just totalValueEntered, Just userBuy ) ->
+                                [ Element.paragraph
+                                    [ Element.Font.color <| Element.rgba255 1 31 52 0.75
+                                    , Element.Font.size 15
+                                    ]
+                                    [ emphasizedText PassiveStyle <|
+                                        TokenValue.toConciseString totalValueEntered
+                                    , Element.text " DAI has been bid on this bcuket so far. All bids are irreversible."
+                                    ]
+                                ]
+
+                            _ ->
+                                [ loadingElement ]
+                       )
+                )
+
+
+nextBucketArrow : Int -> Element Msg
+nextBucketArrow currentBucketId =
+    Element.el
+        [ Element.padding 4
+        , Element.pointer
+        , Element.Events.onClick (FocusToBucket (currentBucketId + 1))
+        , Element.Font.extraBold
         ]
-        [ Element.el
-            [ Element.Font.size 30
-            , Element.Font.bold
-            ]
-          <|
-            Element.text <|
-                "Current bucket of "
-                    ++ TokenValue.toConciseString (Config.bucketSaleTokensPerBucket testMode)
-                    ++ " "
-                    ++ Config.bucketTokenSymbol
+        (Element.text "<")
+
+
+prevBucketArrow : Int -> Element Msg
+prevBucketArrow currentBucketId =
+    Element.el
+        [ Element.padding 4
+        , Element.pointer
+        , Element.Events.onClick (FocusToBucket (currentBucketId - 1))
+        , Element.Font.extraBold
         ]
+        (Element.text ">")
+
+
+referralBonusIndicator : Maybe UserInfo -> Maybe Address -> Element Msg
+referralBonusIndicator maybeUserInfo maybeReferrer =
+    Element.text "refferer!?"
 
 
 focusedBucketTimeLeftEl : BucketTimeleftInfo -> Element Msg
 focusedBucketTimeLeftEl timeleftInfo =
     case timeleftInfo of
-        NotStarted ->
+        StartsIn timeTilStart ->
             Debug.todo ""
 
-        Active timeLeft ->
-            Debug.todo ""
-
-        Finished ->
+        StartedAndEndsIn timeLeft ->
             Debug.todo ""
 
 

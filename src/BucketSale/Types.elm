@@ -53,7 +53,7 @@ type Msg
     | TotalTokensExitedFetched (Result Http.Error TokenValue)
     | UserFryBalanceFetched Address (Result Http.Error TokenValue)
     | ClaimClicked UserInfo ExitInfo
-    | BucketClicked Int
+    | FocusToBucket Int
     | DaiInputChanged String
     | UnlockDaiButtonClicked
     | AllowanceFetched (Result Http.Error BigInt)
@@ -250,9 +250,8 @@ calcEffectivePricePerToken totalValueEntered testMode =
 
 
 type BucketTimeleftInfo
-    = NotStarted
-    | Active Time.Posix
-    | Finished
+    = StartsIn Time.Posix
+    | StartedAndEndsIn Time.Posix
 
 
 getBucketTimeleftInfo : Time.Posix -> BucketSale -> BucketView -> BucketTimeleftInfo

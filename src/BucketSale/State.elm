@@ -377,7 +377,7 @@ update msg prevModel =
                 chainCmd
                 []
 
-        BucketClicked bucketId ->
+        FocusToBucket bucketId ->
             case prevModel.bucketSale of
                 Nothing ->
                     let
