@@ -89,31 +89,60 @@ update msg prevModel =
 
         Refresh ->
             let
-                cmd =
+                fetchUserInfoCmds =
                     Cmd.batch <|
-                        [ fetchTotalTokensExitedCmd prevModel.testMode ]
-                            ++ (Maybe.map
-                                    (\userInfo ->
-                                        [ fetchUserExitInfoCmd userInfo prevModel.testMode
-                                        , fetchUserAllowanceForSaleCmd userInfo prevModel.testMode
-                                        , fetchUserFryBalance userInfo prevModel.testMode
-                                        ]
-                                    )
-                                    (Wallet.userInfo prevModel.wallet)
-                                    |> Maybe.withDefault []
-                               )
+                        (Maybe.map
+                            (\userInfo ->
+                                [ fetchUserExitInfoCmd userInfo prevModel.testMode
+                                , fetchUserAllowanceForSaleCmd userInfo prevModel.testMode
+                                , fetchUserFryBalance userInfo prevModel.testMode
+                                ]
+                            )
+                            (Wallet.userInfo prevModel.wallet)
+                            |> Maybe.withDefault []
+                        )
             in
             UpdateResult
                 prevModel
-                cmd
+                (Cmd.batch
+                    [ fetchTotalTokensExitedCmd prevModel.testMode
+                    , fetchUserInfoCmds
+                    ]
+                )
                 ChainCmd.none
                 []
 
         UpdateNow newNow ->
-            justModelUpdate
+            let
+                cmd =
+                    case ( prevModel.bucketSale, prevModel.bucketView ) of
+                        ( Nothing, _ ) ->
+                            Cmd.none
+
+                        ( _, ViewId _ ) ->
+                            Cmd.none
+
+                        ( Just bucketSale, ViewCurrent ) ->
+                            let
+                                newFocusedId =
+                                    getCurrentBucketId bucketSale newNow prevModel.testMode
+                            in
+                            if newFocusedId /= getCurrentBucketId bucketSale prevModel.now prevModel.testMode then
+                                fetchBucketDataCmd
+                                    newFocusedId
+                                    (Wallet.userInfo prevModel.wallet)
+                                    prevModel.testMode
+
+                            else
+                                Cmd.none
+            in
+            UpdateResult
                 { prevModel
                     | now = newNow
                 }
+                cmd
+                ChainCmd.none
+                []
 
         SaleStartTimestampFetched fetchResult ->
             case fetchResult of
@@ -667,12 +696,14 @@ fetchBucketDataCmd id maybeUserInfo testMode =
                 Cmd.none
         ]
 
+
 fetchTotalValueEnteredCmd : Int -> Bool -> Cmd Msg
 fetchTotalValueEnteredCmd id testMode =
     BucketSaleWrappers.getTotalValueEnteredForBucket
-            testMode
-            id
-            (BucketValueEnteredFetched id)
+        testMode
+        id
+        (BucketValueEnteredFetched id)
+
 
 fetchBucketUserBuyCmd : Int -> UserInfo -> Bool -> Cmd Msg
 fetchBucketUserBuyCmd id userInfo testMode =
