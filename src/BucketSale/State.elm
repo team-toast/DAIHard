@@ -800,14 +800,25 @@ runCmdDown cmdDown prevModel =
                             | allowanceState = Loading
                         }
                 }
-                (Wallet.userInfo wallet
-                    |> Maybe.map
-                        (\userInfo ->
-                            fetchUserAllowanceForSaleCmd
+                (case ( Wallet.userInfo prevModel.wallet, prevModel.bucketSale ) of
+                    ( Just userInfo, Just bucketSale ) ->
+                        Cmd.batch
+                            [ fetchUserAllowanceForSaleCmd
                                 userInfo
                                 prevModel.testMode
-                        )
-                    |> Maybe.withDefault Cmd.none
+                            , fetchBucketUserBuyCmd
+                                (getFocusedBucketId
+                                    bucketSale
+                                    prevModel.bucketView
+                                    prevModel.now
+                                    prevModel.testMode
+                                )
+                                userInfo
+                                prevModel.testMode
+                            ]
+
+                    _ ->
+                        Cmd.none
                 )
                 ChainCmd.none
                 []

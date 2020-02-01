@@ -37,7 +37,7 @@ fromFloatWithWarning val =
         Nothing ->
             let
                 _ =
-                    Debug.log "Error converting float to tokenValue" ""
+                    Debug.log "Error converting float to tokenValue" val
             in
             tokenValue (BigInt.fromInt 0)
 

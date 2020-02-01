@@ -137,7 +137,7 @@ focusedBucketPane bucketSale bucketId wallet enterUXModel now testMode =
                         , focusedBucketTimeLeftEl
                             (getRelevantTimingInfo bucketInfo now testMode)
                             testMode
-                        , enterBidUX enterUXModel
+                        , enterBidUX enterUXModel bucketInfo testMode
                         ]
                )
         )
@@ -171,7 +171,7 @@ maybeUserBalanceBlock wallet maybeFryBalance =
             loadingElement
 
         ( Just userInfo, Just fryBalance ) ->
-            commonBlockContainer PassiveStyle
+            sidepaneBlockContainer PassiveStyle
                 [ bigNumberElement
                     [ Element.centerX ]
                     (TokenNum fryBalance)
@@ -204,7 +204,7 @@ maybeClaimBlock wallet maybeExitInfo =
                     else
                         ( ActiveStyle, Just <| makeClaimButton userInfo exitInfo )
             in
-            commonBlockContainer blockStyle
+            sidepaneBlockContainer blockStyle
                 [ bigNumberElement
                     [ Element.centerX ]
                     (TokenNum exitInfo.totalExitable)
@@ -232,7 +232,7 @@ totalExitedBlock maybeTotalExited =
             loadingElement
 
         Just totalExited ->
-            commonBlockContainer PassiveStyle
+            sidepaneBlockContainer PassiveStyle
                 [ bigNumberElement
                     [ Element.centerX ]
                     (TokenNum totalExited)
@@ -359,6 +359,170 @@ focusedBucketTimeLeftEl timingInfo testMode =
         ]
 
 
+enterBidUX : EnterUXModel -> ValidBucketInfo -> Bool -> Element Msg
+enterBidUX enterUXModel bucketInfo testMode =
+    Element.column
+        [ Element.width Element.fill
+        , Element.spacing 20
+        ]
+        [ bidInputBlock enterUXModel bucketInfo testMode
+        , bidImpactBlock enterUXModel bucketInfo testMode
+        , otherBidsImpactMsg
+        , continueButton enterUXModel bucketInfo
+        ]
+
+
+bidInputBlock : EnterUXModel -> ValidBucketInfo -> Bool -> Element Msg
+bidInputBlock enterUXModel bucketInfo testMode =
+    centerpaneBlockContainer ActiveStyle
+        [ emphasizedText ActiveStyle "I want to bid:"
+        , Element.row
+            [ Element.Background.color <| Element.rgba 1 1 1 0.08
+            , Element.Border.rounded 4
+            , Element.padding 13
+            , Element.width Element.fill
+            ]
+            [ Element.Input.text
+                [ Element.Font.size 19
+                , Element.Font.medium
+                , Element.Font.color EH.white
+                , Element.Border.width 0
+                , Element.width Element.fill
+                , Element.Background.color EH.transparent
+                ]
+                { onChange = DaiInputChanged
+                , text = enterUXModel.daiInput
+                , placeholder =
+                    Just <|
+                        Element.Input.placeholder
+                            [ Element.Font.medium
+                            , Element.Font.color <| Element.rgba 1 1 1 0.25
+                            ]
+                            (Element.text "Enter Amount")
+                , label = Element.Input.labelHidden "bid amount"
+                }
+            , Element.row
+                [ Element.centerY
+                , Element.spacing 10
+                ]
+                [ Images.daiSymbol
+                    |> Images.toElement [ Element.height <| Element.px 30 ]
+                , Element.text "DAI"
+                ]
+            ]
+        , Maybe.map
+            (\totalValueEntered ->
+                pricePerTokenMsg
+                    totalValueEntered
+                    (enterUXModel.daiAmount
+                        |> Maybe.map Result.toMaybe
+                        |> Maybe.Extra.join
+                    )
+                    testMode
+            )
+            bucketInfo.bucketData.totalValueEntered
+            |> Maybe.withDefault loadingElement
+        ]
+
+
+pricePerTokenMsg : TokenValue -> Maybe TokenValue -> Bool -> Element Msg
+pricePerTokenMsg totalValueEntered maybeDaiAmount testMode =
+    Element.paragraph
+        [ Element.Font.size 14
+        , Element.Font.medium
+        ]
+        ([ Element.text <|
+            "The current FRY price is "
+                ++ (calcEffectivePricePerToken
+                        totalValueEntered
+                        testMode
+                        |> TokenValue.toConciseString
+                   )
+                ++ " DAI/FRY."
+         ]
+            ++ (case maybeDaiAmount of
+                    Just amount ->
+                        [ Element.text " This bid will increase the price to "
+                        , emphasizedText ActiveStyle <|
+                            (calcEffectivePricePerToken
+                                (TokenValue.add
+                                    totalValueEntered
+                                    amount
+                                )
+                                testMode
+                                |> TokenValue.toConciseString
+                            )
+                                ++ " DAI/FRY."
+                        ]
+
+                    _ ->
+                        []
+               )
+        )
+
+
+bidImpactBlock : EnterUXModel -> ValidBucketInfo -> Bool -> Element Msg
+bidImpactBlock enterUXModel bucketInfo testMode =
+    centerpaneBlockContainer PassiveStyle
+        [ emphasizedText PassiveStyle "Your current bid standing:"
+        , case Debug.log "impact" ( bucketInfo.bucketData.totalValueEntered, bucketInfo.bucketData.userBuy ) of
+            ( Just totalValueEntered, Just userBuy ) ->
+                let
+                    existingBidAmount =
+                        userBuy.valueEntered
+
+                    extraBidAmount =
+                        enterUXModel.daiAmount
+                            |> Maybe.map Result.toMaybe
+                            |> Maybe.Extra.join
+                            |> Maybe.withDefault TokenValue.zero
+
+                    totalBidAmount =
+                        TokenValue.add
+                            extraBidAmount
+                            existingBidAmount
+                in
+                Element.paragraph
+                    [ Element.width Element.fill
+                    , Element.Font.color <| Element.rgba255 1 31 52 0.75
+                    ]
+                <|
+                    if TokenValue.isZero totalBidAmount then
+                        [ Element.text "You haven't entered any bids into this bucket." ]
+
+                    else
+                        [ Element.text "If no other bids are made before this bucket ends, you will be able to claim "
+                        , emphasizedText PassiveStyle <|
+                            (calcClaimableTokens totalValueEntered totalBidAmount testMode
+                                |> TokenValue.toConciseString
+                            )
+                                ++ " FRY"
+                        , Element.text <|
+                            " out of "
+                                ++ TokenValue.toConciseString (Config.bucketSaleTokensPerBucket testMode)
+                                ++ " FRY available from the "
+                        , emphasizedText PassiveStyle <|
+                            TokenValue.toConciseString totalBidAmount
+                                ++ " DAI"
+                        , Element.text " total you'll have bid."
+                        ]
+
+            _ ->
+                loadingElement
+        ]
+
+
+otherBidsImpactMsg : Element Msg
+otherBidsImpactMsg =
+    centerpaneBlockContainer PassiveStyle
+        [ emphasizedText PassiveStyle "If other bids ARE made:" ]
+
+
+continueButton : EnterUXModel -> ValidBucketInfo -> Element Msg
+continueButton enterUXModel bucketInfo =
+    Element.text "Continue button!"
+
+
 progressBarElement : Maybe Float -> Element Msg
 progressBarElement maybeRatioComplete =
     let
@@ -392,19 +556,6 @@ progressBarElement maybeRatioComplete =
         )
 
 
-enterBidUX : EnterUXModel -> Element Msg
-enterBidUX enterUXModel =
-    Element.column [ Element.padding 30 ]
-        [ Element.text "wowowowo replace me plz"
-        , Element.text "I JUST WANNA DIE, EXISTENCE IS PAIN"
-        ]
-
-
-type CommonBlockStyle
-    = ActiveStyle
-    | PassiveStyle
-
-
 emphasizedText : CommonBlockStyle -> (String -> Element Msg)
 emphasizedText styleType =
     Element.el
@@ -418,8 +569,34 @@ emphasizedText styleType =
         << Element.text
 
 
-commonBlockContainer : CommonBlockStyle -> List (Element Msg) -> Element Msg
-commonBlockContainer styleType elements =
+type CommonBlockStyle
+    = ActiveStyle
+    | PassiveStyle
+
+
+centerpaneBlockContainer : CommonBlockStyle -> List (Element Msg) -> Element Msg
+centerpaneBlockContainer styleType =
+    Element.column
+        ([ Element.width Element.fill
+         , Element.Border.rounded 4
+         , Element.padding 20
+         , Element.spacing 13
+         , Element.Font.size 16
+         ]
+            ++ (case styleType of
+                    ActiveStyle ->
+                        [ Element.Background.color deepBlue
+                        , Element.Font.color <| Element.rgba 1 1 1 0.6
+                        ]
+
+                    PassiveStyle ->
+                        [ Element.Background.color gray ]
+               )
+        )
+
+
+sidepaneBlockContainer : CommonBlockStyle -> List (Element Msg) -> Element Msg
+sidepaneBlockContainer styleType =
     Element.column
         ([ Element.width Element.fill
          , Element.Border.rounded 4
@@ -438,7 +615,6 @@ commonBlockContainer styleType elements =
                         ]
                )
         )
-        elements
 
 
 type NumberVal
@@ -492,6 +668,11 @@ makeClaimButton userInfo exitInfo =
 loadingElement : Element Msg
 loadingElement =
     Element.text "Loading"
+
+
+gray : Element.Color
+gray =
+    Element.rgb255 235 237 243
 
 
 deepBlue : Element.Color

@@ -248,14 +248,21 @@ buyFromBindingBuy bindingBuy =
 
 calcClaimableTokens : TokenValue -> TokenValue -> Bool -> TokenValue
 calcClaimableTokens totalValueEntered daiIn testMode =
-    let
-        claimableRatio =
-            TokenValue.toFloatWithWarning daiIn
-                / TokenValue.toFloatWithWarning totalValueEntered
-    in
-    TokenValue.mulFloatWithWarning
-        (Config.bucketSaleTokensPerBucket testMode)
-        claimableRatio
+    if TokenValue.isZero daiIn then
+        TokenValue.zero
+
+    else if TokenValue.isZero totalValueEntered then
+        Config.bucketSaleTokensPerBucket testMode
+
+    else
+        let
+            claimableRatio =
+                TokenValue.toFloatWithWarning daiIn
+                    / TokenValue.toFloatWithWarning totalValueEntered
+        in
+        TokenValue.mulFloatWithWarning
+            (Config.bucketSaleTokensPerBucket testMode)
+            claimableRatio
 
 
 calcEffectivePricePerToken : TokenValue -> Bool -> TokenValue
