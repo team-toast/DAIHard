@@ -742,6 +742,8 @@ disabledButton dProfile attributes text maybeTipText =
                , Element.Font.size (18 |> changeForMobile 16 dProfile)
                , Element.Font.semiBold
                , Element.Background.color lightGray
+               , Element.Font.center
+               , noSelectText
                , Element.above <|
                     maybeErrorElement
                         [ Element.moveUp 5 ]

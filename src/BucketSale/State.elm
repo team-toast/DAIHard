@@ -128,6 +128,10 @@ update msg prevModel =
                                     getCurrentBucketId bucketSale newNow prevModel.testMode
                             in
                             if newFocusedId /= getCurrentBucketId bucketSale prevModel.now prevModel.testMode then
+                                let
+                                    _ =
+                                        Debug.log "fetching" ""
+                                in
                                 fetchBucketDataCmd
                                     newFocusedId
                                     (Wallet.userInfo prevModel.wallet)
@@ -785,10 +789,10 @@ runCmdDown cmdDown prevModel =
     case cmdDown of
         CmdDown.UpdateWallet newWallet ->
             let
-                newBucketSale = 
-                        Maybe.map
-                            clearBucketSaleExitInfo
-                            prevModel.bucketSale
+                newBucketSale =
+                    Maybe.map
+                        clearBucketSaleExitInfo
+                        prevModel.bucketSale
             in
             UpdateResult
                 { prevModel
@@ -833,6 +837,6 @@ runCmdDown cmdDown prevModel =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Time.every 1000 <| always Refresh
+        [ Time.every 3000 <| always Refresh
         , Time.every 500 UpdateNow
         ]

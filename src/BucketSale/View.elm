@@ -97,7 +97,7 @@ closedBucketsPane model =
           <|
             Element.text "Concluded Buckets"
         , Element.paragraph
-            [ Element.Font.color <| Element.rgba255 1 31 52 0.75
+            [ Element.Font.color grayTextColor
             , Element.Font.size 15
             ]
             [ Element.text "These are the concluded buckets of FRY that have been claimed. If you have FRY to claim it will show below." ]
@@ -137,7 +137,7 @@ focusedBucketPane bucketSale bucketId wallet enterUXModel now testMode =
                         , focusedBucketTimeLeftEl
                             (getRelevantTimingInfo bucketInfo now testMode)
                             testMode
-                        , enterBidUX enterUXModel bucketInfo testMode
+                        , enterBidUX (Wallet.userInfo wallet) enterUXModel bucketInfo testMode
                         ]
                )
         )
@@ -281,7 +281,7 @@ focusedBucketSubheaderEl bucketInfo =
     case ( bucketInfo.bucketData.totalValueEntered, bucketInfo.bucketData.userBuy ) of
         ( Just totalValueEntered, Just userBuy ) ->
             Element.paragraph
-                [ Element.Font.color <| Element.rgba255 1 31 52 0.75
+                [ Element.Font.color grayTextColor
                 , Element.Font.size 15
                 ]
                 [ emphasizedText PassiveStyle <|
@@ -359,8 +359,8 @@ focusedBucketTimeLeftEl timingInfo testMode =
         ]
 
 
-enterBidUX : EnterUXModel -> ValidBucketInfo -> Bool -> Element Msg
-enterBidUX enterUXModel bucketInfo testMode =
+enterBidUX : Maybe UserInfo -> EnterUXModel -> ValidBucketInfo -> Bool -> Element Msg
+enterBidUX maybeUserInfo enterUXModel bucketInfo testMode =
     Element.column
         [ Element.width Element.fill
         , Element.spacing 20
@@ -368,7 +368,7 @@ enterBidUX enterUXModel bucketInfo testMode =
         [ bidInputBlock enterUXModel bucketInfo testMode
         , bidImpactBlock enterUXModel bucketInfo testMode
         , otherBidsImpactMsg
-        , continueButton enterUXModel bucketInfo
+        , actionButton maybeUserInfo enterUXModel bucketInfo testMode
         ]
 
 
@@ -484,7 +484,7 @@ bidImpactBlock enterUXModel bucketInfo testMode =
                 in
                 Element.paragraph
                     [ Element.width Element.fill
-                    , Element.Font.color <| Element.rgba255 1 31 52 0.75
+                    , Element.Font.color grayTextColor
                     ]
                 <|
                     if TokenValue.isZero totalBidAmount then
@@ -515,12 +515,76 @@ bidImpactBlock enterUXModel bucketInfo testMode =
 otherBidsImpactMsg : Element Msg
 otherBidsImpactMsg =
     centerpaneBlockContainer PassiveStyle
-        [ emphasizedText PassiveStyle "If other bids ARE made:" ]
+        [ emphasizedText PassiveStyle "If other bids ARE made:"
+        , Element.paragraph
+            [ Element.width Element.fill
+            , Element.Font.color grayTextColor
+            ]
+            [ Element.text "The price per token will increase further, and the amount of FRY you can claim from the bucket will decrease proportionally. (For example, if the total bid amount doubles, the effective price per token will also double, and your amount of claimable tokens will halve.)" ]
+        ]
 
 
-continueButton : EnterUXModel -> ValidBucketInfo -> Element Msg
-continueButton enterUXModel bucketInfo =
-    Element.text "Continue button!"
+actionButton : Maybe UserInfo -> EnterUXModel -> ValidBucketInfo -> Bool -> Element Msg
+actionButton maybeUserInfo enterUXModel bucketInfo testMode =
+    case maybeUserInfo of
+        Nothing ->
+            connectToWeb3Button
+
+        Just userInfo ->
+            let
+                unlockDaiButton =
+                    EH.redButton
+                        Desktop
+                        [ Element.width Element.fill ]
+                        [ "Unlock Dai" ]
+                        UnlockDaiButtonClicked
+
+                continueButton daiAmount =
+                    EH.redButton
+                        Desktop
+                        [ Element.width Element.fill ]
+                        [ "Continue" ]
+                        (EnterButtonClicked userInfo bucketInfo.id daiAmount enterUXModel.referrer)
+
+                disabledContinueButton =
+                    EH.disabledButton
+                        Desktop
+                        [ Element.width Element.fill ]
+                        "Continue"
+                        Nothing
+
+                inProgressMsg text =
+                    Element.el
+                        [ Element.centerX
+                        , Element.Font.size 22
+                        , Element.Font.italic
+                        , Element.Font.color grayTextColor
+                        ]
+                        (Element.text text)
+            in
+            if enterUXModel.allowanceState == Loaded TokenValue.zero then
+                unlockDaiButton
+
+            else
+                case ( enterUXModel.daiAmount, enterUXModel.allowanceState ) of
+                    ( _, Loading ) ->
+                        inProgressMsg "Fetching Dai unlock status..."
+
+                    ( _, UnlockMining ) ->
+                        inProgressMsg "Mining Dai unlock..."
+
+                    ( Nothing, _ ) ->
+                        disabledContinueButton
+
+                    ( Just (Err errStr), _ ) ->
+                        disabledContinueButton
+
+                    ( Just (Ok daiAmount), Loaded allowance ) ->
+                        if TokenValue.compare daiAmount allowance /= GT then
+                            continueButton daiAmount
+
+                        else
+                            unlockDaiButton
 
 
 progressBarElement : Maybe Float -> Element Msg
@@ -684,3 +748,25 @@ deepBlueWithAlpha : Float -> Element.Color
 deepBlueWithAlpha a =
     deepBlue
         |> EH.addAlpha a
+
+
+grayTextColor : Element.Color
+grayTextColor =
+    Element.rgba255 1 31 52 0.75
+
+
+connectToWeb3Button : Element Msg
+connectToWeb3Button =
+    Element.el
+        [ Element.width Element.fill
+        , Element.padding 17
+        , Element.Border.rounded 4
+        , Element.Font.size 20
+        , Element.Font.semiBold
+        , Element.Font.center
+        , Element.Background.color EH.softRed
+        , Element.Font.color EH.white
+        , Element.pointer
+        , Element.Events.onClick <| CmdUp CmdUp.Web3Connect
+        ]
+        (Element.text "Connect to Wallet")
