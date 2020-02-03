@@ -1,4 +1,4 @@
-module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, addAlpha, basicOpenDropdown, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, closeableModalBlackX, closeableModalWhiteX, coloredResponderProfit, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, inputContainer, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightGray, lightRed, maybeErrorElement, mediumGray, modal, moveToFront, niceBottomBorderEl, niceFloatingRow, noSelectText, onClickNoPropagation, optionsDots, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, redButton, releasedIconColor, responderProfitFloatToConciseString, responderProfitSymbol, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, searchableOpenDropdown, simpleSubmodelContainer, softRed, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, thinGrayHRuler, txProcessModal, uncoloredResponderProfit, white, withHeader, withInputHeader, withInputHeaderAndMaybeError, withSelectedUnderline, yellow)
+module Helpers.Element exposing (abortedIconColor, activePhaseBackgroundColor, addAlpha, basicOpenDropdown, bigTimeUnitElement, black, blue, blueButton, bulletPointString, burnedIconColor, button, closeButton, closeableModal, closeableModalBlackX, closeableModalWhiteX, coloredResponderProfit, comingSoonMsg, coolCurrencyHbreak, currencyLabelColor, daiSymbol, daiSymbolAndLabel, daiValue, daiYellow, darkGray, darkYellow, disabledButton, disabledTextColor, dollarGreen, dropdownSelector, elOnCircle, elapsedBar, elementColorToAvh4Color, ethAddress, etherscanAddressLink, fakeLink, fancyInput, green, inputContainer, interval, intervalInput, intervalWithElapsedBar, inverseBlueButton, lightBlue, lightBlueButton, lightGray, lightRed, maybeErrorElement, mediumGray, modal, moveToFront, niceBottomBorderEl, niceFloatingRow, noSelectText, onClickNoPropagation, optionsDots, orangeButton, pageBackgroundColor, permanentTextColor, placeholderTextColor, pokeButton, price, redButton, releasedIconColor, responderProfitFloatToConciseString, responderProfitSymbol, roundBottomCorners, roundTopCorners, roundedComplexInputBox, scrollbarYEl, searchableOpenDropdown, simpleSubmodelContainer, softRed, submodelBackgroundColor, submodelContainer, subtleShadow, testBorderStyles, textInputWithElement, textWithoutTextCursor, thinGrayHRuler, transparent, txProcessModal, uncoloredResponderProfit, white, withHeader, withInputHeader, withInputHeaderAndMaybeError, withSelectedUnderline, yellow)
 
 import Browser.Dom
 import Collage exposing (Collage)
@@ -34,6 +34,10 @@ import TokenValue exposing (TokenValue)
 
 
 -- COLORS
+
+
+transparent =
+    Element.rgba 0 0 0 0
 
 
 black =
@@ -686,6 +690,23 @@ blueButton dProfile attributes text msg =
         msg
 
 
+lightBlueButton : DisplayProfile -> List (Attribute msg) -> List String -> msg -> Element msg
+lightBlueButton dProfile attributes text msg =
+    let
+        color =
+            Element.rgb255 25 169 214
+    in
+    button dProfile
+        attributes
+        ( color
+        , color |> addAlpha 0.8
+        , color |> addAlpha 0.6
+        )
+        white
+        text
+        msg
+
+
 inverseBlueButton : DisplayProfile -> List (Attribute msg) -> List String -> msg -> Element msg
 inverseBlueButton dProfile attributes text msg =
     button dProfile
@@ -721,6 +742,8 @@ disabledButton dProfile attributes text maybeTipText =
                , Element.Font.size (18 |> changeForMobile 16 dProfile)
                , Element.Font.semiBold
                , Element.Background.color lightGray
+               , Element.Font.center
+               , noSelectText
                , Element.above <|
                     maybeErrorElement
                         [ Element.moveUp 5 ]

@@ -1,4 +1,4 @@
-module Config exposing (activeFactories, bucketSaleAddress, bucketSaleBucketInterval, bucketSaleScriptsAddress, bucketSaleTokensPerBucket, bucketTokenSymbol, devFeeAddress, factoryAddress, fryAddress, tokenContractAddress)
+module Config exposing (activeFactories, bucketSaleAddress, bucketSaleBucketInterval, bucketSaleNumBuckets, bucketSaleScriptsAddress, bucketSaleTokensPerBucket, bucketTokenSymbol, devFeeAddress, factoryAddress, fryAddress, tokenContractAddress)
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -79,7 +79,7 @@ fryAddress testMode =
 bucketSaleAddress : Bool -> Address
 bucketSaleAddress testMode =
     if testMode then
-        Eth.Utils.unsafeToAddress "0xe0d2136293F7c924d6d8a41D58601c43256CC2b7"
+        Eth.Utils.unsafeToAddress "0xc5CDB6fF1a357E24f530aa2E2c78564b824787F1"
 
     else
         Debug.todo "No address for non-testMode bucketSale"
@@ -97,7 +97,7 @@ bucketSaleScriptsAddress testMode =
 bucketSaleBucketInterval : Bool -> Time.Posix
 bucketSaleBucketInterval testMode =
     if testMode then
-        Time.millisToPosix <| 1000 * 60 * 2
+        Time.millisToPosix <| 1000 * 60 * 10
 
     else
         Debug.todo "blocks per bucket in non-test-mode"
@@ -105,12 +105,17 @@ bucketSaleBucketInterval testMode =
 
 bucketSaleTokensPerBucket : Bool -> TokenValue
 bucketSaleTokensPerBucket testMode =
-    TokenValue.fromIntTokenValue <|
-        if testMode then
-            150
+    if testMode then
+        TokenValue.tokenValue <|
+            BigInt.fromInt 150
 
-        else
-            Debug.todo "tokens per bucket in non-test mode"
+    else
+        Debug.todo "tokens per bucket in non-test mode"
+
+
+bucketSaleNumBuckets : Int
+bucketSaleNumBuckets =
+    1200
 
 
 bucketTokenSymbol : String

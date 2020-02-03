@@ -29,7 +29,13 @@ exitMany contractAddress bucketSale buyer bucketIds =
     , gas = Nothing
     , gasPrice = Nothing
     , value = Nothing
-    , data = Just <| AbiEncode.functionCall "exitMany(address,address,uint256[])" [ AbiEncode.address bucketSale, AbiEncode.address buyer, AbiEncode.list (List.map AbiEncode.uint bucketIds) ]
+    , data =
+        Just <|
+            AbiEncode.functionCall "exitMany(address,address,uint256[])"
+                [ AbiEncode.address bucketSale
+                , AbiEncode.address buyer
+                , AbiEncode.list (List.map AbiEncode.uint bucketIds)
+                ]
     , nonce = Nothing
     , decoder = Decode.succeed ()
     }
