@@ -11,6 +11,8 @@ open DAIHard.Contracts.BucketSale.ContractDefinition
 open BucketSaleTestBase
 open Nethereum.Web3.Accounts
 open Nethereum.RPC.Eth.DTOs
+open Nethereum.Contracts
+open System.Text
 
 [<Specification("BucketSale", "misc", 0)>]
 [<Fact>]
@@ -372,7 +374,6 @@ let ``EX003 - Cannot exit a buy you have already exited``() =
     seedBucketWithFries()
 
     let currentBucket:BigInteger = bucketSale.Query "currentBucket" [||]
-
     let valueToEnter = BigInteger 10UL
     let buyer = ethConn.Account.Address
     let sender = ethConn.Account.Address
@@ -401,6 +402,48 @@ let ``EX003 - Cannot exit a buy you have already exited``() =
     secondForwardEvent.Wei |> should equal BigInteger.Zero
     secondForwardEvent |> shouldRevertWithMessage "already withdrawn"
 
-    
 
+[<Specification("BucketSale", "exit", 3)>]
+[<Fact>]
+let ``EX004 - Cannot exit a bucket if the token transfer fails``() =
+    seedBucketWithFries()
+
+    let currentBucket:BigInteger = bucketSale.Query "currentBucket" [||]
+    let valueToEnter = BigInteger 10UL
+    let buyer = ethConn.Account.Address
+    let sender = ethConn.Account.Address
+
+    enterBucket
+        sender
+        buyer
+        currentBucket
+        valueToEnter
+        (makeAccount().Address)
+
+    7UL * hours |> ethConn.TimeTravel 
+    
+    let fryBalance = FRY.Query<BigInteger> "balanceOf" [| bucketSale.Address |] 
+    
+    let moveTokensData = FRY.FunctionData "transfer" [| makeAccount().Address; fryBalance |]
+    let moveTokensForwardReciept = 
+        bucketSale.ExecuteFunction 
+            "forward" 
+            [|
+                FRY.Address
+                moveTokensData.HexToByteArray()
+                BigInteger.Zero 
+            |]
+    moveTokensForwardReciept |> shouldSucceed
+    let forwardEvent = moveTokensForwardReciept.DecodeAllEvents<ForwardedEventDTO>() |> Seq.head
+    let errorMessage = Encoding.ASCII.GetString(forwardEvent.Event.ResultData) 
+    forwardEvent.Event.Success |> should equal true
+    FRY.Query "balanceOf" [| bucketSale.Address |] |> should lessThan (bucketCount * bucketSupply)
+
+    let exitReceipt = bucketSale.ExecuteFunctionFrom "exit" [| currentBucket; buyer |] forwarder
+    let exitForwardEvent = decodeFirstEvent<DAIHard.Contracts.Forwarder.ContractDefinition.ForwardedEventDTO> exitReceipt
+    exitForwardEvent.MsgSender |> shouldEqualIgnoringCase ethConn.Account.Address
+    exitForwardEvent.Success |> should equal false
+    exitForwardEvent.To |> should equal bucketSale.Address
+    exitForwardEvent.Wei |> should equal BigInteger.Zero
+    exitForwardEvent |> shouldRevertWithMessage "" //unknown internal revert of the ERC20, error is not necessarily known
 
