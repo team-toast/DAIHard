@@ -145,20 +145,62 @@ focusedBucketPane bucketSale bucketId wallet enterUXModel now testMode =
 
 futureBucketsPane : Model -> Element Msg
 futureBucketsPane model =
-    Element.column
-        (commonPaneAttributes
-            ++ [ Element.paddingXY 32 25
-               , Element.spacing 7
-               ]
-        )
-        [ Element.el
-            [ Element.width <| Element.px 430
-            , Element.Font.size 25
-            , Element.Font.bold
-            ]
-          <|
-            Element.text "Future Buckets"
-        ]
+    case model.bucketSale of
+        Nothing ->
+            loadingElement
+
+        Just bucketSale ->
+            let
+                fetchedNextBucketInfo =
+                    getBucketInfo
+                        bucketSale
+                        (getCurrentBucketId
+                            bucketSale
+                            model.now
+                            model.testMode
+                            + 1
+                        )
+                        model.now
+                        model.testMode
+            in
+            case fetchedNextBucketInfo of
+                InvalidBucket ->
+                    noBucketsLeftBlock
+
+                ValidBucket nextBucketInfo ->
+                    Element.column
+                        (commonPaneAttributes
+                            ++ [ Element.paddingXY 32 25
+                               , Element.spacing 7
+                               ]
+                        )
+                        [ Element.el
+                            [ Element.width <| Element.px 430
+                            , Element.Font.size 25
+                            , Element.Font.bold
+                            ]
+                          <|
+                            Element.text "Future Buckets"
+                        , Element.paragraph
+                            [ Element.Font.color grayTextColor
+                            , Element.Font.size 15
+                            ]
+                            [ Element.text "These are the upcoming buckets set to be released. The next bucket will begin in "
+                            , emphasizedText PassiveStyle <|
+                                TimeHelpers.toConciseIntervalString <|
+                                    TimeHelpers.sub
+                                        nextBucketInfo.bucketData.startTime
+                                        model.now
+                            ]
+                        , maybeBucketsLeftBlock
+                            bucketSale
+                            model.now
+                            model.testMode
+                        , maybeFryInFutureBucketsBlock
+                            bucketSale
+                            model.now
+                            model.testMode
+                        ]
 
 
 maybeUserBalanceBlock : Wallet.State -> Maybe TokenValue -> Element Msg
@@ -242,8 +284,8 @@ totalExitedBlock maybeTotalExited =
                     [ Element.centerX
                     , Element.width Element.shrink
                     ]
-                    [ Element.text "claimed by "
-                    , emphasizedText PassiveStyle "others"
+                    [ Element.text "disbursed "
+                    , emphasizedText PassiveStyle "in total"
                     ]
                 ]
 
@@ -491,21 +533,26 @@ bidImpactBlock enterUXModel bucketInfo testMode =
                         [ Element.text "You haven't entered any bids into this bucket." ]
 
                     else
-                        [ Element.text "If no other bids are made before this bucket ends, you will be able to claim "
-                        , emphasizedText PassiveStyle <|
-                            (calcClaimableTokens totalValueEntered totalBidAmount testMode
-                                |> TokenValue.toConciseString
-                            )
-                                ++ " FRY"
-                        , Element.text <|
-                            " out of "
-                                ++ TokenValue.toConciseString (Config.bucketSaleTokensPerBucket testMode)
-                                ++ " FRY available from the "
-                        , emphasizedText PassiveStyle <|
-                            TokenValue.toConciseString totalBidAmount
-                                ++ " DAI"
-                        , Element.text " total you'll have bid."
-                        ]
+                        (if TokenValue.isZero extraBidAmount then
+                            [ Element.text "If no other bids are made before this bucket ends, you will be able to claim " ]
+
+                         else
+                            [ Element.text <|
+                                "After entering this "
+                                    ++ TokenValue.toConciseString extraBidAmount
+                                    ++ " DAI bid, if no other bids are made before this bucket ends, you will be able to claim "
+                            ]
+                        )
+                            ++ [ emphasizedText PassiveStyle <|
+                                    (calcClaimableTokens totalValueEntered totalBidAmount testMode
+                                        |> TokenValue.toConciseString
+                                    )
+                                        ++ " FRY"
+                               , Element.text <|
+                                    " out of "
+                                        ++ TokenValue.toConciseString (Config.bucketSaleTokensPerBucket testMode)
+                                        ++ " FRY available."
+                               ]
 
             _ ->
                 loadingElement
@@ -585,6 +632,68 @@ actionButton maybeUserInfo enterUXModel bucketInfo testMode =
 
                         else
                             unlockDaiButton
+
+
+noBucketsLeftBlock : Element Msg
+noBucketsLeftBlock =
+    Element.text "There are no more future blocks."
+
+
+maybeBucketsLeftBlock : BucketSale -> Time.Posix -> Bool -> Element Msg
+maybeBucketsLeftBlock bucketSale now testMode =
+    let
+        currentBucketId =
+            getCurrentBucketId
+                bucketSale
+                now
+                testMode
+    in
+    sidepaneBlockContainer PassiveStyle
+        [ bigNumberElement
+            [ Element.centerX ]
+            (IntegerNum
+                (Config.bucketSaleNumBuckets
+                    - currentBucketId
+                )
+            )
+            "buckets"
+            PassiveStyle
+        , Element.paragraph
+            [ Element.centerX
+            , Element.width Element.shrink
+            ]
+            [ Element.text "left to run" ]
+        ]
+
+
+maybeFryInFutureBucketsBlock : BucketSale -> Time.Posix -> Bool -> Element Msg
+maybeFryInFutureBucketsBlock bucketSale now testMode =
+    let
+        currentBucketId =
+            getCurrentBucketId
+                bucketSale
+                now
+                testMode
+    in
+    sidepaneBlockContainer PassiveStyle
+        [ bigNumberElement
+            [ Element.centerX ]
+            (TokenNum
+                (TokenValue.mul
+                    (Config.bucketSaleTokensPerBucket testMode)
+                    (Config.bucketSaleNumBuckets
+                        - currentBucketId
+                    )
+                )
+            )
+            Config.bucketTokenSymbol
+            PassiveStyle
+        , Element.paragraph
+            [ Element.centerX
+            , Element.width Element.shrink
+            ]
+            [ Element.text "left to be sold" ]
+        ]
 
 
 progressBarElement : Maybe Float -> Element Msg
