@@ -440,7 +440,12 @@ update msg prevModel =
                                 ViewId
                                     (bucketId
                                         |> min Config.bucketSaleNumBuckets
-                                        |> max 0
+                                        |> max
+                                            (getCurrentBucketId
+                                                bucketSale
+                                                prevModel.now
+                                                prevModel.testMode
+                                            )
                                     )
 
                         maybeBucketData =
