@@ -368,18 +368,19 @@ focusedBucketTimeLeftEl timingInfo testMode =
         [ Element.width Element.fill
         , Element.spacing 22
         ]
-        [ progressBarElement
-            (case timingInfo.state of
+        [ progressBarElement (Element.rgba255 235 237 243 0.6) <|
+            case timingInfo.state of
                 Current ->
-                    Just <|
-                        1
+                    [ ( 1
                             - ((Time.posixToMillis timingInfo.relevantTimeFromNow |> toFloat)
                                 / (Time.posixToMillis (Config.bucketSaleBucketInterval testMode) |> toFloat)
                               )
+                      , Element.rgb255 255 0 120
+                      )
+                    ]
 
                 _ ->
-                    Nothing
-            )
+                    []
         , let
             intervalString =
                 TimeHelpers.toConciseIntervalString timingInfo.relevantTimeFromNow
@@ -505,58 +506,148 @@ pricePerTokenMsg totalValueEntered maybeDaiAmount testMode =
 
 bidImpactBlock : EnterUXModel -> ValidBucketInfo -> Bool -> Element Msg
 bidImpactBlock enterUXModel bucketInfo testMode =
-    centerpaneBlockContainer PassiveStyle
-        [ emphasizedText PassiveStyle "Your current bid standing:"
-        , case Debug.log "impact" ( bucketInfo.bucketData.totalValueEntered, bucketInfo.bucketData.userBuy ) of
-            ( Just totalValueEntered, Just userBuy ) ->
-                let
-                    existingBidAmount =
-                        userBuy.valueEntered
+    centerpaneBlockContainer PassiveStyle <|
+        [ emphasizedText PassiveStyle "Your current bid standing:" ]
+            ++ (case Debug.log "impact" ( bucketInfo.bucketData.totalValueEntered, bucketInfo.bucketData.userBuy ) of
+                    ( Just totalValueEntered, Just userBuy ) ->
+                        let
+                            existingBidAmount =
+                                userBuy.valueEntered
 
-                    extraBidAmount =
-                        enterUXModel.daiAmount
-                            |> Maybe.map Result.toMaybe
-                            |> Maybe.Extra.join
-                            |> Maybe.withDefault TokenValue.zero
+                            extraBidAmount =
+                                enterUXModel.daiAmount
+                                    |> Maybe.map Result.toMaybe
+                                    |> Maybe.Extra.join
+                                    |> Maybe.withDefault TokenValue.zero
 
-                    totalBidAmount =
-                        TokenValue.add
-                            extraBidAmount
-                            existingBidAmount
-                in
-                Element.paragraph
-                    [ Element.width Element.fill
-                    , Element.Font.color grayTextColor
-                    ]
-                <|
-                    if TokenValue.isZero totalBidAmount then
-                        [ Element.text "You haven't entered any bids into this bucket." ]
+                            totalBidAmount =
+                                TokenValue.add
+                                    extraBidAmount
+                                    existingBidAmount
+                        in
+                        [ bidImpactParagraphEl totalValueEntered extraBidAmount totalBidAmount testMode
+                        , bidBarEl totalValueEntered existingBidAmount extraBidAmount testMode
+                        ]
 
-                    else
-                        (if TokenValue.isZero extraBidAmount then
-                            [ Element.text "If no other bids are made before this bucket ends, you will be able to claim " ]
+                    _ ->
+                        [ loadingElement ]
+               )
 
-                         else
-                            [ Element.text <|
-                                "After entering this "
-                                    ++ TokenValue.toConciseString extraBidAmount
-                                    ++ " DAI bid, if no other bids are made before this bucket ends, you will be able to claim "
-                            ]
-                        )
-                            ++ [ emphasizedText PassiveStyle <|
-                                    (calcClaimableTokens totalValueEntered totalBidAmount testMode
-                                        |> TokenValue.toConciseString
-                                    )
-                                        ++ " FRY"
-                               , Element.text <|
-                                    " out of "
-                                        ++ TokenValue.toConciseString (Config.bucketSaleTokensPerBucket testMode)
-                                        ++ " FRY available."
-                               ]
 
-            _ ->
-                loadingElement
+bidImpactParagraphEl : TokenValue -> TokenValue -> TokenValue -> Bool -> Element Msg
+bidImpactParagraphEl totalValueEntered extraBidAmount totalBidAmount testMode =
+    Element.paragraph
+        [ Element.width Element.fill
+        , Element.Font.color grayTextColor
         ]
+    <|
+        if TokenValue.isZero totalBidAmount then
+            [ Element.text "You haven't entered any bids into this bucket." ]
+
+        else
+            (if TokenValue.isZero extraBidAmount then
+                [ Element.text "If no other bids are made before this bucket ends, you will be able to claim " ]
+
+             else
+                [ Element.text <|
+                    "After entering this "
+                        ++ TokenValue.toConciseString extraBidAmount
+                        ++ " DAI bid, if no other bids are made before this bucket ends, you will be able to claim "
+                ]
+            )
+                ++ [ emphasizedText PassiveStyle <|
+                        (calcClaimableTokens
+                            (TokenValue.add totalValueEntered totalBidAmount)
+                            totalBidAmount
+                            testMode
+                            |> TokenValue.toConciseString
+                        )
+                            ++ " FRY"
+                   , Element.text <|
+                        " out of "
+                            ++ TokenValue.toConciseString (Config.bucketSaleTokensPerBucket testMode)
+                            ++ " FRY available."
+                   ]
+
+
+bidBarEl : TokenValue -> TokenValue -> TokenValue -> Bool -> Element Msg
+bidBarEl totalValueEntered existingBidAmount extraBidAmount testMode =
+    let
+        totalValueEnteredAfterBid =
+            totalValueEntered
+                |> TokenValue.add extraBidAmount
+    in
+    if TokenValue.isZero totalValueEnteredAfterBid then
+        Element.paragraph
+            [ Element.width Element.fill
+            , Element.Font.color grayTextColor
+            ]
+            [ Element.text "No one has entered any bids into this bucket yet." ]
+
+    else
+        Element.column
+            [ Element.width Element.fill
+            , Element.spacing 10
+            , Element.paddingXY 0 10
+            ]
+            [ Element.row
+                [ Element.width Element.fill ]
+                [ Element.column
+                    [ Element.alignLeft
+                    , Element.spacing 6
+                    ]
+                    [ Element.el [ Element.Font.color grayTextColor ] <| Element.text "Your bid"
+                    , Element.row []
+                        (([ ( existingBidAmount, deepBlue ), ( extraBidAmount, lightBlue ) ]
+                            |> List.map
+                                (\( t, color ) ->
+                                    if TokenValue.isZero t then
+                                        Nothing
+
+                                    else
+                                        Just ( t, color )
+                                )
+                            |> Maybe.Extra.values
+                            |> List.map
+                                (\( tokens, color ) ->
+                                    Element.el
+                                        [ Element.Font.color color ]
+                                        (Element.text <| TokenValue.toConciseString tokens)
+                                )
+                            |> List.intersperse (Element.text " + ")
+                         )
+                            ++ [ Element.text " DAI" ]
+                        )
+                    ]
+                , Element.column
+                    [ Element.alignRight
+                    , Element.spacing 6
+                    ]
+                    [ Element.el
+                        [ Element.Font.color grayTextColor
+                        , Element.alignRight
+                        ]
+                      <|
+                        Element.text "Total bids in bucket"
+                    , Element.el
+                        [ Element.alignRight ]
+                        (Element.text <|
+                            TokenValue.toConciseString totalValueEnteredAfterBid
+                                ++ " DAI"
+                        )
+                    ]
+                ]
+            , progressBarElement (Element.rgba 0 0 0 0.1)
+                [ ( TokenValue.toFloatWithWarning existingBidAmount
+                        / TokenValue.toFloatWithWarning totalValueEnteredAfterBid
+                  , deepBlue
+                  )
+                , ( TokenValue.toFloatWithWarning extraBidAmount
+                        / TokenValue.toFloatWithWarning totalValueEnteredAfterBid
+                  , lightBlue
+                  )
+                ]
+            ]
 
 
 otherBidsImpactMsg : Element Msg
@@ -696,37 +787,41 @@ maybeFryInFutureBucketsBlock bucketSale now testMode =
         ]
 
 
-progressBarElement : Maybe Float -> Element Msg
-progressBarElement maybeRatioComplete =
-    let
-        commonStyles =
-            [ Element.Border.rounded 4
-            , Element.height <| Element.px 8
-            ]
-    in
+progressBarElement : Element.Color -> List ( Float, Element.Color ) ->  Element Msg
+progressBarElement bgColor ratiosAndColors  =
     Element.row
-        (commonStyles
-            ++ [ Element.width Element.fill
-               , Element.Background.color <| Element.rgba255 235 237 243 0.6
-               ]
-        )
-        (case maybeRatioComplete of
-            Just ratioComplete ->
-                [ Element.el
-                    (commonStyles
-                        ++ [ Element.width <| Element.fillPortion (ratioComplete * 200 |> floor)
-                           , Element.Background.color <| Element.rgb255 255 0 120
-                           ]
-                    )
-                    Element.none
-                , Element.el
-                    [ Element.width <| Element.fillPortion ((1 - ratioComplete) * 200 |> floor) ]
-                    Element.none
-                ]
+        [ Element.width Element.fill
+        , Element.Background.color bgColor
+        , Element.Border.rounded 4
+        , Element.height <| Element.px 8
+        , Element.clip
+        ]
+    <|
+        let
+            leftoverRatio =
+                1
+                    - (ratiosAndColors
+                        |> List.map Tuple.first
+                        |> List.sum
+                      )
 
-            Nothing ->
-                []
-        )
+            progressBarEls =
+                ratiosAndColors
+                    |> List.map
+                        (\( ratio, color ) ->
+                            Element.el
+                                [ Element.width <| Element.fillPortion (ratio * 2000 |> floor)
+                                , Element.Background.color color
+                                , Element.height Element.fill
+                                ]
+                                Element.none
+                        )
+        in
+        progressBarEls
+            ++ [ Element.el
+                    [ Element.width <| Element.fillPortion (leftoverRatio * 2000 |> floor) ]
+                    Element.none
+               ]
 
 
 emphasizedText : CommonBlockStyle -> (String -> Element Msg)
@@ -851,6 +946,11 @@ gray =
 deepBlue : Element.Color
 deepBlue =
     Element.rgb255 10 33 109
+
+
+lightBlue : Element.Color
+lightBlue =
+    Element.rgb255 25 169 214
 
 
 deepBlueWithAlpha : Float -> Element.Color
