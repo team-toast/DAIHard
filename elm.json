@@ -27,6 +27,7 @@
             "elm-community/string-extra": "4.0.1",
             "linuss/smooth-scroll": "1.1.0",
             "mdgriffith/elm-ui": "1.1.5",
+            "myrho/elm-round": "1.0.4",
             "nathanjohnson320/base58": "2.0.1",
             "pablohirafuji/elm-markdown": "2.0.5",
             "pilatch/flip": "1.0.0",
@@ -45,7 +46,6 @@
             "elm/virtual-dom": "1.0.2",
             "elm-community/basics-extra": "4.0.0",
             "elm-community/easing-functions": "2.0.0",
-            "myrho/elm-round": "1.0.4",
             "prozacchiwawa/elm-keccak": "2.0.0",
             "rtfeldman/elm-hex": "1.0.0",
             "zwilias/elm-utf-tools": "2.0.1"
