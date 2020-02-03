@@ -16,6 +16,8 @@ open Nethereum.Hex.HexConvertors.Extensions
 open System.Text
 open Constants
 open DAIHard.Contracts.Forwarder.ContractDefinition
+open System.Threading.Tasks
+open Nethereum.Web3.Accounts
 
 type ABIType = JsonProvider<"../build/contracts/BucketSale.json">
 
@@ -47,7 +49,21 @@ type Abi(filename) =
     member this.AbiString = JsonConvert.DeserializeObject<JObject>(this.JsonString).GetValue("abi").ToString()
     member this.Bytecode = JsonConvert.DeserializeObject<JObject>(this.JsonString).GetValue("bytecode").ToString()
 
+type IAsyncTxSender =
+    abstract member SendTxAsync : string -> BigInteger -> string -> Task<TransactionReceipt> 
+
 type EthereumConnection(nodeURI: string, privKey: string) =
+    interface IAsyncTxSender with
+        member this.SendTxAsync toAddress value data = 
+            let input: TransactionInput =
+                TransactionInput(
+                    data, 
+                    toAddress, 
+                    this.Account.Address, 
+                    this.Gas, this.GasPrice, 
+                    HexBigInteger(value))
+            this.Web3.Eth.TransactionManager.SendTransactionAndWaitForReceiptAsync(input, null)
+
     member val public Gas = hexBigInt 4000000UL
     member val public GasPrice = hexBigInt 1000000000UL
     member val public Account = Accounts.Account(privKey)
@@ -63,16 +79,6 @@ type EthereumConnection(nodeURI: string, privKey: string) =
             null, 
             arguments)
 
-    member this.SendTxAsync toAddress (value: BigInteger) data =
-        let input: TransactionInput =
-            TransactionInput(
-                data, 
-                toAddress, 
-                this.Account.Address, 
-                this.Gas, this.GasPrice, 
-                HexBigInteger(value))
-
-        this.Web3.Eth.TransactionManager.SendTransactionAndWaitForReceiptAsync(input, null)
 
 type Profile = { FunctionName: string; Duration: string }
 
@@ -83,32 +89,60 @@ let profileMe f =
     (f.GetType(), duration) |> printf "(Functio, Duration) = %A\n"
     result
 
+
 type ContractPlug(ethConn: EthereumConnection, abi: Abi, address) =
     member val public Address = address
-    member val public Contract = ethConn.Web3.Eth.GetContract(abi.AbiString, address)
-    member this.Function functionName = this.Contract.GetFunction(functionName)
-    member this.QueryObjAsync<'a when 'a: (new: unit -> 'a)> functionName arguments = (this.Function functionName).CallDeserializingToObjectAsync<'a> (arguments)
-    member this.QueryObj<'a when 'a: (new: unit -> 'a)> functionName arguments = this.QueryObjAsync<'a> functionName arguments |> runNow
-    member this.QueryAsync<'a> functionName arguments = (this.Function functionName).CallAsync<'a> (arguments)
-    member this.Query<'a> functionName arguments = this.QueryAsync<'a> functionName arguments |> runNow
-    member this.FunctionData functionName arguments = (this.Function functionName).GetData(arguments)
-    member this.ExecuteFunctionAsync functionName arguments = this.FunctionData functionName arguments |> ethConn.SendTxAsync this.Address (BigInteger(0))
-    member this.ExecuteFunction functionName arguments = this.ExecuteFunctionAsync functionName arguments |> runNow
+
+    member val public Contract = 
+        ethConn.Web3.Eth.GetContract(abi.AbiString, address)
+        
+    member this.Function functionName = 
+        this.Contract.GetFunction(functionName)
+
+    member this.QueryObjAsync<'a when 'a: (new: unit -> 'a)> functionName arguments = 
+        (this.Function functionName).CallDeserializingToObjectAsync<'a> (arguments)
+
+    member this.QueryObj<'a when 'a: (new: unit -> 'a)> functionName arguments = 
+        this.QueryObjAsync<'a> functionName arguments |> runNow
+
+    member this.QueryAsync<'a> functionName arguments = 
+        (this.Function functionName).CallAsync<'a> (arguments)
+
+    member this.Query<'a> functionName arguments = 
+        this.QueryAsync<'a> functionName arguments |> runNow
+
+    member this.FunctionData functionName arguments = 
+        (this.Function functionName).GetData(arguments)
+
+    member this.ExecuteFunctionFromAsync functionName arguments (connection:IAsyncTxSender) = 
+        this.FunctionData functionName arguments |> connection.SendTxAsync this.Address (BigInteger(0))
+
+    member this.ExecuteFunctionFrom functionName arguments connection = 
+        this.ExecuteFunctionFromAsync functionName arguments connection |> runNow
+
+    member this.ExecuteFunctionAsync functionName arguments = 
+        this.ExecuteFunctionFromAsync functionName arguments ethConn
+
+    member this.ExecuteFunction functionName arguments = 
+        this.ExecuteFunctionAsync functionName arguments |> runNow
+            
 
 type Forwarder(ethConn: EthereumConnection) =
     member val public EthConn = ethConn
+    member val public AsyncTxSender = ethConn :> IAsyncTxSender
 
     member val public  ContractPlug =
         let abi = Abi("../../../../build/contracts/Forwarder.json")
         let deployTxReceipt = ethConn.DeployContractAsync abi [||] |> runNow
         ContractPlug(ethConn, abi, deployTxReceipt.ContractAddress)
 
-    member this.SendTxAsync (toAddress: string) (value: BigInteger) (data: string) =
-        let data =
-            this.ContractPlug.FunctionData "forward"
-                [| toAddress
-                   data.HexToByteArray() |]
-        data |> ethConn.SendTxAsync this.ContractPlug.Address value
+    interface IAsyncTxSender with
+        member this.SendTxAsync(toAddress: string) (value: BigInteger) (data: string): Threading.Tasks.Task<TransactionReceipt> = 
+            let data =
+                this.ContractPlug.FunctionData "forward"
+                    [| toAddress
+                       data.HexToByteArray() |]
+            data |> this.AsyncTxSender.SendTxAsync this.ContractPlug.Address value
 
     member this.DecodeForwardedEvents(receipt: TransactionReceipt) =
         receipt.DecodeAllEvents<ForwardedEventDTO>() |> Seq.map (fun i -> i.Event)
@@ -162,3 +196,7 @@ let decodeEvents<'a when 'a: (new: unit -> 'a)> (receipt: TransactionReceipt) =
 let decodeFirstEvent<'a when 'a: (new: unit -> 'a)> (receipt: TransactionReceipt) =
     decodeEvents<'a> receipt |> Seq.head
 
+let makeAccount() =
+    let ecKey = Nethereum.Signer.EthECKey.GenerateKey();
+    let privateKey = ecKey.GetPrivateKeyAsBytes().ToHex();
+    Account(privateKey);

@@ -21,7 +21,7 @@ open DAIHard.Contracts.BucketSale.ContractDefinition
 
 [<EntryPoint>]
 let main _ =
-    EnterTests.``E6 - Can enter a bucket with no referrer``()
+    //EnterTests.``E6 - Can enter a bucket with no referrer``()
 
     Console.ReadLine() |> ignore
     0
