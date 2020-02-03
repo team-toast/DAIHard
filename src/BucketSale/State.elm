@@ -783,14 +783,17 @@ validateDaiInput input =
 runCmdDown : CmdDown -> Model -> UpdateResult
 runCmdDown cmdDown prevModel =
     case cmdDown of
-        CmdDown.UpdateWallet wallet ->
-            UpdateResult
-                { prevModel
-                    | wallet = wallet
-                    , bucketSale =
+        CmdDown.UpdateWallet newWallet ->
+            let
+                newBucketSale = 
                         Maybe.map
                             clearBucketSaleExitInfo
                             prevModel.bucketSale
+            in
+            UpdateResult
+                { prevModel
+                    | wallet = newWallet
+                    , bucketSale = newBucketSale
                     , enterUXModel =
                         let
                             oldEnterUXModel =
@@ -800,20 +803,20 @@ runCmdDown cmdDown prevModel =
                             | allowanceState = Loading
                         }
                 }
-                (case ( Wallet.userInfo prevModel.wallet, prevModel.bucketSale ) of
+                (case ( Wallet.userInfo newWallet, newBucketSale ) of
                     ( Just userInfo, Just bucketSale ) ->
                         Cmd.batch
                             [ fetchUserAllowanceForSaleCmd
                                 userInfo
                                 prevModel.testMode
-                            , fetchBucketUserBuyCmd
+                            , fetchBucketDataCmd
                                 (getFocusedBucketId
                                     bucketSale
                                     prevModel.bucketView
                                     prevModel.now
                                     prevModel.testMode
                                 )
-                                userInfo
+                                (Just userInfo)
                                 prevModel.testMode
                             ]
 
