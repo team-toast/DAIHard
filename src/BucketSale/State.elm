@@ -36,11 +36,7 @@ init maybeReferrer testMode wallet now =
           , totalTokensExited = Nothing
           , userFryBalance = Nothing
           , bucketView = ViewCurrent
-          , daiInput = ""
-          , dumbCheckboxesClicked = ( False, False )
-          , daiAmount = Nothing
-          , referrer = maybeReferrer
-          , allowanceState = Loading
+          , enterUXModel = initEnterUXModel maybeReferrer
           , exitInfo = Nothing
           }
         , Cmd.batch
@@ -65,6 +61,15 @@ init maybeReferrer testMode wallet now =
         Debug.todo "must use test mode"
 
 
+initEnterUXModel : Maybe Address -> EnterUXModel
+initEnterUXModel maybeReferrer =
+    { daiInput = ""
+    , daiAmount = Nothing
+    , referrer = maybeReferrer
+    , allowanceState = Loading
+    }
+
+
 update : Msg -> Model -> UpdateResult
 update msg prevModel =
     case msg of
@@ -84,31 +89,64 @@ update msg prevModel =
 
         Refresh ->
             let
-                cmd =
+                fetchUserInfoCmds =
                     Cmd.batch <|
-                        [ fetchTotalTokensExitedCmd prevModel.testMode ]
-                            ++ (Maybe.map
-                                    (\userInfo ->
-                                        [ fetchUserExitInfoCmd userInfo prevModel.testMode
-                                        , fetchUserAllowanceForSaleCmd userInfo prevModel.testMode
-                                        , fetchUserFryBalance userInfo prevModel.testMode
-                                        ]
-                                    )
-                                    (Wallet.userInfo prevModel.wallet)
-                                    |> Maybe.withDefault []
-                               )
+                        (Maybe.map
+                            (\userInfo ->
+                                [ fetchUserExitInfoCmd userInfo prevModel.testMode
+                                , fetchUserAllowanceForSaleCmd userInfo prevModel.testMode
+                                , fetchUserFryBalance userInfo prevModel.testMode
+                                ]
+                            )
+                            (Wallet.userInfo prevModel.wallet)
+                            |> Maybe.withDefault []
+                        )
             in
             UpdateResult
                 prevModel
-                cmd
+                (Cmd.batch
+                    [ fetchTotalTokensExitedCmd prevModel.testMode
+                    , fetchUserInfoCmds
+                    ]
+                )
                 ChainCmd.none
                 []
 
         UpdateNow newNow ->
-            justModelUpdate
+            let
+                cmd =
+                    case ( prevModel.bucketSale, prevModel.bucketView ) of
+                        ( Nothing, _ ) ->
+                            Cmd.none
+
+                        ( _, ViewId _ ) ->
+                            Cmd.none
+
+                        ( Just bucketSale, ViewCurrent ) ->
+                            let
+                                newFocusedId =
+                                    getCurrentBucketId bucketSale newNow prevModel.testMode
+                            in
+                            if newFocusedId /= getCurrentBucketId bucketSale prevModel.now prevModel.testMode then
+                                let
+                                    _ =
+                                        Debug.log "fetching" ""
+                                in
+                                fetchBucketDataCmd
+                                    newFocusedId
+                                    (Wallet.userInfo prevModel.wallet)
+                                    prevModel.testMode
+
+                            else
+                                Cmd.none
+            in
+            UpdateResult
                 { prevModel
                     | now = newNow
                 }
+                cmd
+                ChainCmd.none
+                []
 
         SaleStartTimestampFetched fetchResult ->
             case fetchResult of
@@ -121,24 +159,38 @@ update msg prevModel =
                             startTimestamp =
                                 TimeHelpers.secondsBigIntToPosixWithWarning startTimestampBigInt
 
-                            newMaybeBucketSale =
+                            ( newMaybeBucketSale, cmd ) =
                                 case prevModel.bucketSale of
                                     Nothing ->
                                         case initBucketSale prevModel.testMode startTimestamp prevModel.now of
-                                            Just s ->
-                                                Just s
+                                            Just sale ->
+                                                ( Just sale
+                                                , fetchBucketDataCmd
+                                                    (getCurrentBucketId
+                                                        sale
+                                                        prevModel.now
+                                                        prevModel.testMode
+                                                    )
+                                                    (Wallet.userInfo prevModel.wallet)
+                                                    prevModel.testMode
+                                                )
 
                                             Nothing ->
                                                 Debug.todo "Failed to init bucket sale. Is it started yet?"
 
                                     _ ->
-                                        prevModel.bucketSale
+                                        ( prevModel.bucketSale
+                                        , Cmd.none
+                                        )
                         in
-                        justModelUpdate
+                        UpdateResult
                             { prevModel
                                 | bucketSale = newMaybeBucketSale
                                 , saleStartTime = Just startTimestamp
                             }
+                            cmd
+                            ChainCmd.none
+                            []
 
                 Err httpErr ->
                     let
@@ -156,7 +208,7 @@ update msg prevModel =
                     in
                     justModelUpdate prevModel
 
-                Ok valueEnteredBigInt ->
+                Ok valueEntered ->
                     case prevModel.bucketSale of
                         Nothing ->
                             let
@@ -167,9 +219,6 @@ update msg prevModel =
 
                         Just oldBucketSale ->
                             let
-                                valueEntered =
-                                    TokenValue.tokenValue valueEnteredBigInt
-
                                 maybeNewBucketSale =
                                     oldBucketSale
                                         |> updateBucketAt
@@ -313,13 +362,20 @@ update msg prevModel =
                     justModelUpdate prevModel
 
                 Ok allowance ->
-                    case prevModel.allowanceState of
+                    case prevModel.enterUXModel.allowanceState of
                         UnlockMining ->
                             if allowance == EthHelpers.maxUintValue then
                                 justModelUpdate
                                     { prevModel
-                                        | allowanceState =
-                                            Loaded <| TokenValue.tokenValue allowance
+                                        | enterUXModel =
+                                            let
+                                                oldEnterUXModel =
+                                                    prevModel.enterUXModel
+                                            in
+                                            { oldEnterUXModel
+                                                | allowanceState =
+                                                    Loaded <| TokenValue.tokenValue allowance
+                                            }
                                     }
 
                             else
@@ -328,12 +384,44 @@ update msg prevModel =
                         _ ->
                             justModelUpdate
                                 { prevModel
-                                    | allowanceState =
-                                        Loaded <|
-                                            TokenValue.tokenValue allowance
+                                    | enterUXModel =
+                                        let
+                                            oldEnterUXModel =
+                                                prevModel.enterUXModel
+                                        in
+                                        { oldEnterUXModel
+                                            | allowanceState =
+                                                Loaded <|
+                                                    TokenValue.tokenValue allowance
+                                        }
                                 }
 
-        BucketClicked bucketId ->
+        ClaimClicked userInfo exitInfo ->
+            let
+                chainCmd =
+                    let
+                        customSend =
+                            { onMined = Just ( ExitMined, Nothing )
+                            , onSign = Nothing
+                            , onBroadcast = Nothing
+                            }
+
+                        txParams =
+                            BucketSaleWrappers.exitMany
+                                userInfo.address
+                                exitInfo.exitableBuckets
+                                prevModel.testMode
+                                |> Eth.toSend
+                    in
+                    ChainCmd.custom customSend txParams
+            in
+            UpdateResult
+                prevModel
+                Cmd.none
+                chainCmd
+                []
+
+        FocusToBucket bucketId ->
             case prevModel.bucketSale of
                 Nothing ->
                     let
@@ -349,37 +437,89 @@ update msg prevModel =
                                 ViewCurrent
 
                             else
-                                ViewId bucketId
+                                ViewId
+                                    (bucketId
+                                        |> min Config.bucketSaleNumBuckets
+                                        |> max
+                                            (getCurrentBucketId
+                                                bucketSale
+                                                prevModel.now
+                                                prevModel.testMode
+                                            )
+                                    )
+
+                        maybeBucketData =
+                            getBucketInfo
+                                bucketSale
+                                (getFocusedBucketId
+                                    bucketSale
+                                    newBucketView
+                                    prevModel.now
+                                    prevModel.testMode
+                                )
+                                prevModel.now
+                                prevModel.testMode
+                                |> (\fetchedBucketInfo ->
+                                        case fetchedBucketInfo of
+                                            ValidBucket bucketInfo ->
+                                                Just bucketInfo.bucketData
+
+                                            _ ->
+                                                Nothing
+                                   )
+
+                        cmd =
+                            maybeBucketData
+                                |> Maybe.map
+                                    (\bucketData ->
+                                        case ( bucketData.totalValueEntered, bucketData.userBuy ) of
+                                            ( Just _, Just _ ) ->
+                                                Cmd.none
+
+                                            ( Nothing, _ ) ->
+                                                fetchBucketDataCmd
+                                                    bucketId
+                                                    (Wallet.userInfo prevModel.wallet)
+                                                    prevModel.testMode
+
+                                            ( Just _, Nothing ) ->
+                                                case Wallet.userInfo prevModel.wallet of
+                                                    Just userInfo ->
+                                                        fetchBucketUserBuyCmd
+                                                            bucketId
+                                                            userInfo
+                                                            prevModel.testMode
+
+                                                    Nothing ->
+                                                        Cmd.none
+                                    )
+                                |> Maybe.withDefault Cmd.none
                     in
-                    justModelUpdate
+                    UpdateResult
                         { prevModel
                             | bucketView = newBucketView
                         }
+                        cmd
+                        ChainCmd.none
+                        []
 
         DaiInputChanged input ->
             justModelUpdate
                 { prevModel
-                    | daiInput = input
-                    , daiAmount =
-                        if input == "" then
-                            Nothing
+                    | enterUXModel =
+                        let
+                            oldEnterUXModel =
+                                prevModel.enterUXModel
+                        in
+                        { oldEnterUXModel
+                            | daiInput = input
+                            , daiAmount =
+                                if input == "" then
+                                    Nothing
 
-                        else
-                            Just <| validateDaiInput input
-                }
-
-        FirstDumbCheckboxClicked flag ->
-            justModelUpdate
-                { prevModel
-                    | dumbCheckboxesClicked =
-                        ( flag, Tuple.second prevModel.dumbCheckboxesClicked )
-                }
-
-        SecondDumbCheckboxClicked flag ->
-            justModelUpdate
-                { prevModel
-                    | dumbCheckboxesClicked =
-                        ( Tuple.first prevModel.dumbCheckboxesClicked, flag )
+                                else
+                                    Just <| validateDaiInput input
+                        }
                 }
 
         UnlockDaiButtonClicked ->
@@ -409,7 +549,14 @@ update msg prevModel =
                 Ok txHash ->
                     justModelUpdate
                         { prevModel
-                            | allowanceState = UnlockMining
+                            | enterUXModel =
+                                let
+                                    oldEnterUXModel =
+                                        prevModel.enterUXModel
+                                in
+                                { oldEnterUXModel
+                                    | allowanceState = UnlockMining
+                                }
                         }
 
                 Err errStr ->
@@ -426,7 +573,14 @@ update msg prevModel =
             in
             justModelUpdate
                 { prevModel
-                    | allowanceState = Loaded (TokenValue.tokenValue EthHelpers.maxUintValue)
+                    | enterUXModel =
+                        let
+                            oldEnterUXModel =
+                                prevModel.enterUXModel
+                        in
+                        { oldEnterUXModel
+                            | allowanceState = Loaded (TokenValue.tokenValue EthHelpers.maxUintValue)
+                        }
                 }
 
         EnterButtonClicked userInfo bucketId daiAmount maybeReferrer ->
@@ -457,21 +611,20 @@ update msg prevModel =
                 []
 
         EnterSigned txHashResult ->
-            let
-                _ =
-                    Debug.log "Signed enter tx!" ""
-            in
             justModelUpdate
                 { prevModel
-                    | daiInput = ""
-                    , daiAmount = Nothing
+                    | enterUXModel =
+                        let
+                            oldEnterUXModel =
+                                prevModel.enterUXModel
+                        in
+                        { oldEnterUXModel
+                            | daiInput = ""
+                            , daiAmount = Nothing
+                        }
                 }
 
         EnterMined txReceiptResult ->
-            let
-                _ =
-                    Debug.log "Mined enter tx!" txReceiptResult
-            in
             justModelUpdate prevModel
 
         ExitButtonClicked userInfo bucketId ->
@@ -516,28 +669,17 @@ update msg prevModel =
 
 initBucketSale : Bool -> Time.Posix -> Time.Posix -> Maybe BucketSale
 initBucketSale testMode saleStartTime now =
-    let
-        numBuckets =
-            TimeHelpers.sub
-                now
-                saleStartTime
-                |> TimeHelpers.posixToSeconds
-                |> (\seconds ->
-                        (seconds // (Config.bucketSaleBucketInterval testMode |> TimeHelpers.posixToSeconds))
-                            + 1
-                   )
-    in
-    if numBuckets <= 0 then
+    if TimeHelpers.compare saleStartTime now == GT then
         Nothing
 
     else
         Just <|
             BucketSale
                 saleStartTime
-                (List.range 0 (numBuckets - 1)
+                (List.range 0 (Config.bucketSaleNumBuckets - 1)
                     |> List.map
                         (\id ->
-                            Bucket
+                            BucketData
                                 (TimeHelpers.add
                                     saleStartTime
                                     (TimeHelpers.mul
@@ -549,6 +691,36 @@ initBucketSale testMode saleStartTime now =
                                 Nothing
                         )
                 )
+
+
+fetchBucketDataCmd : Int -> Maybe UserInfo -> Bool -> Cmd Msg
+fetchBucketDataCmd id maybeUserInfo testMode =
+    Cmd.batch
+        [ fetchTotalValueEnteredCmd id testMode
+        , case maybeUserInfo of
+            Just userInfo ->
+                fetchBucketUserBuyCmd id userInfo testMode
+
+            Nothing ->
+                Cmd.none
+        ]
+
+
+fetchTotalValueEnteredCmd : Int -> Bool -> Cmd Msg
+fetchTotalValueEnteredCmd id testMode =
+    BucketSaleWrappers.getTotalValueEnteredForBucket
+        testMode
+        id
+        (BucketValueEnteredFetched id)
+
+
+fetchBucketUserBuyCmd : Int -> UserInfo -> Bool -> Cmd Msg
+fetchBucketUserBuyCmd id userInfo testMode =
+    BucketSaleWrappers.getUserBuyForBucket
+        testMode
+        userInfo.address
+        id
+        (UserBuyFetched userInfo.address id)
 
 
 fetchUserExitInfoCmd : UserInfo -> Bool -> Cmd Msg
@@ -620,24 +792,45 @@ validateDaiInput input =
 runCmdDown : CmdDown -> Model -> UpdateResult
 runCmdDown cmdDown prevModel =
     case cmdDown of
-        CmdDown.UpdateWallet wallet ->
+        CmdDown.UpdateWallet newWallet ->
+            let
+                newBucketSale =
+                    Maybe.map
+                        clearBucketSaleExitInfo
+                        prevModel.bucketSale
+            in
             UpdateResult
                 { prevModel
-                    | wallet = wallet
-                    , bucketSale =
-                        Maybe.map
-                            clearBucketSaleExitInfo
-                            prevModel.bucketSale
-                    , allowanceState = Loading
+                    | wallet = newWallet
+                    , bucketSale = newBucketSale
+                    , enterUXModel =
+                        let
+                            oldEnterUXModel =
+                                prevModel.enterUXModel
+                        in
+                        { oldEnterUXModel
+                            | allowanceState = Loading
+                        }
                 }
-                (Wallet.userInfo wallet
-                    |> Maybe.map
-                        (\userInfo ->
-                            fetchUserAllowanceForSaleCmd
+                (case ( Wallet.userInfo newWallet, newBucketSale ) of
+                    ( Just userInfo, Just bucketSale ) ->
+                        Cmd.batch
+                            [ fetchUserAllowanceForSaleCmd
                                 userInfo
                                 prevModel.testMode
-                        )
-                    |> Maybe.withDefault Cmd.none
+                            , fetchBucketDataCmd
+                                (getFocusedBucketId
+                                    bucketSale
+                                    prevModel.bucketView
+                                    prevModel.now
+                                    prevModel.testMode
+                                )
+                                (Just userInfo)
+                                prevModel.testMode
+                            ]
+
+                    _ ->
+                        Cmd.none
                 )
                 ChainCmd.none
                 []
@@ -649,6 +842,6 @@ runCmdDown cmdDown prevModel =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Time.every 1000 <| always Refresh
+        [ Time.every 3000 <| always Refresh
         , Time.every 500 UpdateNow
         ]

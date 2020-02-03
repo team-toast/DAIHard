@@ -5,6 +5,7 @@ import FormatFloat exposing (..)
 import Helpers.BigInt as BigIntHelpers
 import Json.Decode
 import Json.Encode
+import Round
 
 
 tokenDecimals =
@@ -30,14 +31,14 @@ fromIntTokenValue val =
 
 fromFloatWithWarning : Float -> TokenValue
 fromFloatWithWarning val =
-    case userStringToEvmValue (String.fromFloat val) of
+    case userStringToEvmValue (Round.round tokenDecimals val) of
         Just bigint ->
             tokenValue bigint
 
         Nothing ->
             let
                 _ =
-                    Debug.log "Error converting float to tokenValue" ""
+                    Debug.log "Error converting float to tokenValue" val
             in
             tokenValue (BigInt.fromInt 0)
 
@@ -193,16 +194,11 @@ userStringToEvmValue amountString =
                 else
                     BigInt.fromString newString
         in
-        case maybeBigIntAmount of
-            Nothing ->
-                Nothing
-
-            Just bigIntAmount ->
-                let
-                    evmValue =
-                        BigInt.mul bigIntAmount (BigInt.pow (BigInt.fromInt 10) (BigInt.fromInt numDigitsLeftToMove))
-                in
-                Just evmValue
+        maybeBigIntAmount
+            |> Maybe.map
+                (BigInt.mul
+                    (BigInt.pow (BigInt.fromInt 10) (BigInt.fromInt numDigitsLeftToMove))
+                )
 
 
 pullAnyFirstDecimalOffToRight : String -> ( String, Int )
