@@ -557,7 +557,7 @@ bidImpactParagraphEl totalValueEntered extraBidAmount totalBidAmount testMode =
             )
                 ++ [ emphasizedText PassiveStyle <|
                         (calcClaimableTokens
-                            (TokenValue.add totalValueEntered totalBidAmount)
+                            (TokenValue.add totalValueEntered extraBidAmount)
                             totalBidAmount
                             testMode
                             |> TokenValue.toConciseString
