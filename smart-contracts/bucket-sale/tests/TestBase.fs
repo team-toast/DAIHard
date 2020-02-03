@@ -39,7 +39,7 @@ let tokenSoldFor = zeroAddress
 let bigInt (value: uint64) = BigInteger(value)
 let hexBigInt (value: uint64) = HexBigInteger(bigInt value)
 
-let runNow task =
+let runNow (task:Task<'T>) =
     task
     |> Async.AwaitTask
     |> Async.RunSynchronously
@@ -78,6 +78,14 @@ type EthereumConnection(nodeURI: string, privKey: string) =
             hexBigInt 0UL, 
             null, 
             arguments)
+    
+    member this.TimeTravel seconds = 
+        this.Web3.Client.SendRequestAsync(method = "evm_increaseTime", paramList = [| seconds |]) 
+        |> Async.AwaitTask 
+        |> Async.RunSynchronously
+        this.Web3.Client.SendRequestAsync(method = "evm_mine", paramList = [||]) 
+        |> Async.AwaitTask 
+        |> Async.RunSynchronously
 
 
 type Profile = { FunctionName: string; Duration: string }
