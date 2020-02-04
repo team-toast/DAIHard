@@ -32,6 +32,7 @@ type alias Model =
     , userExitInfo : Maybe BucketSaleWrappers.ExitInfo
     , trackedTxs : List TrackedTx
     , confirmModal : Maybe EnterInfo
+    , showReferralModal : Bool
     }
 
 
@@ -57,6 +58,8 @@ type Msg
     | UserFryBalanceFetched Address (Result Http.Error TokenValue)
     | FocusToBucket Int
     | DaiInputChanged String
+    | ReferralIndicatorClicked
+    | CloseReferralModal
     | UnlockDaiButtonClicked
     | AllowanceFetched (Result Http.Error BigInt)
     | ClaimClicked UserInfo ExitInfo

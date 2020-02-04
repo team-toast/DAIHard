@@ -41,6 +41,7 @@ init maybeReferrer testMode wallet now =
           , userExitInfo = Nothing
           , trackedTxs = []
           , confirmModal = Nothing
+          , showReferralModal = False
           }
         , Cmd.batch
             ([ fetchSaleStartTimestampCmd testMode
@@ -506,6 +507,18 @@ update msg prevModel =
                                 else
                                     Just <| validateDaiInput input
                         }
+                }
+
+        ReferralIndicatorClicked ->
+            justModelUpdate
+                { prevModel
+                    | showReferralModal = True
+                }
+
+        CloseReferralModal ->
+            justModelUpdate
+                { prevModel
+                    | showReferralModal = False
                 }
 
         UnlockDaiButtonClicked ->

@@ -73,6 +73,7 @@ root model =
                         )
                         model.wallet
                         model.enterUXModel
+                        model.showReferralModal
                         model.now
                         model.testMode
                     , Element.column
@@ -128,8 +129,8 @@ closedBucketsPane model =
         ]
 
 
-focusedBucketPane : BucketSale -> Int -> Wallet.State -> EnterUXModel -> Time.Posix -> Bool -> Element Msg
-focusedBucketPane bucketSale bucketId wallet enterUXModel now testMode =
+focusedBucketPane : BucketSale -> Int -> Wallet.State -> EnterUXModel -> Bool -> Time.Posix -> Bool -> Element Msg
+focusedBucketPane bucketSale bucketId wallet enterUXModel referralModalActive now testMode =
     Element.column
         (commonPaneAttributes
             ++ [ Element.width <| Element.px 780
@@ -140,8 +141,8 @@ focusedBucketPane bucketSale bucketId wallet enterUXModel now testMode =
         )
         ([ focusedBucketHeaderEl
             bucketId
-            (Wallet.userInfo wallet)
             enterUXModel.referrer
+            referralModalActive
             testMode
          ]
             ++ (case getBucketInfo bucketSale bucketId now testMode of
@@ -306,8 +307,8 @@ totalExitedBlock maybeTotalExited =
                 ]
 
 
-focusedBucketHeaderEl : Int -> Maybe UserInfo -> Maybe Address -> Bool -> Element Msg
-focusedBucketHeaderEl bucketId maybeUserInfo maybeReferrer testMode =
+focusedBucketHeaderEl : Int -> Maybe Address -> Bool -> Bool -> Element Msg
+focusedBucketHeaderEl bucketId maybeReferrer referralModalActive testMode =
     Element.column
         [ Element.spacing 8
         , Element.width Element.fill
@@ -327,9 +328,35 @@ focusedBucketHeaderEl bucketId maybeUserInfo maybeReferrer testMode =
                 , nextBucketArrow bucketId
                 ]
             , Element.el
-                [ Element.alignRight ]
+                [ Element.alignRight
+                , Element.onRight <|
+                    if referralModalActive then
+                        Element.el
+                            [ Element.alignLeft
+                            , Element.moveRight 25
+                            , Element.moveUp 50
+                            , EH.moveToFront
+                            ]
+                            (referralModal maybeReferrer)
+
+                    else
+                        Element.none
+                , Element.inFront <|
+                    if referralModalActive then
+                        Element.el
+                            [ EH.moveToFront ]
+                        <|
+                            referralBonusIndicator
+                                (maybeReferrer /= Nothing)
+                                True
+
+                    else
+                        Element.none
+                ]
               <|
-                referralBonusIndicator maybeUserInfo maybeReferrer
+                referralBonusIndicator
+                    (maybeReferrer /= Nothing)
+                    referralModalActive
             ]
         ]
 
@@ -371,11 +398,6 @@ prevBucketArrow currentBucketId =
         , Element.Font.extraBold
         ]
         (Element.text "<")
-
-
-referralBonusIndicator : Maybe UserInfo -> Maybe Address -> Element Msg
-referralBonusIndicator maybeUserInfo maybeReferrer =
-    Element.text "refferer!?"
 
 
 focusedBucketTimeLeftEl : RelevantTimingInfo -> Bool -> Element Msg
@@ -897,7 +919,7 @@ trackedTxRow trackedTx =
                         ]
                     <|
                         Element.text "Failed"
-                
+
                 Rejected ->
                     Element.el
                         [ Element.centerX
@@ -919,12 +941,23 @@ trackedTxRow trackedTx =
 
 viewModals : Model -> List (Element Msg)
 viewModals model =
-    case model.confirmModal of
+    [ case model.confirmModal of
         Just exitInfo ->
-            [ continueConfirmModal exitInfo ]
+            continueConfirmModal exitInfo
 
         Nothing ->
-            []
+            Element.none
+    , if model.showReferralModal then
+        EH.modal
+            (Element.rgba 0 0 0 0.25)
+            False
+            CloseReferralModal
+            CloseReferralModal
+            Element.none
+
+      else
+        Element.none
+    ]
 
 
 continueConfirmModal : EnterInfo -> Element Msg
@@ -978,6 +1011,143 @@ continueConfirmModal enterInfo =
         NoOp
         CancelClicked
         False
+
+
+referralBonusIndicator : Bool -> Bool -> Element Msg
+referralBonusIndicator hasReferral focusedStyle =
+    Element.el
+        [ Element.paddingXY 16 7
+        , Element.Font.bold
+        , Element.Font.size 18
+        , Element.pointer
+        , Element.Events.onClick ReferralIndicatorClicked
+        , Element.Background.color
+            (if hasReferral then
+                green
+
+             else
+                red
+                    |> EH.addAlpha
+                        (if focusedStyle then
+                            1
+
+                         else
+                            0.05
+                        )
+            )
+        , Element.Font.color
+            (if focusedStyle then
+                EH.white
+
+             else if hasReferral then
+                green
+
+             else
+                red
+            )
+        ]
+        (Element.text <|
+            if hasReferral then
+                "Referral Bonus Active"
+
+            else
+                "No Referral Bonus"
+        )
+
+
+referralModal : Maybe Address -> Element Msg
+referralModal maybeReferrer =
+    let
+        highlightedText text =
+            Element.el
+                [ Element.behindContent <|
+                    Element.el
+                        [ Element.centerX
+                        , Element.centerY
+                        , Element.padding 1
+                        , Element.Background.color green
+                        , Element.Font.color EH.white
+                        , Element.Border.rounded 2
+                        ]
+                        (Element.text text)
+                ]
+                (Element.text text)
+
+        ( firstElsChunk, secondElsChunk ) =
+            case maybeReferrer of
+                Nothing ->
+                    ( [ Element.paragraph
+                            [ Element.Font.size 24
+                            , Element.Font.bold
+                            , Element.Font.color red
+                            ]
+                            [ Element.text "Oh no! You’ve haven’t got a referral bonus." ]
+                      , Element.column
+                            [ Element.spacing 20
+                            , Element.width Element.fill
+                            , Element.Font.size 18
+                            ]
+                            [ Element.paragraph
+                                []
+                                [ Element.text "You don't have a referral. I cannot believe how stupid you are. My goodness. If you got a referral you'd get a really nice "
+                                , highlightedText "10% bonus"
+                                , Element.text ". Wouldn't that be nice?"
+                                ]
+                            , Element.paragraph
+                                []
+                                [ Element.text "...idiot" ]
+                            ]
+                      ]
+                    , [ Element.paragraph
+                            [ Element.Font.size 24
+                            , Element.Font.bold
+                            , Element.Font.color deepBlue
+                            ]
+                            [ Element.text "Your Referral Link" ]
+                      ]
+                    )
+
+                Just referrer ->
+                    ( [ Element.paragraph
+                            [ Element.Font.size 24
+                            , Element.Font.bold
+                            , Element.Font.color green
+                            ]
+                            [ Element.text "Nice! You’ve got a referral bonus." ]
+                      ]
+                    , [ Element.paragraph
+                            [ Element.Font.size 24
+                            , Element.Font.bold
+                            , Element.Font.color deepBlue
+                            ]
+                            [ Element.text "Your Referral Link" ]
+                      ]
+                    )
+    in
+    Element.column
+        [ Element.Border.rounded 6
+        , Element.Background.color EH.white
+        , Element.width <| Element.px 480
+        ]
+        [ Element.column
+            [ Element.Border.widthEach
+                { bottom = 1
+                , top = 0
+                , right = 0
+                , left = 0
+                }
+            , Element.Border.dashed
+            , Element.Border.color <| Element.rgb 0.5 0.5 0.5
+            , Element.padding 30
+            , Element.spacing 30
+            ]
+            firstElsChunk
+        , Element.column
+            [ Element.padding 30
+            , Element.spacing 30
+            ]
+            secondElsChunk
+        ]
 
 
 progressBarElement : Element.Color -> List ( Float, Element.Color ) -> Element Msg
@@ -1155,6 +1325,16 @@ deepBlueWithAlpha a =
 grayTextColor : Element.Color
 grayTextColor =
     Element.rgba255 1 31 52 0.75
+
+
+red : Element.Color
+red =
+    Element.rgb255 226 1 79
+
+
+green : Element.Color
+green =
+    Element.rgb255 0 162 149
 
 
 connectToWeb3Button : Element Msg
