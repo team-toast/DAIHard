@@ -24,7 +24,7 @@ type alias Model =
     , now : Time.Posix
     , timezone : Maybe Time.Zone
     , saleStartTime : Maybe Time.Posix
-    , bucketSale : Maybe BucketSale
+    , bucketSale : Maybe (Result String BucketSale)
     , totalTokensExited : Maybe TokenValue
     , userFryBalance : Maybe TokenValue
     , bucketView : BucketView

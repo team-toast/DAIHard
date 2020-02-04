@@ -40,9 +40,24 @@ root model =
         ]
         [ case model.bucketSale of
             Nothing ->
-                Element.el [ Element.centerX, Element.Font.size 30 ] <| Element.text "Loading..."
+                Element.el
+                    [ Element.centerX
+                    , Element.Font.size 30
+                    , Element.Font.color EH.white
+                    ]
+                <|
+                    Element.text "Loading..."
 
-            Just bucketSale ->
+            Just (Err errStr) ->
+                Element.el
+                    [ Element.centerX
+                    , Element.Font.size 30
+                    , Element.Font.color EH.white
+                    ]
+                <|
+                    Element.text errStr
+
+            Just (Ok bucketSale) ->
                 Element.row
                     [ Element.centerX
                     , Element.spacing 50
@@ -64,7 +79,7 @@ root model =
                     , Element.column
                         [ Element.spacing 20
                         ]
-                        [ futureBucketsPane model
+                        [ futureBucketsPane model bucketSale
                         , trackedTxsElement model.trackedTxs
                         ]
                     ]
@@ -149,64 +164,59 @@ focusedBucketPane bucketSale bucketId wallet enterUXModel now testMode =
         )
 
 
-futureBucketsPane : Model -> Element Msg
-futureBucketsPane model =
-    case model.bucketSale of
-        Nothing ->
-            loadingElement
+futureBucketsPane : Model -> BucketSale -> Element Msg
+futureBucketsPane model bucketSale =
+    let
+        fetchedNextBucketInfo =
+            getBucketInfo
+                bucketSale
+                (getCurrentBucketId
+                    bucketSale
+                    model.now
+                    model.testMode
+                    + 1
+                )
+                model.now
+                model.testMode
+    in
+    case fetchedNextBucketInfo of
+        InvalidBucket ->
+            noBucketsLeftBlock
 
-        Just bucketSale ->
-            let
-                fetchedNextBucketInfo =
-                    getBucketInfo
-                        bucketSale
-                        (getCurrentBucketId
-                            bucketSale
-                            model.now
-                            model.testMode
-                            + 1
-                        )
-                        model.now
-                        model.testMode
-            in
-            case fetchedNextBucketInfo of
-                InvalidBucket ->
-                    noBucketsLeftBlock
-
-                ValidBucket nextBucketInfo ->
-                    Element.column
-                        (commonPaneAttributes
-                            ++ [ Element.paddingXY 32 25
-                               , Element.spacing 7
-                               ]
-                        )
-                        [ Element.el
-                            [ Element.width <| Element.px 430
-                            , Element.Font.size 25
-                            , Element.Font.bold
-                            ]
-                          <|
-                            Element.text "Future Buckets"
-                        , Element.paragraph
-                            [ Element.Font.color grayTextColor
-                            , Element.Font.size 15
-                            ]
-                            [ Element.text "These are the upcoming buckets set to be released. The next bucket will begin in "
-                            , emphasizedText PassiveStyle <|
-                                TimeHelpers.toConciseIntervalString <|
-                                    TimeHelpers.sub
-                                        nextBucketInfo.bucketData.startTime
-                                        model.now
-                            ]
-                        , maybeBucketsLeftBlock
-                            bucketSale
-                            model.now
-                            model.testMode
-                        , maybeFryInFutureBucketsBlock
-                            bucketSale
-                            model.now
-                            model.testMode
-                        ]
+        ValidBucket nextBucketInfo ->
+            Element.column
+                (commonPaneAttributes
+                    ++ [ Element.paddingXY 32 25
+                       , Element.spacing 7
+                       ]
+                )
+                [ Element.el
+                    [ Element.width <| Element.px 430
+                    , Element.Font.size 25
+                    , Element.Font.bold
+                    ]
+                  <|
+                    Element.text "Future Buckets"
+                , Element.paragraph
+                    [ Element.Font.color grayTextColor
+                    , Element.Font.size 15
+                    ]
+                    [ Element.text "These are the upcoming buckets set to be released. The next bucket will begin in "
+                    , emphasizedText PassiveStyle <|
+                        TimeHelpers.toConciseIntervalString <|
+                            TimeHelpers.sub
+                                nextBucketInfo.bucketData.startTime
+                                model.now
+                    ]
+                , maybeBucketsLeftBlock
+                    bucketSale
+                    model.now
+                    model.testMode
+                , maybeFryInFutureBucketsBlock
+                    bucketSale
+                    model.now
+                    model.testMode
+                ]
 
 
 maybeUserBalanceBlock : Wallet.State -> Maybe TokenValue -> Element Msg
