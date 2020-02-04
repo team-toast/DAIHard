@@ -38,7 +38,7 @@ init maybeReferrer testMode wallet now =
           , userFryBalance = Nothing
           , bucketView = ViewCurrent
           , enterUXModel = initEnterUXModel maybeReferrer
-          , exitInfo = Nothing
+          , userExitInfo = Nothing
           , trackedTxs = []
           , confirmModal = Nothing
           }
@@ -326,7 +326,7 @@ update msg prevModel =
                     Ok (Just exitInfo) ->
                         justModelUpdate
                             { prevModel
-                                | exitInfo = Just exitInfo
+                                | userExitInfo = Just exitInfo
                             }
 
         UserFryBalanceFetched userAddress fetchResult ->
@@ -926,6 +926,8 @@ runCmdDown cmdDown prevModel =
                 { prevModel
                     | wallet = newWallet
                     , bucketSale = newBucketSale
+                    , userFryBalance = Nothing
+                    , userExitInfo = Nothing
                     , enterUXModel =
                         let
                             oldEnterUXModel =
@@ -939,6 +941,9 @@ runCmdDown cmdDown prevModel =
                     ( Just userInfo, Just (Ok bucketSale) ) ->
                         Cmd.batch
                             [ fetchUserAllowanceForSaleCmd
+                                userInfo
+                                prevModel.testMode
+                            , fetchUserFryBalanceCmd
                                 userInfo
                                 prevModel.testMode
                             , fetchBucketDataCmd

@@ -29,7 +29,7 @@ type alias Model =
     , userFryBalance : Maybe TokenValue
     , bucketView : BucketView
     , enterUXModel : EnterUXModel
-    , exitInfo : Maybe BucketSaleWrappers.ExitInfo
+    , userExitInfo : Maybe BucketSaleWrappers.ExitInfo
     , trackedTxs : List TrackedTx
     , confirmModal : Maybe EnterInfo
     }

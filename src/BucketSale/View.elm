@@ -123,7 +123,7 @@ closedBucketsPane model =
             ]
             [ Element.text "These are the concluded buckets of FRY that have been claimed. If you have FRY to claim it will show below." ]
         , maybeUserBalanceBlock model.wallet model.userFryBalance
-        , maybeClaimBlock model.wallet model.exitInfo
+        , maybeClaimBlock model.wallet model.userExitInfo
         , totalExitedBlock model.totalTokensExited
         ]
 
