@@ -51,7 +51,7 @@ init maybeReferrer testMode wallet now =
                         Just userInfo ->
                             [ fetchUserExitInfoCmd userInfo testMode
                             , fetchUserAllowanceForSaleCmd userInfo testMode
-                            , fetchUserFryBalance userInfo testMode
+                            , fetchUserFryBalanceCmd userInfo testMode
                             ]
 
                         Nothing ->
@@ -98,7 +98,7 @@ update msg prevModel =
                             (\userInfo ->
                                 [ fetchUserExitInfoCmd userInfo prevModel.testMode
                                 , fetchUserAllowanceForSaleCmd userInfo prevModel.testMode
-                                , fetchUserFryBalance userInfo prevModel.testMode
+                                , fetchUserFryBalanceCmd userInfo prevModel.testMode
                                 ]
                             )
                             (Wallet.userInfo prevModel.wallet)
@@ -733,11 +733,29 @@ update msg prevModel =
                         newTrackedTxs =
                             prevModel.trackedTxs
                                 |> updateTrackedTxStatus trackedTxId Mined
+
+                        cmd =
+                            case ( txType, Wallet.userInfo prevModel.wallet ) of
+                                ( Exit, Just userInfo ) ->
+                                    Cmd.batch
+                                        [ fetchUserExitInfoCmd
+                                            userInfo
+                                            prevModel.testMode
+                                        , fetchUserFryBalanceCmd
+                                            userInfo
+                                            prevModel.testMode
+                                        ]
+
+                                _ ->
+                                    Cmd.none
                     in
-                    justModelUpdate
+                    UpdateResult
                         { prevModel
                             | trackedTxs = newTrackedTxs
                         }
+                        cmd
+                        ChainCmd.none
+                        []
 
 
 initBucketSale : Bool -> Time.Posix -> Time.Posix -> Maybe BucketSale
@@ -832,8 +850,8 @@ fetchTotalTokensExitedCmd testMode =
         TotalTokensExitedFetched
 
 
-fetchUserFryBalance : UserInfo -> Bool -> Cmd Msg
-fetchUserFryBalance userInfo testMode =
+fetchUserFryBalanceCmd : UserInfo -> Bool -> Cmd Msg
+fetchUserFryBalanceCmd userInfo testMode =
     BucketSaleWrappers.getFryBalance
         testMode
         userInfo.address
