@@ -591,6 +591,7 @@ update msg prevModel =
             UpdateResult
                 { prevModel
                     | trackedTxs = newTrackedTxs
+                    , confirmModal = Nothing
                 }
                 Cmd.none
                 chainCmd
