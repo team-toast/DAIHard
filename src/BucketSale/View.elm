@@ -61,7 +61,6 @@ root model =
                 Element.row
                     [ Element.centerX
                     , Element.spacing 50
-                    , Element.spaceEvenly
                     ]
                     [ closedBucketsPane model
                     , focusedBucketPane
@@ -78,6 +77,7 @@ root model =
                         model.testMode
                     , Element.column
                         [ Element.spacing 20
+                        , Element.width Element.fill
                         ]
                         [ futureBucketsPane model bucketSale
                         , trackedTxsElement model.trackedTxs
@@ -107,7 +107,7 @@ closedBucketsPane : Model -> Element Msg
 closedBucketsPane model =
     Element.column
         (commonPaneAttributes
-            ++ [ Element.width <| Element.px 430
+            ++ [ Element.width <| Element.px 450
                , Element.paddingXY 32 25
                ]
         )
@@ -132,7 +132,7 @@ focusedBucketPane : BucketSale -> Int -> Wallet.State -> EnterUXModel -> Time.Po
 focusedBucketPane bucketSale bucketId wallet enterUXModel now testMode =
     Element.column
         (commonPaneAttributes
-            ++ [ Element.width <| Element.px 650
+            ++ [ Element.width <| Element.px 780
                , Element.paddingXY 35 31
                , Element.spacing 7
                , Element.height <| Element.px 800
@@ -186,12 +186,12 @@ futureBucketsPane model bucketSale =
         ValidBucket nextBucketInfo ->
             Element.column
                 (commonPaneAttributes
-                    ++ [ Element.paddingXY 32 25
-                       , Element.spacing 7
+                    ++ [ Element.width <| Element.px 450
+                       , Element.paddingXY 32 25
                        ]
                 )
                 [ Element.el
-                    [ Element.width <| Element.px 430
+                    [ Element.width Element.fill
                     , Element.Font.size 25
                     , Element.Font.bold
                     ]
