@@ -113,6 +113,7 @@ type TxStatus
     | Broadcasting
     | Mining
     | Mined
+    | Rejected
     | Failed
 
 

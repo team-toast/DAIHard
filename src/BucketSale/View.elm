@@ -897,6 +897,16 @@ trackedTxRow trackedTx =
                         ]
                     <|
                         Element.text "Failed"
+                
+                Rejected ->
+                    Element.el
+                        [ Element.centerX
+                        , Element.Font.color EH.softRed
+                        , Element.Font.italic
+                        , Element.Font.bold
+                        ]
+                    <|
+                        Element.text "Rejected"
             )
         , Element.el
             [ Element.width Element.fill

@@ -644,7 +644,7 @@ update msg prevModel =
                         { prevModel
                             | trackedTxs =
                                 prevModel.trackedTxs
-                                    |> updateTrackedTxStatus trackedTxId Failed
+                                    |> updateTrackedTxStatus trackedTxId Rejected
                         }
 
                 Ok txHash ->
