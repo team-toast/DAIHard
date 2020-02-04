@@ -1,4 +1,4 @@
-module BucketSale.Types exposing (AllowanceState(..), BucketData, BucketSale, BucketState(..), BucketView(..), Buy, EnterUXModel, FetchedBucketInfo(..), Model, Msg(..), RelevantTimingInfo, UpdateResult, ValidBucketInfo, buyFromBindingBuy, calcClaimableTokens, calcEffectivePricePerToken, currentBucketTimeLeft, getBucketEndTime, getBucketInfo, getCurrentBucket, getCurrentBucketId, getFocusedBucketId, getRelevantTimingInfo, justModelUpdate, makeBlankBucket, updateAllBuckets, updateBucketAt)
+module BucketSale.Types exposing (AllowanceState(..), BucketData, BucketSale, BucketState(..), BucketView(..), Buy, EnterUXModel, FetchedBucketInfo(..), Model, Msg(..), RelevantTimingInfo, TrackedTx, TxStatus(..), TxType(..), UpdateResult, ValidBucketInfo, buyFromBindingBuy, calcClaimableTokens, calcEffectivePricePerToken, currentBucketTimeLeft, getBucketEndTime, getBucketInfo, getCurrentBucket, getCurrentBucketId, getFocusedBucketId, getRelevantTimingInfo, justModelUpdate, makeBlankBucket, updateAllBuckets, updateBucketAt)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -7,7 +7,8 @@ import CommonTypes exposing (..)
 import Config
 import Contracts.BucketSale.Generated.BucketSale as BucketSaleBindings
 import Contracts.BucketSale.Wrappers as BucketSaleWrappers exposing (ExitInfo)
-import Eth.Types exposing (Address, TxHash, TxReceipt)
+import Dict exposing (Dict)
+import Eth.Types exposing (Address, Tx, TxHash, TxReceipt)
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
 import Http
@@ -29,6 +30,7 @@ type alias Model =
     , bucketView : BucketView
     , enterUXModel : EnterUXModel
     , exitInfo : Maybe BucketSaleWrappers.ExitInfo
+    , trackedTxs : List TrackedTx
     }
 
 
@@ -52,19 +54,15 @@ type Msg
     | UserExitInfoFetched Address (Result Http.Error (Maybe BucketSaleWrappers.ExitInfo))
     | TotalTokensExitedFetched (Result Http.Error TokenValue)
     | UserFryBalanceFetched Address (Result Http.Error TokenValue)
-    | ClaimClicked UserInfo ExitInfo
     | FocusToBucket Int
     | DaiInputChanged String
     | UnlockDaiButtonClicked
     | AllowanceFetched (Result Http.Error BigInt)
-    | DaiUnlockSigned (Result String TxHash)
-    | DaiUnlockMined (Result String TxReceipt)
+    | ClaimClicked UserInfo ExitInfo
     | EnterButtonClicked UserInfo Int TokenValue (Maybe Address)
-    | EnterSigned (Result String TxHash)
-    | EnterMined (Result String TxReceipt)
-    | ExitButtonClicked UserInfo Int
-    | ExitSigned (Result String TxHash)
-    | ExitMined (Result String TxReceipt)
+    | TxSigned Int TxType (Result String TxHash)
+    | TxBroadcast Int TxType (Result String Tx)
+    | TxMined Int TxType (Result String TxReceipt)
 
 
 type alias UpdateResult =
@@ -82,6 +80,28 @@ justModelUpdate model =
     , chainCmd = ChainCmd.none
     , cmdUps = []
     }
+
+
+type alias TrackedTx =
+    { hash : Maybe TxHash
+    --, txType : TxType
+    , description : String
+    , status : TxStatus
+    }
+
+
+type TxType
+    = Unlock
+    | Enter
+    | Exit
+
+
+type TxStatus
+    = Signing
+    | Broadcasting
+    | Mining
+    | Mined
+    | Failed
 
 
 type AllowanceState
@@ -301,3 +321,5 @@ getRelevantTimingInfo bucketInfo now testMode =
                     bucketInfo.bucketData.startTime
                     now
         )
+
+

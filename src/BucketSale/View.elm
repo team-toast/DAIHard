@@ -60,7 +60,13 @@ root model =
                         model.enterUXModel
                         model.now
                         model.testMode
-                    , futureBucketsPane model
+                    , Element.column
+                        [ Element.width <| Element.px 650
+                        , Element.spacing 20
+                        ]
+                        [ futureBucketsPane model
+                        , trackedTxsElement model.trackedTxs
+                        ]
                     ]
         ]
     , []
@@ -787,8 +793,106 @@ maybeFryInFutureBucketsBlock bucketSale now testMode =
         ]
 
 
-progressBarElement : Element.Color -> List ( Float, Element.Color ) ->  Element Msg
-progressBarElement bgColor ratiosAndColors  =
+trackedTxsElement : List TrackedTx -> Element Msg
+trackedTxsElement trackedTxs =
+    if List.length trackedTxs == 0 then
+        Element.none
+
+    else
+        Element.column
+            [ Element.Border.rounded 5
+            , Element.Background.color <| Element.rgb 0.9 0.9 0.9
+            , Element.spacing 14
+            , Element.padding 10
+            , Element.width Element.fill
+            ]
+            [ Element.el [ Element.Font.size 20 ] <|
+                Element.text "Eth Transactions"
+            , trackedTxsColumn trackedTxs
+            ]
+
+
+trackedTxsColumn : List TrackedTx -> Element Msg
+trackedTxsColumn trackedTxs =
+    Element.column
+        [ Element.spacing 8
+        , Element.padding 5
+        ]
+        (List.map trackedTxRow trackedTxs)
+
+
+trackedTxRow : TrackedTx -> Element Msg
+trackedTxRow trackedTx =
+    Element.row
+        [ Element.Font.color grayTextColor
+        , Element.Border.width 1
+        , Element.Border.color <| Element.rgb 0.8 0.8 0.8
+        , Element.Background.color <| Element.rgb 0.95 0.95 0.95
+        , Element.spacing 8
+        , Element.padding 4
+        , Element.Border.rounded 4
+        ]
+        [ Element.el
+            [ Element.padding 5
+            , Element.Border.rounded 4
+            , Element.Background.color <| Element.rgb 0.8 0.8 0.8
+            , Element.width <| Element.px 130
+            ]
+            (case trackedTx.status of
+                Signing ->
+                    Element.el
+                        [ Element.centerX
+                        , Element.Font.italic
+                        ]
+                    <|
+                        Element.text "Signing"
+
+                Broadcasting ->
+                    Element.el
+                        [ Element.centerX
+                        , Element.Font.italic
+                        ]
+                    <|
+                        Element.text "Broadcasting"
+
+                Mining ->
+                    Element.el
+                        [ Element.centerX
+                        , Element.Font.italic
+                        ]
+                    <|
+                        Element.text "Mining"
+
+                Mined ->
+                    Element.el
+                        [ Element.centerX
+                        , Element.Font.bold
+                        , Element.Font.color EH.green
+                        ]
+                    <|
+                        Element.text "Mined"
+
+                Failed ->
+                    Element.el
+                        [ Element.centerX
+                        , Element.Font.color EH.softRed
+                        , Element.Font.italic
+                        , Element.Font.bold
+                        ]
+                    <|
+                        Element.text "Failed"
+            )
+        , Element.el
+            [ Element.width Element.fill
+            , Element.clip
+            ]
+          <|
+            Element.text trackedTx.description
+        ]
+
+
+progressBarElement : Element.Color -> List ( Float, Element.Color ) -> Element Msg
+progressBarElement bgColor ratiosAndColors =
     Element.row
         [ Element.width Element.fill
         , Element.Background.color bgColor

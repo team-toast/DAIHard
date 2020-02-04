@@ -9,8 +9,9 @@ import CommonTypes exposing (..)
 import Config
 import Contracts.BucketSale.Wrappers as BucketSaleWrappers
 import Contracts.Wrappers
+import Dict exposing (Dict)
 import Eth
-import Eth.Types exposing (Address, HttpProvider)
+import Eth.Types exposing (Address, HttpProvider, Tx, TxHash, TxReceipt)
 import Helpers.BigInt as BigIntHelpers
 import Helpers.Eth as EthHelpers
 import Helpers.Time as TimeHelpers
@@ -38,6 +39,7 @@ init maybeReferrer testMode wallet now =
           , bucketView = ViewCurrent
           , enterUXModel = initEnterUXModel maybeReferrer
           , exitInfo = Nothing
+          , trackedTxs = []
           }
         , Cmd.batch
             ([ fetchSaleStartTimestampCmd testMode
@@ -396,31 +398,6 @@ update msg prevModel =
                                         }
                                 }
 
-        ClaimClicked userInfo exitInfo ->
-            let
-                chainCmd =
-                    let
-                        customSend =
-                            { onMined = Just ( ExitMined, Nothing )
-                            , onSign = Nothing
-                            , onBroadcast = Nothing
-                            }
-
-                        txParams =
-                            BucketSaleWrappers.exitMany
-                                userInfo.address
-                                exitInfo.exitableBuckets
-                                prevModel.testMode
-                                |> Eth.toSend
-                    in
-                    ChainCmd.custom customSend txParams
-            in
-            UpdateResult
-                prevModel
-                Cmd.none
-                chainCmd
-                []
-
         FocusToBucket bucketId ->
             case prevModel.bucketSale of
                 Nothing ->
@@ -524,12 +501,21 @@ update msg prevModel =
 
         UnlockDaiButtonClicked ->
             let
+                ( trackedTxId, newTrackedTxs ) =
+                    prevModel.trackedTxs
+                        |> trackNewTx
+                            (TrackedTx
+                                Nothing
+                                "Unlock DAI"
+                                Signing
+                            )
+
                 chainCmd =
                     let
                         customSend =
-                            { onMined = Just ( DaiUnlockMined, Nothing )
-                            , onSign = Just DaiUnlockSigned
-                            , onBroadcast = Nothing
+                            { onMined = Just ( TxMined trackedTxId Unlock, Nothing )
+                            , onSign = Just <| TxSigned trackedTxId Unlock
+                            , onBroadcast = Just <| TxBroadcast trackedTxId Unlock
                             }
 
                         txParams =
@@ -539,58 +525,35 @@ update msg prevModel =
                     ChainCmd.custom customSend txParams
             in
             UpdateResult
-                prevModel
+                { prevModel
+                    | trackedTxs = newTrackedTxs
+                }
                 Cmd.none
                 chainCmd
                 []
 
-        DaiUnlockSigned txHashResult ->
-            case txHashResult of
-                Ok txHash ->
-                    justModelUpdate
-                        { prevModel
-                            | enterUXModel =
-                                let
-                                    oldEnterUXModel =
-                                        prevModel.enterUXModel
-                                in
-                                { oldEnterUXModel
-                                    | allowanceState = UnlockMining
-                                }
-                        }
-
-                Err errStr ->
-                    let
-                        _ =
-                            Debug.log "Error signing unlock" errStr
-                    in
-                    justModelUpdate prevModel
-
-        DaiUnlockMined txReceiptResult ->
-            let
-                _ =
-                    Debug.log "txReceiptResult for daiUnlockMined" txReceiptResult
-            in
-            justModelUpdate
-                { prevModel
-                    | enterUXModel =
-                        let
-                            oldEnterUXModel =
-                                prevModel.enterUXModel
-                        in
-                        { oldEnterUXModel
-                            | allowanceState = Loaded (TokenValue.tokenValue EthHelpers.maxUintValue)
-                        }
-                }
-
         EnterButtonClicked userInfo bucketId daiAmount maybeReferrer ->
             let
+                ( trackedTxId, newTrackedTxs ) =
+                    prevModel.trackedTxs
+                        |> trackNewTx
+                            (TrackedTx
+                                Nothing
+                                ("Bid on bucket "
+                                    ++ String.fromInt bucketId
+                                    ++ " with "
+                                    ++ TokenValue.toConciseString daiAmount
+                                    ++ " DAI"
+                                )
+                                Signing
+                            )
+
                 chainCmd =
                     let
                         customSend =
-                            { onMined = Just ( EnterMined, Nothing )
-                            , onSign = Just EnterSigned
-                            , onBroadcast = Nothing
+                            { onMined = Just ( TxMined trackedTxId Enter, Nothing )
+                            , onSign = Just <| TxSigned trackedTxId Enter
+                            , onBroadcast = Just <| TxBroadcast trackedTxId Enter
                             }
 
                         txParams =
@@ -605,66 +568,163 @@ update msg prevModel =
                     ChainCmd.custom customSend txParams
             in
             UpdateResult
-                prevModel
+                { prevModel
+                    | trackedTxs = newTrackedTxs
+                }
                 Cmd.none
                 chainCmd
                 []
 
-        EnterSigned txHashResult ->
-            justModelUpdate
-                { prevModel
-                    | enterUXModel =
-                        let
-                            oldEnterUXModel =
-                                prevModel.enterUXModel
-                        in
-                        { oldEnterUXModel
-                            | daiInput = ""
-                            , daiAmount = Nothing
-                        }
-                }
-
-        EnterMined txReceiptResult ->
-            justModelUpdate prevModel
-
-        ExitButtonClicked userInfo bucketId ->
+        ClaimClicked userInfo exitInfo ->
             let
+                ( trackedTxId, newTrackedTxs ) =
+                    prevModel.trackedTxs
+                        |> trackNewTx
+                            (TrackedTx
+                                Nothing
+                                "Claim FRY"
+                                Signing
+                            )
+
                 chainCmd =
                     let
                         customSend =
-                            { onMined = Just ( ExitMined, Nothing )
-                            , onSign = Just ExitSigned
-                            , onBroadcast = Nothing
+                            { onMined = Just ( TxMined trackedTxId Exit, Nothing )
+                            , onSign = Just <| TxSigned trackedTxId Exit
+                            , onBroadcast = Just <| TxBroadcast trackedTxId Exit
                             }
 
                         txParams =
-                            BucketSaleWrappers.exit
+                            BucketSaleWrappers.exitMany
                                 userInfo.address
-                                bucketId
+                                exitInfo.exitableBuckets
                                 prevModel.testMode
                                 |> Eth.toSend
                     in
                     ChainCmd.custom customSend txParams
             in
             UpdateResult
-                prevModel
+                { prevModel
+                    | trackedTxs = newTrackedTxs
+                }
                 Cmd.none
                 chainCmd
                 []
 
-        ExitSigned txHashResult ->
-            let
-                _ =
-                    Debug.log "ExitSigned" txHashResult
-            in
-            justModelUpdate prevModel
+        TxSigned trackedTxId txType txHashResult ->
+            case txHashResult of
+                Err errStr ->
+                    let
+                        _ =
+                            Debug.log "Error signing tx" ( txType, errStr )
+                    in
+                    justModelUpdate
+                        {prevModel
+                            | trackedTxs =
+                                prevModel.trackedTxs
+                                    |> updateTrackedTxStatus trackedTxId Failed
+                        }
 
-        ExitMined txReceiptResult ->
-            let
-                _ =
-                    Debug.log "ExitMined" txReceiptResult
-            in
-            justModelUpdate prevModel
+                Ok txHash ->
+                    let
+                        newTrackedTxs =
+                            prevModel.trackedTxs
+                                |> updateTrackedTxStatus trackedTxId Mining
+
+                        newEnterUXModel =
+                            case txType of
+                                Unlock ->
+                                    let
+                                        oldEnterUXModel =
+                                            prevModel.enterUXModel
+                                    in
+                                    { oldEnterUXModel
+                                        | allowanceState = UnlockMining
+                                    }
+
+                                Enter ->
+                                    let
+                                        oldEnterUXModel =
+                                            prevModel.enterUXModel
+                                    in
+                                    { oldEnterUXModel
+                                        | daiInput = ""
+                                        , daiAmount = Nothing
+                                    }
+
+                                _ ->
+                                    prevModel.enterUXModel
+                    in
+                    justModelUpdate
+                        { prevModel
+                            | trackedTxs = newTrackedTxs
+                            , enterUXModel = newEnterUXModel
+                        }
+
+        TxBroadcast trackedTxId txType txResult ->
+            case txResult of
+                Err errStr ->
+                    let
+                        _ =
+                            Debug.log "Error broadcasting tx" ( txType, errStr )
+                    in
+                    justModelUpdate
+                        {prevModel
+                            | trackedTxs =
+                                prevModel.trackedTxs
+                                    |> updateTrackedTxStatus trackedTxId Failed
+                        }
+
+                Ok tx ->
+                    let
+                        newTrackedTxs =
+                            prevModel.trackedTxs
+                                |> updateTrackedTxStatus trackedTxId Mining
+
+                        newEnterUXModel =
+                            case txType of
+                                Unlock ->
+                                    let
+                                        oldEnterUXModel =
+                                            prevModel.enterUXModel
+                                    in
+                                    { oldEnterUXModel
+                                        | allowanceState = Loaded (TokenValue.tokenValue EthHelpers.maxUintValue)
+                                    }
+
+                                _ ->
+                                    prevModel.enterUXModel
+                    in
+                    justModelUpdate
+                        { prevModel
+                            | trackedTxs = newTrackedTxs
+                            , enterUXModel = newEnterUXModel
+                        }
+
+        TxMined trackedTxId txType txReceiptResult ->
+            case txReceiptResult of
+                Err errStr ->
+                    let
+                        _ =
+                            Debug.log "Error mining tx" ( txType, errStr )
+                    in
+                    justModelUpdate
+                        {prevModel
+                            | trackedTxs =
+                                prevModel.trackedTxs
+                                    |> updateTrackedTxStatus trackedTxId Failed
+                        }
+
+                Ok txReceipt ->
+                    let
+                        newTrackedTxs =
+                            prevModel.trackedTxs
+                                |> updateTrackedTxStatus trackedTxId Mined
+                    in
+                    justModelUpdate
+                        { prevModel
+                            | trackedTxs = newTrackedTxs
+                        }
 
 
 initBucketSale : Bool -> Time.Posix -> Time.Posix -> Maybe BucketSale
@@ -787,6 +847,23 @@ validateDaiInput input =
 
         Nothing ->
             Err "Can't interpret that number"
+
+
+trackNewTx : TrackedTx -> List TrackedTx -> ( Int, List TrackedTx )
+trackNewTx newTrackedTx prevTrackedTxs =
+    ( List.length prevTrackedTxs
+    , List.append
+        prevTrackedTxs
+        [ newTrackedTx ]
+    )
+
+
+updateTrackedTxStatus : Int -> TxStatus -> List TrackedTx -> List TrackedTx
+updateTrackedTxStatus id newStatus =
+    List.Extra.updateAt id
+        (\trackedTx ->
+            { trackedTx | status = newStatus }
+        )
 
 
 runCmdDown : CmdDown -> Model -> UpdateResult
