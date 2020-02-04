@@ -33,8 +33,8 @@ type PageRoute
 fullRouteParser : Parser (FullRoute -> a) a
 fullRouteParser =
     Url.Parser.oneOf
-        [ Url.Parser.s "DAIHard" </> Url.Parser.s "test" </> Url.Parser.map (FullRoute True) (pageRouteParser <?> refQueryParser)
-        , Url.Parser.s "DAIHard" </> Url.Parser.map (FullRoute False) (pageRouteParser <?> refQueryParser)
+        [ Url.Parser.s "test" </> Url.Parser.map (FullRoute True) (pageRouteParser <?> refQueryParser)
+        , Url.Parser.map (FullRoute False) (pageRouteParser <?> refQueryParser)
         ]
 
 
@@ -56,10 +56,10 @@ routeToString : FullRoute -> String
 routeToString fullRoute =
     Url.Builder.absolute
         ((if fullRoute.testing then
-            [ "DAIHard", "test" ]
+            [ "#", "test" ]
 
           else
-            [ "DAIHard" ]
+            ["#"]
          )
             ++ (case fullRoute.pageRoute of
                     InitialBlank ->
