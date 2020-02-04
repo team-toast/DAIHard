@@ -46,6 +46,7 @@ root model =
                 Element.row
                     [ Element.centerX
                     , Element.spacing 50
+                    , Element.spaceEvenly
                     ]
                     [ closedBucketsPane model
                     , focusedBucketPane
@@ -61,15 +62,14 @@ root model =
                         model.now
                         model.testMode
                     , Element.column
-                        [ Element.width <| Element.px 650
-                        , Element.spacing 20
+                        [ Element.spacing 20
                         ]
                         [ futureBucketsPane model
                         , trackedTxsElement model.trackedTxs
                         ]
                     ]
         ]
-    , []
+    , viewModals model
     )
 
 
@@ -688,7 +688,13 @@ actionButton maybeUserInfo enterUXModel bucketInfo testMode =
                         Desktop
                         [ Element.width Element.fill ]
                         [ "Continue" ]
-                        (EnterButtonClicked userInfo bucketInfo.id daiAmount enterUXModel.referrer)
+                        (EnterButtonClicked <|
+                            EnterInfo
+                                userInfo
+                                bucketInfo.id
+                                daiAmount
+                                enterUXModel.referrer
+                        )
 
                 disabledContinueButton =
                     EH.disabledButton
@@ -889,6 +895,69 @@ trackedTxRow trackedTx =
           <|
             Element.text trackedTx.description
         ]
+
+
+viewModals : Model -> List (Element Msg)
+viewModals model =
+    case model.confirmModal of
+        Just exitInfo ->
+            [ continueConfirmModal exitInfo ]
+
+        Nothing ->
+            []
+
+
+continueConfirmModal : EnterInfo -> Element Msg
+continueConfirmModal enterInfo =
+    EH.closeableModal
+        True
+        [ Element.Border.rounded 6
+        , Element.width <| Element.px 520
+        ]
+        (Element.column
+            [ Element.padding 27
+            , Element.spacing 20
+            , Element.width Element.fill
+            ]
+            [ Element.column
+                [ Element.width Element.fill
+                , Element.spacing 15
+                ]
+                [ Element.el
+                    [ Element.Font.bold
+                    , Element.Font.size 30
+                    , Element.Font.color <| Element.rgb255 1 31 52
+                    ]
+                    (Element.text "Just to Confirm...")
+                , Element.paragraph
+                    [ Element.Font.color grayTextColor
+                    , Element.Font.size 16
+                    ]
+                    [ Element.text "I understand that this bid cannot be refunded, and that if other bids are entered before the bucket ends, the amount of FRY I will be able to claim from this bucket will decrease." ]
+                ]
+            , Element.column
+                [ Element.width Element.fill
+                , Element.spacing 15
+                ]
+                [ EH.redButton
+                    Desktop
+                    [ Element.width Element.fill ]
+                    [ "Confirm & deposit "
+                        ++ TokenValue.toConciseString enterInfo.amount
+                        ++ " DAI"
+                    ]
+                    (ConfirmClicked enterInfo)
+                , EH.grayButton
+                    Desktop
+                    [ Element.width Element.fill ]
+                    [ "Cancel" ]
+                    CancelClicked
+                ]
+            ]
+        )
+        NoOp
+        CancelClicked
+        False
 
 
 progressBarElement : Element.Color -> List ( Float, Element.Color ) -> Element Msg

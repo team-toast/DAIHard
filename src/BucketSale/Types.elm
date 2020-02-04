@@ -1,4 +1,4 @@
-module BucketSale.Types exposing (AllowanceState(..), BucketData, BucketSale, BucketState(..), BucketView(..), Buy, EnterUXModel, FetchedBucketInfo(..), Model, Msg(..), RelevantTimingInfo, TrackedTx, TxStatus(..), TxType(..), UpdateResult, ValidBucketInfo, buyFromBindingBuy, calcClaimableTokens, calcEffectivePricePerToken, currentBucketTimeLeft, getBucketEndTime, getBucketInfo, getCurrentBucket, getCurrentBucketId, getFocusedBucketId, getRelevantTimingInfo, justModelUpdate, makeBlankBucket, updateAllBuckets, updateBucketAt)
+module BucketSale.Types exposing (AllowanceState(..), BucketData, BucketSale, BucketState(..), BucketView(..), Buy, EnterInfo, EnterUXModel, FetchedBucketInfo(..), Model, Msg(..), RelevantTimingInfo, TrackedTx, TxStatus(..), TxType(..), UpdateResult, ValidBucketInfo, buyFromBindingBuy, calcClaimableTokens, calcEffectivePricePerToken, currentBucketTimeLeft, getBucketEndTime, getBucketInfo, getCurrentBucket, getCurrentBucketId, getFocusedBucketId, getRelevantTimingInfo, justModelUpdate, makeBlankBucket, updateAllBuckets, updateBucketAt)
 
 import BigInt exposing (BigInt)
 import ChainCmd exposing (ChainCmd)
@@ -31,6 +31,7 @@ type alias Model =
     , enterUXModel : EnterUXModel
     , exitInfo : Maybe BucketSaleWrappers.ExitInfo
     , trackedTxs : List TrackedTx
+    , confirmModal : Maybe EnterInfo
     }
 
 
@@ -59,7 +60,9 @@ type Msg
     | UnlockDaiButtonClicked
     | AllowanceFetched (Result Http.Error BigInt)
     | ClaimClicked UserInfo ExitInfo
-    | EnterButtonClicked UserInfo Int TokenValue (Maybe Address)
+    | CancelClicked
+    | EnterButtonClicked EnterInfo
+    | ConfirmClicked EnterInfo
     | TxSigned Int TxType (Result String TxHash)
     | TxBroadcast Int TxType (Result String Tx)
     | TxMined Int TxType (Result String TxReceipt)
@@ -82,8 +85,17 @@ justModelUpdate model =
     }
 
 
+type alias EnterInfo =
+    { userInfo : UserInfo
+    , bucketId : Int
+    , amount : TokenValue
+    , maybeReferrer : Maybe Address
+    }
+
+
 type alias TrackedTx =
     { hash : Maybe TxHash
+
     --, txType : TxType
     , description : String
     , status : TxStatus
@@ -321,5 +333,3 @@ getRelevantTimingInfo bucketInfo now testMode =
                     bucketInfo.bucketData.startTime
                     now
         )
-
-

@@ -40,6 +40,7 @@ init maybeReferrer testMode wallet now =
           , enterUXModel = initEnterUXModel maybeReferrer
           , exitInfo = Nothing
           , trackedTxs = []
+          , confirmModal = Nothing
           }
         , Cmd.batch
             ([ fetchSaleStartTimestampCmd testMode
@@ -532,7 +533,19 @@ update msg prevModel =
                 chainCmd
                 []
 
-        EnterButtonClicked userInfo bucketId daiAmount maybeReferrer ->
+        EnterButtonClicked enterInfo ->
+            justModelUpdate
+                { prevModel
+                    | confirmModal = Just enterInfo
+                }
+
+        CancelClicked ->
+            justModelUpdate
+                { prevModel
+                    | confirmModal = Nothing
+                }
+
+        ConfirmClicked enterInfo ->
             let
                 ( trackedTxId, newTrackedTxs ) =
                     prevModel.trackedTxs
@@ -540,9 +553,9 @@ update msg prevModel =
                             (TrackedTx
                                 Nothing
                                 ("Bid on bucket "
-                                    ++ String.fromInt bucketId
+                                    ++ String.fromInt enterInfo.bucketId
                                     ++ " with "
-                                    ++ TokenValue.toConciseString daiAmount
+                                    ++ TokenValue.toConciseString enterInfo.amount
                                     ++ " DAI"
                                 )
                                 Signing
@@ -558,10 +571,10 @@ update msg prevModel =
 
                         txParams =
                             BucketSaleWrappers.enter
-                                userInfo.address
-                                bucketId
-                                daiAmount
-                                maybeReferrer
+                                enterInfo.userInfo.address
+                                enterInfo.bucketId
+                                enterInfo.amount
+                                enterInfo.maybeReferrer
                                 prevModel.testMode
                                 |> Eth.toSend
                     in
@@ -619,7 +632,7 @@ update msg prevModel =
                             Debug.log "Error signing tx" ( txType, errStr )
                     in
                     justModelUpdate
-                        {prevModel
+                        { prevModel
                             | trackedTxs =
                                 prevModel.trackedTxs
                                     |> updateTrackedTxStatus trackedTxId Failed
@@ -669,7 +682,7 @@ update msg prevModel =
                             Debug.log "Error broadcasting tx" ( txType, errStr )
                     in
                     justModelUpdate
-                        {prevModel
+                        { prevModel
                             | trackedTxs =
                                 prevModel.trackedTxs
                                     |> updateTrackedTxStatus trackedTxId Failed
@@ -709,7 +722,7 @@ update msg prevModel =
                             Debug.log "Error mining tx" ( txType, errStr )
                     in
                     justModelUpdate
-                        {prevModel
+                        { prevModel
                             | trackedTxs =
                                 prevModel.trackedTxs
                                     |> updateTrackedTxStatus trackedTxId Failed
