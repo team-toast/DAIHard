@@ -4,14 +4,3 @@
 /src/elm-ethereum/elm-stuff/
 /dist/
 index.html
-contracts/tests/fsharp/packages/
-build/
-bin/
-obj/
-.ionide/
-/.ionide/
-smart-contracts/bucket-sale/tests/.vs/Tests/v16/.suo
-smart-contracts/bucket-sale/tests/.vs/Tests/v16/TestStore/0/000-0000.testlog
-smart-contracts/bucket-sale/tests/.vs/Tests/v16/TestStore/0/testlog.manifest
-.ionide/symbolCache.db
-/.ionide/symbolCache.db
