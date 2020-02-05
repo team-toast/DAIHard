@@ -5,7 +5,6 @@ import Array exposing (Array)
 import BigInt exposing (BigInt)
 import Browser
 import Browser.Navigation
-import BucketSale.Types
 import CmdDown
 import CmdUp
 import CommonTypes exposing (..)
@@ -31,7 +30,6 @@ type alias Flags =
     , width : Int
     , height : Int
     , nowInMillis : Int
-    , maybeReferralAddressString : Maybe String
     }
 
 
@@ -47,7 +45,6 @@ type alias Model =
     , submodel : Submodel
     , userNotices : List (UserNotice Msg)
     , dProfile : DisplayProfile
-    , maybeReferrer : Maybe Address
     }
 
 
@@ -58,7 +55,6 @@ type Submodel
     | TradeModel Trade.Types.Model
     | MarketplaceModel Marketplace.Types.Model
     | AgentHistoryModel AgentHistory.Types.Model
-    | BucketSaleModel BucketSale.Types.Model
 
 
 type Msg
@@ -78,7 +74,6 @@ type Msg
     | TradeMsg Trade.Types.Msg
     | MarketplaceMsg Marketplace.Types.Msg
     | AgentHistoryMsg AgentHistory.Types.Msg
-    | BucketSaleMsg BucketSale.Types.Msg
     | DismissNotice Int
     | ClickHappened
     | NoOp

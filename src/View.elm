@@ -2,7 +2,6 @@ module View exposing (root)
 
 import AgentHistory.View
 import Browser
-import BucketSale.View
 import CommonTypes exposing (..)
 import Config
 import Contracts.Types as CTypes
@@ -511,12 +510,6 @@ submodelElementAndModal dProfile model =
                     ( Element.map AgentHistoryMsg (AgentHistory.View.root model.now dProfile model.tradeCaches agentHistoryModel)
                     , []
                     )
-
-                BucketSaleModel bucketSaleModel ->
-                    BucketSale.View.root bucketSaleModel
-                        |> Tuple.mapBoth
-                            (Element.map BucketSaleMsg)
-                            (List.map (Element.map BucketSaleMsg))
     in
     ( Element.el
         [ Element.width Element.fill

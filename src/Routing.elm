@@ -14,7 +14,6 @@ import Url.Parser.Query
 type alias FullRoute =
     { testing : Bool
     , pageRoute : PageRoute
-    , maybeReferrer : Maybe Address
     }
 
 
@@ -26,15 +25,14 @@ type PageRoute
     | Trade TradeReference
     | Marketplace
     | AgentHistory Address
-    | BucketSale
     | NotFound
 
 
 fullRouteParser : Parser (FullRoute -> a) a
 fullRouteParser =
     Url.Parser.oneOf
-        [ Url.Parser.s "test" </> Url.Parser.map (FullRoute True) (pageRouteParser <?> refQueryParser)
-        , Url.Parser.map (FullRoute False) (pageRouteParser <?> refQueryParser)
+        [ Url.Parser.s "test" </> Url.Parser.map (FullRoute True) pageRouteParser
+        , Url.Parser.map (FullRoute False) pageRouteParser
         ]
 
 
@@ -48,7 +46,6 @@ pageRouteParser =
         , Url.Parser.map Marketplace (Url.Parser.s "marketplace")
         , Url.Parser.map AgentHistory (Url.Parser.s "history" </> addressParser)
         , Url.Parser.map (\address -> AgentHistory address) (Url.Parser.s "history" </> addressParser)
-        , Url.Parser.map BucketSale (Url.Parser.s "foundry")
         ]
 
 
@@ -59,7 +56,7 @@ routeToString fullRoute =
             [ "#", "test" ]
 
           else
-            ["#"]
+            [ "#" ]
          )
             ++ (case fullRoute.pageRoute of
                     InitialBlank ->
@@ -83,20 +80,11 @@ routeToString fullRoute =
                     AgentHistory address ->
                         [ "history", Eth.Utils.addressToString address ]
 
-                    BucketSale ->
-                        [ "foundry" ]
-
                     NotFound ->
                         []
                )
         )
-        (case fullRoute.maybeReferrer of
-            Just address ->
-                [ Url.Builder.string "ref" (Eth.Utils.addressToChecksumString address) ]
-
-            Nothing ->
-                []
-        )
+        []
 
 
 addressParser : Parser (Address -> a) a
@@ -193,4 +181,4 @@ buyerOrSellerToString buyerOrSeller =
 
 urlToFullRoute : Url -> FullRoute
 urlToFullRoute url =
-    Maybe.withDefault (FullRoute False NotFound Nothing) (Url.Parser.parse fullRouteParser url)
+    Maybe.withDefault (FullRoute False NotFound) (Url.Parser.parse fullRouteParser url)

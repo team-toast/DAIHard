@@ -112,7 +112,8 @@ if (isProd === true) {
                 from: 'assets/static/img/',
                 to: 'static/img/'
             }, {
-                from: 'assets/favicon.ico'
+                from: 'assets/favicon.ico',
+                to: "favicon.ico"
             }]),
 
             // extract CSS into a separate file
