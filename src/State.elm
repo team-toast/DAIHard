@@ -790,11 +790,6 @@ runCmdDown cmdDown prevModel =
                     )
 
 
-storeNewReferrerCmd : Address -> Cmd Msg
-storeNewReferrerCmd refAddress =
-    storeReferrerAddress <|
-        Json.Encode.string (Eth.Utils.addressToString refAddress)
-
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
@@ -868,5 +863,3 @@ port requestNotifyPermissionPort : () -> Cmd msg
 
 port notifyPort : Notifications.NotifyPort msg
 
-
-port storeReferrerAddress : Json.Decode.Value -> Cmd msg
