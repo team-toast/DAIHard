@@ -790,7 +790,6 @@ runCmdDown cmdDown prevModel =
                     )
 
 
-
 subscriptions : Model -> Sub Msg
 subscriptions model =
     let
@@ -862,4 +861,3 @@ port requestNotifyPermissionPort : () -> Cmd msg
 
 
 port notifyPort : Notifications.NotifyPort msg
-
