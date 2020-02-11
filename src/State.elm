@@ -262,7 +262,7 @@ update msg model =
                             genPrivkey <|
                                 encodeGenPrivkeyArgs
                                     address
-                                    "Deriving keypair for encrypted communication on the DAIHard exchange. ONLY SIGN THIS on https://burnable-tech.github.io/DAIHard/. If you sign this elsewhere, you risk revealing any of your encrypted communication on DAIHard to an attacker."
+                                    "Deriving keypair for encrypted communication on the DAIHard exchange. ONLY SIGN THIS on https://daihard.exchange/. If you sign this elsewhere, you risk revealing any of your encrypted communication on DAIHard to an attacker."
             in
             ( { model
                 | userAddress = walletSentry.account
