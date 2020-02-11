@@ -29,6 +29,7 @@ type alias Flags =
     { networkId : Int
     , width : Int
     , height : Int
+    , nowInMillis : Int
     }
 
 
@@ -38,7 +39,7 @@ type alias Model =
     , pageRoute : Routing.PageRoute
     , userAddress : Maybe Address -- `wallet` will store this but only after commPubkey has been generated
     , wallet : Wallet.State
-    , time : Time.Posix
+    , now : Time.Posix
     , txSentry : Maybe (TxSentry Msg)
     , tradeCaches : List TradeCache
     , submodel : Submodel

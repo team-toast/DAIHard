@@ -145,7 +145,7 @@ amountAndTypeIn dProfile model =
         [ Element.width Element.fill ]
         "I want to Sell"
         model.errors.amountIn
-        (inputContainer dProfile
+        (EH.inputContainer dProfile
             ([ Element.width Element.fill ]
                 ++ (if model.showInTypeDropdown then
                         [ Element.below
@@ -288,7 +288,7 @@ amountAndTypeOut dProfile model =
         [ Element.width Element.fill ]
         "In Exchange for"
         model.errors.amountOut
-        (inputContainer dProfile
+        (EH.inputContainer dProfile
             ([ Element.width Element.fill ]
                 ++ (if model.showOutTypeDropdown then
                         [ Element.below
@@ -336,7 +336,7 @@ marginBox dProfile model =
         Mobile ->
             identity
     )
-        (inputContainer dProfile
+        (EH.inputContainer dProfile
             [ Element.width Element.fill
             , Element.pointer
             , EH.onClickNoPropagation MarginBoxClicked
@@ -407,7 +407,7 @@ marginModal dProfile margin marginInput maybeError =
                     Element.rgb255 10 33 108
 
                 inputEl =
-                    inputContainer dProfile
+                    EH.inputContainer dProfile
                         [ Element.width <| Element.px 140
                         , Element.above <|
                             case maybeError of
@@ -776,7 +776,7 @@ cryptoAddressInput dProfile symbol input =
         [ Element.width Element.fill ]
         (symbol ++ " Receive Address")
     <|
-        inputContainer dProfile
+        EH.inputContainer dProfile
             [ Element.width Element.fill
             ]
             [ Element.Input.text
@@ -804,7 +804,7 @@ paymentMethodInput dProfile initiatorRole input =
                 "Accepting the Payment"
         )
     <|
-        inputContainer dProfile
+        EH.inputContainer dProfile
             [ Element.height <| Element.px 134
             , Element.width Element.fill
             ]
@@ -919,7 +919,7 @@ phaseWindowBox dProfile intervalType interval modalIsOpen =
                     "Burn Window"
 
         phaseBox =
-            inputContainer dProfile
+            EH.inputContainer dProfile
                 [ Element.width Element.fill
                 , Element.pointer
                 , EH.onClickNoPropagation (WindowBoxClicked intervalType)
@@ -1083,7 +1083,7 @@ intervalModal dProfile intervalType userRole value input maybeError =
                         )
 
                 phaseBox =
-                    inputContainer dProfile
+                    EH.inputContainer dProfile
                         [ Element.width <| Element.px 70
                         , Element.above <|
                             case maybeError of
@@ -1172,26 +1172,6 @@ dropdownArrow pointUp =
              else
                 Images.downArrow
             )
-
-
-inputContainer : DisplayProfile -> List (Element.Attribute Msg) -> List (Element Msg) -> Element Msg
-inputContainer dProfile attributes =
-    Element.row <|
-        [ Element.Background.color EH.lightGray
-        , Element.height <| Element.px (55 |> changeForMobile 40 dProfile)
-        , Element.Border.rounded 4
-        , Element.Border.width 1
-        , Element.Border.color EH.lightGray
-        , Element.spacing 1
-        ]
-            ++ attributes
-            ++ (case dProfile of
-                    Desktop ->
-                        []
-
-                    Mobile ->
-                        [ Element.Font.size 14 ]
-               )
 
 
 placeOrderButton : DisplayProfile -> Model -> Element Msg

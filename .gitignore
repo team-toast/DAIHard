@@ -3,4 +3,5 @@
 /org/
 /src/elm-ethereum/elm-stuff/
 /dist/
-index.html
+./index.html
+html.tar

@@ -44,7 +44,7 @@ init : Flags -> Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init flags url key =
     let
         fullRoute =
-            Routing.urlToRoute url
+            Routing.urlToFullRoute url
 
         ( wallet, cmdUpsFromNetwork ) =
             if flags.networkId == 0 then
@@ -116,7 +116,7 @@ init flags url key =
             , testMode = fullRoute.testing
             , wallet = wallet
             , userAddress = Nothing
-            , time = Time.millisToPosix 0
+            , now = Time.millisToPosix flags.nowInMillis
             , txSentry = txSentry
             , tradeCaches = tradeCaches
             , submodel = InitialBlank
@@ -210,7 +210,7 @@ update msg model =
             ( model, cmd )
 
         UrlChanged url ->
-            model |> updateFromPageRoute (url |> Routing.urlToRoute |> .pageRoute)
+            model |> updateFromPageRoute (url |> Routing.urlToFullRoute |> .pageRoute)
 
         GotoRoute pageRoute ->
             model
@@ -237,7 +237,7 @@ update msg model =
                     )
 
         Tick newTime ->
-            ( { model | time = newTime }, Cmd.none )
+            ( { model | now = newTime }, Cmd.none )
 
         ConnectToWeb3 ->
             case model.wallet of
@@ -262,7 +262,7 @@ update msg model =
                             genPrivkey <|
                                 encodeGenPrivkeyArgs
                                     address
-                                    "Deriving keypair for encrypted communication on the DAIHard exchange. ONLY SIGN THIS on https://burnable-tech.github.io/DAIHard/. If you sign this elsewhere, you risk revealing any of your encrypted communication on DAIHard to an attacker."
+                                    "Deriving keypair for encrypted communication on the DAIHard exchange. ONLY SIGN THIS on https://daihard.exchange/. If you sign this elsewhere, you risk revealing any of your encrypted communication on DAIHard to an attacker."
             in
             ( { model
                 | userAddress = walletSentry.account

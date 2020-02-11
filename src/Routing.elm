@@ -1,4 +1,4 @@
-module Routing exposing (FullRoute, PageRoute(..), routeToString, urlToRoute)
+module Routing exposing (FullRoute, PageRoute(..), routeToString, urlToFullRoute)
 
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
@@ -8,6 +8,7 @@ import Eth.Utils
 import Url exposing (Url)
 import Url.Builder
 import Url.Parser exposing ((</>), (<?>), Parser)
+import Url.Parser.Query
 
 
 type alias FullRoute =
@@ -30,8 +31,8 @@ type PageRoute
 fullRouteParser : Parser (FullRoute -> a) a
 fullRouteParser =
     Url.Parser.oneOf
-        [ Url.Parser.s "DAIHard" </> Url.Parser.s "test" </> Url.Parser.map (FullRoute True) pageRouteParser
-        , Url.Parser.s "DAIHard" </> Url.Parser.map (FullRoute False) pageRouteParser
+        [ Url.Parser.s "test" </> Url.Parser.map (FullRoute True) pageRouteParser
+        , Url.Parser.map (FullRoute False) pageRouteParser
         ]
 
 
@@ -52,10 +53,10 @@ routeToString : FullRoute -> String
 routeToString fullRoute =
     Url.Builder.absolute
         ((if fullRoute.testing then
-            [ "DAIHard", "test" ]
+            [ "#", "test" ]
 
           else
-            [ "DAIHard" ]
+            [ "#" ]
          )
             ++ (case fullRoute.pageRoute of
                     InitialBlank ->
@@ -91,6 +92,12 @@ addressParser =
     Url.Parser.custom
         "ADDRESS"
         (Eth.Utils.toAddress >> Result.toMaybe)
+
+
+refQueryParser : Url.Parser.Query.Parser (Maybe Address)
+refQueryParser =
+    Url.Parser.Query.string "ref"
+        |> Url.Parser.Query.map (Maybe.andThen (Eth.Utils.toAddress >> Result.toMaybe))
 
 
 tradeRefParser : Parser (TradeReference -> a) a
@@ -172,6 +179,6 @@ buyerOrSellerToString buyerOrSeller =
             "seller"
 
 
-urlToRoute : Url -> FullRoute
-urlToRoute url =
+urlToFullRoute : Url -> FullRoute
+urlToFullRoute url =
     Maybe.withDefault (FullRoute False NotFound) (Url.Parser.parse fullRouteParser url)

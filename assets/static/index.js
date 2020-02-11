@@ -29,7 +29,8 @@ function startDapp() {
                 flags: {
                     networkId: id,
                     width: window.innerWidth,
-                    height: window.innerHeight
+                    height: window.innerHeight,
+                    nowInMillis: Date.now()
                 }
             });
 
@@ -44,7 +45,8 @@ function startDapp() {
             flags: {
                 networkId: 0, // 0 indicates no network set by provider
                 width: window.innerWidth,
-                height: window.innerHeight
+                height: window.innerHeight,
+                nowInMillis: Date.now()
             }
         });
 
@@ -74,6 +76,7 @@ function gtagPortStuff(app) {
         });
     });
 }
+
 
 function web3PortStuff(app, web3) {
     prepareWeb3PortsPreConnect(app, web3);

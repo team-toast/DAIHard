@@ -69,7 +69,7 @@ fiatCharsAndImages =
                 ( typeString
                 , ( typeChar
                   , Images.image
-                        { src = "/DAIHard/static/img/currencies/fiat/" ++ typeString ++ ".svg"
+                        { src = "/static/img/currencies/fiat/" ++ typeString ++ ".svg"
                         , description = typeString
                         }
                   )
@@ -89,7 +89,7 @@ cryptoImages =
             (\symbol ->
                 ( symbol
                 , Images.image
-                    { src = "/DAIHard/static/img/currencies/crypto/" ++ symbol ++ ".png"
+                    { src = "/static/img/currencies/crypto/" ++ symbol ++ ".png"
                     , description = symbol
                     }
                 )

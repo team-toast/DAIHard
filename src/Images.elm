@@ -36,22 +36,22 @@ marginSymbol isUp maybeIsGreen =
         { src =
             case ( isUp, maybeIsGreen ) of
                 ( True, Just True ) ->
-                    "/DAIHard/static/img/margin-up-green.svg"
+                    "/static/img/margin-up-green.svg"
 
                 ( True, Just False ) ->
-                    "/DAIHard/static/img/margin-up-red.svg"
+                    "/static/img/margin-up-red.svg"
 
                 ( True, Nothing ) ->
-                    "/DAIHard/static/img/margin-up.svg"
+                    "/static/img/margin-up.svg"
 
                 ( False, Just True ) ->
-                    "/DAIHard/static/img/margin-down-green.svg"
+                    "/static/img/margin-down-green.svg"
 
                 ( False, Just False ) ->
-                    "/DAIHard/static/img/margin-down-red.svg"
+                    "/static/img/margin-down-red.svg"
 
                 ( False, Nothing ) ->
-                    "/DAIHard/static/img/margin-down.svg"
+                    "/static/img/margin-down.svg"
         , description = ""
         }
 
@@ -59,7 +59,7 @@ marginSymbol isUp maybeIsGreen =
 daiSymbol : Image
 daiSymbol =
     JustImage
-        { src = "/DAIHard/static/img/dai-symbol.png"
+        { src = "/static/img/dai-symbol.png"
         , description = "DAI"
         }
 
@@ -67,7 +67,7 @@ daiSymbol =
 downArrow : Image
 downArrow =
     JustImage
-        { src = "/DAIHard/static/img/arrow-down.svg"
+        { src = "/static/img/arrow-down.svg"
         , description = "down"
         }
 
@@ -75,7 +75,7 @@ downArrow =
 upArrow : Image
 upArrow =
     JustImage
-        { src = "/DAIHard/static/img/arrow-up.svg"
+        { src = "/static/img/arrow-up.svg"
         , description = "up"
         }
 
@@ -83,7 +83,7 @@ upArrow =
 qmarkCircle : Image
 qmarkCircle =
     JustImage
-        { src = "/DAIHard/static/img/qmark-circle.svg"
+        { src = "/static/img/qmark-circle.svg"
         , description = ""
         }
 
@@ -91,7 +91,7 @@ qmarkCircle =
 openWindowIcon : Image
 openWindowIcon =
     JustImage
-        { src = "/DAIHard/static/img/open-window-icon.svg"
+        { src = "/static/img/open-window-icon.svg"
         , description = ""
         }
 
@@ -99,7 +99,7 @@ openWindowIcon =
 fiatBag : Image
 fiatBag =
     JustImage
-        { src = "/DAIHard/static/img/fiat-bag-white.svg"
+        { src = "/static/img/fiat-bag-white.svg"
         , description = "fiat"
         }
 
@@ -107,7 +107,7 @@ fiatBag =
 stopWhite : Image
 stopWhite =
     JustImage
-        { src = "/DAIHard/static/img/stop-white.svg"
+        { src = "/static/img/stop-white.svg"
         , description = "stop"
         }
 
@@ -115,7 +115,7 @@ stopWhite =
 releaseWindowIcon : Image
 releaseWindowIcon =
     JustImage
-        { src = "/DAIHard/static/img/release-window-icon.svg"
+        { src = "/static/img/release-window-icon.svg"
         , description = ""
         }
 
@@ -123,7 +123,7 @@ releaseWindowIcon =
 addButton : Image
 addButton =
     JustImage
-        { src = "/DAIHard/static/img/add-button.svg"
+        { src = "/static/img/add-button.svg"
         , description = "add"
         }
 
@@ -131,7 +131,7 @@ addButton =
 pmCash : Image
 pmCash =
     JustImage
-        { src = "/DAIHard/static/img/pm-cash.svg"
+        { src = "/static/img/pm-cash.svg"
         , description = "cash"
         }
 
@@ -139,7 +139,7 @@ pmCash =
 pmBank : Image
 pmBank =
     JustImage
-        { src = "/DAIHard/static/img/pm-bank.svg"
+        { src = "/static/img/pm-bank.svg"
         , description = "bank"
         }
 
@@ -147,7 +147,7 @@ pmBank =
 pmCustom : Image
 pmCustom =
     JustImage
-        { src = "/DAIHard/static/img/pm-custom.svg"
+        { src = "/static/img/pm-custom.svg"
         , description = "custom"
         }
 
@@ -155,7 +155,7 @@ pmCustom =
 backButton : Image
 backButton =
     JustImage
-        { src = "/DAIHard/static/img/back-button.svg"
+        { src = "/static/img/back-button.svg"
         , description = "back"
         }
 
@@ -163,7 +163,7 @@ backButton =
 chatIcon : Image
 chatIcon =
     JustImage
-        { src = "/DAIHard/static/img/chat.svg"
+        { src = "/static/img/chat.svg"
         , description = "chat"
         }
 
@@ -171,7 +171,7 @@ chatIcon =
 loadingArrows : Image
 loadingArrows =
     JustImage
-        { src = "/DAIHard/static/img/loading-arrows.svg"
+        { src = "/static/img/loading-arrows.svg"
         , description = "waiting"
         }
 
@@ -179,7 +179,7 @@ loadingArrows =
 closeIconBlack : Image
 closeIconBlack =
     JustImage
-        { src = "/DAIHard/static/img/remove-circle-black.svg"
+        { src = "/static/img/remove-circle-black.svg"
         , description = "close"
         }
 
@@ -187,7 +187,7 @@ closeIconBlack =
 closeIconWhite : Image
 closeIconWhite =
     JustImage
-        { src = "/DAIHard/static/img/remove-circle-white.svg"
+        { src = "/static/img/remove-circle-white.svg"
         , description = "close"
         }
 
@@ -195,7 +195,7 @@ closeIconWhite =
 flame : Image
 flame =
     JustImage
-        { src = "/DAIHard/static/img/flame.png"
+        { src = "/static/img/flame.png"
         , description = "flame"
         }
 
@@ -203,7 +203,7 @@ flame =
 release : Image
 release =
     JustImage
-        { src = "/DAIHard/static/img/release.png"
+        { src = "/static/img/release.png"
         , description = "release"
         }
 
@@ -211,7 +211,7 @@ release =
 released : Image
 released =
     JustImage
-        { src = "/DAIHard/static/img/released.svg"
+        { src = "/static/img/released.svg"
         , description = "released"
         }
 
@@ -219,7 +219,7 @@ released =
 aborted : Image
 aborted =
     JustImage
-        { src = "/DAIHard/static/img/aborted.svg"
+        { src = "/static/img/aborted.svg"
         , description = "aborted"
         }
 
@@ -227,7 +227,7 @@ aborted =
 burned : Image
 burned =
     JustImage
-        { src = "/DAIHard/static/img/burned.svg"
+        { src = "/static/img/burned.svg"
         , description = "burned"
         }
 
@@ -235,7 +235,7 @@ burned =
 openPhaseWhite : Image
 openPhaseWhite =
     JustImage
-        { src = "/DAIHard/static/img/phase-open-white.svg"
+        { src = "/static/img/phase-open-white.svg"
         , description = "open phase"
         }
 
@@ -243,7 +243,7 @@ openPhaseWhite =
 committedPhaseWhite : Image
 committedPhaseWhite =
     JustImage
-        { src = "/DAIHard/static/img/phase-committed-white.svg"
+        { src = "/static/img/phase-committed-white.svg"
         , description = "committed phase"
         }
 
@@ -251,7 +251,7 @@ committedPhaseWhite =
 judgmentPhaseWhite : Image
 judgmentPhaseWhite =
     JustImage
-        { src = "/DAIHard/static/img/phase-judgment-white.svg"
+        { src = "/static/img/phase-judgment-white.svg"
         , description = "judgment phase"
         }
 
@@ -259,7 +259,7 @@ judgmentPhaseWhite =
 openPhaseBlack : Image
 openPhaseBlack =
     JustImage
-        { src = "/DAIHard/static/img/phase-open-black.svg"
+        { src = "/static/img/phase-open-black.svg"
         , description = "open phase"
         }
 
@@ -267,7 +267,7 @@ openPhaseBlack =
 committedPhaseBlack : Image
 committedPhaseBlack =
     JustImage
-        { src = "/DAIHard/static/img/phase-committed-black.svg"
+        { src = "/static/img/phase-committed-black.svg"
         , description = "committed phase"
         }
 
@@ -275,7 +275,7 @@ committedPhaseBlack =
 judgmentPhaseBlack : Image
 judgmentPhaseBlack =
     JustImage
-        { src = "/DAIHard/static/img/phase-judgment-black.svg"
+        { src = "/static/img/phase-judgment-black.svg"
         , description = "judgment phase"
         }
 
@@ -284,7 +284,7 @@ numberOnCircleEl : Int -> Image
 numberOnCircleEl number =
     JustImage
         { src =
-            "/DAIHard/static/img/circle-"
+            "/static/img/circle-"
                 ++ String.fromInt number
                 ++ ".svg"
         , description = String.fromInt number
@@ -294,7 +294,7 @@ numberOnCircleEl number =
 swapArrows : Image
 swapArrows =
     JustImage
-        { src = "/DAIHard/static/img/swap-arrows.svg"
+        { src = "/static/img/swap-arrows.svg"
         , description = "switch order type"
         }
 
@@ -302,7 +302,7 @@ swapArrows =
 searchIcon : Image
 searchIcon =
     JustImage
-        { src = "/DAIHard/static/img/search.svg"
+        { src = "/static/img/search.svg"
         , description = "search"
         }
 
@@ -310,7 +310,7 @@ searchIcon =
 verticalSwapArrows : Image
 verticalSwapArrows =
     JustImage
-        { src = "/DAIHard/static/img/vertical-swap.svg"
+        { src = "/static/img/vertical-swap.svg"
         , description = "swap"
         }
 
@@ -318,7 +318,7 @@ verticalSwapArrows =
 marketplace : Image
 marketplace =
     JustImage
-        { src = "/DAIHard/static/img/farmer-s-market-kiosk-1.svg"
+        { src = "/static/img/farmer-s-market-kiosk-1.svg"
         , description = "marketplace"
         }
 
@@ -326,7 +326,7 @@ marketplace =
 myTrades : Image
 myTrades =
     JustImage
-        { src = "/DAIHard/static/img/diamond.svg"
+        { src = "/static/img/diamond.svg"
         , description = "myTrades"
         }
 
@@ -334,7 +334,7 @@ myTrades =
 newTrade : Image
 newTrade =
     JustImage
-        { src = "/DAIHard/static/img/add-circle-bold.svg"
+        { src = "/static/img/add-circle-bold.svg"
         , description = "newTrade"
         }
 
@@ -342,7 +342,7 @@ newTrade =
 threeDotsHorizontal : Image
 threeDotsHorizontal =
     JustImage
-        { src = "/DAIHard/static/img/3-dots-big-horizontal.png"
+        { src = "/static/img/3-dots-big-horizontal.png"
         , description = "options"
         }
 
@@ -350,7 +350,7 @@ threeDotsHorizontal =
 threeDotsVertical : Image
 threeDotsVertical =
     JustImage
-        { src = "/DAIHard/static/img/3-dots-small-vertical.svg"
+        { src = "/static/img/3-dots-small-vertical.svg"
         , description = "options"
         }
 
@@ -360,37 +360,37 @@ confirmExtraInfoIcon place =
     case place of
         0 ->
             JustImage
-                { src = "/DAIHard/static/img/rocket.svg"
+                { src = "/static/img/rocket.svg"
                 , description = "info"
                 }
 
         1 ->
             JustImage
-                { src = "/DAIHard/static/img/open-window-white.svg"
+                { src = "/static/img/open-window-white.svg"
                 , description = "info"
                 }
 
         2 ->
             JustImage
-                { src = "/DAIHard/static/img/fishing-fish.svg"
+                { src = "/static/img/fishing-fish.svg"
                 , description = "info"
                 }
 
         3 ->
             JustImage
-                { src = "/DAIHard/static/img/phase-committed-white.svg"
+                { src = "/static/img/phase-committed-white.svg"
                 , description = "info"
                 }
 
         4 ->
             JustImage
-                { src = "/DAIHard/static/img/legal-hammer.svg"
+                { src = "/static/img/legal-hammer.svg"
                 , description = "info"
                 }
 
         5 ->
             JustImage
-                { src = "/DAIHard/static/img/flags.svg"
+                { src = "/static/img/flags.svg"
                 , description = "info"
                 }
 
@@ -401,7 +401,7 @@ confirmExtraInfoIcon place =
 navigateLeft : Image
 navigateLeft =
     JustImage
-        { src = "/DAIHard/static/img/keyboard-arrow-left.svg"
+        { src = "/static/img/keyboard-arrow-left.svg"
         , description = "left"
         }
 
@@ -409,6 +409,6 @@ navigateLeft =
 navigateRight : Image
 navigateRight =
     JustImage
-        { src = "/DAIHard/static/img/keyboard-arrow-right.svg"
+        { src = "/static/img/keyboard-arrow-right.svg"
         , description = "right"
         }

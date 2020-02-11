@@ -1,6 +1,6 @@
 module App exposing (main)
 
-import Browser
+import Browser.Hash as Hash
 import State
 import Types exposing (..)
 import View
@@ -8,7 +8,7 @@ import View
 
 main : Program Flags Model Msg
 main =
-    Browser.application
+    Hash.application
         { init = State.init
         , view = View.root
         , update = State.update

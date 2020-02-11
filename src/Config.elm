@@ -1,13 +1,11 @@
-module Config exposing (activeFactories, devFeeAddress, factoryAddress, tokenContractAddress, tokenDecimals)
+module Config exposing (activeFactories, devFeeAddress, factoryAddress, tokenContractAddress)
 
+import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
-import Eth.Net
 import Eth.Types exposing (Address)
 import Eth.Utils
-
-
-tokenDecimals =
-    18
+import Time
+import TokenValue exposing (TokenValue)
 
 
 activeFactories : Bool -> List FactoryType
@@ -28,7 +26,7 @@ tokenContractAddress tokenFactoryType =
             Eth.Utils.unsafeToAddress "0x6B175474E89094C44Da98b954EedeAC495271d0F"
 
         KovanDai ->
-            Eth.Utils.unsafeToAddress "0xB64964e9C0B658Aa7B448cDbDdfCdcCaB26CC584"
+            Eth.Utils.unsafeToAddress "0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa"
 
 
 factoryAddress : FactoryType -> Address
@@ -38,7 +36,7 @@ factoryAddress factoryType =
             Eth.Utils.unsafeToAddress "0x3BCd42008DF139Bac1b710605bB7b7839d52672B"
 
         Token KovanDai ->
-            Eth.Utils.unsafeToAddress "0x780cE226c3bB57C61BaeF6e4D1Bab5Ff89c7684D"
+            Eth.Utils.unsafeToAddress "0x0C57b38b82E0E24082e759ce343dBba09a708042"
 
         Native Eth ->
             Eth.Utils.unsafeToAddress "0x716C806eC6f4703B35a5F613519C607c72c60408"

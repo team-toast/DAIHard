@@ -1,4 +1,4 @@
-module Helpers.Time exposing (HumanReadableInterval, add, compare, daysStrToMaybePosix, getRatio, isNegative, negativeToZero, posixToMillisBigInt, posixToSeconds, posixToSecondsBigInt, secondsBigIntToMaybePosix, sub, toHumanReadableInterval, toString)
+module Helpers.Time exposing (HumanReadableInterval, add, compare, daysStrToMaybePosix, getRatio, isNegative, monthToShortString, mul, negativeToZero, oneDay, oneHour, oneMinute, oneSecond, oneWeek, oneYear, posixToMillisBigInt, posixToSeconds, posixToSecondsBigInt, secondsBigIntToMaybePosix, secondsBigIntToPosixWithWarning, secondsToPosix, sub, toConciseIntervalString, toHumanReadableInterval, toString, weekdayToShortString)
 
 import BigInt exposing (BigInt)
 import Helpers.BigInt as BigIntHelpers
@@ -18,6 +18,14 @@ sub t1 t2 =
     t2
         |> Time.posixToMillis
         |> (-) (Time.posixToMillis t1)
+        |> Time.millisToPosix
+
+
+mul : Time.Posix -> Int -> Time.Posix
+mul t i =
+    t
+        |> Time.posixToMillis
+        |> (*) i
         |> Time.millisToPosix
 
 
@@ -63,6 +71,18 @@ daysStrToMaybePosix timeStr =
 posixToSeconds : Time.Posix -> Int
 posixToSeconds t =
     Time.posixToMillis t // 1000
+
+
+secondsToPosix : Int -> Time.Posix
+secondsToPosix s =
+    Time.millisToPosix (s * 1000)
+
+
+secondsBigIntToPosixWithWarning : BigInt -> Time.Posix
+secondsBigIntToPosixWithWarning =
+    BigIntHelpers.toIntWithWarning
+        >> (\secs -> secs * 1000)
+        >> Time.millisToPosix
 
 
 posixToMillisBigInt : Time.Posix -> BigInt
@@ -126,3 +146,117 @@ toHumanReadableInterval t =
                                    )
                        )
            )
+
+
+toConciseIntervalString : Time.Posix -> String
+toConciseIntervalString t =
+    let
+        hri =
+            toHumanReadableInterval t
+    in
+    if hri.days > 0 then
+        String.fromInt hri.days ++ "d " ++ String.fromInt hri.hours ++ "h"
+
+    else if hri.hours > 0 then
+        String.fromInt hri.hours ++ "h " ++ String.fromInt hri.min ++ "m"
+
+    else if hri.min > 0 then
+        String.fromInt hri.min ++ "m " ++ String.fromInt hri.sec ++ "s"
+
+    else
+        String.fromInt hri.sec ++ "s"
+
+
+oneSecond : Time.Posix
+oneSecond =
+    secondsToPosix 1
+
+
+oneMinute : Time.Posix
+oneMinute =
+    secondsToPosix 60
+
+
+oneHour : Time.Posix
+oneHour =
+    secondsToPosix <| 60 * 60
+
+
+oneDay : Time.Posix
+oneDay =
+    secondsToPosix <| 60 * 60 * 24
+
+
+oneWeek : Time.Posix
+oneWeek =
+    secondsToPosix <| 60 * 60 * 24 * 7
+
+
+oneYear : Time.Posix
+oneYear =
+    secondsToPosix 31557600
+
+
+weekdayToShortString : Time.Weekday -> String
+weekdayToShortString wd =
+    case wd of
+        Time.Mon ->
+            "Mon"
+
+        Time.Tue ->
+            "Tue"
+
+        Time.Wed ->
+            "Wed"
+
+        Time.Thu ->
+            "Thu"
+
+        Time.Fri ->
+            "Fri"
+
+        Time.Sat ->
+            "Sat"
+
+        Time.Sun ->
+            "Sun"
+
+
+monthToShortString : Time.Month -> String
+monthToShortString m =
+    case m of
+        Time.Jan ->
+            "Jan"
+
+        Time.Feb ->
+            "Feb"
+
+        Time.Mar ->
+            "Mar"
+
+        Time.Apr ->
+            "Apr"
+
+        Time.May ->
+            "May"
+
+        Time.Jun ->
+            "Jun"
+
+        Time.Jul ->
+            "Jul"
+
+        Time.Aug ->
+            "Aug"
+
+        Time.Sep ->
+            "Sep"
+
+        Time.Oct ->
+            "Oct"
+
+        Time.Nov ->
+            "Nov"
+
+        Time.Dec ->
+            "Dec"
