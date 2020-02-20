@@ -33,35 +33,35 @@ factoryAddress : FactoryType -> Address
 factoryAddress factoryType =
     case factoryType of
         Token EthDai ->
-            Eth.Utils.unsafeToAddress "0x3BCd42008DF139Bac1b710605bB7b7839d52672B"
+            Eth.Utils.unsafeToAddress "0x484c3A51a794D37939cf76CD176559c8e1614D74"
 
         Token KovanDai ->
-            Eth.Utils.unsafeToAddress "0x0C57b38b82E0E24082e759ce343dBba09a708042"
+            Eth.Utils.unsafeToAddress "0x40d2bA57cbcE5743F2325F654E48458fea0D69F6"
 
         Native Eth ->
-            Eth.Utils.unsafeToAddress "0x716C806eC6f4703B35a5F613519C607c72c60408"
+            Eth.Utils.unsafeToAddress "0x7B18F19373Db2Db5A91D3687BEa6d200081e2B0b"
 
         Native Kovan ->
-            Eth.Utils.unsafeToAddress "0xE3C549cCE69CB9d19d50C57743b1C5d2D84841e0"
+            Eth.Utils.unsafeToAddress "0xa7643Ef0546B23c122dcc3b992478F95dc65Eef6"
 
         Native XDai ->
-            Eth.Utils.unsafeToAddress "0x237CFfc6c21DF0c58a0b4CcD1d5fe3d43818A27B"
+            Eth.Utils.unsafeToAddress "0xe05457c4C12eD97248bCC56A2bA1705C3B1610C7"
 
 
 devFeeAddress : FactoryType -> Address
 devFeeAddress factoryType =
     case factoryType of
         Token EthDai ->
-            Eth.Utils.unsafeToAddress "0x61F399ED1D5AEC3Bc9d4B026352d5764181d6b35"
+            Eth.Utils.unsafeToAddress "0x917270988E3C41317710101cD28844505dC5E9eE"
 
         Token KovanDai ->
-            Eth.Utils.unsafeToAddress "0xF59ed429f9753B0498436DE1a3559AEC7a0c2a21"
+            Eth.Utils.unsafeToAddress "0x11B68A6E1bB525B4B64aa81c5f219834Aa849117"
 
         Native Eth ->
-            Eth.Utils.unsafeToAddress "0x61F399ED1D5AEC3Bc9d4B026352d5764181d6b35"
+            Eth.Utils.unsafeToAddress "0x917270988E3C41317710101cD28844505dC5E9eE"
 
         Native Kovan ->
-            Eth.Utils.unsafeToAddress "0xF59ed429f9753B0498436DE1a3559AEC7a0c2a21"
+            Eth.Utils.unsafeToAddress "0x11B68A6E1bB525B4B64aa81c5f219834Aa849117"
 
         Native XDai ->
-            Eth.Utils.unsafeToAddress "0x092110996699c3E06e998d89F0f4586026e44F0F"
+            Eth.Utils.unsafeToAddress "0x487Ac5423555B1D83F5b8BA13F260B296E9D0777"
