@@ -26,7 +26,7 @@ fetch msgConstructor =
     Http.request
         { method = "GET"
         , headers = []
-        , url = "https://daihard.io/prices.json"
+        , url = "https://daihard.exchange/prices.json"
         , body = Http.emptyBody
         , expect = Http.expectJson msgConstructor responseDecoder
         , timeout = Nothing
