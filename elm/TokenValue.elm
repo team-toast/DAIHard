@@ -32,7 +32,7 @@ fromIntTokenValue val =
 
 fromFloatWithWarning : Float -> TokenValue
 fromFloatWithWarning val =
-    case userStringToEvmValue (Round.round tokenDecimals val) of
+    case Round.round tokenDecimals val |> userStringToEvmValue of
         Just bigint ->
             tokenValue bigint
 

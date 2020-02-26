@@ -147,7 +147,7 @@ web3FetchError label httpError =
         [ [ Element.text <|
                 "Failed to fetch \""
                     ++ label
-                    ++ "\". See console output for more info."
+                    ++ "\"."
           ]
         ]
     , align = BottomRight
