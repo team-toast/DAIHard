@@ -316,11 +316,12 @@ updatePhaseStartInfo phaseStartInfo trade =
                 |> checkIfTradeLoaded
 
         LoadedTrade info ->
-            let
-                _ =
-                    maybeDebugLog "Trying to update phaseStartInfo on a trade that's already fully loaded!" ""
-            in
-            trade
+            
+            LoadedTrade
+                { info
+                    | phaseStartInfo = phaseStartInfo
+                }
+
 
         Invalid ->
             Invalid
