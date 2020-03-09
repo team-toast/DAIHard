@@ -4,7 +4,6 @@ import Abi.Decode
 import BigInt exposing (BigInt)
 import CommonTypes exposing (..)
 import Config
-import MaybeDebugLog exposing (maybeDebugLog)
 import Contracts.Generated.DAIHardFactory as DHF
 import Contracts.Generated.DAIHardTrade as DHT
 import Currencies exposing (Price)
@@ -16,6 +15,7 @@ import Helpers.Time as TimeHelpers
 import Images exposing (Image)
 import Json.Decode
 import Json.Encode
+import MaybeDebugLog exposing (maybeDebugLog)
 import PaymentMethods exposing (PaymentMethod)
 import Time
 import TokenValue exposing (TokenValue)
@@ -316,12 +316,10 @@ updatePhaseStartInfo phaseStartInfo trade =
                 |> checkIfTradeLoaded
 
         LoadedTrade info ->
-            
             LoadedTrade
                 { info
                     | phaseStartInfo = phaseStartInfo
                 }
-
 
         Invalid ->
             Invalid
