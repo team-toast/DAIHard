@@ -1,4 +1,4 @@
-module UserNotice exposing (Alignment(..), NoticeType(..), UserNotice, cantConnectNoWeb3, cantFetchPrices, cantFindTradeWillRetry, debugMsg, fromBadFetchResultMaybe, inputError, invalidUrl, map, noWeb3Provider, oldPriceDataWarning, placeholderNotice, screenToSmall, tradeParametersNotDefault, unexpectedError, walletError, web3FetchError, web3MiningError, web3SigError, wrongWeb3Network)
+module UserNotice exposing (..)
 
 import Element exposing (Attribute, Element)
 import Element.Font
@@ -105,6 +105,17 @@ cantConnectNoWeb3 =
           , Element.text ") to Connect."
           ]
         , [ Element.text "Until you connect, DAIHard will operate in read-only mode." ]
+        ]
+    , align = BottomRight
+    }
+
+
+noWeb3Account : UserNotice msg
+noWeb3Account =
+    { label = "noWeb3Account"
+    , noticeType = Caution
+    , mainParagraphs =
+        [ [ Element.text "I can't detect a web3 account. Your wallet may be locked." ]
         ]
     , align = BottomRight
     }

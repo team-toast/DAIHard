@@ -269,6 +269,12 @@ update msg model =
                 | userAddress = walletSentry.account
                 , wallet = Wallet.OnlyNetwork walletSentry.networkId
               }
+                |> (if walletSentry.account == Nothing then
+                        addUserNotice UN.noWeb3Account
+
+                    else
+                        removeUserNoticesByLabel UN.noWeb3Account.label
+                   )
             , genCommPubkeyCmd
             )
 
@@ -308,7 +314,8 @@ update msg model =
                                 |> addUserNotice
                                     (UN.unexpectedError
                                         "User pubkey set, but there's already an active userInfo! Overwriting commpubkey."
-                                        userInfo)
+                                        userInfo
+                                    )
                                 |> runCmdDown (CmdDown.UpdateWallet wallet)
 
                         ( _, _ ) ->
@@ -535,6 +542,16 @@ addUserNotice userNotice prevModel =
                     prevModel.userNotices
                     [ userNotice ]
         }
+
+
+removeUserNoticesByLabel : String -> Model -> Model
+removeUserNoticesByLabel label prevModel =
+    { prevModel
+        | userNotices =
+            prevModel.userNotices
+                |> List.filter
+                    (.label >> (/=) label)
+    }
 
 
 encodeGTag : GTagData -> Json.Decode.Value
