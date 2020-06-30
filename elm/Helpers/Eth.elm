@@ -14,10 +14,10 @@ httpProviderForFactory : FactoryType -> HttpProvider
 httpProviderForFactory factoryType =
     case factoryType of
         Token EthDai ->
-            "https://mainnet.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9"
+            "https://2fd3f6c153594d02bd21f0d61ee46745.eth.rpc.rivet.cloud/"
 
         Native Eth ->
-            "https://mainnet.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9"
+            "https://2fd3f6c153594d02bd21f0d61ee46745.eth.rpc.rivet.cloud/"
 
         Token KovanDai ->
             "https://kovan.infura.io/v3/e3eef0e2435349bf9164e6f465bd7cf9"
