@@ -1201,7 +1201,7 @@ contractActionSend action =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Time.every 3000 Refresh
+        [ Time.every 6000 Refresh
         , encryptionFinished EncryptionFinished
         , decryptionFinished <| \res -> ChatHistoryMsg (ChatHistory.DecryptionFinished res)
         ]

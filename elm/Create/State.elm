@@ -1485,6 +1485,6 @@ updateCurrencyTypesFromInput prevModel =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Time.every 2000 (always Refresh)
+        [ Time.every 20000 (always Refresh)
         , Time.every 500 UpdateNow
         ]

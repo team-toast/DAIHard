@@ -662,6 +662,6 @@ updateTradeTerms id terms tradeCache =
 subscriptions : TradeCache -> Sub Msg
 subscriptions tradeCache =
     Sub.batch
-        [ Time.every 5000 (\_ -> CheckForNewTrades)
-        , Time.every 3000 (\_ -> UpdateTradePhases)
+        [ Time.every 20000 (\_ -> CheckForNewTrades)
+        , Time.every 6000 (\_ -> UpdateTradePhases)
         ]
