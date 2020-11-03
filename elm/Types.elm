@@ -77,5 +77,6 @@ type Msg
     | AgentHistoryMsg AgentHistory.Types.Msg
     | DismissNotice Int
     | ClickHappened
+    | CloseLowUsageModal
     | NoOp
     | Test String

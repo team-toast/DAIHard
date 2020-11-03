@@ -63,8 +63,17 @@ root model =
 pageElementAndModal : DisplayProfile -> Model -> ( Element Msg, List (Element Msg) )
 pageElementAndModal dProfile model =
     let
-        ( submodelEl, modalEls ) =
+        ( submodelEl, submodelModalEls ) =
             submodelElementAndModal dProfile model
+
+        modalEls =
+            submodelModalEls
+                ++ (if model.showLowUsageModal then
+                        [ lowUsageModal dProfile ]
+
+                    else
+                        []
+                   )
 
         maybeTestnetIndicator =
             if model.testMode then
@@ -519,3 +528,70 @@ submodelElementAndModal dProfile model =
         submodelEl
     , modalEls
     )
+
+
+lowUsageModal : DisplayProfile -> Element Msg
+lowUsageModal dProfile =
+    EH.modal
+        (Element.rgba 0 0 0 0.2)
+        False
+        NoOp
+        CloseLowUsageModal
+    <|
+        Element.column
+            [ Element.centerX
+            , Element.centerY
+            , Element.Border.rounded 10
+            , Element.Background.color <| Element.rgb 1 1 0.8
+            , Element.padding 20
+            , Element.spacing 20
+            , Element.Border.shadow
+                { offset = (-5, 5)
+                , size = 0
+                , blur = 20
+                , color = Element.rgba 0 0 0 0.4
+                }
+            ]
+            [ Element.el
+                [ Element.centerX
+                , Element.Font.size (36 |> changeForMobile 28 dProfile)
+                ]
+                (Element.text "DAIHard is a little quiet right now...")
+            , lowUsageParagraphsEl
+            , EH.blueButton dProfile
+                [ Element.centerX ]
+                [ "Got it!" ]
+                CloseLowUsageModal
+            ]
+
+
+lowUsageParagraphsEl : Element Msg
+lowUsageParagraphsEl =
+    Element.column
+        [ Element.spacing 15
+        , Element.width <| Element.px 800
+        , Element.padding 20
+        ]
+    <|
+        List.map
+            (Element.paragraph
+                [ Element.spacing 0 ]
+            )
+            [ [ Element.text "DAIHard is suffering from very low usage at the moment. We started to worry that a successful DAIHard would make some scary enemies, and pumped the brakes before marketing. As a result, the tool is still functional, but it might be hard to find other users." ]
+            , [ Element.text "We're currently working on "
+              , link "Foundry, a DAO designed to be unbullyable" "https://foundrydao.com/"
+              , Element.text ". This DAO should be able to market DAIHard and pursue other projects without fear, and generally advance the libertarian cause without asking permission. DAIHard already points its 1% fee as profit to the Foundry Treasury."
+              ]
+            , [ Element.text "Please reach out to us on the "
+              , link "Foundry Telegram" "https://t.me/FoundryCommunity"
+              ,Element.text "! We might be able to get your DAIHard trade offer some visibility with some kind of PR stunt." ]
+            ]
+
+
+link : String -> String -> Element Msg
+link text url =
+    Element.newTabLink
+        [ Element.Font.color EH.blue ]
+        { url = url
+        , label = Element.text text
+        }
