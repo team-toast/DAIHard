@@ -45,6 +45,7 @@ type alias Model =
     , submodel : Submodel
     , userNotices : List (UserNotice Msg)
     , dProfile : DisplayProfile
+    , showLowUsageModal : Bool
     }
 
 

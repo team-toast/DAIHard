@@ -111,6 +111,17 @@ init flags url key =
 
         dProfile =
             screenWidthToDisplayProfile flags.width
+        
+        showLowUsageModal =
+            case fullRoute.pageRoute of
+                Routing.CreateCrypto ->
+                    True
+                Routing.CreateFiat ->
+                    True
+                Routing.Marketplace ->
+                    True
+                _ ->
+                    False
 
         ( model, fromUrlCmd ) =
             { key = key
@@ -124,6 +135,7 @@ init flags url key =
             , pageRoute = Routing.InitialBlank
             , userNotices = []
             , dProfile = dProfile
+            , showLowUsageModal = showLowUsageModal
             }
                 |> updateFromPageRoute fullRoute.pageRoute
                 |> runCmdUps cmdUps
