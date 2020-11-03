@@ -112,6 +112,20 @@ init flags url key =
         dProfile =
             screenWidthToDisplayProfile flags.width
 
+        showLowUsageModal =
+            case fullRoute.pageRoute of
+                Routing.CreateCrypto ->
+                    True
+
+                Routing.CreateFiat ->
+                    True
+
+                Routing.Marketplace ->
+                    True
+
+                _ ->
+                    False
+
         ( model, fromUrlCmd ) =
             { key = key
             , testMode = fullRoute.testing
@@ -124,6 +138,7 @@ init flags url key =
             , pageRoute = Routing.InitialBlank
             , userNotices = []
             , dProfile = dProfile
+            , showLowUsageModal = showLowUsageModal
             }
                 |> updateFromPageRoute fullRoute.pageRoute
                 |> runCmdUps cmdUps
@@ -308,7 +323,8 @@ update msg model =
                                 |> addUserNotice
                                     (UN.unexpectedError
                                         "User pubkey set, but there's already an active userInfo! Overwriting commpubkey."
-                                        userInfo)
+                                        userInfo
+                                    )
                                 |> runCmdDown (CmdDown.UpdateWallet wallet)
 
                         ( _, _ ) ->
@@ -476,6 +492,11 @@ update msg model =
                       }
                     , updateResult.cmd |> Cmd.map (TradeCacheMsg tcId)
                     )
+
+        CloseLowUsageModal ->
+            ( { model | showLowUsageModal = False }
+            , Cmd.none
+            )
 
         ClickHappened ->
             model |> runCmdDown CmdDown.CloseAnyDropdownsOrModals

@@ -45,6 +45,7 @@ type alias Model =
     , submodel : Submodel
     , userNotices : List (UserNotice Msg)
     , dProfile : DisplayProfile
+    , showLowUsageModal : Bool
     }
 
 
@@ -76,5 +77,6 @@ type Msg
     | AgentHistoryMsg AgentHistory.Types.Msg
     | DismissNotice Int
     | ClickHappened
+    | CloseLowUsageModal
     | NoOp
     | Test String
