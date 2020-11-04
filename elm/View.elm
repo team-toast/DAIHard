@@ -556,14 +556,30 @@ lowUsageModal dProfile =
                 [ Element.centerX
                 , Element.Font.size (36 |> changeForMobile 28 dProfile)
                 ]
-                (Element.text "DAIHard is a little quiet right now...")
-            , lowUsageParagraphsEl
-            , EH.blueButton dProfile
-                [ Element.centerX ]
-                [ "Got it!" ]
-                CloseLowUsageModal
+                (Element.text "Down for Maintenance")
+                -- (Element.text "DAIHard is a little quiet right now...")
+            , downForABitParagraphsEl
+            -- , lowUsageParagraphsEl
+            -- , EH.blueButton dProfile
+            --     [ Element.centerX ]
+            --     [ "Got it!" ]
+            --     CloseLowUsageModal
             ]
 
+
+downForABitParagraphsEl : Element Msg
+downForABitParagraphsEl =
+    Element.column
+        [ Element.spacing 15
+        , Element.width <| Element.px 800
+        , Element.padding 20
+        ]
+    <|
+        List.map
+            (Element.paragraph
+                [ Element.spacing 0 ]
+            )
+            [ [ Element.text "Yikes, we've run into huge fees due to poor web3 call optimization. This interface won't work currently. We're working on a fix now."]]
 
 lowUsageParagraphsEl : Element Msg
 lowUsageParagraphsEl =
