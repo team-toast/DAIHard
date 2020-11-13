@@ -20,6 +20,7 @@
     "rimraf": "^2.6.3"
   },
   "dependencies": {
+    "@metamask/legacy-web3": "^1.0.2",
     "elm-ethereum-ports": "^1.0.0",
     "node-forge": "^0.8.1"
   },

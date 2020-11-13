@@ -3,6 +3,9 @@ var secureComms = require('./secureComms');
 var networkChangeNotifier = require('./networkChangeNotifier');
 var elmNotifications = require('./elmNotifications');
 window.forge = require('node-forge');
+require('@metamask/legacy-web3');
+ 
+const { web3 } = window;
 
 import { Elm } from '../../elm/App'
 
