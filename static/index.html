@@ -3,13 +3,29 @@
 
 <head>
     <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-143211145-1"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-143211145-4"></script>
     <script>
         window.dataLayer = window.dataLayer || [];
-        function gtag() { dataLayer.push(arguments); }
+        window.gtag = function gtag() { dataLayer.push(arguments); }
         gtag('js', new Date());
 
-        gtag('config', 'UA-143211145-1');
+        gtag('config', 'UA-143211145-4', {
+            'linker': {
+                'domains':
+                    [
+                        'sale.foundrydao.com',
+                        'dashboard.foundrydao.com',
+                        'foundrydao.com',
+                        'foundrydao.eth.link',
+                        'smokesignal.eth.link',
+                        'daihard.exchange'
+                    ],
+                'linker': {
+                    'accept_incoming': true
+                }
+            }
+        }
+        );
     </script>
     <meta charSet="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
