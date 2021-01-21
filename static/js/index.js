@@ -1,3 +1,4 @@
+require('@metamask/legacy-web3');
 var elm_ethereum_ports = require('elm-ethereum-ports');
 var secureComms = require('./secureComms');
 var networkChangeNotifier = require('./networkChangeNotifier');
