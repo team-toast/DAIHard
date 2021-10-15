@@ -4,5 +4,5 @@ module MaybeDebugLog exposing (maybeDebugLog)
 
 
 maybeDebugLog s a =
-    Debug.log s a
-    -- a
+    -- Debug.log s a
+    a
